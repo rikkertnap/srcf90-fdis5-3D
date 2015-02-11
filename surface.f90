@@ -23,7 +23,7 @@ module surface
     real*8 :: psiSurfL            ! surface potential     
     real*8 :: psiSurfR            ! surface potential 
 
-    real*8 :: sigmaSurf
+!    real*8 :: sigmaSurf
     
    ! taurine
     real*8 :: fdisTaL(4),fdisTaR(4) ! fraction of different surface states
@@ -108,6 +108,7 @@ module surface
             endif
                     
             surface_charge=sigmaqSurf
+
             return
 
         end function surface_charge
@@ -146,8 +147,6 @@ module surface
             ! sites density
             sigmaSurfR=8.0d0
             sigmaSurfR = sigmaSurfR * (4.0d0*pi*lb)*delta ! dimensionless surface charge     
-            sigmaSurf  = sigmaSurfR
-
 
         end subroutine init_surface_quartz
 
@@ -187,10 +186,7 @@ module surface
 
             ! site density
             sigmaSurfR=5.0d0
-            sigmaSurfL=0.0d0
             sigmaSurfR = sigmaSurfR * (4.0d0*pi*lb)*delta ! dimensionless surface charge     
-            sigmaSurfL = sigmaSurfL * (4.0d0*pi*lb)*delta ! dimensionless surface charge     
-            sigmaSurf  = sigmaSurfR
 
         end subroutine init_surface_calcite
 
@@ -222,17 +218,16 @@ module surface
             !K0S(2) = KS(2)*((vsol*Na/1.0d24)**0.5) ! intrinstic equilibruim constant                                                  
 
             ! charges surface states                                                                                                 
-            qS(1)=-0.5 ! SOH^-0.5                                                                            
-            qS(2)=0.5  ! SOH_2^0.5   
-            qS(3)=0.0  ! SOH_1.5^0  
-            qS(4)=0.5  ! SOHNa^0.5                                  
-            qS(5)= 1.5 ! SOHCa^1.5
-            qS(6)=-0.5 ! SOH_2Cl^-0.5                                                                                                        
+            qS(1)=-0.5d0 ! SOH^-0.5                                                                            
+            qS(2)=0.5d0  ! SOH_2^0.5   
+            qS(3)=0.0d0  ! SOH_1.5^0  
+            qS(4)=0.5d0  ! SOHNa^0.5                                  
+            qS(5)= 1.5d0 ! SOHCa^1.5
+            qS(6)=-0.5d0 ! SOH_2Cl^-0.5                                                                                                        
 
             ! site density 
             sigmaSurfR = 8.5d0
             sigmaSurfR = sigmaSurfR * (4.0d0*pi*lb)*delta ! dimensionless surface charge     
-            sigmaSurf  = sigmaSurfR
 
         end subroutine init_surface_clay
 
@@ -258,10 +253,10 @@ module surface
             enddo
 
             ! charges surface states                                                                                                 
-            qTa(1)=-1.0 ! SO^-                                                                            
-            qTa(2)=0.0  ! SOH  
-            qTa(3)=0.0  ! SONa 
-            qTa(4)=1.0  ! SOHCa^+                                  
+            qTa(1)=-1.0d0 ! SO^-                                                                            
+            qTa(2)=0.0d0  ! SOH  
+            qTa(3)=0.0d0  ! SONa 
+            qTa(4)=1.0d0  ! SOHCa^+                                  
                                                                                                                 
 
             ! site density
@@ -319,7 +314,7 @@ module surface
                 avfdis=avfdis +qS(i)*fdisS(i)
             enddo
         
-            surface_charge_quartz=sigmaSurf*avfdis
+            surface_charge_quartz=sigmaSurfR*avfdis
         
         end function surface_charge_quartz
 
@@ -359,7 +354,7 @@ module surface
                 avfdis=avfdis +qS(i)*fdisS(i)
             enddo
 
-            surface_charge_calcite=sigmaSurf*avfdis
+            surface_charge_calcite=sigmaSurfR*avfdis
 
         end function surface_charge_calcite
 
@@ -401,7 +396,7 @@ module surface
                 avfdis=avfdis +qS(i)*fdisS(i)
             enddo
 
-            surface_charge_clay=sigmaSurf*avfdis
+            surface_charge_clay=sigmaSurfR*avfdis
 
         end function surface_charge_clay
 

@@ -40,7 +40,7 @@ program brushweakpolyelectrolyte
    
     ! .. executable statements 
     ! .. init 
-    
+
     call read_inputfile()
     call init_constants()
     call init_matrices()        ! init matrices for chain generation
@@ -51,44 +51,30 @@ program brushweakpolyelectrolyte
     call make_geometry()        ! generate volume elements lattice 
     call allocate_field(nsize) 
     !    call read_VdWCoeff() ! THIS NEED TO BE CHANGED !!!!!!!!!!!!!!!!!!!
-    call set_size_neq()     
+    call set_size_neq()
     call init_expmu()
     call init_surface(bcflag)
-   
-  
-    print*,"bcflag(RIGHT)=",bcflag(RIGHT)
-    print*,"bcflag(LEFT)=",bcflag(LEFT)
-
-    print*,'sigmaSurfR= ',sigmaSurfR/((4.0d0*pi*lb)*delta)
-    print*,'sigmaSurfL= ',sigmaSurfL/((4.0d0*pi*lb)*delta)
-    print*,'sigmaqSurfR= ',sigmaqSurfR/((4.0d0*pi*lb)*delta)
-    print*,'sigmaqSurfL= ',sigmaqSurfL/((4.0d0*pi*lb)*delta)
 
     !  .. computation starts
     
-
     nz=nzmax                    ! first distance 
     call set_size_neq()         ! number of non-linear equation neq
     neqmax = neq
     allocate(xstored(neq))
-
     isfirstguess = .true.    
     use_xstored = .false.
     countfile = 1                
     iter = 0
-    
+
     do while (nz.ge.nzmin)    
  
         call set_size_neq() 
         allocate(x(neq))
         allocate(xguess(neq))
-!        allocate(fvec(neq))
-        call chain_filter()
+        call chain_filter()    
         call make_guess(x, xguess, isfirstguess, use_xstored, xstored)
-!        call fcnelect(x,fvec,neq)
         call solver(x, xguess, error, fnorm) 
-            
-!        call fcnenergy()         ! free energy
+        call fcnenergy()         ! free energy
         call average_height()      
         call charge_polymer()
         call average_charge_polymer()
@@ -99,26 +85,16 @@ program brushweakpolyelectrolyte
         countfile = countfile+1  ! next  
         iter = 0                 ! reset of iteration counter 
         nz = nz-nzstep             ! reduce distance 
-
         do i=1,neq
             xstored(i)=x(i)
         enddo
 
         deallocate(x)   
         deallocate(xguess)
- 
     enddo   
+
     deallocate(xstored)
 
     call deallocate_field()
-
-    print*,"bcflag(RIGHT)=",bcflag(RIGHT)
-    print*,"bcflag(LEFT)=",bcflag(LEFT)
-
-    print*,'sigmaSurfR= ',sigmaSurfR/((4.0d0*pi*lb)*delta)
-    print*,'sigmaSurfL= ',sigmaSurfL/((4.0d0*pi*lb)*delta)
-    print*,'sigmaqSurfR= ',sigmaqSurfR/((4.0d0*pi*lb)*delta)
-    print*,'sigmaqSurfL= ',sigmaqSurfL/((4.0d0*pi*lb)*delta)
-
 
 end program brushweakpolyelectrolyte

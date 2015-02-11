@@ -4,26 +4,14 @@ module parameters
     use mathconst
     use random
     use volume
-  
-    implicit none
-  
-    type bulk
-        real*8 :: sol
-        real*8 :: Na
-        real*8 :: Cl
-        real*8 :: K
-        real*8 :: Ca
-        real*8 :: NaCl
-        real*8 :: KCl
-        real*8 :: Hplus
-        real*8 :: OHmin
-    end type bulk
-  
-    type(bulk) :: xbulk,expmu
+    use molecules
 
-        
+    implicit none
+
     !  .. list of parameters
- 
+
+    type(moleclist) :: xbulk,expmu
+
     !  .. volume 
   
     real*8 :: vsol               ! volume of solvent  in nm^3       
@@ -80,6 +68,9 @@ module parameters
     real*8 :: constqW            ! constant in Poisson eq dielectric constant of water 
 
     real*8 :: sigmaAB            ! sigma AB polymer coated on planar surface
+    real*8 :: sigmaABL           ! sigma AB polymer coated on planar surface
+    real*8 :: sigmaABR           ! sigma AB polymer coated on planar surface
+    
     real*8 :: sigmaC             ! sigma C polymer coated on planar surface
   
     integer :: itmax             ! maximum number of iterations
@@ -92,7 +83,7 @@ module parameters
     character(len=8) :: chainmethod      ! method of generating chains ="MC" or "FILE" 
     character(len=8) :: chaintype        ! type of chain: diblock,alt
     integer :: readinchains              ! nunmber of used/readin chains
-    integer, parameter :: numsys= 5      ! number of method   
+    integer, parameter :: numsys= 6      ! number of method   
     character(len=15) :: sysvalues(numsys) ! different system methodes 
     character(len=2) :: bcvalues(2,5)      ! boundary condition bc="qu" quartz,"cl" clay or "ca" calcite
 
@@ -161,7 +152,9 @@ module parameters
                 case ("elect") 
                     neq = 4 * nz + neq_bc
                 case ("electdouble")  
-                    neq = 4 * nz  
+                    neq = 4 * nz 
+                case ("electnopoly") 
+                    neq = 2 * nz + neq_bc
                 case ("electHC") 
                     neq = 5 * nz +neq_bc
                 case ("neutral") 
@@ -186,9 +179,10 @@ module parameters
 
             sysvalues(1)="elect"
             sysvalues(2)="electdouble"
-            sysvalues(3)="electHC" 
-            sysvalues(4)="neutral"
-            sysvalues(5)="bulk water"
+            sysvalues(3)="electnopoly"
+            sysvalues(4)="electHC" 
+            sysvalues(5)="neutral"
+            sysvalues(6)="bulk water"
 
             bcvalues(RIGHT,1)="qu"
             bcvalues(RIGHT,2)="cl"
@@ -264,9 +258,22 @@ module parameters
 
         end subroutine  
 
+        real*8 function BjerrumLenght(T)
 
+            use mathconst
+            use physconst
+            
+            implicit none
+            
+            real*8, intent(in) :: T     
+            real*8 :: lb
 
+            lb=(elemcharge**2)/(4.0d0*pi*dielectW*dielect0*kBoltzmann*T) ! bjerrum length in water=solvent in m
+            lb=lb/1.0d-9              ! bjerrum length in water in nm
+            BjerrumLenght=lb
 
+        end function BjerrumLenght
+            
         !     purpose: initialize all constants parameter 
         !     pre: first read_inputfile has to be called   
         
@@ -318,11 +325,12 @@ module parameters
             RKCl = 0.26d0             ! radius of ion pair
             
             !     .. volume
-            if(sysflag=="elect".or.sysflag=="electdouble") then 
+            if(sysflag/="neutral") then 
                 vsol = 0.030d0              ! volume water solvent molecule in (nm)^3
             elseif(sysflag=="neutral") then 
                 vsol = 0.218d0              ! volume hexane Mw=86.18 g/mol and rho=0.6548 g/ml  
             else 
+                print*,"Error in call to init_constants subroutine"   
                 print*,"Wrong system flag"
                 stop
             endif   
@@ -371,23 +379,24 @@ module parameters
             lsegB=0.545d0              ! segment length in nm 
             lsegC=0.153d0              ! segment length in nm od CH2 check 
             
-            pKw=14.0d0                ! water equilibruim constant
+            pKw=14.0d0                 ! water equilibruim constant
             
-            T=298.0d0                 ! temperature in Kelvin
-            dielectW=78.54d0          ! dielectric constant water
+            T=298.0d0                  ! temperature in Kelvin
+            dielectW=78.54d0           ! dielectric constant water
             
-            lb=(elemcharge**2)/(4.0d0*pi*dielectW*dielect0*kBoltzmann*T) ! bjerrum length in water=solvent in m
-            lb=lb/1.0d-9              ! bjerrum length in water in nm
+            lb=BjerrumLenght(T)        ! bjerrum length in water in nm
 
-            delta = 0.30d0            ! size lattice spacing
-            seed  = 435672            ! seed for random number generator
+            delta = 0.30d0             ! size lattice spacing
+            seed  = 435672             ! seed for random number generator
             
             constqW = delta*delta*(4.0d0*pi*lb)/vsol ! multiplicative constant Poisson Eq. 
             
             !  .. initializations of input dependent variables 
             
-            sigmaAB = sigmaAB  * (1.0d0/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!! 
-            sigmaC  = sigmaC  * (1.0d0/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!!
+            sigmaABL = sigmaABL * (1.0d0/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!! 
+            sigmaABR = sigmaABR * (1.0d0/(delta)) 
+            sigmaAB = sigmaAB * (1.0d0/(delta))  
+            sigmaC   = sigmaC  * (1.0d0/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!!
             
             ! VdWepsC  = VdWepsC/(vpolC*vsol) ! VdW eps scaled 
             ! VdWepsB  = VdWepsB/(vpolB(3)*vsol) ! VdW eps scaled 
@@ -552,11 +561,16 @@ module parameters
             implicit none
 
 
-            if(sysflag=="elect".or.sysflag=="electdouble") then 
+            if(sysflag=="elect") then 
                 call init_expmu_elect()
-            else if(sysflag=="neutral") then
+            elseif(sysflag=="electdouble") then 
+                call init_expmu_elect()
+            elseif(sysflag=="electnopoly") then 
+                call init_expmu_elect()
+            elseif(sysflag=="neutral") then
                 call init_expmu_neutral()
             else
+                print*,"Error in call to init_expmu subroutine"    
                 print*,"Wrong value sysflag : ", sysflag
                 stop        
             endif   

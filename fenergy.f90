@@ -1,43 +1,45 @@
-!---------------------------------------------------------------|
-! augustus  2009                                                | 
-! fenergy.f:                                                    |
-! calculates the free energy and bulk free energy               |
-!---------------------------------------------------------------|
-
-
-!     .. module file of energy variables
+!  .. module file for free energy variables /calculations
 
 module energy 
+
+    use molecules
 
     implicit none
   
     !     .. variables
-  
     real*8 :: FE                  ! free energy
     real*8 :: FEbulk              ! free energybulk
-    real*8 :: deltaFE             ! free energy difference
+    real*8 :: deltaFE             ! free energy difference delteFE=FE-FEbulk
   
     !     .. auxiliary variable used in free energy computation  
+
     real*8 :: FEq                 ! partition function poly A and B 
     real*8 :: FEpi                ! sum over pi
     real*8 :: FErho               ! sum over densities
     real*8 :: FEel                ! electrostatics energ
-    real*8 :: FEelsurf            ! electrostatics energy from  surface
-    real*8 :: FEchem              ! chemical energy
-    real*8 :: sumphiA             ! check integrale over phiA
-    real*8 :: sumphiB             ! check integrale over phiB
-    real*8 :: sumphiC             ! check integrale over phiC
-    real*8 :: qres                ! charge charge
-    real*8 :: checkphi            ! check integrate over phi
+    real*8 :: FEelsurf(2)         ! electrostatics energy from  surface
+    real*8 :: FEchemsurf(2)       ! chemical energy surf
+    real*8 :: FEchem
     real*8 :: FEbind              ! complexation contribution
     real*8 :: FEVdW               ! Van der Waals contribution
     real*8 :: FEVdWB
-    real*8 :: FEVdWC
-    !   
+    real*8 :: FEVdWC 
     real*8 :: FEconfAB
     real*8 :: FEConfC
-    real*8 :: FEtranssol
     real*8 :: FEalt
+    
+    type(moleclist) :: FEtrans,FEchempot
+
+
+    real*8 :: sumphiA             ! check integral over phiA
+    real*8 :: sumphiB             ! check integral over phiB
+    real*8 :: sumphiC             ! check integral over phiC
+    real*8 :: qres                ! charge charge
+    real*8 :: checkphi            ! check integrate over phi
+    
+    real*8, parameter :: sigmaTOL = 0.00000001     ! tolerance of surface coverage below no polymers 
+
+    private :: sigmaTOL
 
 contains
 
@@ -46,38 +48,49 @@ contains
         use globals
         implicit none
     
-        if(sysflag.eq."elect") call fcnenergy_elect()
-        if(sysflag.eq."neutral") call fcnenergy_neutral()
-    
+        if(sysflag.eq."elect") then 
+            call fcnenergy_elect()
+        elseif(sysflag.eq."electdouble") then 
+            call fcnenergy_elect()
+        elseif(sysflag.eq."electnopoly") then 
+            call fcnenergy_elect()
+            call fcnenergy_elect_alternative()
+        elseif(sysflag.eq."neutral") then 
+            call fcnenergy_neutral()
+        else
+            print*,"Error in fcnenergy"
+            print*,"Wrong value sysflag : ",sysflag
+        endif 
     end subroutine fcnenergy
 
    
     subroutine fcnenergy_elect()
-    
+
         use globals
         use volume
         use parameters
         use field
         use VdW
         use surface
+
         implicit none
 
         !  .. local arguments 
     
         real*8 :: sigmaq0,psi0
-        real*8 :: qsurf              ! total charge on surface 
-        real*8 :: qsurfg             ! total charge on grafting surface 
-        real*8 :: sigmaTOL           ! tolerance of surface coverage 
+        real*8 :: qsurf(2)           ! total charge on surface 
+        real*8 :: qsurfg             ! total charge on grafting surface  
         integer :: i,j               ! dummy variables 
         real*8 :: volumelat          ! volume lattice 
         integer :: nzadius
+        real*8 :: sigmaSurf(2),sigmaqSurf(2),sigmaq0Surf(2),psiSurf(2)
 
         !  .. computation of free energy 
     
         FEpi  = 0.0d0
         FErho = 0.0d0
         FEel  = 0.0d0
-        FEelsurf = 0.0d0
+!        FEelsurf = 0.0d0
         sumphiA = 0.0d0
         sumphiB = 0.0d0
         sumphiC = 0.0d0
@@ -90,16 +103,16 @@ contains
         qres = 0.0d0
 
         do i=1,nz
-            FEpi = FEpi  + deltaG(i)*dlog(xsol(i))
-            FErho = FErho - deltaG(i)*(xsol(i) + xHplus(i) + xOHmin(i)+ xNa(i)/vNa + xCa(i)/vCa + xCl(i)/vCl+xK(i)/vK +&
+            FEpi = FEpi  + dlog(xsol(i))
+            FErho = FErho - (xsol(i) + xHplus(i) + xOHmin(i)+ xNa(i)/vNa + xCa(i)/vCa + xCl(i)/vCl+xK(i)/vK +&
                 xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
-            FEel = FEel  - deltaG(i) * rhoq(i) * psi(i)/2.0d0        
+            FEel = FEel  - rhoq(i) * psi(i)/2.0d0        
             FEbind = FEbind + fdisA(5,i)*rhopolA(i)+fdisB(5,i)*rhopolB(i)
 
-            do j=1,nz 
-                FEVdWC = FEVdWC + deltaG(i)*rhopolC(i)* rhopolC(j)*chis(i,j)
-                FEVdWB = FEVdWB + deltaG(i)*rhopolB(i)* rhopolB(j)*chis(i,j)       
-            enddo   
+!            do j=1,nz 
+!                FEVdWC = FEVdWC + deltaG(i)*rhopolC(i)* rhopolC(j)*chis(i,j)
+!                FEVdWB = FEVdWB + deltaG(i)*rhopolB(i)* rhopolB(j)*chis(i,j)       
+!            enddo   
 
             qres = qres + deltaG(i) * rhoq(i)
             sumphiA = sumphiA + deltaG(i) * rhopolA(i)
@@ -118,47 +131,100 @@ contains
         FEVdWC  = delta*FEVdWC*VdWepsC*vpolC*vsol/2.0d0   
         FEVdWB  = delta*FEVdWB*VdWepsB*vpolB(3)*vsol/2.0d0   
     
-        if (sysflag=="elect") then 
-            FEVdW=FEVdWC
-        elseif (sysflag=="neutral") then
-            FEVdW=FEVdWB
-        else 
-            print*,"Wrong value sysflag : ", sysflag
-            stop    
-        endif   
+!        if (sysflag=="elect") then 
+!            FEVdW=FEVdWC
+!        elseif (sysflag=="neutral") then
+!            FEVdW=FEVdWB
+!        else 
+!            print*,"Wrong value sysflag : ", sysflag
+!            stop    
+!        endif   
 
-
-        FEq = -(delta/(vsol))*(sigmaAB*dlog(qAB)+sigmaC*dlog(qC) )
-    
-        sigmaTOL = 0.00000001     ! tolerance of surface coverage below no polymers 
-    
-        if(sigmaAB <= sigmaTOL) then 
+      
+        if((sigmaAB > sigmaTOL).and.(sigmaC > sigmaTOL)) then
+            FEq = -(delta/(vsol))*(sigmaABL*dlog(qABL)+sigmaABR*dlog(qABR) +sigmaC*dlog(qC) )
+        elseif((sigmaAB <= sigmaTOL).and.(sigmaC > sigmaTOL)) then
             FEq = -(delta/(vsol))*(sigmaC*dlog(qC) )
-        elseif (sigmaC <= sigmaTOL) then 
+        elseif((sigmaAB > sigmaTOL).and.(sigmaC <= sigmaTOL)) then
             FEq = -(delta/(vsol))*(sigmaAB*dlog(qAB) )
+        elseif((sigmaAB <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
+            FEq = 0.0d0
+        else
+            print*,"Error in fcnerergy"
+            print*,"Something went wrong in evaluating FEq"   
+            stop    
         endif
     
-        !     .. surface charge constribution  
-       !     NEED WORK !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        sigmaq0= sigmaqSurfL/(delta*4.0d0*pi*lb) ! dimensional charge density  
-        psi0 = psi(1)+sigmaqSurfL/2.0d0 ! surface potential units !!
-    
-        FEelsurf = FEelsurf + sigmaq0 * psi0 
-        FEelsurf = FEelsurf/2.0d0
-    
-        FEchem = 0.0d0 !(sigmaSurf/(4.0d0*pi*lb*delta))*dlog(1.0-fdisSurf) -2.0d0*FEelsurf
+        ! .. surface charge constribution 
+        sigmaSurf(RIGHT)  = sigmaSurfR 
+        sigmaSurf(LEFT)   = sigmaSurfL
+        sigmaqSurf(RIGHT) = sigmaqSurfR
+        sigmaqSurf(LEFT)  = sigmaqSurfL
+        psiSurf(RIGHT)    = psiSurfR
+        psiSurf(LEFT)     = psiSurfL
+      
+        do i = LEFT,RIGHT    
+            sigmaq0Surf(i)=  sigmaqSurf(i)/(delta*4.0d0*pi*lb) ! dimensional charge density  
+            FEelsurf(i) = FEelsurf(i) + sigmaq0Surf(i) * psiSurf(i) 
+            FEelsurf(i) = FEelsurf(i)/2.0d0 
+        enddo   
+
+        if(bcflag(RIGHT)=='qu') then ! quartz
+
+            FEchemSurf(RIGHT) = dlog(fdisS(2))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+        
+        elseif(bcflag(RIGHT)=="cl" ) then  ! clay
+        
+            FEchemSurf(RIGHT) = dlog(fdisS(3))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+        
+        elseif(bcflag(RIGHT)=="ca" ) then ! calcite
+        
+            FEchemSurf(RIGHT) =(dlog(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+        
+        elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
+        
+            FEchemSurf(RIGHT)= dlog(fdisTaR(2))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+        
+        elseif(bcflag(RIGHT)=="cc") then  
+        
+            FEchemSurf(RIGHT)=0.0d0
+        
+        else
+            print*,"Error in fcnenergy"
+            print*,"Wrong value bcflag(RIGHT) : ",bcflag(RIGHT)
+            stop
+        endif 
+
+        if(bcflag(LEFT)=="ta" ) then ! taurine 
+
+            FEchemSurf(LEFT)= dlog(fdisTaL(2))*sigmaSurf(LEFT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(LEFT)
+        
+        elseif(bcflag(LEFT)=="cc") then  
+        
+            FEchemSurf(LEFT)=0.0d0
+        
+        else
+            print*,"Error in fcnenergy"
+            print*,"Wrong value bcflag(LEFT) : ",bcflag(LEFT)
+        endif 
+
 
         !     .. total free energy per area of surface 
 
-        FE = FEq + FEpi + FErho + FEel + FEelsurf + FEchem - FEVdW + FEbind
+        FE = FEq + FEpi + FErho + FEel + FEelSurf(RIGHT) + FEelSurf(LEFT)
+        FE = FE +FEchemSurf(RIGHT)+FEchemSurf(LEFT) - FEVdW + FEbind
         
         print*,"FE = " ,FE
-    
-        qsurf  = sigmaqSurfL/(4.0d0*pi*lb*delta) ! total surface charge
-  
-        print*,"qsurf=",qsurf,"qres=",qres    
+        
+        do i=LEFT,RIGHT     
 
-        qres = qres + qsurf  ! total residual charge 
+            qsurf(i) = sigmaqSurf(i)/(4.0d0*pi*lb*delta)
+            ! total surface charge
+        enddo
+
+        print*,"qsurf(LEFT)=",qsurf(LEFT),"qsurf(RIGHT)=",qsurf(RIGHT),"qres=",qres    
+
+        qres = qres + qsurf(RIGHT)+qsurf(LEFT)  ! total residual charge 
 
         
         volumelat=nz*delta   ! volume lattice divide by area surface
@@ -171,6 +237,98 @@ contains
     
     end subroutine fcnenergy_elect
 
+    subroutine fcnenergy_elect_alternative()
+    
+        use globals
+        use volume
+        use parameters
+        use field
+        use VdW
+        use surface
+
+        implicit none
+
+        !  .. local arguments 
+    
+        real*8 :: sigmaq0,psi0
+        real*8 :: qsurf(2)           ! total charge on surface 
+        real*8 :: qsurfg             ! total charge on grafting surface  
+        integer :: i,j               ! dummy variables 
+        real*8 :: volumelat          ! volume lattice 
+        integer :: nzadius
+        real*8 :: sigmaSurf(2),sigmaqSurf(2),sigmaq0Surf(2),psiSurf(2)
+
+        !  .. computation of free energy 
+    
+        !  .. alternative computation free energy
+
+!        call FEconf_neutral()
+
+        FEtrans%sol   = FEtrans_entropy(xsol,xbulk%sol,vsol,"w")   
+        FEtrans%Na    = FEtrans_entropy(xNa,xbulk%Na,vNa)
+        FEtrans%Cl    = FEtrans_entropy(xCl,xbulk%Cl,vCl)
+        FEtrans%Ca    = FEtrans_entropy(xCa,xbulk%Ca,vCa)
+        FEtrans%K     = FEtrans_entropy(xK,xbulk%K,vK)
+        FEtrans%KCl   = FEtrans_entropy(xKCl,xbulk%KCl,vKCl)
+        FEtrans%NaCl  = FEtrans_entropy(xNaCl,xbulk%NaCl,vNaCl)
+        FEtrans%Hplus = FEtrans_entropy(xHplus,xbulk%Hplus,vsol,"w")
+        FEtrans%OHmin = FEtrans_entropy(xOHmin,xbulk%OHmin,vsol,"w")
+
+        print*,"FEtrans%sol=",FEtrans%sol   
+        print*,"FEtrans%Na=",FEtrans%Na  
+        print*,"FEtrans%Cl=",FEtrans%Cl  
+        print*,"FEtrans%Ca=",FEtrans%Ca  
+        print*,"FEtrans%K=",FEtrans%K
+        print*,"FEtrans%KCl=",FEtrans%KCl
+        print*,"FEtrans%NaCl=",FEtrans%NaCl  
+        print*,"FEtrans%Hplus=",FEtrans%Hplus  
+        print*,"FEtrans%OHmin=",FEtrans%OHmin  
+        
+        
+        FEchempot%sol   = 0.0d0 ! by construction  
+        FEchempot%Na    = FEchem_pot(xNa,expmu%Na,vNa)
+        FEchempot%Cl    = FEchem_pot(xCl,expmu%Cl,vCl)
+        FEchempot%Ca    = FEchem_pot(xCa,expmu%Ca,vCa)
+        FEchempot%K     = FEchem_pot(xK,expmu%K,vK) 
+        FEchempot%KCl   = FEchem_pot(xKCl,expmu%KCl,vKCl)
+        FEchempot%NaCl  = FEchem_pot(xNaCl,expmu%NaCl,vNaCl)
+        FEchempot%Hplus = FEchem_pot(xHplus,expmu%Hplus,vsol,"w")
+        FEchempot%OHmin = FEchem_pot(xOHmin,expmu%OHmin,vsol,"w")
+
+        print*,"FEchempot%Na=",FEchempot%Na
+        print*,"FEchempot%Cl=",FEchempot%Cl
+        print*,"FEchempot%Ca=",FEchempot%Ca
+        print*,"FEchempot%K=",FEchempot%K
+        print*,"FEchempot%KCl=",FEchempot%KCl
+        print*,"FEchempot%NaCl=",FEchempot%NaCl
+        print*,"FEchempot%Hplus=",FEchempot%Hplus
+        print*,"FEchempot%OHmin=",FEchempot%OHmin
+
+        
+!        FEalt= FEconfAB+FEconfC+FEtrans%sol+FEVdW
+        FEalt = FEtrans%sol +FEtrans%Na+ FEtrans%Cl +FEtrans%NaCl+FEtrans%Ca 
+        FEalt = FEalt+FEtrans%OHmin +FEtrans%Hplus +FEtrans%K +FEtrans%KCl
+        FEalt = FEalt+FEchempot%sol +FEchempot%Na+ FEchempot%Cl +FEchempot%NaCl+FEchempot%Ca 
+        FEalt = FEalt+FEchempot%OHmin +FEchempot%Hplus+ FEchempot%K +FEchempot%K
+        ! be vary carefull FE = -1/2 \int dz rho_q(z) psi(z)
+        print*,"FEalt = ",FEalt 
+        print*,"FEel = ",FEel 
+    
+
+        FEalt = FEalt- FEel + FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurf(RIGHT)+FEchemSurf(LEFT) 
+
+        print*,"FEalt = ",FEalt 
+
+        
+!         volumelat=nz*delta   ! volume lattice divide by area surface
+
+!         FEbulk   = dlog(xbulk%sol)-(xbulk%sol+xbulk%Hplus +xbulk%OHmin+ & 
+!             xbulk%Na/vNa +xbulk%Ca/vCa +xbulk%Cl/vCl+ xbulk%K/vK + xbulk%NaCl/vNaCl +xbulk%KCl/vKCl )
+!         FEbulk = volumelat*FEbulk/(vsol)
+
+!         deltaFE = FE - FEbulk
+    
+    end subroutine fcnenergy_elect_alternative
     
 
     subroutine fcnenergy_neutral()
@@ -190,7 +348,6 @@ contains
         real*8 :: sigmaq0,psi0
         real*8 :: qsurf              ! total charge on surface 
         real*8 :: qsurfg             ! total charge on grafting surface 
-        real*8 :: sigmaTOL           ! tolerance of surface coverage 
         integer :: i,j               ! dummy variables 
         real*8 :: volumelat          ! volume lattice 
         integer :: nzadius
@@ -235,8 +392,6 @@ contains
 
         FEq = -delta*(sigmaAB*dlog(qAB)+sigmaC*dlog(qC) )
     
-        sigmaTOL = 0.00000001     ! tolerance of surface coverage below no polymers 
-    
         if(sigmaAB <= sigmaTOL) then 
             FEq = -delta*sigmaC*dlog(qC)
         elseif (sigmaC <= sigmaTOL) then 
@@ -269,8 +424,10 @@ contains
         ! altnative computation free energy
 
         call FEconf_neutral()
-        FEtranssol=FEtrans(xsol,vsol)     
-        FEalt= FEconfAB+FEconfC+FEtranssol+FEVdW
+
+        FEtrans%sol=FEtrans_entropy(xsol,xbulk%sol,vsol,"w")     
+        
+        FEalt= FEconfAB+FEconfC+FEtrans%sol+FEVdW
         print*,"FEalt = ",FEalt
     
     end subroutine fcnenergy_neutral
@@ -353,26 +510,77 @@ contains
 
     end subroutine FEconf_neutral
 
-    real*8 function FEtrans(xvol,vol)
+    real*8 function FEtrans_entropy(xvol,xvolbulk,vol,flag)
+    
+        use globals
+        use parameters
+        implicit none
+
+        real*8, intent(in) :: xvol(nsize)
+        real*8, intent(in) :: xvolbulk 
+        real*8, intent(in) :: vol    
+        character(len=1), optional :: flag    
+
+        integer :: i
+
+
+        if(xvolbulk==0.0d0) then 
+            FEtrans_entropy=0.0d0
+        else
+            FEtrans_entropy=0.0d0
+            if(present(flag)) then
+            ! water special case because vsol treated diffetent then vi  
+                do i=1,nz
+                    FEtrans_entropy=FEtrans_entropy + xvol(i)*(dlog(xvol(i))-1.0d0)
+                enddo 
+                FEtrans_entropy = delta*FEtrans_entropy/vol
+            else 
+                do i=1,nz
+                    FEtrans_entropy = FEtrans_entropy + xvol(i)*(log(xvol(i)/vol)-1.0d0)
+                enddo
+                FEtrans_entropy = delta*FEtrans_entropy/(vol*vsol)
+            endif
+        endif
+
+    end function FEtrans_entropy   
+
+    real*8 function FEchem_pot(xvol,expchempot,vol,flag)
+    
         use globals
         use field
         use parameters
         implicit none
 
         real*8, intent(in) :: xvol(nsize)
+        real*8, intent(in) :: expchempot 
         real*8, intent(in) :: vol    
+        character(len=1), optional :: flag    
 
+        ! .. local 
         integer :: i
+        real*8 :: chempot ! chemical potential difference 
+        real*8 :: sumdens 
 
-        FEtrans=0.0d0
+        if(expchempot==0.0d0) then 
+            FEchem_pot=0.0d0
+        else     
+            sumdens=0.0d0
+            if(present(flag)) then  ! water special case because vsol treated diffetent then vi
+                chempot = -log(expchempot)    
+                do i=1,nz
+                    sumdens=sumdens +xvol(i)
+                enddo
+                FEchem_pot=delta*chempot*sumdens/vol            
+            else
+                chempot = -log(expchempot/vol)    
+                do i=1,nz
+                    sumdens=sumdens +xvol(i)
+                enddo
+                FEchem_pot=delta*chempot*sumdens/(vol*vsol)               
+            endif
+        endif
 
-        do i=1,nz
-            FEtrans=FEtrans + deltaG(i)*xvol(i)*(dlog(xvol(i))-1.0d0)
-        enddo
-        FEtrans= delta *FEtrans /vol
-        return 
-
-    end function FEtrans   
+    end function FEchem_pot   
 
   
 end module energy

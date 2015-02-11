@@ -22,6 +22,8 @@ subroutine solver(x, xguess, accuracy, residual)
         fcnptr => fcnelectdouble
     elseif(sysflag=="elect") then 
         fcnptr => fcnelect
+    elseif(sysflag=="electnopoly") then 
+        fcnptr => fcnelectNoPoly 
     elseif(sysflag=="electHC") then
         fcnptr => fcnelectHC  
     elseif(sysflag=="bulk water") then 
@@ -29,7 +31,9 @@ subroutine solver(x, xguess, accuracy, residual)
     elseif(sysflag=="neutral") then 
         fcnptr => fcnneutral
     else
+        print*,"Error in call to solver subroutine"    
         print*,"Wrong value sysflag : ", sysflag
+
         stop
     endif
 

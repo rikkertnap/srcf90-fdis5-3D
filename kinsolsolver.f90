@@ -194,7 +194,7 @@ subroutine fkfun(x,f,ier)
 
   implicit none
 
-  real*8, dimension(neq) :: x  ! expliciet size array                                                                                                                                        
+  real*8, dimension(neq) :: x  ! explicit size array                                                                                                                                        
   real*8, dimension(neq) :: f
 
   integer*4 ier
