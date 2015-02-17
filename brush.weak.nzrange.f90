@@ -66,7 +66,7 @@ program brushweakpolyelectrolyte
     countfile = 1                
     iter = 0
 
-    do while (nz.ge.nzmin)    
+    do while (nz>=nzmin)    
  
         call set_size_neq() 
         allocate(x(neq))
@@ -74,6 +74,8 @@ program brushweakpolyelectrolyte
         call chain_filter()    
         call make_guess(x, xguess, isfirstguess, use_xstored, xstored)
         call solver(x, xguess, error, fnorm) 
+!        print*,"diff R=",x(2*nz+1)-psiSurfR
+!        print*,"diff L=",x(2*nz+2)-psiSurfL
         call fcnenergy()         ! free energy
         call average_height()      
         call charge_polymer()

@@ -18,7 +18,7 @@ module energy
     real*8 :: FErho               ! sum over densities
     real*8 :: FEel                ! electrostatics energ
     real*8 :: FEelsurf(2)         ! electrostatics energy from  surface
-    real*8 :: FEchemsurf(2)       ! chemical energy surf
+    real*8 :: FEchemsurf(2)       ! chemical free energy surface
     real*8 :: FEchem
     real*8 :: FEbind              ! complexation contribution
     real*8 :: FEVdW               ! Van der Waals contribution
@@ -26,10 +26,16 @@ module energy
     real*8 :: FEVdWC 
     real*8 :: FEconfAB
     real*8 :: FEConfC
-    real*8 :: FEalt
-    
-    type(moleclist) :: FEtrans,FEchempot
 
+    real*8 :: FEalt               ! free energy
+    real*8 :: FEbulkalt           ! free energybulk
+    real*8 :: deltaFEalt          ! free energy difference delteFE=FE-FEbulk
+
+    real*8 :: FEchemsurfalt(2)    ! chemical free energy surface
+    real*8 :: diffFEchemsurf(2)   ! difference cheme
+
+    type(moleclist) :: FEtrans,FEchempot,FEtransbulk,FEchempotbulk
+    type(moleclist) :: deltaFEtrans,deltaFEchempot
 
     real*8 :: sumphiA             ! check integral over phiA
     real*8 :: sumphiB             ! check integral over phiB
@@ -114,10 +120,10 @@ contains
 !                FEVdWB = FEVdWB + deltaG(i)*rhopolB(i)* rhopolB(j)*chis(i,j)       
 !            enddo   
 
-            qres = qres + deltaG(i) * rhoq(i)
-            sumphiA = sumphiA + deltaG(i) * rhopolA(i)
-            sumphiB = sumphiB + deltaG(i) * rhopolB(i)
-            sumphiC = sumphiC + deltaG(i) * rhopolC(i)
+            qres = qres + rhoq(i)
+            sumphiA = sumphiA +  rhopolA(i)
+            sumphiB = sumphiB +  rhopolB(i)
+            sumphiC = sumphiC +  rhopolC(i)
         enddo
     
         FEel  = (delta/vsol)*FEel
@@ -156,6 +162,7 @@ contains
         endif
     
         ! .. surface charge constribution 
+
         sigmaSurf(RIGHT)  = sigmaSurfR 
         sigmaSurf(LEFT)   = sigmaSurfL
         sigmaqSurf(RIGHT) = sigmaqSurfR
@@ -163,10 +170,9 @@ contains
         psiSurf(RIGHT)    = psiSurfR
         psiSurf(LEFT)     = psiSurfL
       
-        do i = LEFT,RIGHT    
+        do i = 1,2    
             sigmaq0Surf(i)=  sigmaqSurf(i)/(delta*4.0d0*pi*lb) ! dimensional charge density  
-            FEelsurf(i) = FEelsurf(i) + sigmaq0Surf(i) * psiSurf(i) 
-            FEelsurf(i) = FEelsurf(i)/2.0d0 
+            FEelsurf(i) = sigmaq0Surf(i) * psiSurf(i) /2.0d0 
         enddo   
 
         if(bcflag(RIGHT)=='qu') then ! quartz
@@ -175,7 +181,7 @@ contains
         
         elseif(bcflag(RIGHT)=="cl" ) then  ! clay
         
-            FEchemSurf(RIGHT) = dlog(fdisS(3))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT) = (dlog(fdisS(2))+qS(2)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="ca" ) then ! calcite
         
@@ -183,7 +189,7 @@ contains
         
         elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
         
-            FEchemSurf(RIGHT)= dlog(fdisTaR(2))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT)= (dlog(fdisTaR(2))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb)) -2.0d0*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="cc") then  
         
@@ -211,23 +217,21 @@ contains
 
         !     .. total free energy per area of surface 
 
-        FE = FEq + FEpi + FErho + FEel + FEelSurf(RIGHT) + FEelSurf(LEFT)
-        FE = FE +FEchemSurf(RIGHT)+FEchemSurf(LEFT) - FEVdW + FEbind
+        FE = FEq  + FEpi + FErho + FEel + FEelSurf(RIGHT) + FEelSurf(LEFT)
+        FE = FE + FEchemSurf(RIGHT)+FEchemSurf(LEFT) - FEVdW + FEbind
         
-        print*,"FE = " ,FE
+!        print*,"FE = " ,FE
         
         do i=LEFT,RIGHT     
-
             qsurf(i) = sigmaqSurf(i)/(4.0d0*pi*lb*delta)
-            ! total surface charge
         enddo
 
-        print*,"qsurf(LEFT)=",qsurf(LEFT),"qsurf(RIGHT)=",qsurf(RIGHT),"qres=",qres    
+!        print*,"qsurf(LEFT)=",qsurf(LEFT),"qsurf(RIGHT)=",qsurf(RIGHT),"qres=",qres    
 
         qres = qres + qsurf(RIGHT)+qsurf(LEFT)  ! total residual charge 
 
         
-        volumelat=nz*delta   ! volume lattice divide by area surface
+        volumelat=nz*delta   ! volume lattice
 
         FEbulk   = dlog(xbulk%sol)-(xbulk%sol+xbulk%Hplus +xbulk%OHmin+ & 
             xbulk%Na/vNa +xbulk%Ca/vCa +xbulk%Cl/vCl+ xbulk%K/vK + xbulk%NaCl/vNaCl +xbulk%KCl/vKCl )
@@ -246,6 +250,7 @@ contains
         use VdW
         use surface
 
+
         implicit none
 
         !  .. local arguments 
@@ -257,12 +262,23 @@ contains
         real*8 :: volumelat          ! volume lattice 
         integer :: nzadius
         real*8 :: sigmaSurf(2),sigmaqSurf(2),sigmaq0Surf(2),psiSurf(2)
+        real*8 :: diffFEchemTa
+
+        sigmaSurf(RIGHT)  = sigmaSurfR 
+        sigmaSurf(LEFT)   = sigmaSurfL
+        sigmaqSurf(RIGHT) = sigmaqSurfR
+        sigmaqSurf(LEFT)  = sigmaqSurfL
+        psiSurf(RIGHT)    = psiSurfR
+        psiSurf(LEFT)     = psiSurfL
+
 
         !  .. computation of free energy 
     
         !  .. alternative computation free energy
 
 !        call FEconf_neutral()
+
+        ! .. translational entropy 
 
         FEtrans%sol   = FEtrans_entropy(xsol,xbulk%sol,vsol,"w")   
         FEtrans%Na    = FEtrans_entropy(xNa,xbulk%Na,vNa)
@@ -272,19 +288,11 @@ contains
         FEtrans%KCl   = FEtrans_entropy(xKCl,xbulk%KCl,vKCl)
         FEtrans%NaCl  = FEtrans_entropy(xNaCl,xbulk%NaCl,vNaCl)
         FEtrans%Hplus = FEtrans_entropy(xHplus,xbulk%Hplus,vsol,"w")
-        FEtrans%OHmin = FEtrans_entropy(xOHmin,xbulk%OHmin,vsol,"w")
+        FEtrans%OHmin = FEtrans_entropy(xOHmin,xbulk%OHmin,vsol,"w")    
 
-        print*,"FEtrans%sol=",FEtrans%sol   
-        print*,"FEtrans%Na=",FEtrans%Na  
-        print*,"FEtrans%Cl=",FEtrans%Cl  
-        print*,"FEtrans%Ca=",FEtrans%Ca  
-        print*,"FEtrans%K=",FEtrans%K
-        print*,"FEtrans%KCl=",FEtrans%KCl
-        print*,"FEtrans%NaCl=",FEtrans%NaCl  
-        print*,"FEtrans%Hplus=",FEtrans%Hplus  
-        print*,"FEtrans%OHmin=",FEtrans%OHmin  
-        
-        
+
+        ! .. chemical potential + standard chemical potential 
+
         FEchempot%sol   = 0.0d0 ! by construction  
         FEchempot%Na    = FEchem_pot(xNa,expmu%Na,vNa)
         FEchempot%Cl    = FEchem_pot(xCl,expmu%Cl,vCl)
@@ -295,39 +303,141 @@ contains
         FEchempot%Hplus = FEchem_pot(xHplus,expmu%Hplus,vsol,"w")
         FEchempot%OHmin = FEchem_pot(xOHmin,expmu%OHmin,vsol,"w")
 
-        print*,"FEchempot%Na=",FEchempot%Na
-        print*,"FEchempot%Cl=",FEchempot%Cl
-        print*,"FEchempot%Ca=",FEchempot%Ca
-        print*,"FEchempot%K=",FEchempot%K
-        print*,"FEchempot%KCl=",FEchempot%KCl
-        print*,"FEchempot%NaCl=",FEchempot%NaCl
-        print*,"FEchempot%Hplus=",FEchempot%Hplus
-        print*,"FEchempot%OHmin=",FEchempot%OHmin
 
+        ! .. surface chemical contribution
+
+        if(bcflag(RIGHT)=='qu') then ! quartz
+            FEchemSurfalt(RIGHT) = (dlog(fdisS(1))+qS(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+        elseif(bcflag(RIGHT)=="cl" ) then  ! clay        
+            FEchemSurfalt(RIGHT) = (dlog(fdisS(1))+qS(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+        elseif(bcflag(RIGHT)=="ca" ) then ! calcite
+            FEchemSurfalt(RIGHT) =(dlog(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+        elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
+            FEchemSurfalt(RIGHT)= ((dlog(fdisTaR(1))+qTA(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb)) -2.0d0*FEelsurf(RIGHT)
+        elseif(bcflag(RIGHT)=="cc") then  
+            FEchemSurfalt(RIGHT)=0.0d0
+        else
+            print*,"Error in fcnenergy"
+            print*,"Wrong value bcflag(RIGHT) : ",bcflag(RIGHT)
+            stop
+        endif 
+
+        if(bcflag(LEFT)=="ta" ) then ! taurine 
+            FEchemSurfalt(LEFT)= (dlog(fdisTaL(1))+qTA(1)*psiSurfL)*sigmaSurf(LEFT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(LEFT)
+        elseif(bcflag(LEFT)=="cc") then  
+            FEchemSurfalt(LEFT)=0.0d0
+        else
+            print*,"Error in fcnenergy"
+            print*,"Wrong value bcflag(LEFT) : ",bcflag(LEFT)
+        endif 
+
+
+
+        ! .. summing all contrubutions
         
-!        FEalt= FEconfAB+FEconfC+FEtrans%sol+FEVdW
+!        FEalt= FEconfAB+FEconfC+FEVdW
         FEalt = FEtrans%sol +FEtrans%Na+ FEtrans%Cl +FEtrans%NaCl+FEtrans%Ca 
         FEalt = FEalt+FEtrans%OHmin +FEtrans%Hplus +FEtrans%K +FEtrans%KCl
         FEalt = FEalt+FEchempot%sol +FEchempot%Na+ FEchempot%Cl +FEchempot%NaCl+FEchempot%Ca 
-        FEalt = FEalt+FEchempot%OHmin +FEchempot%Hplus+ FEchempot%K +FEchempot%K
+        FEalt = FEalt+FEchempot%OHmin +FEchempot%Hplus+ FEchempot%K +FEchempot%K+FEchempot%KCl
         ! be vary carefull FE = -1/2 \int dz rho_q(z) psi(z)
-        print*,"FEalt = ",FEalt 
-        print*,"FEel = ",FEel 
-    
 
-        FEalt = FEalt- FEel + FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurf(RIGHT)+FEchemSurf(LEFT) 
+        FEalt = FEalt- FEel + FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurfalt(RIGHT)+FEchemSurfalt(LEFT) 
 
-        print*,"FEalt = ",FEalt 
+        ! .. delta translational entropy
+
+        FEtransbulk%sol   = FEtrans_entropy_bulk(xbulk%sol,vsol,"w")   
+        FEtransbulk%Na    = FEtrans_entropy_bulk(xbulk%Na,vNa)
+        FEtransbulk%Cl    = FEtrans_entropy_bulk(xbulk%Cl,vCl)
+        FEtransbulk%Ca    = FEtrans_entropy_bulk(xbulk%Ca,vCa)
+        FEtransbulk%K     = FEtrans_entropy_bulk(xbulk%K,vK)
+        FEtransbulk%KCl   = FEtrans_entropy_bulk(xbulk%KCl,vKCl)
+        FEtransbulk%NaCl  = FEtrans_entropy_bulk(xbulk%NaCl,vNaCl)
+        FEtransbulk%Hplus = FEtrans_entropy_bulk(xbulk%Hplus,vsol,"w")
+        FEtransbulk%OHmin = FEtrans_entropy_bulk(xbulk%OHmin,vsol,"w")    
+
+        ! .. delta chemical potential + standard chemical potential 
+
+        FEchempotbulk%sol   = 0.0d0 ! by construction  
+        FEchempotbulk%Na    = FEchem_pot_bulk(xbulk%Na,expmu%Na,vNa)
+        FEchempotbulk%Cl    = FEchem_pot_bulk(xbulk%Cl,expmu%Cl,vCl)
+        FEchempotbulk%Ca    = FEchem_pot_bulk(xbulk%Ca,expmu%Ca,vCa)
+        FEchempotbulk%K     = FEchem_pot_bulk(xbulk%K,expmu%K,vK) 
+        FEchempotbulk%KCl   = FEchem_pot_bulk(xbulk%KCl,expmu%KCl,vKCl)
+        FEchempotbulk%NaCl  = FEchem_pot_bulk(xbulk%NaCl,expmu%NaCl,vNaCl)
+        FEchempotbulk%Hplus = FEchem_pot_bulk(xbulk%Hplus,expmu%Hplus,vsol,"w")
+        FEchempotbulk%OHmin = FEchem_pot_bulk(xbulk%OHmin,expmu%OHmin,vsol,"w")
 
         
-!         volumelat=nz*delta   ! volume lattice divide by area surface
+        ! .. bulk free energy
 
-!         FEbulk   = dlog(xbulk%sol)-(xbulk%sol+xbulk%Hplus +xbulk%OHmin+ & 
-!             xbulk%Na/vNa +xbulk%Ca/vCa +xbulk%Cl/vCl+ xbulk%K/vK + xbulk%NaCl/vNaCl +xbulk%KCl/vKCl )
-!         FEbulk = volumelat*FEbulk/(vsol)
+        volumelat=nz*delta   ! volume lattice divide by area surface
+        FEbulkalt = FEtransbulk%sol +FEtransbulk%Na+ FEtransbulk%Cl +FEtransbulk%NaCl+FEtransbulk%Ca 
+        FEbulkalt = FEbulkalt+FEtransbulk%OHmin +FEtransbulk%Hplus +FEtransbulk%K +FEtransbulk%KCl
+        FEbulkalt = FEbulkalt+FEchempotbulk%sol +FEchempotbulk%Na+FEchempotbulk%Cl +FEchempotbulk%NaCl+FEchempotbulk%Ca 
+        FEbulkalt = FEbulkalt+FEchempotbulk%OHmin +FEchempotbulk%Hplus -FEchempotbulk%K -FEchempotbulk%KCl
+      
+        FEbulkalt = volumelat*FEbulkalt
 
-!         deltaFE = FE - FEbulk
-    
+        ! .. delta
+
+        deltaFEtrans%sol   = FEtrans%sol  - FEtransbulk%sol * volumelat
+        deltaFEtrans%Na    = FEtrans%Na   - FEtransbulk%Na * volumelat
+        deltaFEtrans%Cl    = FEtrans%Cl   - FEtransbulk%Cl * volumelat
+        deltaFEtrans%Ca    = FEtrans%Ca   - FEtransbulk%Ca * volumelat
+        deltaFEtrans%K     = FEtrans%K    - FEtransbulk%K * volumelat
+        deltaFEtrans%KCl   = FEtrans%KCl  - FEtransbulk%KCl * volumelat
+        deltaFEtrans%NaCl  = FEtrans%NaCl - FEtransbulk%NaCl * volumelat
+        deltaFEtrans%Hplus = FEtrans%Hplus- FEtransbulk%Hplus * volumelat
+        deltaFEtrans%OHmin = FEtrans%OHmin- FEtransbulk%OHmin * volumelat
+         
+        deltaFEchempot%sol   = FEchempot%sol  - FEchempotbulk%sol * volumelat
+        deltaFEchempot%Na    = FEchempot%Na   - FEchempotbulk%Na * volumelat
+        deltaFEchempot%Cl    = FEchempot%Cl   - FEchempotbulk%Cl * volumelat
+        deltaFEchempot%Ca    = FEchempot%Ca   - FEchempotbulk%Ca * volumelat
+        deltaFEchempot%K     = FEchempot%K    - FEchempotbulk%K * volumelat
+        deltaFEchempot%KCl   = FEchempot%KCl  - FEchempotbulk%KCl * volumelat
+        deltaFEchempot%NaCl  = FEchempot%NaCl - FEchempotbulk%NaCl * volumelat
+        deltaFEchempot%Hplus = FEchempot%Hplus- FEchempotbulk%Hplus * volumelat
+        deltaFEchempot%OHmin = FEchempot%OHmin- FEchempotbulk%OHmin * volumelat
+
+
+        ! .. differences
+
+        deltaFEalt = FEalt - FEbulkalt
+
+
+!        print*,"delta FEchemsurfalt(RIGHT)=",FEchemsurfalt(RIGHT)-FEchemsurf(RIGHT)
+
+        
+        if(bcflag(LEFT)=="ta" ) then 
+            diffFEchemsurf(LEFT)= (sigmaSurf(LEFT)/(4.0d0*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
+        else
+            diffFEchemsurf(LEFT)=0.0d0
+        endif
+
+        if(bcflag(RIGHT)=='qu') then ! quartz
+            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0d0*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
+        elseif(bcflag(RIGHT)=='cl') then ! quartz
+            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0d0*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
+        elseif(bcflag(RIGHT)=="ta" ) then ! taurine       
+            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0d0*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
+        else
+            diffFEchemsurf(RIGHT)=0.0d0
+            ! not yet implemented 
+        endif 
+
+
+       
+!        print*,"expmu%Hplus=",expmu%Hplus
+!        print*,"sigmaSurf(RIGHT)=",sigmaSurf(RIGHT)
+!        print*,"dlog(expmu%Hplus))=",dlog(expmu%Hplus)
+!        print*,"diffFEchemTa",diffFEchemTa
+
+!        print*,"difference(LEFT)  =", FEchemsurfalt(LEFT)-FEchemsurf(LEFT)-diffFEchemsurf(LEFT)
+!        print*,"difference(RIGHT) =", FEchemsurfalt(RIGHT)-FEchemsurf(RIGHT)-diffFEchemsurf(RIGHT)
+
+
     end subroutine fcnenergy_elect_alternative
     
 
@@ -566,13 +676,13 @@ contains
         else     
             sumdens=0.0d0
             if(present(flag)) then  ! water special case because vsol treated diffetent then vi
-                chempot = -log(expchempot)    
+                chempot = -dlog(expchempot)    
                 do i=1,nz
                     sumdens=sumdens +xvol(i)
                 enddo
                 FEchem_pot=delta*chempot*sumdens/vol            
             else
-                chempot = -log(expchempot/vol)    
+                chempot = -dlog(expchempot/vol)    
                 do i=1,nz
                     sumdens=sumdens +xvol(i)
                 enddo
@@ -581,6 +691,62 @@ contains
         endif
 
     end function FEchem_pot   
+
+    real*8 function FEtrans_entropy_bulk(xvolbulk,vol,flag)
+    
+        use globals
+        use parameters
+        implicit none
+
+        real*8, intent(in) :: xvolbulk 
+        real*8, intent(in) :: vol    
+        character(len=1), optional :: flag    
+
+        integer :: i
+
+
+        if(xvolbulk==0.0d0) then 
+            FEtrans_entropy_bulk=0.0d0
+        else
+            FEtrans_entropy_bulk=0.0d0
+            if(present(flag)) then
+                ! water special case because vsol treated diffetent then vi  
+                FEtrans_entropy_bulk=xvolbulk*(dlog(xvolbulk)-1.0d0)/vol
+            else 
+                FEtrans_entropy_bulk=xvolbulk*(dlog(xvolbulk/vol)-1.0d0)/(vol*vsol)
+            endif
+        endif
+
+    end function FEtrans_entropy_bulk   
+
+    real*8 function FEchem_pot_bulk(xvolbulk,expchempot,vol,flag)
+    
+        use globals
+        use field
+        use parameters
+        implicit none
+
+        real*8, intent(in) :: xvolbulk
+        real*8, intent(in) :: expchempot 
+        real*8, intent(in) :: vol    
+        character(len=1), optional :: flag    
+
+        ! .. local 
+        integer :: i
+        real*8 :: chempot ! chemical potential difference 
+        real*8 :: sumdens 
+
+        if(expchempot==0.0d0) then 
+            FEchem_pot_bulk=0.0d0
+        else     
+            if(present(flag)) then  ! water special case because vsol treated diffetent then vi
+                FEchem_pot_bulk=-dlog(expchempot)*xvolbulk/vol            
+            else
+                FEchem_pot_bulk=-dlog(expchempot/vol)*xvolbulk/(vol*vsol)               
+            endif
+        endif
+
+    end function FEchem_pot_bulk   
 
   
 end module energy

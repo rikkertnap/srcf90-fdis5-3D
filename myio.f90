@@ -253,6 +253,7 @@ subroutine output_elect(countfile)
     write(10,*)'period      = ',period
     write(10,*)'nz          = ',nz
     write(10,*)'delta       = ',delta 
+    write(10,*)'distance    = ',nz*delta    
     write(10,*)'vsol        = ',vsol
     write(10,*)'vpolA(1)    = ',vpolA(1)*vsol
     write(10,*)'vpolA(2)    = ',vpolA(2)*vsol
@@ -541,6 +542,7 @@ subroutine output_electdouble(countfile)
   write(10,*)'period      = ',period
   write(10,*)'nz          = ',nz
   write(10,*)'delta       = ',delta 
+  write(10,*)'distance    = ',nz*delta   
   write(10,*)'vsol        = ',vsol
   write(10,*)'vpolA(1)    = ',vpolA(1)*vsol
   write(10,*)'vpolA(2)    = ',vpolA(2)*vsol
@@ -658,118 +660,119 @@ subroutine output_neutral(countfile)
     integer :: countfile
     !     .. output file names       
   
-  character(len=16) :: sysfilename     
-  character(len=24) :: xsolfilename 
-  character(len=26) :: xpolABfilename 
-  character(len=25) :: xpolCfilename 
-  character(len=26) :: xpolendfilename 
-  
-  character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals   
+    character(len=16) :: sysfilename     
+    character(len=24) :: xsolfilename 
+    character(len=26) :: xpolABfilename 
+    character(len=25) :: xpolCfilename 
+    character(len=26) :: xpolendfilename 
+    
+    character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals   
 
-  !     .. local arguments
-  
-  integer :: i,j,k,n           ! dummy indexes
-  
-  !     .. executable statements 
+    !     .. local arguments
+    
+    integer :: i,j,k,n           ! dummy indexes
+    
+    !     .. executable statements 
 
-  n=nz
+    n=nz
 
-  fmt2reals = "(2ES25.16)"  
-  fmt3reals = "(3ES25.16)"  
-  fmt4reals = "(4ES25.16)"  
-  fmt5reals = "(5ES25.16)" 
-  fmt6reals = "(6ES25.16)" 
-  
-  
-  !     .. make filenames 
-  
-  write(sysfilename,'(A7,BZ,I5.5,A4)')'system.',countfile,'.dat'
-  write(xpolABfilename,'(A7,BZ,I5.5,A4)')'xpolAB.',countfile,'.dat'
-  write(xpolCfilename,'(A6,BZ,I5.5,A4)')'xpolC.',countfile,'.dat'
-  write(xsolfilename,'(A5,BZ,I5.5,A4)')'xsol.', countfile,'.dat'
-  write(xpolendfilename,'(A8,BZ,I5.5,A4)')'xpolend.', countfile,'.dat'
-      
-!     .. opening files        
-           
-  open(unit=10,file=sysfilename)   
-  open(unit=20,file=xpolABfilename)
-  open(unit=21,file=xpolCfilename)
-  open(unit=30,file=xsolfilename)
-!  open(unit=40,file=xpolendfilename)
-  
-  do i=1,n
-     
-     write(20,fmt4reals)zc(i),xpolAB(i),rhopolA(i),rhopolB(i)
-     write(21,fmt2reals)zc(i),xpolC(i)
-     write(30,*)zc(i),xsol(i)
-!     write(40,*)zc(i),endpol(i)
-  enddo
-  
-  !     .. system information 
-  
-  
-  write(10,*)'system      = spherical  brush'
-  write(10,*)'free energy = ',FE  
-  write(10,*)'energy bulk = ',FEbulk 
-  write(10,*)'deltafenergy = ',deltaFE
-  write(10,*)'FEalt       = ',FEalt
-  write(10,*)'FEconfC     = ',FEconfC
-  write(10,*)'FEconfAB    = ',FEconfAB
-  write(10,*)'FEtrans%sol = ',FEtrans%sol  
-  write(10,*)'fnorm       = ',fnorm
-  write(10,*)'error       = ',error
-  write(10,*)'sumphiA     = ',sumphiA
-  write(10,*)'sumphiB     = ',sumphiB
-  write(10,*)'sumphiC     = ',sumphiC
-  write(10,*)'check phi   = ',checkphi 
-  write(10,*)'FEq         = ',FEq 
-  write(10,*)'FEpi        = ',FEpi
-  write(10,*)'FErho       = ',FErho
-  write(10,*)'FEVdW       = ',FEVdW
-  write(10,*)'qAB         = ',qAB
-  write(10,*)'qC          = ',qC
-  write(10,*)'muAB        = ',-dlog(qAB)
-  write(10,*)'muC         = ',-dlog(qC)
-  write(10,*)'nsegAB      = ',nsegAB
-  write(10,*)'lsegAB      = ',lsegAB
-  write(10,*)'nsegC       = ',nsegC
-  write(10,*)'lsegC       = ',lsegC
-  write(10,*)'period      = ',period
-  write(10,*)'nz          = ',nz
-  write(10,*)'delta       = ',delta
-  write(10,*)'vsol        = ',vsol
-  write(10,*)'vpolA(1)    = ',vpolA(1)*vsol
-  write(10,*)'vpolA(2)    = ',vpolA(2)*vsol
-  write(10,*)'vpolA(3)    = ',vpolA(3)*vsol
-  write(10,*)'vpolA(4)    = ',vpolA(4)*vsol
-  write(10,*)'vpolA(5)    = ',vpolA(5)*vsol
-  write(10,*)'vpolB(1)    = ',vpolB(1)*vsol
-  write(10,*)'vpolB(2)    = ',vpolB(2)*vsol
-  write(10,*)'vpolB(3)    = ',vpolB(3)*vsol
-  write(10,*)'vpolB(4)    = ',vpolB(4)*vsol
-  write(10,*)'vpolB(5)    = ',vpolB(5)*vsol
-  write(10,*)'vpolC       = ',vpolC*vsol
-  write(10,*)'T           = ',T
-  write(10,*)'VdWepsC     = ',VdWepsC*vpolC*vsol
-  write(10,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
-  write(10,*)'heightAB    = ',heightAB
-  write(10,*)'heightC     = ',heightC
-  write(10,*)'nsize       = ',nsize  
-  write(10,*)'cuantasAB   = ',cuantasAB
-  write(10,*)'cuantasC    = ',cuantasC
-  write(10,*)'iterations  = ',iter
-  write(10,*)'chainmethod = ',chainmethod
-  write(10,*)'chaintype   = ',chaintype
-  if(chainmethod.eq."FILE") then
-     write(10,*)'readinchains = ',readinchains
-  endif
-  write(10,*)'sysflag     = ',sysflag
+    fmt2reals = "(2ES25.16)"  
+    fmt3reals = "(3ES25.16)"  
+    fmt4reals = "(4ES25.16)"  
+    fmt5reals = "(5ES25.16)" 
+    fmt6reals = "(6ES25.16)" 
+    
+    
+    !     .. make filenames 
+    
+    write(sysfilename,'(A7,BZ,I5.5,A4)')'system.',countfile,'.dat'
+    write(xpolABfilename,'(A7,BZ,I5.5,A4)')'xpolAB.',countfile,'.dat'
+    write(xpolCfilename,'(A6,BZ,I5.5,A4)')'xpolC.',countfile,'.dat'
+    write(xsolfilename,'(A5,BZ,I5.5,A4)')'xsol.', countfile,'.dat'
+    write(xpolendfilename,'(A8,BZ,I5.5,A4)')'xpolend.', countfile,'.dat'
+        
+  !     .. opening files        
+             
+    open(unit=10,file=sysfilename)   
+    open(unit=20,file=xpolABfilename)
+    open(unit=21,file=xpolCfilename)
+    open(unit=30,file=xsolfilename)
+  !  open(unit=40,file=xpolendfilename)
+    
+    do i=1,n
+       
+       write(20,fmt4reals)zc(i),xpolAB(i),rhopolA(i),rhopolB(i)
+       write(21,fmt2reals)zc(i),xpolC(i)
+       write(30,*)zc(i),xsol(i)
+  !     write(40,*)zc(i),endpol(i)
+    enddo
+    
+    !     .. system information 
+    
+    
+    write(10,*)'system      = planar  brush'
+    write(10,*)'free energy = ',FE  
+    write(10,*)'energy bulk = ',FEbulk 
+    write(10,*)'deltafenergy = ',deltaFE
+    write(10,*)'FEalt       = ',FEalt
+    write(10,*)'FEconfC     = ',FEconfC
+    write(10,*)'FEconfAB    = ',FEconfAB
+    write(10,*)'FEtrans%sol = ',FEtrans%sol  
+    write(10,*)'fnorm       = ',fnorm
+    write(10,*)'error       = ',error
+    write(10,*)'sumphiA     = ',sumphiA
+    write(10,*)'sumphiB     = ',sumphiB
+    write(10,*)'sumphiC     = ',sumphiC
+    write(10,*)'check phi   = ',checkphi 
+    write(10,*)'FEq         = ',FEq 
+    write(10,*)'FEpi        = ',FEpi
+    write(10,*)'FErho       = ',FErho
+    write(10,*)'FEVdW       = ',FEVdW
+    write(10,*)'qAB         = ',qAB
+    write(10,*)'qC          = ',qC
+    write(10,*)'muAB        = ',-dlog(qAB)
+    write(10,*)'muC         = ',-dlog(qC)
+    write(10,*)'nsegAB      = ',nsegAB
+    write(10,*)'lsegAB      = ',lsegAB
+    write(10,*)'nsegC       = ',nsegC
+    write(10,*)'lsegC       = ',lsegC
+    write(10,*)'period      = ',period
+    write(10,*)'nz          = ',nz
+    write(10,*)'delta       = ',delta
+    write(10,*)'distance    = ',nz*delta   
+    write(10,*)'vsol        = ',vsol
+    write(10,*)'vpolA(1)    = ',vpolA(1)*vsol
+    write(10,*)'vpolA(2)    = ',vpolA(2)*vsol
+    write(10,*)'vpolA(3)    = ',vpolA(3)*vsol
+    write(10,*)'vpolA(4)    = ',vpolA(4)*vsol
+    write(10,*)'vpolA(5)    = ',vpolA(5)*vsol
+    write(10,*)'vpolB(1)    = ',vpolB(1)*vsol
+    write(10,*)'vpolB(2)    = ',vpolB(2)*vsol
+    write(10,*)'vpolB(3)    = ',vpolB(3)*vsol
+    write(10,*)'vpolB(4)    = ',vpolB(4)*vsol
+    write(10,*)'vpolB(5)    = ',vpolB(5)*vsol
+    write(10,*)'vpolC       = ',vpolC*vsol
+    write(10,*)'T           = ',T
+    write(10,*)'VdWepsC     = ',VdWepsC*vpolC*vsol
+    write(10,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
+    write(10,*)'heightAB    = ',heightAB
+    write(10,*)'heightC     = ',heightC
+    write(10,*)'nsize       = ',nsize  
+    write(10,*)'cuantasAB   = ',cuantasAB
+    write(10,*)'cuantasC    = ',cuantasC
+    write(10,*)'iterations  = ',iter
+    write(10,*)'chainmethod = ',chainmethod
+    write(10,*)'chaintype   = ',chaintype
+    if(chainmethod.eq."FILE") then
+       write(10,*)'readinchains = ',readinchains
+        endif
+    write(10,*)'sysflag     = ',sysflag
 
 
-  close(10)
-  close(20)
-  close(21)
-  close(30)
+    close(10)
+    close(20)
+    close(21)
+    close(30)
   
 end subroutine output_neutral
 
@@ -788,9 +791,68 @@ subroutine output(countfile)
         call output_neutral(countfile)
     elseif(sysflag=="electnopoly") then
         call output_elect(countfile)
+        call output_individualcontr_fe(countfile)
     else
         print*,"Error in output subroutine"
         print*,"Wrong value sysflag : ", sysflag
     endif     
 end subroutine output
 
+
+subroutine output_individualcontr_fe(countfile)
+
+    use globals, only : LEFT,RIGHT
+    use energy
+
+    implicit none 
+
+    integer, intent(in) :: countfile 
+
+    character(len=16) :: fenergyfilename   
+
+    write(fenergyfilename,'(A7,BZ,I5.5,A4)')'energy.', countfile,'.dat'
+        
+    !     .. opening files        
+
+    open(unit=10,file=fenergyfilename) 
+
+    write(10,*)'FE              = ',FE  
+    write(10,*)'FEbulk          = ',FEbulk 
+    write(10,*)'deltaFE         = ',deltaFE
+    write(10,*)'FEalt           = ',FEalt  
+    write(10,*)'FEbulkalt       = ',FEbulkalt 
+    write(10,*)'deltaFEalt      = ',deltaFEalt
+    
+    write(10,*)"FEtrans%sol     = ",FEtrans%sol   
+    write(10,*)"FEtrans%Na      = ",FEtrans%Na  
+    write(10,*)"FEtrans%Cl      = ",FEtrans%Cl  
+    write(10,*)"FEtrans%Ca      = ",FEtrans%Ca  
+    write(10,*)"FEtrans%K       = ",FEtrans%K
+    write(10,*)"FEtrans%KCl     = ",FEtrans%KCl
+    write(10,*)"FEtrans%NaCl    = ",FEtrans%NaCl  
+    write(10,*)"FEtrans%Hplus   = ",FEtrans%Hplus  
+    write(10,*)"FEtrans%OHmin   = ",FEtrans%OHmin  
+    
+    write(10,*)"FEchempot%Na    = ",FEchempot%Na
+    write(10,*)"FEchempot%Cl    = ",FEchempot%Cl
+    write(10,*)"FEchempot%Ca    = ",FEchempot%Ca
+    write(10,*)"FEchempot%K     = ",FEchempot%K
+    write(10,*)"FEchempot%KCl   = ",FEchempot%KCl
+    write(10,*)"FEchempot%NaCl  = ",FEchempot%NaCl
+    write(10,*)"FEchempot%Hplus = ",FEchempot%Hplus
+    write(10,*)"FEchempot%OHmin = ",FEchempot%OHmin
+
+    write(10,*)"FEchemsurf(LEFT)= ",FEchemsurf(LEFT)
+    write(10,*)"FEchemsurf(RIGHT)= ",FEchemsurf(RIGHT)
+    write(10,*)"FEchemsurfalt(LEFT)= ",FEchemsurfalt(LEFT)
+    write(10,*)"FEchemsurfalt(RIGHT)= ",FEchemsurfalt(RIGHT)
+
+    write(10,*)"delta FEchemsurfalt(LEFT)= ",FEchemsurfalt(LEFT)-FEchemsurf(LEFT)-diffFEchemsurf(LEFT)
+    write(10,*)"delta FEchemsurfalt(RIGHT)= ",FEchemsurfalt(RIGHT)-FEchemsurf(RIGHT)-diffFEchemsurf(RIGHT)
+
+
+
+    close(10)
+
+
+end subroutine   output_individualcontr_fe

@@ -389,7 +389,7 @@ module parameters
             delta = 0.30d0             ! size lattice spacing
             seed  = 435672             ! seed for random number generator
             
-            constqW = delta*delta*(4.0d0*pi*lb)/vsol ! multiplicative constant Poisson Eq. 
+            constqW = delta*delta*4.0d0*pi*lb/vsol ! multiplicative constant Poisson Eq. 
             
             !  .. initializations of input dependent variables 
             

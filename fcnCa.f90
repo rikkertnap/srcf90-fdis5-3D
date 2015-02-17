@@ -343,12 +343,16 @@ module listfcn
         sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
 
         ! .. Poisson Eq 
-
-        f(n+1)= -0.5d0*((psi(2)-psi(1)) + sigmaqSurfL +rhoq(1)*constqW)      !     boundary
-        f(2*n)= -0.5d0*(sigmaqSurfR- (psi(n)-psi(n-1)) +rhoq(n)*constqW)
-        do i=2,n-1
-            f(n+i)= -0.5d0*(psi(i+1)-2.0d0*psi(i) + psi(i-1) +rhoq(i)*constqW)
-        enddo
+        
+        if(n/=1) then 
+            f(n+1)= -0.5d0*( psi(2)-psi(1)  + sigmaqSurfL +rhoq(1)*constqW )      !     boundary
+            f(2*n)= -0.5d0*( sigmaqSurfR- (psi(n)-psi(n-1)) +rhoq(n)*constqW )
+            do i=2,n-1
+                f(n+i)= -0.5d0*( psi(i+1)-2.0d0*psi(i) + psi(i-1) +rhoq(i)*constqW) 
+            enddo
+        else
+             f(2)= -0.5d0*( sigmaqSurfR  + sigmaqSurfL +rhoq(1)*constqW )
+        endif       
 
         ! self consistent boundary conditions
         neq_bc=0
@@ -602,8 +606,6 @@ module listfcn
 
     end subroutine fcnelect
 
-
-
     subroutine fcnelectdouble(x,f,nn)
 
     !     .. variables and constant declaractions 
@@ -815,8 +817,6 @@ module listfcn
         print*,'iter=', iter ,'norm=',norm
 
     end subroutine fcnelectdouble
-
-
 
     subroutine fcnneutral(x,f,nn)
 

@@ -203,12 +203,13 @@ module surface
             
             ! see Luetzenkirchen book chapter 7 pages 204-206                                     
 
-            cap=0.90d-18 ! in F/nm^2 1F= 1C/V                                                                                         
-            pKS(1)=   10.0d0  ! 10.0  >SOH^0.5 <=> >SO^-0.5 + H+ 
+            cap=0.90d-18 ! in F/nm^2 1F= 1C/V  
+
+            pKS(1)=   10.0d0  ! 10.0  >SOH^0.5   <=> >SO^-0.5 + H+ 
             pKS(2)=   5.3d0   !  5.3  >SOH_2^0.5 <=> >SOH_1.5^0 + 1/2H+ 
-            pKS(3)=   0.20d0  !   >SONa^0.5 <=> >SO^-0.5 + Na+ 
-            pKS(4)=  -5.20d0  !    >SOCa^1.5 <=> >SO^-0.5 + Ca2+             
-            pKS(5)=   -0.40d0 !   >SOH_2Cl^-0.5 <=> >SOH_2^0.5+Cl-         
+            pKS(3)=   0.20d0  !       >SONa^0.5  <=> >SO^-0.5 + Na+ 
+            pKS(4)=  -5.20d0  !       >SOCa^1.5  <=> >SO^-0.5 + Ca2+             
+            pKS(5)=  -0.40d0 !        >SOH_2Cl^-0.5 <=> >SOH_2^0.5+Cl-         
            
             do i=1,5
                KS(i)  = 10d0**(-pKS(i))       ! experimental equilibruim constant surface acid  
@@ -218,12 +219,12 @@ module surface
             !K0S(2) = KS(2)*((vsol*Na/1.0d24)**0.5) ! intrinstic equilibruim constant                                                  
 
             ! charges surface states                                                                                                 
-            qS(1)=-0.5d0 ! SOH^-0.5                                                                            
-            qS(2)=0.5d0  ! SOH_2^0.5   
-            qS(3)=0.0d0  ! SOH_1.5^0  
-            qS(4)=0.5d0  ! SOHNa^0.5                                  
-            qS(5)= 1.5d0 ! SOHCa^1.5
-            qS(6)=-0.5d0 ! SOH_2Cl^-0.5                                                                                                        
+            qS(1)=-0.5d0  ! SOH^-0.5                                                                            
+            qS(2)= 0.5d0  ! SOH_2^0.5   
+            qS(3)= 0.0d0  ! SOH_1.5^0  
+            qS(4)= 0.5d0  ! SOHNa^0.5                                  
+            qS(5)= 1.5d0  ! SOHCa^1.5
+            qS(6)=-0.5d0  ! SOH_2Cl^-0.5                                                                                                        
 
             ! site density 
             sigmaSurfR = 8.5d0
@@ -260,8 +261,8 @@ module surface
                                                                                                                 
 
             ! site density
-            if(side==RIGHT) sigmaSurfR = sigmaSurfR * (4.0d0*pi*lb)*delta ! dimensionless surface charge     
-            if(side==LEFT)  sigmaSurfL = sigmaSurfL * (4.0d0*pi*lb)*delta ! dimensionless surface charge     
+            if(side==RIGHT) sigmaSurfR = sigmaSurfR * 4.0d0*pi*lb*delta ! dimensionless surface charge     
+            if(side==LEFT)  sigmaSurfL = sigmaSurfL * 4.0d0*pi*lb*delta ! dimensionless surface charge     
 
         end subroutine init_surface_taurine
 
@@ -274,8 +275,8 @@ module surface
             integer, intent(in) :: side
             
             ! site density
-            if(side==RIGHT) sigmaSurfR = sigmaSurfR * (4.0d0*pi*lb)*delta ! dimensionless surface charge     
-            if(side==LEFT)  sigmaSurfL = sigmaSurfL * (4.0d0*pi*lb)*delta ! dimensionless surface charge     
+            if(side==RIGHT) sigmaSurfR = sigmaSurfR * 4.0d0*pi*lb*delta ! dimensionless surface charge     
+            if(side==LEFT)  sigmaSurfL = sigmaSurfL * 4.0d0*pi*lb*delta ! dimensionless surface charge     
 
         end subroutine init_surface_constcharge
 
@@ -381,7 +382,7 @@ module surface
             xS(4)= (((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0S(4))*dexp(-2.0d0*psiS) ! SOHCa^1.5/SOH^-0.5
             xS(5)= (((xbulk%Cl/vCl)/(xbulk%sol**(vCl)))/K0S(5))*dexp(psiS) ! SOH2Cl^-0.5/SOH_2^0.5
 
-            xS(2)=0.0 ! make zero 
+            xS(2)=0.0 ! make zero  
 
             A = xS(1)*(1.0d0+xS(2))+xS(3)+xS(4)+xS(1)*xS(5)
             fdisS(1)  = 1.0d0/(1.0d0 +A) ! SOH^-0.5                                                                                 
@@ -417,14 +418,15 @@ module surface
             real*8 :: A,avfdis
             integer :: i
 
+
             xS(1)= ((xbulk%Hplus/xbulk%sol)/K0Ta(1))*dexp(-psiS) ! SOH/SO^-                       
-            xS(2)= (((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0Ta(2))*dexp(-psiS) ! SO^-/SONa
-            xS(3)= (((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0Ta(3))*dexp(-2.0d0*psiS) ! SO^-/SOCa^+
+            xS(2)= 0.0d0!(((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0Ta(2))*dexp(-psiS) ! SONa/SO^-
+            xS(3)= 0.0d0!(((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0Ta(3))*dexp(-2.0d0*psiS) ! SOCa^+/SO^-
          
             A = xS(1)+xS(2)+xS(3)
          
             if(side==LEFT) then 
-                fdisTaL(1)  = 1.0d0/(1.0d0 +A) ! SO^-
+                fdisTaL(1)  = 1.0d0/(1.0d0 + A) ! SO^-
                 fdisTaL(2)  = fdisTal(1)*xS(1) ! SOH                                                                                 
                 fdisTal(3)  = fdisTaL(1)*xS(2) ! SONa 
                 fdisTaL(4)  = fdisTaL(1)*xS(3) ! SOCa^+                                                                                 
@@ -437,7 +439,7 @@ module surface
                 surface_charge_taurine=sigmaSurfL*avfdis
             
             else if(side==RIGHT) then
-                fdisTaR(1)  = 1.0d0/(1.0d0 +A) ! SO^-
+                fdisTaR(1)  = 1.0d0/(1.0d0 + A) ! SO^-
                 fdisTaR(2)  = fdisTaR(1)*xS(1) ! SOH                                                                                 
                 fdisTaR(3)  = fdisTaR(1)*xS(2) ! SONa 
                 fdisTaR(4)  = fdisTaR(1)*xS(3) ! SOCa^+                                                                                 
