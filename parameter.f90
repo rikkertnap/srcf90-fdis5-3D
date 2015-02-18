@@ -86,6 +86,7 @@ module parameters
     integer, parameter :: numsys= 6      ! number of method   
     character(len=15) :: sysvalues(numsys) ! different system methodes 
     character(len=2) :: bcvalues(2,5)      ! boundary condition bc="qu" quartz,"cl" clay or "ca" calcite
+    character(len=3) ::  verboseflag       ! select input falg 
 
     real*8 :: heightAB           ! average height of layer
     real*8 :: heightC            ! average height of layer 

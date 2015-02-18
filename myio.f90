@@ -63,6 +63,7 @@ subroutine read_inputfile
     read(1,*)nzmax            ! max distance
     read(1,*)nzmin            ! min distance
     read(1,*)nzstep           ! step distance  
+    read(1,*)verboseflag     
 
     call init_allowed_flags()
     write(fcnname,'(A14)')'read_inputfile'
@@ -160,7 +161,10 @@ subroutine output_elect(countfile)
     write(densfracionpairfilename,'(A19,BZ,I5.5,A4)')'densityfracionpair.', countfile,'.dat'
         
     !     .. opening files        
-    
+    open(unit=10,file=sysfilename)       
+    open(unit=30,file=xsolfilename)
+    open(unit=70,file=potentialfilename)
+
     if(sysflag/="electnopoly") then          
         open(unit=20,file=xpolABfilename)
         open(unit=21,file=xpolCfilename)
@@ -168,20 +172,20 @@ subroutine output_elect(countfile)
         open(unit=120,file=densfracBfilename) 
     endif       
 
-    open(unit=10,file=sysfilename)       
-    open(unit=30,file=xsolfilename)
-    open(unit=50,file=xNafilename)
-    open(unit=51,file=xKfilename)
-    open(unit=55,file=xCafilename)
-    open(unit=58,file=xNaClfilename)
-    open(unit=57,file=xKClfilename)
-    open(unit=59,file=densfracionpairfilename)
-    open(unit=60,file=xClfilename)
-    open(unit=70,file=potentialfilename)
-    open(unit=80,file=chargefilename)
-    open(unit=90,file=xHplusfilename)
-    open(unit=100,file=xOHminfilename)
-    
+    if(verboseflag=="yes") then    
+        open(unit=50,file=xNafilename)
+        open(unit=51,file=xKfilename)
+        open(unit=55,file=xCafilename)
+        open(unit=58,file=xNaClfilename)
+        open(unit=57,file=xKClfilename)
+        open(unit=59,file=densfracionpairfilename)
+        open(unit=60,file=xClfilename)
+        open(unit=70,file=potentialfilename)
+        open(unit=80,file=chargefilename)
+        open(unit=90,file=xHplusfilename)
+        open(unit=100,file=xOHminfilename)
+    endif
+
     ! .. writting files
 
     if(sysflag/="electnopoly") then 
@@ -196,22 +200,24 @@ subroutine output_elect(countfile)
     write(70,*),0.0d0,psiSurfL
     do i=1,n
         write(30,*)zc(i),xsol(i)
-        write(50,*)zc(i),xNa(i)
-        write(51,*)zc(i),xK(i)
-        write(55,*)zc(i),xCa(i)
-        write(58,*)zc(i),xNaCl(i)
-        write(57,*)zc(i),xKCl(i)
-        write(59,*)zc(i),(xNaCl(i)/vNaCl)/(xNa(i)/vNa+xCl(i)/vCl+xNaCl(i)/vNaCl)
-        write(60,*)zc(i),xCl(i)
         write(70,*)zc(i),psi(i)
-        write(80,*)zc(i),rhoq(i)
-        write(90,*)zc(i),xHplus(i)
-        write(100,*)zc(i),xOHmin(i)
+        if(verboseflag=="yes") then 
+            write(50,*)zc(i),xNa(i)
+            write(51,*)zc(i),xK(i)
+            write(55,*)zc(i),xCa(i)
+            write(58,*)zc(i),xNaCl(i)
+            write(57,*)zc(i),xKCl(i)
+            write(59,*)zc(i),(xNaCl(i)/vNaCl)/(xNa(i)/vNa+xCl(i)/vCl+xNaCl(i)/vNaCl)
+            write(60,*)zc(i),xCl(i)
+            write(80,*)zc(i),rhoq(i)
+            write(90,*)zc(i),xHplus(i)
+            write(100,*)zc(i),xOHmin(i)
+        endif
     enddo    
     write(70,*),n*delta,psiSurfR  
    
 
-    ! .. system information 
+    ! .. writing system information 
     
     write(10,*)'system      = spherical weakpolyelectrolyte brush'
     write(10,*)'chainmethod = ',chainmethod
@@ -344,6 +350,7 @@ subroutine output_elect(countfile)
     write(10,*)'sigmaqSurfR = ',sigmaqSurfR/((4.0d0*pi*lb)*delta)
     write(10,*)'psiSurfL    = ',psiSurfL
     write(10,*)'psiSurfR    = ',psiSurfR
+
     fmt = "(A9,I1,A5,ES25.16)"
     if(bcflag(LEFT)=='ta') then
       do i=1,4   
@@ -361,6 +368,12 @@ subroutine output_elect(countfile)
       enddo  
     endif
 
+    ! .. closing files
+
+    close(10)
+    close(30)
+    close(70)
+
     if(sysflag/="electnopoly") then
         close(20)   
         close(21)
@@ -368,17 +381,17 @@ subroutine output_elect(countfile)
         close(120)
     endif   
 
-    close(10)
-    close(30)
-    close(50)
-    close(55)
-    close(58)
-    close(59)
-    close(60)
-    close(70)
-    close(80)
-    close(90)
-    
+    if(verboseflag=="yes") then 
+        close(50)   
+        close(55)
+        close(58)
+        close(59)
+        close(60)
+        close(70)
+        close(80)
+        close(90)
+    endif
+
 end subroutine output_elect
 
  
