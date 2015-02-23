@@ -420,8 +420,8 @@ module surface
 
 
             xS(1)= ((xbulk%Hplus/xbulk%sol)/K0Ta(1))*dexp(-psiS) ! SOH/SO^-                       
-            xS(2)= 0.0d0!(((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0Ta(2))*dexp(-psiS) ! SONa/SO^-
-            xS(3)= 0.0d0!(((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0Ta(3))*dexp(-2.0d0*psiS) ! SOCa^+/SO^-
+            xS(2)= (((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0Ta(2))*dexp(-psiS) ! SONa/SO^-
+            xS(3)= (((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0Ta(3))*dexp(-2.0d0*psiS) ! SOCa^+/SO^-
          
             A = xS(1)+xS(2)+xS(3)
          
