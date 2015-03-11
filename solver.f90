@@ -15,27 +15,32 @@ subroutine solver(x, xguess, accuracy, residual)
     !     .. scalar arguments
     real*8 :: accuracy
     real*8 :: residual
- 
-    call set_size_neq()
- 
-    if(sysflag=="electdouble") then 
-        fcnptr => fcnelectdouble
-    elseif(sysflag=="elect") then 
-        fcnptr => fcnelect
-    elseif(sysflag=="electnopoly") then 
-        fcnptr => fcnelectNoPoly 
-    elseif(sysflag=="electHC") then
-        fcnptr => fcnelectHC  
-    elseif(sysflag=="bulk water") then 
-        fcnptr => fcnbulk
-    elseif(sysflag=="neutral") then 
-        fcnptr => fcnneutral
-    else
-        print*,"Error in call to solver subroutine"    
-        print*,"Wrong value sysflag : ", sysflag
+    character(len=80) :: fcnname
+   
+    write(fcnname,'(A6)')'solver'
 
-        stop
-    endif
+    call set_size_neq()
+    call check_value_sysflag(fcnname)
+    
+    select case (sysflag)
+        case ("elect") 
+            fcnptr => fcnelect
+        case ("electdouble")  
+            fcnptr => fcnelectdouble
+        case ("electnopoly") 
+            fcnptr => fcnelectNoPoly 
+        case ("electHC") 
+            fcnptr => fcnelectHC
+        case ("neutral") 
+            fcnptr => fcnneutral
+        case ("bulk water") 
+             fcnptr => fcnbulk
+        case default
+            print*,"Error in call to solver subroutine"    
+            print*,"Wrong value sysflag : ", sysflag
+            stop
+    end select  
+
 
     if(method.eq."kinsol") then
      

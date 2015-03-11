@@ -765,15 +765,15 @@ module listfcn
 
         rhopolABL0=sigmaABL/qABL
         rhopolABR0=sigmaABR/qABR
-        print*,"sigmaABR=",sigmaABR,"sigmaABL=",sigmaABL
-        print*,"qABL=",qABL,"qABR=",qABR
+!        print*,"sigmaABR=",sigmaABR,"sigmaABL=",sigmaABL
+!        print*,"qABL=",qABL,"qABR=",qABR
 
         do i=1,n
 
             rhopolA(i)= (rhopolABL0*rhopolAL(i)+rhopolABR0*rhopolAR(i))/deltaG(i)
             rhopolB(i)= (rhopolABL0*rhopolBL(i)+rhopolABR0*rhopolBR(i))/deltaG(i)
             
-            print*,i,rhopolB(i),rhopolBL(i),rhopolBR(i)
+!            print*,i,rhopolB(i),rhopolBL(i),rhopolBR(i)
 
             do k=1,4               ! polymer volume fraction
                 xpolAB(i)=xpolAB(i)+rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol  & 

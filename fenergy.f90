@@ -57,6 +57,7 @@ contains
         if(sysflag.eq."elect") then 
             call fcnenergy_elect()
         elseif(sysflag.eq."electdouble") then 
+            print*,"sysflag=electdouble"    
             call fcnenergy_elect()
         elseif(sysflag.eq."electnopoly") then 
             call fcnenergy_elect()
@@ -147,18 +148,35 @@ contains
 !        endif   
 
       
-        if((sigmaAB > sigmaTOL).and.(sigmaC > sigmaTOL)) then
-            FEq = -(delta/(vsol))*(sigmaABL*dlog(qABL)+sigmaABR*dlog(qABR) +sigmaC*dlog(qC) )
-        elseif((sigmaAB <= sigmaTOL).and.(sigmaC > sigmaTOL)) then
-            FEq = -(delta/(vsol))*(sigmaC*dlog(qC) )
-        elseif((sigmaAB > sigmaTOL).and.(sigmaC <= sigmaTOL)) then
-            FEq = -(delta/(vsol))*(sigmaAB*dlog(qAB) )
-        elseif((sigmaAB <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
+        if((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC > sigmaTOL)) then
+        
+            FEq =-delta*(sigmaABL*dlog(qABL)+sigmaABR*dlog(qABR)+ sigmaABR*dlog(qABR) +sigmaC*dlog(qC) )
+        
+        elseif((sigmaABL <= sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC > sigmaTOL)) then
+        
+            FEq = -delta*(sigmaC*dlog(qC) )
+        
+        elseif((sigmaABL > sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
+        
+            FEq = -delta*(sigmaABL*dlog(qABL) )
+        
+        elseif((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC <= sigmaTOL)) then
+        
+            FEq = -delta*(sigmaABL*dlog(qABL) +sigmaABR*dlog(qABR))
+        
+        elseif((sigmaABL <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
+        
             FEq = 0.0d0
+        
         else
+        
             print*,"Error in fcnerergy"
             print*,"Something went wrong in evaluating FEq"   
+            print*,"sigmaABL=",sigmaABL
+            print*,"sigmaABL=",sigmaABL
+            print*,"sigmaC=",sigmaC
             stop    
+        
         endif
     
         ! .. surface charge constribution 
