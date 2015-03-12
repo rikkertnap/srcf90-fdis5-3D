@@ -6,10 +6,12 @@ SRC =   mathconst.f90 physconst.f90 globals.f90 molecule.f90 chains.f90 volume.f
 # some definitions
 SHELL = /bin/bash
 
+# get git version
+GIT_VERSION := $(shell git describe --abbrev=4 --dirty --always --tags)
 
 ifeq ($(shell hostname),gadol)
 
-FFLAGS= -O3 #-fbounds-check -Warray-bounds #-O3
+FFLAGS= -cpp -O3 -DVERSION=\"$(GIT_VERSION)\" #-fbounds-check -Warray-bounds #-O3
 
 LDFLAGS=-L/opt/local/sundials-2.5.0-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial -lm -L/usr/lib/gcc/x86_64-linux-gnu/4.6 -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../.. -lgfortran -lm -lgcc_s -lquadmath
 

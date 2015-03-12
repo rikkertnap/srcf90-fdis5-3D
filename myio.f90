@@ -218,7 +218,8 @@ subroutine output_elect(countfile)
 
     ! .. writing system information 
     
-    write(10,*)'system      = spherical weakpolyelectrolyte brush'
+    write(10,*)'system      = planar weakpolyelectrolyte brush'
+    write(10,*)'version     = ',VERSION
     write(10,*)'chainmethod = ',chainmethod
     write(10,*)'chaintype   = ',chaintype
     if(chainmethod.eq."FILE") then
@@ -515,7 +516,8 @@ subroutine output_electdouble(countfile)
   !     .. system information 
   
   
-  write(10,*)'system      = spherical weakpolyelectrolyte brush'
+  write(10,*)'system      = planar weakpolyelectrolyte brush'
+  write(10,*)'version     = ',VERSION
   write(10,*)'chainmethod = ',chainmethod
   write(10,*)'chaintype   = ',chaintype
   if(chainmethod.eq."FILE") then
@@ -722,7 +724,8 @@ subroutine output_neutral(countfile)
     !     .. system information 
     
     
-    write(10,*)'system      = planar  brush'
+    write(10,*)'system      = planar  brush' 
+    write(10,*)'version     = ',VERSION
     write(10,*)'free energy = ',FE  
     write(10,*)'energy bulk = ',FEbulk 
     write(10,*)'deltafenergy = ',deltaFE
