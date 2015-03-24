@@ -151,19 +151,19 @@ contains
         if((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC > sigmaTOL)) then
         
             FEq =-delta*(sigmaABL*dlog(qABL)+sigmaABR*dlog(qABR)+ sigmaABR*dlog(qABR) +sigmaC*dlog(qC) )
-        
+       
         elseif((sigmaABL <= sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC > sigmaTOL)) then
         
             FEq = -delta*(sigmaC*dlog(qC) )
-        
+            
         elseif((sigmaABL > sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
             FEq = -delta*(sigmaABL*dlog(qABL) )
-        
+       
         elseif((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
             FEq = -delta*(sigmaABL*dlog(qABL) +sigmaABR*dlog(qABR))
-        
+       
         elseif((sigmaABL <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
             FEq = 0.0d0

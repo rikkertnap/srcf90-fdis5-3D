@@ -602,6 +602,8 @@ module listfcn
         
         iter=iter+1
 
+        qABL=qAB   ! defined both qAB and qABL, communcicates value     
+
         print*,'iter=', iter ,'norm=',norm
 
     end subroutine fcnelect
