@@ -37,9 +37,18 @@ program brushweakpolyelectrolyte
     integer :: countfile        ! file counter        
     logical :: use_xstored       
     logical :: isfirstguess   
-   
+    character(len=50) :: text
+
+    
     ! .. executable statements 
     ! .. init 
+
+    LogName='status.log'
+    call open_logfile(LogUnit,LogName) 
+    text='program begins'
+    call print_to_log(LogUnit,text)
+
+
 
     call read_inputfile()
     call init_constants()
@@ -54,6 +63,7 @@ program brushweakpolyelectrolyte
     call set_size_neq()
     call init_expmu()
     call init_surface(bcflag)
+
 
     !  .. computation starts
     
@@ -76,8 +86,6 @@ program brushweakpolyelectrolyte
         
         call solver(x, xguess, error, fnorm)
 
-!        print*,"diff R=",x(2*nz+1)-psiSurfR
-!        print*,"diff L=",x(2*nz+2)-psiSurfL
         call fcnenergy()         ! free energy
         call average_height()      
         call charge_polymer()
@@ -100,5 +108,9 @@ program brushweakpolyelectrolyte
     deallocate(xstored)
 
     call deallocate_field()
+
+    text="program end"
+    call print_to_log(LogUnit,text)
+    call close_logfile(LogUnit)
 
 end program brushweakpolyelectrolyte

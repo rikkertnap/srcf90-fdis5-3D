@@ -23,5 +23,8 @@ module globals
     integer, parameter :: LEFT = 1
     integer, parameter :: RIGHT = 2
 
+    character(len=10) :: LogName
+    integer, parameter :: LogUnit=130  
+
 end module globals
 

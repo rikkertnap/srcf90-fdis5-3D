@@ -251,10 +251,10 @@ module listfcn
             f(4*n+i)=xpolC(i)-xpolCin(i)
         enddo
 
-        norm=l2norm(f,5*n)
-        iter=iter+1
+    !    norm=l2norm(f,5*n)
+    !    iter=iter+1
 
-        print*,'iter=', iter ,'norm=',norm
+    !    print*,'iter=', iter ,'norm=',norm
 
     end subroutine fcnelectHC
 
@@ -370,11 +370,11 @@ module listfcn
             psisurfL=psi(1)+sigmaqSurfL/2.0d0
         endif   
 
-        norm=l2norm(f,2*n+neq_bc)
+    !    norm=l2norm(f,2*n+neq_bc)
         
         iter=iter+1
 
-        print*,'iter=', iter ,'norm=',norm
+    !    print*,'iter=', iter ,'norm=',norm
 
     end subroutine fcnelectNoPoly
 
@@ -598,13 +598,13 @@ module listfcn
 !            print*,'psisurfL=',psisurfL,' sigmaqSurfL=',sigmaqSurfL
         endif   
 
-        norm=l2norm(f,4*n+neq_bc)
+    !    norm=l2norm(f,4*n+neq_bc)
         
         iter=iter+1
 
         qABL=qAB   ! defined both qAB and qABL, communcicates value     
 
-        print*,'iter=', iter ,'norm=',norm
+    !    print*,'iter=', iter ,'norm=',norm
 
     end subroutine fcnelect
 
@@ -813,10 +813,10 @@ module listfcn
             f(3*n+i)=rhopolB(i)-rhopolBin(i)
         enddo
 
-        norm=l2norm(f,4*n)
-        iter=iter+1
+    !    norm=l2norm(f,4*n)
+         iter=iter+1
 
-        print*,'iter=', iter ,'norm=',norm
+    !    print*,'iter=', iter ,'norm=',norm
 
     end subroutine fcnelectdouble
 
@@ -948,10 +948,10 @@ module listfcn
             f(n+i)=rhopolB(i)*vpolB(3)*vsol-xpolBin(i)
         enddo  !  .. end computation polymer density 
 
-        norm=l2norm(f,2*n)
+    !    norm=l2norm(f,2*n)
         iter=iter+1
 
-        print*,'iter=', iter ,'norm=',norm
+    !    print*,'iter=', iter ,'norm=',norm
 
     end subroutine fcnneutral
 
@@ -1021,10 +1021,10 @@ module listfcn
         !     .. conservation of number K
         f(5)= phiK/vK+phiKCl/vKCl-vsol*(Na/1.0d24)*cKCl
 
-        norm=l2norm(f,5)
+    !    norm=l2norm(f,5)
         iter=iter+1
      
-        print*,'iter=', iter ,'norm=',norm
+    !    print*,'iter=', iter ,'norm=',norm
 
     end subroutine fcnbulk
 

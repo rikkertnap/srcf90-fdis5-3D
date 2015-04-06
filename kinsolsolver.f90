@@ -70,8 +70,9 @@ end subroutine fkpsol
 
 subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
   
-  use globals, only : nsize,neq
+  use globals, only : nsize,neq,LogUnit
   use kinsolvars
+  use parameters, only : iter
 
   implicit none
   
@@ -82,18 +83,13 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
   real*8 :: x(neq)
   real*8 :: xguess(neq)
 
-  !      real*8, dimension(:) :: x    
-  !      real*8, dimension(:) :: xguess
-  
   !     .. scalar arguments
   real*8 :: fnorm 
   real*8 :: error
   integer :: n                 !  number of equations
   
-  !     .. local arguments 
-  
+  !     .. local arguments   
   integer*4 :: ier             ! Kinsol error flag
-!  integer*8 :: neq             ! Kinsol number of equations
   
   integer*8 :: iout(15)        ! Kinsol additional output information
   real*8 :: rout(2)            ! Kinsol additional out information
@@ -106,8 +102,8 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
   real*8 :: constr(neq)
   
   integer*4 :: globalstrat, maxl, maxlrst
-  
-  
+  character(len=50) :: text, rstr, istr
+
   !     .. executable statements 
   
   !     .. init of kinsol variables 
@@ -176,8 +172,14 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
      stop
   endif
   
-  print*,'Found solution: fnorm = ',fnorm
-  
+  write(rstr,'(E25.16)')fnorm
+  text="Found solution: fnorm = "//trim(rstr)//" "
+  call print_to_log(LogUnit,text)
+
+  write(istr,'(I8)')iter
+  text="number of iterations  = "//trim(istr)
+  call print_to_log(LogUnit,text)
+
   call fkinfree             ! free memory
   deallocate(pp)
   return

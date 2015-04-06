@@ -34,7 +34,8 @@ subroutine make_chains_mc()
   use random
   use parameters
   use volume
-  
+
+
   implicit none 
   
   !     .. variable and constant declaractions      
@@ -45,7 +46,8 @@ subroutine make_chains_mc()
   integer :: conf              ! counts number of conformations
   real*8  :: chain(3,nsegAB,200) ! chains(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
   real*8  :: x,y,z,r           ! coordinates
-  
+  character(len=50) :: text 
+
   !     .. executable statements 
   
   !     .. initializations of variables     
@@ -75,8 +77,9 @@ subroutine make_chains_mc()
   enddo                     ! end while loop
              
   !     .. end chains generation 
-  print*,"AB Chains generated"      
-
+     
+  write(text,'(A19)')'AB Chains generated'
+  call print_to_log(LogUnit,text)
   
   conf=0                    ! counter for conformations                                                                      
   seed=43567                ! seed for random number generator 
@@ -94,8 +97,8 @@ subroutine make_chains_mc()
      enddo                  ! end j loop  
   enddo                     ! end while loop  
 
-  print*,"C Chains generated"
-
+  write(text,'(A18)')'C Chains generated'
+  call print_to_log(LogUnit,text)
 
 end subroutine make_chains_mc
 

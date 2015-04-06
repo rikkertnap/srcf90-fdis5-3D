@@ -11,6 +11,7 @@
 subroutine rota(xend,xendr,nseg,test,lseg)
   
   use random
+  use mathconst
   use volume, only : delta,radius
   
   implicit none
@@ -21,14 +22,13 @@ subroutine rota(xend,xendr,nseg,test,lseg)
   
   ! ..local argument 
 
-  real*8 :: theta,theta1,x(120),y(120),z(120),xp(120),yp(120),pi
+  real*8 :: theta,theta1,x(120),y(120),z(120),xp(120),yp(120)
   
   character*1 :: test
   integer :: k,m1,i
   real*8 :: fac,fac1,fac2,sbe,cbe,sal,cal,sga,dist
   real*8 :: alfa,gama,cga,a,b,c
    
-  pi=acos(-1.0)
 
   theta1=pi/6.0
   

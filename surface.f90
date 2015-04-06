@@ -42,7 +42,6 @@ module surface
         
             select case (bc(RIGHT))
                 case ("qu")  
-                    print*,"Hello: case quartz selected"
                     call  init_surface_quartz()
                 case ("cl")
                     call  init_surface_clay()

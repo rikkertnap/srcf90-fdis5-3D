@@ -166,9 +166,7 @@ module parameters
                     print*,"Wrong value sysflag:  ",sysflag
                     stop
             end select  
-            
-            print*,"neq = ",neq        
-        
+             
         end subroutine set_size_neq
 
         ! defines number of different systems
