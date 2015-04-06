@@ -17,7 +17,7 @@ subroutine cadenas(chains,nchains,maxnchains,nseg,lseg)
 
     double precision :: lseg     ! lenght segment in nm
     integer :: nseg              ! number of segments on sphere
-    integer :: nchains            ! number of rotations
+    integer :: nchains           ! number of rotations
     integer :: maxnchains
 
     ! .. array arguments
@@ -33,7 +33,7 @@ subroutine cadenas(chains,nchains,maxnchains,nseg,lseg)
     double precision, dimension(3,nseg+5) :: xend, xendr
     integer :: maxattempts
     logical :: is_selfavoid,is_positive_z
-    logical :: selfavoidance,rotation
+    logical :: selfavoidance
     character(len=1) :: test
 
     ! .. executable statements 
@@ -108,7 +108,8 @@ subroutine cadenas(chains,nchains,maxnchains,nseg,lseg)
 
         do while((i.le.maxattempts).and.(nchains.lt.maxnchains)) 
         
-            call rotation(xend,xendr,nseg,lseg) 
+ 
+            call rotation(xend,xendr,nseg,is_positive_z,lseg)
             if (is_positive_z) then 
                 nchains=nchains+1
                 do j=1,nseg

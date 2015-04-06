@@ -2,7 +2,7 @@
 
 # put the name of the target program here
 TARGET = brush.weak.mixture.planar # the list of source files
-SRC =   mathconst.f90 physconst.f90 globals.f90 molecule.f90 chains.f90 volume.f90 L2norm.f90 rands.f90 parameter.f90  field.f90 VdW.f90 surface.f90 fenergy.f90 initcha.f90  myio.f90 cadenas-f77.f90 fcnCa.f90  rota.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  brush.weak.nzrange.f90
+SRC =   mathconst.f90 physconst.f90 globals.f90 molecule.f90 chains.f90 volume.f90 L2norm.f90 rands.f90 parameter.f90  field.f90 VdW.f90 surface.f90 fenergy.f90 initcha.f90  myio.f90 cadenas.f90 fcnCa.f90  rota.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  brush.weak.nzrange.f90
 # some definitions
 SHELL = /bin/bash
 
@@ -11,7 +11,7 @@ GIT_VERSION := $(shell git describe --abbrev=6 --dirty --always --tags)
 
 ifeq ($(shell hostname),gadol)
 
-FFLAGS=   -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds #-O3
+FFLAGS= -O3 -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds #-O3
 
 LDFLAGS=-L/opt/local/sundials-2.5.0-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial -lm -L/usr/lib/gcc/x86_64-linux-gnu/4.6 -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../.. -lgfortran -lm -lgcc_s -lquadmath
 

@@ -49,11 +49,10 @@ program brushweakpolyelectrolyte
     call print_to_log(LogUnit,text)
 
 
-
     call read_inputfile()
     call init_constants()
     call init_matrices()        ! init matrices for chain generation
-    call allocate_chains(cuantasAB,nsegAB,cuantasC,nsegC)
+    call allocate_chains(cuantasAB,nsegAB,cuantasC,nsegC)  
     call make_chains(chainmethod) ! generate polymer configurations 
     call make_sequence_chain(period,chaintype)
     call allocate_geometry(nsize)
@@ -77,7 +76,7 @@ program brushweakpolyelectrolyte
     iter = 0
 
     do while (nz>=nzmin)    
- 
+
         call set_size_neq() 
         allocate(x(neq))
         allocate(xguess(neq))
