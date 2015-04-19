@@ -2,48 +2,49 @@
 
 module energy 
 
+    use precision_definition
     use molecules
-
+    
     implicit none
   
     !     .. variables
-    real*8 :: FE                  ! free energy
-    real*8 :: FEbulk              ! free energybulk
-    real*8 :: deltaFE             ! free energy difference delteFE=FE-FEbulk
+    real(dp) :: FE                  ! free energy
+    real(dp) :: FEbulk              ! free energybulk
+    real(dp) :: deltaFE             ! free energy difference delteFE=FE-FEbulk
   
     !     .. auxiliary variable used in free energy computation  
 
-    real*8 :: FEq                 ! partition function poly A and B 
-    real*8 :: FEpi                ! sum over pi
-    real*8 :: FErho               ! sum over densities
-    real*8 :: FEel                ! electrostatics energ
-    real*8 :: FEelsurf(2)         ! electrostatics energy from  surface
-    real*8 :: FEchemsurf(2)       ! chemical free energy surface
-    real*8 :: FEchem
-    real*8 :: FEbind              ! complexation contribution
-    real*8 :: FEVdW               ! Van der Waals contribution
-    real*8 :: FEVdWB
-    real*8 :: FEVdWC 
-    real*8 :: FEconfAB
-    real*8 :: FEConfC
+    real(dp) :: FEq                 ! partition function poly A and B 
+    real(dp) :: FEpi                ! sum over pi
+    real(dp) :: FErho               ! sum over densities
+    real(dp) :: FEel                ! electrostatics energ
+    real(dp) :: FEelsurf(2)         ! electrostatics energy from  surface
+    real(dp) :: FEchemsurf(2)       ! chemical free energy surface
+    real(dp) :: FEchem
+    real(dp) :: FEbind              ! complexation contribution
+    real(dp) :: FEVdW               ! Van der Waals contribution
+    real(dp) :: FEVdWB
+    real(dp) :: FEVdWC 
+    real(dp) :: FEconfAB
+    real(dp) :: FEConfC
 
-    real*8 :: FEalt               ! free energy
-    real*8 :: FEbulkalt           ! free energybulk
-    real*8 :: deltaFEalt          ! free energy difference delteFE=FE-FEbulk
+    real(dp) :: FEalt               ! free energy
+    real(dp) :: FEbulkalt           ! free energybulk
+    real(dp) :: deltaFEalt          ! free energy difference delteFE=FE-FEbulk
 
-    real*8 :: FEchemsurfalt(2)    ! chemical free energy surface
-    real*8 :: diffFEchemsurf(2)   ! difference cheme
+    real(dp) :: FEchemsurfalt(2)    ! chemical free energy surface
+    real(dp) :: diffFEchemsurf(2)   ! difference cheme
 
     type(moleclist) :: FEtrans,FEchempot,FEtransbulk,FEchempotbulk
     type(moleclist) :: deltaFEtrans,deltaFEchempot
 
-    real*8 :: sumphiA             ! check integral over phiA
-    real*8 :: sumphiB             ! check integral over phiB
-    real*8 :: sumphiC             ! check integral over phiC
-    real*8 :: qres                ! charge charge
-    real*8 :: checkphi            ! check integrate over phi
+    real(dp) :: sumphiA             ! check integral over phiA
+    real(dp) :: sumphiB             ! check integral over phiB
+    real(dp) :: sumphiC             ! check integral over phiC
+    real(dp) :: qres                ! charge charge
+    real(dp) :: checkphi            ! check integrate over phi
     
-    real*8, parameter :: sigmaTOL = 0.00000001     ! tolerance of surface coverage below no polymers 
+    real(dp), parameter :: sigmaTOL = 0.00000001     ! tolerance of surface coverage below no polymers 
 
     private :: sigmaTOL
 
@@ -84,13 +85,13 @@ contains
 
         !  .. local arguments 
     
-        real*8 :: sigmaq0,psi0
-        real*8 :: qsurf(2)           ! total charge on surface 
-        real*8 :: qsurfg             ! total charge on grafting surface  
+        real(dp) :: sigmaq0,psi0
+        real(dp) :: qsurf(2)           ! total charge on surface 
+        real(dp) :: qsurfg             ! total charge on grafting surface  
         integer :: i,j               ! dummy variables 
-        real*8 :: volumelat          ! volume lattice 
+        real(dp) :: volumelat          ! volume lattice 
         integer :: nzadius
-        real*8 :: sigmaSurf(2),sigmaqSurf(2),sigmaq0Surf(2),psiSurf(2)
+        real(dp) :: sigmaSurf(2),sigmaqSurf(2),sigmaq0Surf(2),psiSurf(2)
 
         !  .. computation of free energy 
     
@@ -273,14 +274,14 @@ contains
 
         !  .. local arguments 
     
-        real*8 :: sigmaq0,psi0
-        real*8 :: qsurf(2)           ! total charge on surface 
-        real*8 :: qsurfg             ! total charge on grafting surface  
+        real(dp) :: sigmaq0,psi0
+        real(dp) :: qsurf(2)           ! total charge on surface 
+        real(dp) :: qsurfg             ! total charge on grafting surface  
         integer :: i,j               ! dummy variables 
-        real*8 :: volumelat          ! volume lattice 
+        real(dp) :: volumelat          ! volume lattice 
         integer :: nzadius
-        real*8 :: sigmaSurf(2),sigmaqSurf(2),sigmaq0Surf(2),psiSurf(2)
-        real*8 :: diffFEchemTa
+        real(dp) :: sigmaSurf(2),sigmaqSurf(2),sigmaq0Surf(2),psiSurf(2)
+        real(dp) :: diffFEchemTa
 
         sigmaSurf(RIGHT)  = sigmaSurfR 
         sigmaSurf(LEFT)   = sigmaSurfL
@@ -473,11 +474,11 @@ contains
 
         !     .. local arguments 
     
-        real*8 :: sigmaq0,psi0
-        real*8 :: qsurf              ! total charge on surface 
-        real*8 :: qsurfg             ! total charge on grafting surface 
+        real(dp) :: sigmaq0,psi0
+        real(dp) :: qsurf              ! total charge on surface 
+        real(dp) :: qsurfg             ! total charge on grafting surface 
         integer :: i,j               ! dummy variables 
-        real*8 :: volumelat          ! volume lattice 
+        real(dp) :: volumelat          ! volume lattice 
         integer :: nzadius
 
         !     .. computation of free energy 
@@ -577,14 +578,14 @@ contains
         
         !     .. declare local variables
 
-        real*8 :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
+        real(dp) :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
 
         integer :: i,j,k,c,s         ! dummy indices
-        real*8 :: pro,tmp,expVdW 
+        real(dp) :: pro,tmp,expVdW 
         integer :: conf              ! counts number of conformations
         
 
-        real*8, parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
 
 
         !     .. executable statements 
@@ -638,15 +639,15 @@ contains
 
     end subroutine FEconf_neutral
 
-    real*8 function FEtrans_entropy(xvol,xvolbulk,vol,flag)
+    real(dp) function FEtrans_entropy(xvol,xvolbulk,vol,flag)
     
         use globals
         use parameters
         implicit none
 
-        real*8, intent(in) :: xvol(nsize)
-        real*8, intent(in) :: xvolbulk 
-        real*8, intent(in) :: vol    
+        real(dp), intent(in) :: xvol(nsize)
+        real(dp), intent(in) :: xvolbulk 
+        real(dp), intent(in) :: vol    
         character(len=1), optional :: flag    
 
         integer :: i
@@ -672,22 +673,22 @@ contains
 
     end function FEtrans_entropy   
 
-    real*8 function FEchem_pot(xvol,expchempot,vol,flag)
+    real(dp) function FEchem_pot(xvol,expchempot,vol,flag)
     
         use globals
         use field
         use parameters
         implicit none
 
-        real*8, intent(in) :: xvol(nsize)
-        real*8, intent(in) :: expchempot 
-        real*8, intent(in) :: vol    
+        real(dp), intent(in) :: xvol(nsize)
+        real(dp), intent(in) :: expchempot 
+        real(dp), intent(in) :: vol    
         character(len=1), optional :: flag    
 
         ! .. local 
         integer :: i
-        real*8 :: chempot ! chemical potential difference 
-        real*8 :: sumdens 
+        real(dp) :: chempot ! chemical potential difference 
+        real(dp) :: sumdens 
 
         if(expchempot==0.0d0) then 
             FEchem_pot=0.0d0
@@ -710,14 +711,14 @@ contains
 
     end function FEchem_pot   
 
-    real*8 function FEtrans_entropy_bulk(xvolbulk,vol,flag)
+    real(dp) function FEtrans_entropy_bulk(xvolbulk,vol,flag)
     
         use globals
         use parameters
         implicit none
 
-        real*8, intent(in) :: xvolbulk 
-        real*8, intent(in) :: vol    
+        real(dp), intent(in) :: xvolbulk 
+        real(dp), intent(in) :: vol    
         character(len=1), optional :: flag    
 
         integer :: i
@@ -737,22 +738,22 @@ contains
 
     end function FEtrans_entropy_bulk   
 
-    real*8 function FEchem_pot_bulk(xvolbulk,expchempot,vol,flag)
+    real(dp) function FEchem_pot_bulk(xvolbulk,expchempot,vol,flag)
     
         use globals
         use field
         use parameters
         implicit none
 
-        real*8, intent(in) :: xvolbulk
-        real*8, intent(in) :: expchempot 
-        real*8, intent(in) :: vol    
+        real(dp), intent(in) :: xvolbulk
+        real(dp), intent(in) :: expchempot 
+        real(dp), intent(in) :: vol    
         character(len=1), optional :: flag    
 
         ! .. local 
         integer :: i
-        real*8 :: chempot ! chemical potential difference 
-        real*8 :: sumdens 
+        real(dp) :: chempot ! chemical potential difference 
+        real(dp) :: sumdens 
 
         if(expchempot==0.0d0) then 
             FEchem_pot_bulk=0.0d0

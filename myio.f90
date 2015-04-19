@@ -1,3 +1,4 @@
+! --------------------------------------------------------------|
 ! myio.f90:                                                     |
 ! --------------------------------------------------------------|
 
@@ -196,7 +197,7 @@ subroutine output_elect(countfile)
         enddo
     endif   
         
-    write(70,*),0.0d0,psiSurfL
+    write(70,*)0.0d0,psiSurfL
     do i=1,n
         write(30,*)zc(i),xsol(i)
         write(70,*)zc(i),psi(i)
@@ -213,7 +214,7 @@ subroutine output_elect(countfile)
             write(100,*)zc(i),xOHmin(i)
         endif
     enddo    
-    write(70,*),n*delta,psiSurfR  
+    write(70,*)n*delta,psiSurfR  
    
 
     ! .. writing system information 
@@ -489,7 +490,7 @@ subroutine output_electdouble(countfile)
   open(unit=110,file=densfracAfilename) 
   open(unit=120,file=densfracBfilename) 
   
-  write(70,*),0.0d0,psiSurfL
+  write(70,*)0.0d0,psiSurfL
   
   do i=1,n
      
@@ -511,7 +512,7 @@ subroutine output_electdouble(countfile)
      write(120,fmt6reals)zc(i),fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)        
   enddo
   
-  write(70,*),n*delta,psiSurfR
+  write(70,*)n*delta,psiSurfR
   
   !     .. system information 
   

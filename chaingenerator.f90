@@ -44,8 +44,8 @@ subroutine make_chains_mc()
     integer :: nchains            ! number of rotations
     integer :: maxnchains        ! number of rotations
     integer :: conf              ! counts number of conformations
-    real*8  :: chain(3,nsegAB,200) ! chains(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
-    real*8  :: x,y,z,r           ! coordinates
+    real(dp)  :: chain(3,nsegAB,200) ! chains(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
+    real(dp)  :: x,y,z,r           ! coordinates
     character(len=50) :: text 
 
     !     .. executable statements 
@@ -114,10 +114,10 @@ subroutine make_chains_file()
     integer :: conf,conffile     ! counts number of conformations
     integer :: nsegfile          ! nseg in input file
     integer :: cuantasfile       ! cuantas in input file
-    real*8  :: chain(3,nsegAB+1)   ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
-    real*8  :: chains_rot(3,nsegAB+1) ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
-    real*8  :: x,y,z,r            ! coordinates
-    real*8  ::  x0,y0,z0           ! origin coordinates
+    real(dp)  :: chain(3,nsegAB+1)   ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
+    real(dp)  :: chains_rot(3,nsegAB+1) ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
+    real(dp)  :: x,y,z,r            ! coordinates
+    real(dp)  ::  x0,y0,z0           ! origin coordinates
 
     character(len=10) :: fname
     integer :: ios
@@ -265,7 +265,7 @@ subroutine chain_filter()
 
     integer :: conf,s,allowed_confAB,allowed_confC
     integer :: flag
-    integer*2 :: ind  ! temporary index of chain
+    integer(2) :: ind  ! temporary index of chain
 
 
     allowed_confAB=1            ! counts allowed conformations 

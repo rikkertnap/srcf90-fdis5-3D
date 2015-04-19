@@ -1,9 +1,10 @@
 module matrices 
 
+    use precision_definition
     implicit none
 
-    real*8 :: sitheta,cotheta,siphip,cophip
-    real*8 :: tt(3,3),tp(3,3),tm(3,3)      
+    real(dp) :: sitheta,cotheta,siphip,cophip
+    real(dp) :: tt(3,3),tp(3,3),tm(3,3)      
     
     contains
 

@@ -7,30 +7,30 @@ module surface
     
     !   different surface states
 
-    real*8 :: fdisS(6)            ! fraction of different surface states
-    real*8 :: KS(5)               ! experimemtal equilibruim constant 
-    real*8 :: pKS(5)              ! experimental equilibruim constant pKS= -log[KS]   
-    real*8 :: K0S(5)              ! intrinsic equilibruim constant
-    real*8 :: qS(6)               ! charge 
-    real*8 :: cap                 ! capacitance
+    real(dp) :: fdisS(6)            ! fraction of different surface states
+    real(dp) :: KS(5)               ! experimemtal equilibruim constant 
+    real(dp) :: pKS(5)              ! experimental equilibruim constant pKS= -log[KS]   
+    real(dp) :: K0S(5)              ! intrinsic equilibruim constant
+    real(dp) :: qS(6)               ! charge 
+    real(dp) :: cap                 ! capacitance
  
-    real*8 :: sigmaSurfL          ! surface density of acid on surface in nm^2
-    real*8 :: sigmaSurfR          ! surface density of acid on surface in nm^2
+    real(dp) :: sigmaSurfL          ! surface density of acid on surface in nm^2
+    real(dp) :: sigmaSurfR          ! surface density of acid on surface in nm^2
     
-    real*8 :: sigmaqSurfL         ! surface charge density on surface in nm^2
-    real*8 :: sigmaqSurfR         ! surface charge density on surface in nm^2
+    real(dp) :: sigmaqSurfL         ! surface charge density on surface in nm^2
+    real(dp) :: sigmaqSurfR         ! surface charge density on surface in nm^2
     
-    real*8 :: psiSurfL            ! surface potential     
-    real*8 :: psiSurfR            ! surface potential 
+    real(dp) :: psiSurfL            ! surface potential     
+    real(dp) :: psiSurfR            ! surface potential 
 
-!    real*8 :: sigmaSurf
+!    real(dp) :: sigmaSurf
     
    ! taurine
-    real*8 :: fdisTaL(4),fdisTaR(4) ! fraction of different surface states
-    real*8 :: KTa(3)               ! experimemtal equilibruim constant 
-    real*8 :: pKTa(3)              ! experimental equilibruim constant pKS= -log[KS]   
-    real*8 :: K0Ta(3)              ! intrinsic equilibruim constant
-    real*8 :: qTa(4)               ! charge 
+    real(dp) :: fdisTaL(4),fdisTaR(4) ! fraction of different surface states
+    real(dp) :: KTa(3)               ! experimemtal equilibruim constant 
+    real(dp) :: pKTa(3)              ! experimental equilibruim constant pKS= -log[KS]   
+    real(dp) :: K0Ta(3)              ! intrinsic equilibruim constant
+    real(dp) :: qTa(4)               ! charge 
 
     contains
  
@@ -65,15 +65,15 @@ module surface
             end select 
         end subroutine init_surface
    
-        real*8 function surface_charge(bc,psiSurf,side)
+        real(dp) function surface_charge(bc,psiSurf,side)
         
             implicit none
             
-            real*8 :: psiSurf
+            real(dp) :: psiSurf
             character(len=2) :: bc
             integer :: side 
 
-            real*8 :: sigmaqSurf
+            real(dp) :: sigmaqSurf
             
             if(side==RIGHT) then 
                 select case (bc)
@@ -279,7 +279,7 @@ module surface
 
         end subroutine init_surface_constcharge
 
-        real*8 function surface_charge_quartz(psiS)
+        real(dp) function surface_charge_quartz(psiS)
      
             use physconst
             use mathconst
@@ -287,12 +287,12 @@ module surface
         
             implicit none
         
-            real*8 :: psiS
+            real(dp) :: psiS
          
             ! .. local variables
         
-            real*8 :: xS(6)
-            real*8 :: A,avfdis
+            real(dp) :: xS(6)
+            real(dp) :: A,avfdis
             integer :: i
         
             xS(1)= ((xbulk%Hplus/xbulk%sol)/K0S(1))*dexp(-psiS) ! SOH/SO-
@@ -319,7 +319,7 @@ module surface
         end function surface_charge_quartz
 
 
-        real*8 function surface_charge_calcite(psiS)
+        real(dp) function surface_charge_calcite(psiS)
 
             use physconst
             use mathconst
@@ -327,11 +327,11 @@ module surface
 
             implicit none
 
-            real*8 :: psiS
+            real(dp) :: psiS
 
             ! .. local variables                                                                                                                                          
-            real*8 :: xS(6)
-            real*8 :: A,avfdis
+            real(dp) :: xS(6)
+            real(dp) :: A,avfdis
             integer :: i
 
             xS(1)= ((xbulk%Hplus/xbulk%sol)/K0S(1))*dexp(-psiS) ! CO3H/CO3- =fdisS(2)/fdisS(1)
@@ -359,7 +359,7 @@ module surface
         end function surface_charge_calcite
 
       
-        real*8 function surface_charge_clay(psiS)
+        real(dp) function surface_charge_clay(psiS)
 
             use physconst
             use mathconst
@@ -367,12 +367,12 @@ module surface
 
             implicit none
 
-            real*8 :: psiS
+            real(dp) :: psiS
 
             ! .. local variables                                                                                                  
 
-            real*8 :: xS(6)
-            real*8 :: A,avfdis
+            real(dp) :: xS(6)
+            real(dp) :: A,avfdis
             integer :: i
 
             xS(1)= ((xbulk%Hplus/xbulk%sol)/K0S(1))*dexp(-psiS) ! SOH_2^0.5/SOH^-0.5                       
@@ -400,7 +400,7 @@ module surface
 
         end function surface_charge_clay
 
-        real*8 function surface_charge_taurine(psiS,side)
+        real(dp) function surface_charge_taurine(psiS,side)
 
             use physconst
             use mathconst
@@ -408,13 +408,13 @@ module surface
 
             implicit none
 
-            real*8 :: psiS
+            real(dp) :: psiS
             integer :: side
         
             ! .. local variables                                                                                                  
 
-            real*8 :: xS(3)
-            real*8 :: A,avfdis
+            real(dp) :: xS(3)
+            real(dp) :: A,avfdis
             integer :: i
 
 

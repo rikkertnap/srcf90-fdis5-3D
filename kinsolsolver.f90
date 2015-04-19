@@ -6,10 +6,11 @@
 
 module kinsolvars
 
+  use precision_definition
   implicit none
   !     .. variables
   
-  real*8, dimension(:), allocatable ::   pp ! pre-processor variable
+  real(dp), dimension(:), allocatable ::   pp ! pre-processor variable
 
 end module kinsolvars
 
@@ -25,7 +26,7 @@ subroutine fkpset(udata, uscale, fdata, fscale,vtemp1,vtemp2, ier)
   implicit none
   
   integer :: ier
-  integer*8 :: i
+  integer(8) :: i
   double precision :: udata(*), uscale(*), fdata(*), fscale(*)
   double precision :: vtemp1(*), vtemp2(*)
   
@@ -47,7 +48,7 @@ subroutine fkpsol(udata, uscale, fdata, fscale, vv, ftem, ier)
   implicit none
   
   integer :: ier
-  integer*8 :: i
+  integer(8) :: i
   double precision :: udata(*), uscale(*), fdata(*), fscale(*)
   double precision :: vv(*), ftem(*)
   
@@ -80,28 +81,28 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
   
   !     .. array arguments     
  
-  real*8 :: x(neq)
-  real*8 :: xguess(neq)
+  real(dp) :: x(neq)
+  real(dp) :: xguess(neq)
 
   !     .. scalar arguments
-  real*8 :: fnorm 
-  real*8 :: error
+  real(dp) :: fnorm 
+  real(dp) :: error
   integer :: n                 !  number of equations
   
   !     .. local arguments   
-  integer*4 :: ier             ! Kinsol error flag
+  integer(4) :: ier             ! Kinsol error flag
   
-  integer*8 :: iout(15)        ! Kinsol additional output information
-  real*8 :: rout(2)            ! Kinsol additional out information
+  integer(8) :: iout(15)        ! Kinsol additional output information
+  real(dp) :: rout(2)            ! Kinsol additional out information
   
   integer :: i                 ! dummy index 
-  integer*8 :: msbpre
-  integer*8 :: maxniter
-  real*8 :: fnormtol, scsteptol
-  real*8 :: scale(neq)
-  real*8 :: constr(neq)
+  integer(8) :: msbpre
+  integer(8) :: maxniter
+  real(dp) :: fnormtol, scsteptol
+  real(dp) :: scale(neq)
+  real(dp) :: constr(neq)
   
-  integer*4 :: globalstrat, maxl, maxlrst
+  integer(4) :: globalstrat, maxl, maxlrst
   character(len=50) :: text, rstr, istr
 
   !     .. executable statements 
@@ -191,15 +192,16 @@ end subroutine kinsol_gmres_solver
 
 subroutine fkfun(x,f,ier)
 
+  use precision_definition
   use globals,  only  : neq
   use fcnpointer
 
   implicit none
 
-  real*8, dimension(neq) :: x  ! explicit size array                                                                                                                                        
-  real*8, dimension(neq) :: f
+  real(dp), dimension(neq) :: x  ! explicit size array                                                                                                                                        
+  real(dp), dimension(neq) :: f
 
-  integer*4 ier
+  integer(4) ier
 
   call fcnptr(x,f,neq)
 

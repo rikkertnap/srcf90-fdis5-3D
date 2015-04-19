@@ -1,38 +1,39 @@
 module field
   
   !     .. variables
+    use precision_definition
 
     implicit none
     
-    real*8, dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer on sphere
-    real*8, dimension(:), allocatable :: xpolC   ! total volume fraction of polymer on sphere: hydrocarbon chain
-    real*8, dimension(:), allocatable :: rhopolA ! density A monomer of polymer on sphere
-    real*8, dimension(:), allocatable :: rhopolB ! density B monomer of polymer on sphere
-    real*8, dimension(:), allocatable :: rhopolC ! density C monomer of polymer on sphere
-    real*8, dimension(:), allocatable :: xsol    ! volume fraction solvent
-    real*8, dimension(:), allocatable :: psi     ! electrostatic potential 
-    real*8, dimension(:), allocatable :: xNa     ! volume fraction of positive Na+ ion
-    real*8, dimension(:), allocatable :: xK      ! volume fraction of positive K+ ion
-    real*8, dimension(:), allocatable :: xCa     ! volume fraction of positive Ca2+ ion
-    real*8, dimension(:), allocatable :: xNaCl   ! volume fraction of NaCl ion pair
-    real*8, dimension(:), allocatable :: xKCl    ! volume fraction of KCl  ion pair
-    real*8, dimension(:), allocatable :: xCl     ! volume fraction of negative ion
-    real*8, dimension(:), allocatable :: xHplus  ! volume fraction of Hplus
-    real*8, dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
-    real*8, dimension(:), allocatable :: rhoq    ! total charge density in units of vsol
-    real*8, dimension(:), allocatable :: qpol    ! charge density of polymer
-    real*8, dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
-    real*8, dimension(:,:), allocatable :: fdisB   ! degree of dissociation
+    real(dp), dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer on sphere
+    real(dp), dimension(:), allocatable :: xpolC   ! total volume fraction of polymer on sphere: hydrocarbon chain
+    real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer on sphere
+    real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer on sphere
+    real(dp), dimension(:), allocatable :: rhopolC ! density C monomer of polymer on sphere
+    real(dp), dimension(:), allocatable :: xsol    ! volume fraction solvent
+    real(dp), dimension(:), allocatable :: psi     ! electrostatic potential 
+    real(dp), dimension(:), allocatable :: xNa     ! volume fraction of positive Na+ ion
+    real(dp), dimension(:), allocatable :: xK      ! volume fraction of positive K+ ion
+    real(dp), dimension(:), allocatable :: xCa     ! volume fraction of positive Ca2+ ion
+    real(dp), dimension(:), allocatable :: xNaCl   ! volume fraction of NaCl ion pair
+    real(dp), dimension(:), allocatable :: xKCl    ! volume fraction of KCl  ion pair
+    real(dp), dimension(:), allocatable :: xCl     ! volume fraction of negative ion
+    real(dp), dimension(:), allocatable :: xHplus  ! volume fraction of Hplus
+    real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
+    real(dp), dimension(:), allocatable :: rhoq    ! total charge density in units of vsol
+    real(dp), dimension(:), allocatable :: qpol    ! charge density of polymer
+    real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
+    real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
   
-    real*8 :: qAB             ! normalization partion fnc polymer 
-    real*8 :: qC              ! normalization partion fnc polymer 
+    real(dp) :: qAB             ! normalization partion fnc polymer 
+    real(dp) :: qC              ! normalization partion fnc polymer 
 
-    real*8, dimension(:), allocatable :: rhopolAL ! density A monomer of polymer on sphere
-    real*8, dimension(:), allocatable :: rhopolBL ! density B monomer of polymer on sphere
-    real*8, dimension(:), allocatable :: rhopolAR ! density A monomer of polymer on sphere
-    real*8, dimension(:), allocatable :: rhopolBR ! density B monomer of polymer on sphere
+    real(dp), dimension(:), allocatable :: rhopolAL ! density A monomer of polymer on sphere
+    real(dp), dimension(:), allocatable :: rhopolBL ! density B monomer of polymer on sphere
+    real(dp), dimension(:), allocatable :: rhopolAR ! density A monomer of polymer on sphere
+    real(dp), dimension(:), allocatable :: rhopolBR ! density B monomer of polymer on sphere
 
-    real*8 :: qABL,qABR
+    real(dp) :: qABL,qABR
 
   
     contains
@@ -114,7 +115,7 @@ module field
     
     integer :: i
     
-    real*8 :: zerom,firstm  
+    real(dp) :: zerom,firstm  
     
     firstm=0.0d0               ! first moment 
     zerom=0.0d0                ! zero moment  
@@ -156,7 +157,7 @@ module field
     implicit none
 
     integer :: i
-    real*8  :: npolA,npolB
+    real(dp)  :: npolA,npolB
     
     
     qpolA=0.0d0
@@ -189,8 +190,8 @@ module field
     implicit none 
    
     integer :: i,s,k
-    real*8  :: npolA,npolB
-    real*8  :: sigmaLR  
+    real(dp)  :: npolA,npolB
+    real(dp)  :: sigmaLR  
     
     ! .. number of A and B monomors 
     npolA=0
@@ -236,7 +237,7 @@ module field
 
   logical function isNaN(x)
     implicit none
-    real*8 :: x
+    real(dp) :: x
     if (x /= x) then
         isNaN=.true.
     else

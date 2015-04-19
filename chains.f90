@@ -4,10 +4,10 @@ module chains
     use globals
     implicit none
   
-    integer*2, dimension(:,:), allocatable :: indexchainAB 
-    integer*2, dimension(:,:), allocatable :: indexchainC 
-    integer*2, dimension(:,:), allocatable :: indexchainAB_init 
-    integer*2, dimension(:,:), allocatable :: indexchainC_init 
+    integer(2), dimension(:,:), allocatable :: indexchainAB 
+    integer(2), dimension(:,:), allocatable :: indexchainC 
+    integer(2), dimension(:,:), allocatable :: indexchainAB_init 
+    integer(2), dimension(:,:), allocatable :: indexchainC_init 
     logical, dimension(:), allocatable :: isAmonomer
 
 contains

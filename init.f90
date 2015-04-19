@@ -15,8 +15,8 @@ subroutine init_guess_electdouble(x, xguess)
       
     implicit none
   
-    real*8 :: x(neq)       ! volume fraction solvent iteration vector 
-    real*8 :: xguess(neq)  ! guess fraction  solvent 
+    real(dp) :: x(neq)       ! volume fraction solvent iteration vector 
+    real(dp) :: xguess(neq)  ! guess fraction  solvent 
   
     !     ..local variables 
     integer :: n, i
@@ -54,18 +54,18 @@ subroutine init_guess_electdouble(x, xguess)
             endif
         enddo
      
-        if(bcflag(LEFT)/="cc") read(200,*),psisurfL     ! degree of complexation A
+        if(bcflag(LEFT)/="cc") read(200,*)psisurfL     ! degree of complexation A
         do i=1,nz
-            read(100,*),xsol(i)    ! solvent
-            read(200,*),psi(i)     ! degree of complexation A
-            read(300,*),fdisA(5,i) ! degree of complexation A
-            read(400,*),xpolC(i)   ! degree of complexation A
+            read(100,*)xsol(i)    ! solvent
+            read(200,*)psi(i)     ! degree of complexation A
+            read(300,*)fdisA(5,i) ! degree of complexation A
+            read(400,*)xpolC(i)   ! degree of complexation A
             x(i)      = xsol(i)    ! placing xsol  in vector x
             x(i+nz)   = psi(i)     ! placing xsol  in vector x
             x(i+2*nz) = fdisA(5,i) ! placing xsol  in vector x
             x(i+3*nz) = xpolC(i)   ! placing xsol  in vector x
         enddo
-        if(bcflag(RIGHT)/="cc") read(200,*),psisurfR     ! degree of complexation A 
+        if(bcflag(RIGHT)/="cc") read(200,*)psisurfR     ! degree of complexation A 
        
          do i=1,4
             close(nfile(i))
@@ -84,8 +84,8 @@ subroutine init_guess_electnopoly(x, xguess)
       
     implicit none
   
-    real*8 :: x(neq)       ! volume fraction solvent iteration vector 
-    real*8 :: xguess(neq)  ! guess fraction  solvent 
+    real(dp) :: x(neq)       ! volume fraction solvent iteration vector 
+    real(dp) :: xguess(neq)  ! guess fraction  solvent 
   
     !     ..local variables 
     integer :: n, i
@@ -128,14 +128,14 @@ subroutine init_guess_electnopoly(x, xguess)
             endif
         enddo
      
-        if(bcflag(LEFT)/="cc") read(200,*),psisurfL     ! degree of complexation A
+        if(bcflag(LEFT)/="cc") read(200,*)psisurfL     ! degree of complexation A
         do i=1,nz
-            read(100,*),xsol(i)    ! solvent
-            read(200,*),psi(i)     ! degree of complexation A
+            read(100,*)xsol(i)    ! solvent
+            read(200,*)psi(i)     ! degree of complexation A
             x(i)      = xsol(i)    ! placing xsol  in vector x
             x(i+nz)   = psi(i)     ! placing xsol  in vector x
         enddo
-        if(bcflag(RIGHT)/="cc") read(200,*),psisurfR     ! degree of complexation A 
+        if(bcflag(RIGHT)/="cc") read(200,*)psisurfR     ! degree of complexation A 
        
         do i=1,2
             close(nfile(i))
@@ -155,8 +155,8 @@ subroutine init_guess_elect(x, xguess)
       
     implicit none
   
-    real*8 :: x(neq)       ! volume fraction solvent iteration vector 
-    real*8 :: xguess(neq)  ! guess fraction  solvent 
+    real(dp) :: x(neq)       ! volume fraction solvent iteration vector 
+    real(dp) :: xguess(neq)  ! guess fraction  solvent 
   
     !     ..local variables 
     integer :: n, i
@@ -194,19 +194,19 @@ subroutine init_guess_elect(x, xguess)
                 stop
             endif
         enddo
-        if(bcflag(LEFT)/="cc") read(200,*),psisurfL    
+        if(bcflag(LEFT)/="cc") read(200,*)psisurfL    
         do i=1,nz
-            read(100,*),xsol(i)    ! solvent
-            read(200,*),psi(i)     ! degree of complexation A
-            read(300,*),fdisA(5,i) ! degree of complexation A
-            read(400,*),xpolC(i)   ! degree of complexation A
+            read(100,*)xsol(i)    ! solvent
+            read(200,*)psi(i)     ! degree of complexation A
+            read(300,*)fdisA(5,i) ! degree of complexation A
+            read(400,*)xpolC(i)   ! degree of complexation A
             x(i)      = xsol(i)    ! placing xsol  in vector x
             x(i+nz)   = psi(i)     ! placing xsol  in vector x
             x(i+2*nz) = fdisA(5,i) ! placing xsol  in vector x
             x(i+3*nz) = xpolC(i)   ! placing xsol  in vector x
         enddo
     
-        if(bcflag(RIGHT)/="cc") read(200,*),psisurfR    
+        if(bcflag(RIGHT)/="cc") read(200,*)psisurfR    
        
          do i=1,4
             close(nfile(i))
@@ -226,8 +226,8 @@ subroutine init_guess_neutral(x, xguess)
       
     implicit none
   
-    real*8 :: x(neq)       ! volume fraction solvent iteration vector 
-    real*8 :: xguess(neq)  ! guess fraction  solvent 
+    real(dp) :: x(neq)       ! volume fraction solvent iteration vector 
+    real(dp) :: xguess(neq)  ! guess fraction  solvent 
   
     !     ..local variables 
     integer :: n, i
@@ -259,8 +259,8 @@ subroutine init_guess_neutral(x, xguess)
         enddo
      
         do i=1,nz
-            read(100,*),xsol(i)       ! solvent
-            read(200,*),rhopolB(i)    ! density polymer B
+            read(100,*)xsol(i)       ! solvent
+            read(200,*)rhopolB(i)    ! density polymer B
             x(i)      = xsol(i)       ! placing xsol  in vector x
             x(i+nz)   = rhopolB(i)    ! placing rhopolB  in vector x
         enddo
@@ -290,8 +290,8 @@ subroutine make_guess_from_xstored(xguess,xstored)
 
     implicit none
 
-    real*8, intent(out) :: xguess(neq)    ! guess volume fraction solvent and potentia
-    real*8, intent(in) :: xstored(neqmax)
+    real(dp), intent(out) :: xguess(neq)    ! guess volume fraction solvent and potentia
+    real(dp), intent(in) :: xstored(neqmax)
 
     !   .. local variables
     integer :: i,neq_bc
@@ -346,11 +346,11 @@ subroutine make_guess(x, xguess,isfirstguess,flagstored,xstored)
 
     implicit none
 
-    real*8, intent(in) :: x(neq)          ! iteration vector 
-    real*8, intent(out) :: xguess(neq)    ! guess volume fraction solvent and potential 
+    real(dp), intent(in) :: x(neq)          ! iteration vector 
+    real(dp), intent(out) :: xguess(neq)    ! guess volume fraction solvent and potential 
     logical, intent(in) :: isfirstguess   ! first guess   
     logical, optional, intent(in) :: flagstored
-    real*8, optional, intent(in) :: xstored(neqmax)
+    real(dp), optional, intent(in) :: xstored(neqmax)
 
     !     ..local variables 
     integer :: i,neq_bc

@@ -12,17 +12,17 @@ subroutine rotation(xend,xendr,nseg,is_positive_z,lseg)
     use mathconst
     
     implicit none
-  
-    real*8  :: xend(3,nseg+5),xendr(3,nseg+5)
-    integer :: nseg
+
+    integer :: nseg  
     logical :: is_positive_z
-    real*8  :: lseg
+    real(dp)  :: lseg
+    real(dp)  :: xend(3,nseg+5),xendr(3,nseg+5)  
   
     ! ..local argument 
 
     integer :: i
-    real*8  :: fac,fac1,fac2,sbe,cbe,sal,cal,sga,dist
-    real*8  :: alfa,gama,cga,a,b,c
+    real(dp)  :: fac,fac1,fac2,sbe,cbe,sal,cal,sga,dist
+    real(dp)  :: alfa,gama,cga,a,b,c
     
     fac=rands(seed)
     fac1=rands(seed)

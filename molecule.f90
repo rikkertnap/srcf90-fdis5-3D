@@ -1,17 +1,18 @@
 module molecules
 
-    implicit none
+  use precision_definition
+  implicit none
 	
-	type moleclist
-        real*8 :: sol
-        real*8 :: Na
-        real*8 :: Cl
-        real*8 :: K
-        real*8 :: Ca
-        real*8 :: NaCl
-        real*8 :: KCl
-        real*8 :: Hplus
-        real*8 :: OHmin
-    end type moleclist
-
+  type moleclist
+     real(dp) :: sol
+     real(dp) :: Na
+     real(dp) :: Cl
+     real(dp) :: K
+     real(dp) :: Ca
+     real(dp) :: NaCl
+     real(dp) :: KCl
+     real(dp) :: Hplus
+     real(dp) :: OHmin
+  end type moleclist
+  
 end module 

@@ -1,21 +1,23 @@
 !     makes volume elements 
 !     for spherical coordinates 
 module volume      
+
+  use precision_definition
   implicit none
   
   
   !     .. variables
    
-  real*8  :: delta              ! delta  spacing of lattice site in z-direction
+  real(dp)  :: delta              ! delta  spacing of lattice site in z-direction
   integer :: nz                 ! nz number of lattice sites in z-direction  nz <= nsize
   integer :: nzmax              ! nzmax  maximum number of lattice sites in z-direction
   integer :: nzmin              ! nzmin minimumal number of lattice sites in z-direction  
   integer :: nzstep             ! nzstep number of lattice sites stepped over or reduced 
-  real*8, dimension(:), allocatable :: zc ! z-coordinate
-  real*8, dimension(:), allocatable :: G ! geometrical factor 
-  real*8, dimension(:), allocatable :: deltaG ! geometrical factor
-  real*8, dimension(:), allocatable :: Fplus ! factor in Poisson Eq  
-  real*8, dimension(:), allocatable :: Fmin
+  real(dp), dimension(:), allocatable :: zc ! z-coordinate
+  real(dp), dimension(:), allocatable :: G ! geometrical factor 
+  real(dp), dimension(:), allocatable :: deltaG ! geometrical factor
+  real(dp), dimension(:), allocatable :: Fplus ! factor in Poisson Eq  
+  real(dp), dimension(:), allocatable :: Fmin
   
 contains
   
@@ -39,9 +41,9 @@ contains
     implicit none
     
     integer ::  i
-    real*8  ::  vol
-    real*8  ::  vtest
-    real*8, parameter :: vtol=1.0d-5
+    real(dp)  ::  vol
+    real(dp)  ::  vtest
+    real(dp), parameter :: vtol=1.0d-5
 
   
     vol=0.0d0

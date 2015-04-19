@@ -10,11 +10,11 @@ subroutine solver(x, xguess, accuracy, residual)
     !     .. variables and constant declaractions
 
     !     .. array arguments
-    real*8 :: x(neq)
-    real*8 :: xguess(neq)  
+    real(dp) :: x(neq)
+    real(dp) :: xguess(neq)  
     !     .. scalar arguments
-    real*8 :: accuracy
-    real*8 :: residual
+    real(dp) :: accuracy
+    real(dp) :: residual
     character(len=80) :: fcnname
    
     write(fcnname,'(A6)')'solver'

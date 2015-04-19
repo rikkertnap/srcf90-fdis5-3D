@@ -14,40 +14,40 @@ module parameters
 
     !  .. volume 
   
-    real*8 :: vsol               ! volume of solvent  in nm^3       
-    real*8 :: vpolB(5)           ! volume of one polymer segment, vpol  in units of vsol
-    real*8 :: vpolA(5)           ! volume of one polymer segment, vpol  in units of vsol
-    real*8 :: vpolC              ! volume of one polymer segment hydrocarbon, vpol  in units of vsol
+    real(dp) :: vsol               ! volume of solvent  in nm^3       
+    real(dp) :: vpolB(5)           ! volume of one polymer segment, vpol  in units of vsol
+    real(dp) :: vpolA(5)           ! volume of one polymer segment, vpol  in units of vsol
+    real(dp) :: vpolC              ! volume of one polymer segment hydrocarbon, vpol  in units of vsol
   
-    real*8 :: deltavA(4)
-    real*8 :: deltavB(4)
+    real(dp) :: deltavA(4)
+    real(dp) :: deltavB(4)
   
-    real*8 :: vNa                ! volume positive ion in units of vsol
-    real*8 :: vK                 ! volume positive ion in units of vsol
-    real*8 :: vCl                ! volume negative ion in units of vsol   
-    real*8 :: vCa                ! volume positive divalent ion in units of vsol
-    real*8 :: vNaCl
-    real*8 :: vKCl
+    real(dp) :: vNa                ! volume positive ion in units of vsol
+    real(dp) :: vK                 ! volume positive ion in units of vsol
+    real(dp) :: vCl                ! volume negative ion in units of vsol   
+    real(dp) :: vCa                ! volume positive divalent ion in units of vsol
+    real(dp) :: vNaCl
+    real(dp) :: vKCl
   
     !  .. radii
   
-    real*8 :: RNa
-    real*8 :: RK
-    real*8 :: RCl
-    real*8 :: RCa
-    real*8 :: RNaCl
-    real*8 :: RKCl
+    real(dp) :: RNa
+    real(dp) :: RK
+    real(dp) :: RCl
+    real(dp) :: RCa
+    real(dp) :: RNaCl
+    real(dp) :: RKCl
     
-    real*8 :: lsegAB
-    real*8 :: lsegA              ! segment length of A polymer in nm
-    real*8 :: lsegB              ! segment length of B polymer in nm
-    real*8 :: lsegC              ! segment length of C polymer in nm
+    real(dp) :: lsegAB
+    real(dp) :: lsegA              ! segment length of A polymer in nm
+    real(dp) :: lsegB              ! segment length of B polymer in nm
+    real(dp) :: lsegC              ! segment length of C polymer in nm
   
     integer :: period            ! peridociy of repeat of A or B block 
   
-    real*8 :: VdWepsB            ! strenght VdW interaction in units of kT
-    real*8 :: VdWepsC            ! strenght VdW interaction in units of kT
-    real*8 :: chibulk            ! value of chibulk 
+    real(dp) :: VdWepsB            ! strenght VdW interaction in units of kT
+    real(dp) :: VdWepsC            ! strenght VdW interaction in units of kT
+    real(dp) :: chibulk            ! value of chibulk 
     integer :: numlayers
     integer :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
     integer :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
@@ -62,20 +62,20 @@ module parameters
     integer :: zCl               ! valence charge negative ion 
     integer :: zsurf             ! valence surface charge 
   
-    real*8 :: T                  ! temperature in K
-    real*8 :: dielectW           ! dielectric constant of water 
-    real*8 :: lb                 ! Bjerrum length	   
-    real*8 :: constqW            ! constant in Poisson eq dielectric constant of water 
+    real(dp) :: T                  ! temperature in K
+    real(dp) :: dielectW           ! dielectric constant of water 
+    real(dp) :: lb                 ! Bjerrum length	   
+    real(dp) :: constqW            ! constant in Poisson eq dielectric constant of water 
 
-    real*8 :: sigmaAB            ! sigma AB polymer coated on planar surface
-    real*8 :: sigmaABL           ! sigma AB polymer coated on planar surface
-    real*8 :: sigmaABR           ! sigma AB polymer coated on planar surface
+    real(dp) :: sigmaAB            ! sigma AB polymer coated on planar surface
+    real(dp) :: sigmaABL           ! sigma AB polymer coated on planar surface
+    real(dp) :: sigmaABR           ! sigma AB polymer coated on planar surface
     
-    real*8 :: sigmaC             ! sigma C polymer coated on planar surface
+    real(dp) :: sigmaC             ! sigma C polymer coated on planar surface
   
     integer :: itmax             ! maximum number of iterations
-    real*8 :: error              ! error imposed accuaracy
-    real*8 :: fnorm              ! L2 norm of residual vector function fcn  
+    real(dp) :: error              ! error imposed accuaracy
+    real(dp) :: fnorm              ! L2 norm of residual vector function fcn  
     integer :: infile            ! infile=1 read input files infile!=1 no input files 
     integer :: iter              ! counts number of iterations
   
@@ -88,48 +88,48 @@ module parameters
     character(len=2) :: bcvalues(2,5)      ! boundary condition bc="qu" quartz,"cl" clay or "ca" calcite
     character(len=3) ::  verboseflag       ! select input falg 
 
-    real*8 :: heightAB           ! average height of layer
-    real*8 :: heightC            ! average height of layer 
-    real*8 :: qpolA              ! charge poly A of layer 
-    real*8 :: qpolB              ! charge poly B of layer 
-    real*8 :: qpol_tot           ! charge poly A+B of layer 
-    real*8 :: avfdisA(5)         ! average degree of dissociation 
-    real*8 :: avfdisB(5)         ! average degree of dissociation
+    real(dp) :: heightAB           ! average height of layer
+    real(dp) :: heightC            ! average height of layer 
+    real(dp) :: qpolA              ! charge poly A of layer 
+    real(dp) :: qpolB              ! charge poly B of layer 
+    real(dp) :: qpol_tot           ! charge poly A+B of layer 
+    real(dp) :: avfdisA(5)         ! average degree of dissociation 
+    real(dp) :: avfdisB(5)         ! average degree of dissociation
   
   !     .. weak polyelectrolyte variables 
   !     .. equibrium constant
   
-    real*8 :: K0A(4)              ! intrinsic equilibruim constant
-    real*8 :: KA(4)               ! experimemtal equilibruim constant 
-    real*8 :: pKA(4)              ! experimental equilibruim constant pKa= -log[Ka]
-    real*8 :: K0B(4)              ! intrinsic equilibruim constant
-    real*8 :: KB(4)               ! experimemtal equilibruim constant 
-    real*8 :: pKB(4)              ! experimental equilibruim constant pKa= -log[Ka]
+    real(dp) :: K0A(4)              ! intrinsic equilibruim constant
+    real(dp) :: KA(4)               ! experimemtal equilibruim constant 
+    real(dp) :: pKA(4)              ! experimental equilibruim constant pKa= -log[Ka]
+    real(dp) :: K0B(4)              ! intrinsic equilibruim constant
+    real(dp) :: KB(4)               ! experimemtal equilibruim constant 
+    real(dp) :: pKB(4)              ! experimental equilibruim constant pKa= -log[Ka]
   
-    real*8 :: pKw                 ! water equilibruim constant pKw= -log[Kw] ,Kw=[H+][OH-] 
+    real(dp) :: pKw                 ! water equilibruim constant pKw= -log[Kw] ,Kw=[H+][OH-] 
   
-    real*8 :: K0ionNa             ! intrinsic equilibruim constant
-    real*8 :: KionNa              ! experimemtal equilibruim constant 
-    real*8 :: pKionNa             ! experimental equilibruim constant pKion= -log[Kion]	 
+    real(dp) :: K0ionNa             ! intrinsic equilibruim constant
+    real(dp) :: KionNa              ! experimemtal equilibruim constant 
+    real(dp) :: pKionNa             ! experimental equilibruim constant pKion= -log[Kion]	 
   
-    real*8 :: K0ionK              ! intrinsic equilibruim constant
-    real*8 :: KionK               ! experimemtal equilibruim constant 
-    real*8 :: pKionK              ! experimental equilibruim constant pKion= -log[Kion]	 
+    real(dp) :: K0ionK              ! intrinsic equilibruim constant
+    real(dp) :: KionK               ! experimemtal equilibruim constant 
+    real(dp) :: pKionK              ! experimental equilibruim constant pKion= -log[Kion]	 
   
     !     .. bulk volume fractions 
   
-    real*8 :: pibulk             ! -ln(xsolbulk)
-    real*8 :: xNaClsalt          ! volume fraction of salt in bulk
-    real*8 :: xKClsalt           ! volume fraction of salt in bulk
-    real*8 :: xCaCl2salt         ! volume fraction of divalent salt in bulk
+    real(dp) :: pibulk             ! -ln(xsolbulk)
+    real(dp) :: xNaClsalt          ! volume fraction of salt in bulk
+    real(dp) :: xKClsalt           ! volume fraction of salt in bulk
+    real(dp) :: xCaCl2salt         ! volume fraction of divalent salt in bulk
   
-    real*8 :: cHplus             ! concentration of H+ in bulk in mol/liter
-    real*8 :: cOHmin             ! concentration of OH- in bulk in mol/liter
-    real*8 :: cNaCl              ! concentration of salt in bulk in mol/liter
-    real*8 :: cKCl               ! concentration of salt in bulk in mol/liter
-    real*8 :: cCaCl2             ! concentration of divalent salt in bulk in mol/liter
-    real*8 :: pHbulk             ! pH of bulk pH = -log([H+])
-    real*8 :: pOHbulk            ! p0H of bulk p0H = -log([0H-])
+    real(dp) :: cHplus             ! concentration of H+ in bulk in mol/liter
+    real(dp) :: cOHmin             ! concentration of OH- in bulk in mol/liter
+    real(dp) :: cNaCl              ! concentration of salt in bulk in mol/liter
+    real(dp) :: cKCl               ! concentration of salt in bulk in mol/liter
+    real(dp) :: cCaCl2             ! concentration of divalent salt in bulk in mol/liter
+    real(dp) :: pHbulk             ! pH of bulk pH = -log([H+])
+    real(dp) :: pOHbulk            ! p0H of bulk p0H = -log([0H-])
   
         
     contains
@@ -143,7 +143,7 @@ module parameters
 
             implicit none
 
-            integer*8 :: neq_bc
+            integer(8) :: neq_bc
 
             neq_bc=0 
             if(bcflag(LEFT)/="cc") neq_bc=neq_bc+1
@@ -257,15 +257,15 @@ module parameters
 
         end subroutine  
 
-        real*8 function BjerrumLenght(T)
+        real(dp) function BjerrumLenght(T)
 
             use mathconst
             use physconst
             
             implicit none
             
-            real*8, intent(in) :: T     
-            real*8 :: lb
+            real(dp), intent(in) :: T     
+            real(dp) :: lb
 
             lb=(elemcharge**2)/(4.0d0*pi*dielectW*dielect0*kBoltzmann*T) ! bjerrum length in water=solvent in m
             lb=lb/1.0d-9              ! bjerrum length in water in nm
@@ -286,7 +286,7 @@ module parameters
             implicit none      
             
             integer :: i
-            real*8 :: vA,vB
+            real(dp) :: vA,vB
             
             !  .. initializations of variables
      
@@ -424,8 +424,8 @@ module parameters
             
             !     .. local variable
             
-            real*8,  dimension(:), allocatable :: x         ! volume fraction solvent iteration vector 
-            real*8,  dimension(:), allocatable :: xguess  
+            real(dp),  dimension(:), allocatable :: x         ! volume fraction solvent iteration vector 
+            real(dp),  dimension(:), allocatable :: xguess  
             
             integer :: i
             character(len=15) :: sysflag_old

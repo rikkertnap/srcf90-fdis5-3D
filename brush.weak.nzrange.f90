@@ -24,16 +24,16 @@ program brushweakpolyelectrolyte
     
     implicit none  
     
-    real*8,  dimension(:), allocatable :: x         ! iteration vector 
-    real*8,  dimension(:), allocatable :: xguess    ! guess iteration vector
-    real*8,  dimension(:), allocatable :: xstored   ! stored iteration vector
-    real*8,  dimension(:), allocatable :: fvec     
+    real(dp),  dimension(:), allocatable :: x         ! iteration vector 
+    real(dp),  dimension(:), allocatable :: xguess    ! guess iteration vector
+    real(dp),  dimension(:), allocatable :: xstored   ! stored iteration vector
+    real(dp),  dimension(:), allocatable :: fvec     
   
     integer :: i,c,eps          ! dummy indices
     integer, parameter :: cmax=20
     integer, parameter :: epsmax=19
-    real*8  :: cs(cmax)         ! salt concentrations     
-    real*8  :: VdWeps(epsmax)   ! VdW eps values
+    real(dp)  :: cs(cmax)         ! salt concentrations     
+    real(dp)  :: VdWeps(epsmax)   ! VdW eps values
     integer :: countfile        ! file counter        
     logical :: use_xstored       
     logical :: isfirstguess   

@@ -12,10 +12,11 @@ module fcnpointer
 
     abstract interface
         subroutine fcn(x,f,n)
+            use precision_definition
             implicit none
-            real*8, dimension(n), intent(in) :: x
-            real*8, dimension(n), intent(out) :: f
-            integer*8, intent(in) :: n
+            integer(8), intent(in) :: n
+            real(dp), dimension(n), intent(in) :: x
+            real(dp), dimension(n), intent(out) :: f
         end subroutine fcn
     end interface
 
@@ -50,27 +51,27 @@ module listfcn
 
         !     .. scalar arguments
         !     .. array arguments
-
-        real*8, intent(in) :: x(neq)
-        real*8, intent(out) :: f(neq)
-        integer*8, intent(in) :: nn
+        integer(8), intent(in) :: nn
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+        
 
         !     .. declare local variables
 
-        real*8 :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
-        real*8 :: rhopolAin(nsize),rhopolBin(nsize),xpolCin(nsize)
-        real*8 :: xA(3),xB(3),sumxA,sumxB
-        real*8 :: constA,constB
-        real*8 :: pro,rhopolAB0,rhopolC0
+        real(dp) :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
+        real(dp) :: rhopolAin(nsize),rhopolBin(nsize),xpolCin(nsize)
+        real(dp) :: xA(3),xB(3),sumxA,sumxB
+        real(dp) :: constA,constB
+        real(dp) :: pro,rhopolAB0,rhopolC0
         integer :: n                 ! half of n
         integer :: i,j,k,c,s         ! dummy indices
-        real*8 :: tmp,expVdW 
-        real*8 :: norm
+        real(dp) :: tmp,expVdW 
+        real(dp) :: norm
         integer :: conf              ! counts number of conformations
-        real*8 :: cn                 ! auxilary variable for Poisson Eq
+        real(dp) :: cn                 ! auxilary variable for Poisson Eq
 
 
-        real*8, parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
 
 
         !     .. executable statements 
@@ -276,18 +277,18 @@ module listfcn
         !     .. scalar arguments
         !     .. array arguments
 
-        real*8, intent(in) :: x(neq)
-        real*8, intent(out) :: f(neq)
-        integer*8, intent(in) :: nn
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+        integer(8), intent(in) :: nn
 
 
         !     .. declare local variables
 
         integer :: n                 ! half of n
         integer :: i,j,k,c,s         ! dummy indices
-        real*8 :: norm
+        real(dp) :: norm
         integer :: conf              ! counts number of conformations
-!        real*8 :: cn                 ! auxilary variable for Poisson Eq
+!        real(dp) :: cn                 ! auxilary variable for Poisson Eq
         integer :: neq_bc           
 
         !     .. executable statements 
@@ -397,33 +398,33 @@ module listfcn
         !     .. scalar arguments
         !     .. array arguments
 
-        real*8, intent(in) :: x(neq)
-        real*8, intent(out) :: f(neq)
-        integer*8, intent(in) :: nn
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+        integer(8), intent(in) :: nn
 
 
         !     .. declare local variables
 
-        real*8 :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
-        real*8 :: rhopolAin(nsize),rhopolBin(nsize),xpolCin(nsize)
-        real*8 :: xA(3),xB(3),sumxA,sumxB
-        real*8 :: constA,constB
-        real*8 :: pro,rhopolAB0,rhopolC0
+        real(dp) :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
+        real(dp) :: rhopolAin(nsize),rhopolBin(nsize),xpolCin(nsize)
+        real(dp) :: xA(3),xB(3),sumxA,sumxB
+        real(dp) :: constA,constB
+        real(dp) :: pro,rhopolAB0,rhopolC0
         integer :: n                 ! half of n
         integer :: i,j,k,c,s         ! dummy indices
-        real*8 :: tmp,expVdW 
-        real*8 :: norm
+        real(dp) :: tmp,expVdW 
+        real(dp) :: norm
         integer :: conf              ! counts number of conformations
-        real*8 :: cn                 ! auxilary variable for Poisson Eq
+        real(dp) :: cn                 ! auxilary variable for Poisson Eq
         integer :: neq_bc           
 
-        real*8, parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
 
 
         !     .. executable statements 
 
         n=nz                      ! size vector neq=5*nz x=(pi,psi,rhopolA,rhopolB,xpolC)
-
+        print*,"n=",n
         do i=1,n                  ! init x 
             xsol(i)= x(i)          ! solvent volume fraction 
             psi(i) = x(i+n)        ! potential
@@ -626,24 +627,24 @@ module listfcn
         !     .. scalar arguments
         !     .. array arguments
 
-        real*8, intent(in) :: x(neq)
-        real*8, intent(out) :: f(neq)
-        integer*8, intent(in) :: nn
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+        integer(8), intent(in) :: nn
 
         !     .. declare local variables
 
-        real*8 :: exppiA(nsize),exppiB(nsize)  ! auxilairy variable for computing P(\alpha) 
-        real*8 :: rhopolAin(nsize),rhopolBin(nsize)
-        real*8 :: xA(3),xB(3),sumxA,sumxB
-        real*8 :: constA,constB
-        real*8 :: proL,rhopolABL0,proR,rhopolABR0
+        real(dp) :: exppiA(nsize),exppiB(nsize)  ! auxilairy variable for computing P(\alpha) 
+        real(dp) :: rhopolAin(nsize),rhopolBin(nsize)
+        real(dp) :: xA(3),xB(3),sumxA,sumxB
+        real(dp) :: constA,constB
+        real(dp) :: proL,rhopolABL0,proR,rhopolABR0
         integer :: n                 ! half of n
         integer :: i,j,k,kL,kR,c,s         ! dummy indices
-        real*8 :: norm
+        real(dp) :: norm
         integer :: conf              ! counts number of conformations
-        real*8 :: cn                 ! auxilary variable for Poisson Eq
+        real(dp) :: cn                 ! auxilary variable for Poisson Eq
 
-        real*8, parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
 
         !  .. executable statements 
 
@@ -837,26 +838,26 @@ module listfcn
         !     .. scalar arguments
         !     .. array arguments
 
-        real*8, intent(in) :: x(neq)
-        real*8, intent(out) :: f(neq)
-        integer*8, intent(in) :: nn
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+        integer(8), intent(in) :: nn
 
         !     .. declare local variables
 
-        real*8 :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
-        real*8 :: xpolBin(nsize)
-        real*8 :: xA(3),xB(3),sumxA,sumxB
-        real*8 :: constA,constB
-        real*8 :: pro,rhopolAB0,rhopolC0
+        real(dp) :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
+        real(dp) :: xpolBin(nsize)
+        real(dp) :: xA(3),xB(3),sumxA,sumxB
+        real(dp) :: constA,constB
+        real(dp) :: pro,rhopolAB0,rhopolC0
         integer :: n                 ! half of n
         integer :: i,j,k,c,s         ! dummy indices
-        real*8 :: tmp,expVdW 
-        real*8 :: norm
+        real(dp) :: tmp,expVdW 
+        real(dp) :: norm
         integer :: conf              ! counts number of conformations
-        real*8 :: cn                 ! auxilary variable for Poisson Eq
+        real(dp) :: cn                 ! auxilary variable for Poisson Eq
 
 
-        real*8, parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
 
 
         !     .. executable statements 
@@ -974,18 +975,18 @@ module listfcn
 
         !     .. scalar arguments
 
-        integer*8, intent(in) :: nn
+        integer(8), intent(in) :: nn
 
         !     .. array arguments
 
-        real*8, intent(in) :: x(neq)
-        real*8, intent(out):: f(neq)
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out):: f(neq)
 
 
         !     .. local variables
 
-        real*8 :: phiNaCl,phiNa,phiCl,phiK,phiKCl
-        real*8 :: deltavolNaCl,deltavolKCl,norm
+        real(dp) :: phiNaCl,phiNa,phiCl,phiK,phiKCl
+        real(dp) :: deltavolNaCl,deltavolKCl,norm
 
         !     .. executable statements 
 

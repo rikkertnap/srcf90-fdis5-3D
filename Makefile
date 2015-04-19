@@ -2,7 +2,7 @@
 
 # put the name of the target program here
 TARGET = brush.weak.mixture.planar # the list of source files
-SRC =   mathconst.f90 physconst.f90 globals.f90 molecule.f90 chains.f90 volume.f90 L2norm.f90 rands.f90 parameter.f90  field.f90 VdW.f90 surface.f90 fenergy.f90 initcha.f90  myio.f90 cadenas.f90 fcnCa.f90  rota.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  brush.weak.nzrange.f90
+SRC =  precision.f90  mathconst.f90 physconst.f90 globals.f90 molecule.f90 chains.f90 volume.f90 L2norm.f90 rands.f90 parameter.f90  field.f90 VdW.f90 surface.f90 fenergy.f90 initcha.f90  myio.f90 cadenas.f90 fcnCa.f90  rota.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  brush.weak.nzrange.f90
 # some definitions
 SHELL = /bin/bash
 
@@ -79,7 +79,7 @@ FF= ifort
 else 
 
 
-FFLAGS= -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds 
+FFLAGS= -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds 
 
 LDFLAGS=  -L/opt/local/kinsol-2.6.0/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial -lm -L/usr/local/Cellar/gcc/4.9.2_1/lib/gcc/4.9/gcc/x86_64-apple-darwin13.4.0/4.9.2 -L/usr/local/Cellar/gcc/4.9.2_1/lib/gcc/4.9/gcc/x86_64-apple-darwin13.4.0/4.9.2/../../.. -lgfortran -lquadmath -lm
 

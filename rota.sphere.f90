@@ -17,17 +17,17 @@ subroutine rota(xend,xendr,nseg,test,lseg)
   implicit none
   
   integer :: nseg
-  real*8 :: xend(3,nseg+5),xendr(3,nseg+5)
-  real*8 :: lseg
+  real(dp) :: xend(3,nseg+5),xendr(3,nseg+5)
+  real(dp) :: lseg
   
   ! ..local argument 
 
-  real*8 :: theta,theta1,x(120),y(120),z(120),xp(120),yp(120)
+  real(dp) :: theta,theta1,x(120),y(120),z(120),xp(120),yp(120)
   
-  character*1 :: test
+  character(len=1) :: test
   integer :: k,m1,i
-  real*8 :: fac,fac1,fac2,sbe,cbe,sal,cal,sga,dist
-  real*8 :: alfa,gama,cga,a,b,c
+  real(dp) :: fac,fac1,fac2,sbe,cbe,sal,cal,sga,dist
+  real(dp) :: alfa,gama,cga,a,b,c
    
 
   theta1=pi/6.0

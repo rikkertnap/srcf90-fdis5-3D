@@ -1,9 +1,9 @@
 !    .. module file for VdWcoeff
 module VdW
-      
+  use precision_definition
   implicit none
   
-  real*8, dimension(:,:), allocatable :: chis  ! matrix of interaction coeff
+  real(dp), dimension(:,:), allocatable :: chis  ! matrix of interaction coeff
   integer, dimension(:), allocatable :: minj 
   integer, dimension(:), allocatable :: maxj
   
@@ -44,7 +44,7 @@ contains
   subroutine allocate_matrix(M,n)
     implicit none
 
-    real*8, dimension(:,:), allocatable :: M
+    real(dp), dimension(:,:), allocatable :: M
     integer, intent(in) :: n
     integer :: ier
     
@@ -75,13 +75,13 @@ contains
     
     !     .. local variables 
     integer :: nsize_file
-    real*8  :: delta_file
-    real*8  :: chibulk_file
+    real(dp)  :: delta_file
+    real(dp)  :: chibulk_file
     integer :: cutoff_file
     integer :: i,j,nradius
     integer :: ival,jval
     
-    real*8, dimension(:,:), allocatable :: VdWcoeff  ! matrix of interaction coeff
+    real(dp), dimension(:,:), allocatable :: VdWcoeff  ! matrix of interaction coeff
 
     !     .. reading in of variables from file                                              
     

@@ -1,19 +1,19 @@
 module vectornorm
 ! computes L2norm
- 
+    use precision_definition
     implicit none
 
     contains
 
-    real*8 function l2norm (f,n)
+    real(dp) function l2norm (f,n)
       
         implicit none
 
         integer, intent(in)  :: n 
-        real*8, intent(in) :: f(n)
+        real(dp), intent(in) :: f(n)
   
         integer :: i
-        real*8 :: norm
+        real(dp) :: norm
 
         norm=0.0d0
 

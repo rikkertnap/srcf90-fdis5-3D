@@ -1,7 +1,8 @@
 !     .. module file of global variables 
 
 module globals
-  
+
+    use precision_definition
     use mathconst
   
     implicit none
@@ -9,8 +10,8 @@ module globals
     !     .. variables
 
     integer  :: nsize         ! size lattice, numer of layers
-    integer*8  :: neq         ! number of non-linear equations
-    integer*8  :: neqmax      ! maximum number of non-linear equations
+    integer(8)  :: neq         ! number of non-linear equations
+    integer(8)  :: neqmax      ! maximum number of non-linear equations
     integer  :: nsegAB        ! length of AB polymer 
     integer  :: nsegC         ! length of C polymer 
     integer  :: cuantasAB     ! number of polymer configurations
