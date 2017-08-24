@@ -1,73 +1,97 @@
 ! --------------------------------------------------------------|
 ! myio.f90:                                                     |
 ! --------------------------------------------------------------|
+module myio
 
-subroutine read_inputfile
+    use precision_definition
+    implicit none
 
-    use globals  
+    ! return error values
+
+    integer, parameter ::  myio_err_sysflag   = 1
+ !   integer, parameter ::  myio_err_runflag   = 2
+ !   integer, parameter ::  myio_err_geometry  = 3
+ !   integer, parameter ::  myio_err_method    = 4
+ !   integer, parameter ::  myio_err_chaintype = 5
+ !   integer, parameter ::  myio_err_domain    = 6
+    integer, parameter ::  myio_err_inputfile = 7
+
+contains
+
+
+subroutine read_inputfile(info)
+
+    use globals
     use parameters
     use surface 
-  
+    use myutils, only : newunit
+
     implicit none
-  
+
+    integer, intent(out),optional :: info
+
     character(len=8) :: fname
-    integer :: ios
+    integer :: ios,un_input  ! un = unit number    
     character(len=80) :: fcnname
 
     !     .. reading in of variables from file
- 
-  
+    if (present(info)) info = 0
+
     write(fname,'(A8)')'input.in'
-    open(unit=1,file=fname,iostat=ios,status='old')
-    if(ios > 0 ) then
+    open(unit=newunit(un_input),file=fname,iostat=ios,status='old')
+    if(ios >0 ) then
         print*, 'Error opening file : iostat =', ios
-        stop
+        if (present(info)) info = myio_err_inputfile
+        return
     endif
-  
-    read(1,*)method
-    read(1,*)sysflag
-    read(1,*)bcflag(LEFT)
-    read(1,*)bcflag(RIGHT)
-    read(1,*)chainmethod
-    read(1,*)chaintype
-    read(1,*)sigmaABL
-    read(1,*)sigmaABR
-    read(1,*)sigmaC
-    read(1,*)error             
-    read(1,*)infile              ! guess  1==yes
-    read(1,*)pHbulk
-    read(1,*)KionNa
-    read(1,*)KionK
-    read(1,*)sigmaSurfL
-    read(1,*)sigmaSurfR
-    read(1,*)cNaCl
-    read(1,*)cKCl
-    read(1,*)cCaCl2
-    read(1,*)pKa(1)           !   AH   <=> A- + H+ 
-    read(1,*)pKa(2)           !   ANa  <=> A- + Na+  
-    read(1,*)pKa(3)           !   ACa+ <=> A- + Ca2+ 
-    read(1,*)pKa(4)           !   A2Ca <=> 2A- + Ca2+
-    read(1,*)pKb(1)           !   BH   <=> B- + H+ 
-    read(1,*)pKb(2)           !   BNa  <=> B- + Na+ 
-    read(1,*)pKb(3)           !   BCa+ <=> B- + Ca2+   
-    read(1,*)pKb(4)           !   B2Ca <=> 2B- + Ca2+   
-    read(1,*)period
-    read(1,*)nsize
-    read(1,*)nsegAB
-    read(1,*)cuantasAB
-    read(1,*)nsegC
-    read(1,*)cuantasC
-    read(1,*)VdWepsC
-    read(1,*)VdWepsB    
-    read(1,*)VdWcutoff
-    read(1,*)nzmax            ! max distance
-    read(1,*)nzmin            ! min distance
-    read(1,*)nzstep           ! step distance  
-    read(1,*)verboseflag     
+
+
+    read(un_input,*)method
+    read(un_input,*)sysflag
+    read(un_input,*)bcflag(LEFT)
+    read(un_input,*)bcflag(RIGHT)
+    read(un_input,*)chainmethod
+    read(un_input,*)chaintype
+    read(un_input,*)sigmaABL
+    read(un_input,*)sigmaABR
+    read(un_input,*)sigmaC
+    read(un_input,*)error             
+    read(un_input,*)infile              ! guess  1==yes
+    read(un_input,*)pHbulk
+    read(un_input,*)KionNa
+    read(un_input,*)KionK
+    read(un_input,*)sigmaSurfL
+    read(un_input,*)sigmaSurfR
+    read(un_input,*)cNaCl
+    read(un_input,*)cKCl
+    read(un_input,*)cCaCl2
+    read(un_input,*)pKa(1)           !   AH   <=> A- + H+ 
+    read(un_input,*)pKa(2)           !   ANa  <=> A- + Na+  
+    read(un_input,*)pKa(3)           !   ACa+ <=> A- + Ca2+ 
+    read(un_input,*)pKa(4)           !   A2Ca <=> 2A- + Ca2+
+    read(un_input,*)pKb(1)           !   BH   <=> B- + H+ 
+    read(un_input,*)pKb(2)           !   BNa  <=> B- + Na+ 
+    read(un_input,*)pKb(3)           !   BCa+ <=> B- + Ca2+   
+    read(un_input,*)pKb(4)           !   B2Ca <=> 2B- + Ca2+   
+    read(un_input,*)period
+    read(un_input,*)nsize
+    read(un_input,*)nsegAB
+    read(un_input,*)cuantasAB
+    read(un_input,*)nsegC
+    read(un_input,*)cuantasC
+    read(un_input,*)VdWepsC
+    read(un_input,*)VdWepsB    
+    read(un_input,*)VdWcutoff
+    read(un_input,*)nzmax            ! max distance
+    read(un_input,*)nzmin            ! min distance
+    read(un_input,*)nzstep           ! step distance  
+    read(un_input,*)verboseflag     
+
+    close(un_input)
 
     call init_allowed_flags()
     write(fcnname,'(A14)')'read_inputfile'
-   
+    print*,fcnname
     call check_value_sysflag(fcnname)
     call check_value_bcflag()
    
@@ -873,61 +897,6 @@ subroutine output_individualcontr_fe(countfile)
 
 end subroutine   output_individualcontr_fe
 
+end module
 
-
-! printing to a log file 
-
-
-subroutine print_to_log(UnitNum,text)
-
-    implicit none
-
-    !Formal argument
-    character (len=50), intent(in) :: text
-    integer, intent (in) :: UnitNum
-    !Local variables
-    character (len=8)  :: date
-    character (len=10) :: time
-    character (len=26) :: date_time
-
-    !Executable part
-    call date_and_time(date,time)
-    date_time='['//date(7:8)//'-'//date(5:6)//'-'//date(1:4)//' '//time(1:2)//':'//time(3:4)//':'//time(5:10)//'] '
-    write(UnitNum,*) date_time, text
-
-end subroutine print_to_log
-
-
-subroutine open_logfile(UnitNum,FileName)  
-
-    implicit none
-    integer, intent (in) :: UnitNum
-    character (len=*), intent (in) :: FileName
-    logical :: exist
-    integer :: ios
-
-    inquire(file=FileName, exist=exist)
-    if (exist) then
-        open(UnitNum,file=FileName, iostat=ios,status="old", position="append", action="write")
-    else
-        open(UnitNum,file=FileName, iostat=ios,status="new", action="write")
-    endif
-  
-    if(ios > 0 ) then
-        print*, 'Error opening file : iostat =', ios
-        stop
-    endif
-
- end subroutine open_logfile  
-
-
-subroutine close_logfile(UnitNum)
-
-    implicit none
-
-    integer, intent (in) :: UnitNum
-
-    close(UnitNum)
-
-end subroutine close_logfile    
 

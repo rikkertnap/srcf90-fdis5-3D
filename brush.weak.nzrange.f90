@@ -21,6 +21,8 @@ program brushweakpolyelectrolyte
     use listfcn
     use initxvector
     use surface
+    use myio
+    use myutils
     
     implicit none  
     
@@ -37,7 +39,7 @@ program brushweakpolyelectrolyte
     integer :: countfile        ! file counter        
     logical :: use_xstored       
     logical :: isfirstguess   
-    character(len=50) :: text
+    character(len=lenText) :: text
 
     
     ! .. executable statements 

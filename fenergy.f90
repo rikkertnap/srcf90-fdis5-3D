@@ -131,6 +131,9 @@ contains
         FEel  = (delta/vsol)*FEel
         FEpi  = (delta/vsol)*FEpi
         FErho = (delta/vsol)*FErho
+        
+        FEbind = delta*FEbind/2.0d0 !  check this 
+
         qres = (delta/vsol)*qres
         sumphiA = delta*sumphiA
         sumphiB = delta*sumphiB

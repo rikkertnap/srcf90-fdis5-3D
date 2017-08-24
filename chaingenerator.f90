@@ -34,9 +34,9 @@ subroutine make_chains_mc()
     use random
     use parameters
     use volume
+    use myutils
 
-
-    implicit none 
+    implicit none
 
     !     .. variable and constant declaractions      
 
@@ -46,9 +46,9 @@ subroutine make_chains_mc()
     integer :: conf              ! counts number of conformations
     real(dp)  :: chain(3,nsegAB,200) ! chains(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
     real(dp)  :: x,y,z,r           ! coordinates
-    character(len=50) :: text 
+    character(len=lenText) :: text
 
-    !     .. executable statements 
+    !     .. executable statements
 
     !     .. initializations of variables     
     !     .. init of  cuantas polymer configurations  

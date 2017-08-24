@@ -1,19 +1,19 @@
-!------------------------------------------------------------------------------| 
-!     kinsolver.f                                                              |  
+! -----------------------------------------------------------------------------| 
+!     kinsolver.f90                                                            |  
 !     module containing functions and subroutines for the usage of             |  
 !     the numerical kinsol library routine                                     |
 !------------------------------------------------------------------------------| 
 
+
 module kinsolvars
 
-  use precision_definition
-  implicit none
-  !     .. variables
-  
-  real(dp), dimension(:), allocatable ::   pp ! pre-processor variable
+    use precision_definition
+    implicit none
+    !     .. variables
+
+    real(dp), dimension(:), allocatable ::   pp ! pre-processor variable
 
 end module kinsolvars
-
 
 !     The routine fkpset is the preconditioner setup routine. It must have
 !     that specific name to be used in order that the c code can find and link
@@ -21,20 +21,20 @@ end module kinsolvars
 
 subroutine fkpset(udata, uscale, fdata, fscale,vtemp1,vtemp2, ier)
 
-  use globals, only : neq
-  use kinsolvars
-  implicit none
-  
-  integer :: ier
-  integer(8) :: i
-  double precision :: udata(*), uscale(*), fdata(*), fscale(*)
-  double precision :: vtemp1(*), vtemp2(*)
-  
-  do i = 1, neq
-     pp(i) = 0.5d0 / (udata(i) + 5.0d0)
-  enddo
-  ier = 0
-  
+    use globals, only : neq
+    use kinsolvars
+    implicit none
+
+    integer :: ier
+    integer :: i
+    double precision :: udata(*), uscale(*), fdata(*), fscale(*)
+    double precision :: vtemp1(*), vtemp2(*)
+
+    do i = 1, neq
+        pp(i) = 0.5_dp / (udata(i) + 5.0_dp)
+    enddo
+    ier = 0
+
 end subroutine fkpset
 
 !     The routine fkpsol is the preconditioner solve routine. It must have
@@ -43,21 +43,21 @@ end subroutine fkpset
 
 subroutine fkpsol(udata, uscale, fdata, fscale, vv, ftem, ier)
   
-  use globals, only : neq
-  use kinsolvars
-  implicit none
+    use globals, only : neq
+    use kinsolvars
+    implicit none
   
-  integer :: ier
-  integer(8) :: i
-  double precision :: udata(*), uscale(*), fdata(*), fscale(*)
-  double precision :: vv(*), ftem(*)
+    integer :: ier
+    integer :: i
+    double precision :: udata(*), uscale(*), fdata(*), fscale(*)
+    double precision :: vv(*), ftem(*)
   
-  do  i = 1, neq
-     vv(i) = vv(i) * pp(i)
-  enddo
-  ier = 0
+    do  i = 1, neq
+        vv(i) = vv(i) * pp(i)
+    enddo
+
+    ier = 0
   
-  return
 end subroutine fkpsol
 
 
@@ -71,141 +71,166 @@ end subroutine fkpsol
 
 subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
   
-  use globals, only : nsize,neq,LogUnit
-  use kinsolvars
-  use parameters, only : iter
+    use globals, only : nsize, neq 
+    use kinsolvars
+    use parameters, only : iter
+    use myutils
 
-  implicit none
-  
-  !     .. variables and constant declaractions 
-  
-  !     .. array arguments     
- 
-  real(dp) :: x(neq)
-  real(dp) :: xguess(neq)
+    implicit none
 
-  !     .. scalar arguments
-  real(dp) :: fnorm 
-  real(dp) :: error
-  integer :: n                 !  number of equations
-  
-  !     .. local arguments   
-  integer(4) :: ier             ! Kinsol error flag
-  
-  integer(8) :: iout(15)        ! Kinsol additional output information
-  real(dp) :: rout(2)            ! Kinsol additional out information
-  
-  integer :: i                 ! dummy index 
-  integer(8) :: msbpre
-  integer(8) :: maxniter
-  real(dp) :: fnormtol, scsteptol
-  real(dp) :: scale(neq)
-  real(dp) :: constr(neq)
-  
-  integer(4) :: globalstrat, maxl, maxlrst
-  character(len=50) :: text, rstr, istr
+    ! .. neq iout(15) and msbre match C type long int.
+    ! .. variables and constant declaractions 
 
-  !     .. executable statements 
-  
-  !     .. init of kinsol variables 
+    ! .. array arguments      
+    real(dp) :: x(neq)
+    real(dp) :: xguess(neq)
 
-  ! neq = n                                
-  msbpre  = 5               ! maximum number of iterations without prec. setup 
-  fnormtol = error          ! Function-norm stopping tolerance
-  scsteptol = error         ! Function-norm stopping tolerance
-  maxl = neq                ! maximum Krylov subspace dimension 
-  maxlrst = 20               ! maximum number of restarts
-  globalstrat = 0           ! inexact Newton  
-  maxniter =1000            ! maximum of nonlinear iterations default 200  
+    !  .. scalar arguments
+    real(dp) :: fnorm 
+    real(dp) :: error
+    integer(8) :: n                 !  number of equations
+
+    !  .. local arguments 
+
+    integer(8) :: iout(15)         ! Kinsol additional output information
+    integer(8) :: msbpre           ! maximum number of iterations without prec. setup 
+
+    real(dp) :: rout(2)           ! Kinsol additional out information
+    integer  :: i                 ! dummy index 
+    integer  :: ier               ! Kinsol error flag
+    integer  ::  maxniter
+    real(dp) :: fnormtol, scsteptol
+    real(dp) :: fscale(neq)
+    real(dp) :: constr(neq)
+    integer  ::  globalstrat, maxl, maxlrst
+    character(len=lenText) :: text, rstr, istr
+  
+    !     .. executable statements 
+
+    !     .. init of kinsol variables 
+                            
+    msbpre  = 5               ! maximum number of iterations without prec. setup 
+    fnormtol = error          ! Function-norm stopping tolerance
+    scsteptol = error         ! Function-norm stopping tolerance
+    maxl = neq                ! maximum Krylov subspace dimension 
+    maxlrst = 20              ! maximum number of restarts
+    globalstrat = 0           ! inexact Newton  
+    maxniter =1000            ! maximum of nonlinear iterations default 200  
 
 
-  allocate(pp(neq))
+    allocate(pp(neq))
 
+
+    do i = 1, neq             
+        constr(i) = 0.0_dp      ! constraint vector  
+        fscale(i) = 1.0_dp      ! scaling vector  
+        x(i) = xguess(i)        ! initial guess
+    enddo
   
-  do i = 1, neq             
-     constr(i) = 0.0        ! constraint vector  
-     scale(i) = 1.0         ! scaling vector  
-     x(i) = xguess(i)       ! initial guess
-  enddo
   
-  
-  call fnvinits(3, neq, ier) ! inits NVECTOR module
+    call fnvinits(3, neq, ier) ! inits NVECTOR module
     
-  if (ier .ne. 0) then      ! 3 for Kinsol, neq number of equations, ier error flag (must be 0 on output)
-     print*, 'SUNDIALS_ERROR: FNVINITS returned IER = ', ier
-     stop
-  endif
+    if (ier .ne. 0) then      ! 3 for Kinsol, neq number of equations, ier error flag (must be 0 on output)
+        print*, 'SUNDIALS_ERROR: FNVINITS returned IER = ', ier
+        stop
+    endif
   
-  call fkinmalloc(iout, rout, ier) ! Allocates memory and output additional information
+    call fkinmalloc(iout, rout, ier) ! Allocates memory and output additional information
   
-  if (ier .ne. 0) then
-     print*, 'SUNDIALS_ERROR: FKINMALLOC returned IER = ', ier
-     stop
-  endif
+    if (ier .ne. 0) then
+        print*, 'SUNDIALS_ERROR: FKINMALLOC returned IER = ', ier
+        stop
+    endif
   
-  call fkinsetiin('MAX_SETUPS', msbpre, ier) ! Additional input information
-  call fkinsetiin('MAX_NITER', maxniter, ier) 
-  call fkinsetrin('FNORM_TOL', fnormtol, ier)
-  call fkinsetrin('SSTEP_TOL', scsteptol, ier)
-  call fkinsetvin('CONSTR_VEC', constr, ier) 
-  
-  !     .. init Scale Preconditioned GMRES solver 
-  
-  call fkinspgmr(maxl, maxlrst, ier)   
-  if (ier .ne. 0) then
-     print*, 'SUNDIALS_ERROR: FKINSPGMR returned IER = ', ier
-     call fkinfree          ! free memory
-     stop
-  endif
-  
-  !     .. preconditioner   
-  call fkinspilssetprec(0, ier) 
+    ! Additional input information
 
-  !     .. call solver
-  
-  call fkinsol(x, globalstrat, scale, scale, ier) 
-  fnorm=rout(1) 
-  
-  if (ier .lt. 0) then
-     print*, 'SUNDIALS_ERROR: FKINSOL returned IER = ', ier
-     print*, 'Linear Solver returned IER = ', iout(9)
-     call fkinfree
-     stop
-  endif
-  
-  write(rstr,'(E25.16)')fnorm
-  text="Found solution: fnorm = "//trim(rstr)//" "
-  call print_to_log(LogUnit,text)
+    call fkinsetiin('MAX_SETUPS', msbpre, ier) 
 
-  write(istr,'(I8)')iter
-  text="number of iterations  = "//trim(istr)
-  call print_to_log(LogUnit,text)
+    if (ier .ne. 0) then
+        print*, 'SUNDIALS_ERROR: FKINSETIIN returned IER = ', ier
+        call fkinfree          ! free memory
+        stop
+    endif
 
-  call fkinfree             ! free memory
-  deallocate(pp)
-  return
+    call fkinsetiin('MAX_NITERS', maxniter, ier)
+
+    if (ier .ne. 0) then
+        print*, 'SUNDIALS_ERROR: FKINSETIIN returned IER = ', ier
+        call fkinfree          ! free memory
+        stop
+    endif
+
+    call fkinsetrin('FNORM_TOL', fnormtol, ier)
+    call fkinsetrin('SSTEP_TOL', scsteptol, ier)
+    call fkinsetvin('CONSTR_VEC', constr, ier) 
+
+    if (ier .ne. 0) then
+        print*, 'SUNDIALS_ERROR: FKINSETVIN returned IER = ', ier
+        call fkinfree          ! free memory
+        stop
+    endif
+    !     .. init Scale Preconditioned GMRES solver 
+  
+    call fkinspgmr(maxl, maxlrst, ier)   
+    if (ier .ne. 0) then
+        print*, 'SUNDIALS_ERROR: FKINSPGMR returned IER = ', ier
+        call fkinfree          ! free memory
+        stop
+    endif
+  
+    !     .. preconditioner  zero no preconditioner  
+    call fkinspilssetprec(0, ier) 
+
+    !     .. call solver
+    call fkinsol(x, globalstrat, fscale, fscale, ier) 
+    fnorm=rout(1) 
+  
+    if (ier .lt. 0) then
+        print*, 'SUNDIALS_ERROR: FKINSOL returned IER = ', ier
+        print*, 'Linear Solver returned IER = ', iout(9)
+        call fkinfree
+        stop
+    endif
+    
+    write(rstr,'(E25.16)')fnorm
+    text="Found solution: fnorm = "//trim(rstr)//" "
+    call print_to_log(LogUnit,text)
+
+    write(istr,'(I8)')iter
+    text="number of iterations  = "//trim(istr)
+    call print_to_log(LogUnit,text)
+    
+    call fkinfree             ! free memory
+    deallocate(pp)
+    return
   
 end subroutine kinsol_gmres_solver
+
 
 
 !     .. wrapper function 
 
 subroutine fkfun(x,f,ier)
+  
+    use precision_definition
+    use globals,  only  : neq
+    use fcnpointer
 
-  use precision_definition
-  use globals,  only  : neq
-  use fcnpointer
+    implicit none
 
-  implicit none
+    real(dp), dimension(neq) :: x  ! expliciet size array   
+    real(dp), dimension(neq) :: f
+    integer ::  ier
 
-  real(dp), dimension(neq) :: x  ! explicit size array                                                                                                                                        
-  real(dp), dimension(neq) :: f
+    call fcnptr(x,f,neq)
 
-  integer(4) ier
-
-  call fcnptr(x,f,neq)
+    ier=0  
 
 end subroutine fkfun
+
+
+
+
 
 
 
