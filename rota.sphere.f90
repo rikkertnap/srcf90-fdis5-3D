@@ -30,16 +30,16 @@ subroutine rota(xend,xendr,nseg,test,lseg)
   real(dp) :: alfa,gama,cga,a,b,c
    
 
-  theta1=pi/6.0
+  theta1=pi/6.0_dp
   
   fac=rands(seed)
   fac1=rands(seed)
   fac2=rands(seed)
-  alfa=fac*2*pi
-  cbe=fac1*2.0-1.0
-  gama=fac2*2*pi
+  alfa=fac*2.0_dp*pi
+  cbe=fac1*2.0_dp-1.0_dp
+  gama=fac2*2.0_dp*pi
   
-  sbe=(1-cbe**2)**0.5
+  sbe=(1.0_dp-cbe**2)**0.5_dp
   cal=cos(alfa)
   sal=sin(alfa)
   cga=cos(gama)
@@ -71,7 +71,7 @@ subroutine rota(xend,xendr,nseg,test,lseg)
      
      do i=2,nseg+1
         
-        if((x(i)**2+y(i)**2 + z(i)**2)**0.5.lt.radius) then
+        if((x(i)**2+y(i)**2 + z(i)**2)**0.5_dp.lt.radius) then
            test='N'  
            !               print*,test,i
            go to 2

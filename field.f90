@@ -36,146 +36,143 @@ module field
     real(dp) :: qABL,qABR
 
   
-    contains
+contains
 
-        subroutine allocate_field(N)
-            implicit none
-    
-            integer, intent(in) :: N
-    
-            allocate(xpolAB(N))
-            allocate(xpolC(N))
-            allocate(rhopolA(N))
-            allocate(rhopolB(N))
-            allocate(rhopolC(N))
-            allocate(xsol(N))
-            allocate(psi(N+1))
-            allocate(xNa(N))
-            allocate(xK(N))
-            allocate(xCa(N))
-            allocate(xNaCl(N)) 
-            allocate(xKCl(N)) 
-            allocate(xCl(N)) 
-            allocate(xHplus(N))
-            allocate(xOHmin(N))
-            allocate(rhoq(N))
-            allocate(qpol(N))
-            allocate(fdisA(5,N))
-            allocate(fdisB(5,N))
-            allocate(rhopolAL(N))
-            allocate(rhopolAR(N))
-            allocate(rhopolBL(N))
-            allocate(rhopolBR(N))
-            
-        end subroutine allocate_field
-  
+    subroutine allocate_field(N)
+        implicit none
 
-        subroutine deallocate_field()
-            implicit none
-            
-            
-            deallocate(xpolAB)
-            deallocate(xpolC)
-            deallocate(rhopolA)
-            deallocate(rhopolB)
-            deallocate(rhopolC)
-            deallocate(xsol)
-            deallocate(psi)
-            deallocate(xNa)
-            deallocate(xK)
-            deallocate(xCa)
-            deallocate(xNaCl) 
-            deallocate(xKCl) 
-            deallocate(xCl) 
-            deallocate(xHplus)
-            deallocate(xOHmin)
-            deallocate(rhoq)
-            deallocate(qpol)
-            deallocate(fdisA)
-            deallocate(fdisB)
-            deallocate(rhopolAL)
-            deallocate(rhopolAR)
-            deallocate(rhopolBL)
-            deallocate(rhopolBR)
-            
-        end subroutine deallocate_field
-  
+        integer, intent(in) :: N
+
+        allocate(xpolAB(N))
+        allocate(xpolC(N))
+        allocate(rhopolA(N))
+        allocate(rhopolB(N))
+        allocate(rhopolC(N))
+        allocate(xsol(N))
+        allocate(psi(N+1))
+        allocate(xNa(N))
+        allocate(xK(N))
+        allocate(xCa(N))
+        allocate(xNaCl(N)) 
+        allocate(xKCl(N)) 
+        allocate(xCl(N)) 
+        allocate(xHplus(N))
+        allocate(xOHmin(N))
+        allocate(rhoq(N))
+        allocate(qpol(N))
+        allocate(fdisA(5,N))
+        allocate(fdisB(5,N))
+        allocate(rhopolAL(N))
+        allocate(rhopolAR(N))
+        allocate(rhopolBL(N))
+        allocate(rhopolBR(N))
+        
+    end subroutine allocate_field
+
+
+    subroutine deallocate_field()
+        implicit none
+        
+        
+        deallocate(xpolAB)
+        deallocate(xpolC)
+        deallocate(rhopolA)
+        deallocate(rhopolB)
+        deallocate(rhopolC)
+        deallocate(xsol)
+        deallocate(psi)
+        deallocate(xNa)
+        deallocate(xK)
+        deallocate(xCa)
+        deallocate(xNaCl) 
+        deallocate(xKCl) 
+        deallocate(xCl) 
+        deallocate(xHplus)
+        deallocate(xOHmin)
+        deallocate(rhoq)
+        deallocate(qpol)
+        deallocate(fdisA)
+        deallocate(fdisB)
+        deallocate(rhopolAL)
+        deallocate(rhopolAR)
+        deallocate(rhopolBL)
+        deallocate(rhopolBR)
+        
+    end subroutine deallocate_field
+
 
   
   !     .. compute average height of tethered layer 
   !     .. first moment of density profile 
   
-  subroutine average_height()
-    
-    use globals
-    use parameters
-    use volume
-    
-    implicit none
-    
-    integer :: i
-    
-    real(dp) :: zerom,firstm  
-    
-    firstm=0.0d0               ! first moment 
-    zerom=0.0d0                ! zero moment  
-    do i=1,nz
-       zerom=zerom+xpolAB(i)*deltaG(i)
-       firstm=firstm+xpolAB(i)*zc(i)*deltaG(i)
-    enddo
+    subroutine average_height()
 
-    if(zerom>0.0) then 
-      heightAB=firstm/zerom
-    else
-      heightAB=0.0d0
-    endif
+        use globals
+        use parameters
+        use volume
 
-    firstm=0.0d0               ! first moment 
-    zerom=0.0d0                ! zero moment  
-    do i=1,nz
-        zerom=zerom+xpolC(i)*deltaG(i)
-        firstm=firstm+xpolC(i)*zc(i)*deltaG(i)
-    enddo
+        implicit none
 
-    if(zerom>0.0) then 
-      heightC=firstm/zerom
-    else
-      heightC=0.0d0
-    endif
+        integer :: i
 
-    if(isNaN(heightAB)) print*,"heightAB NaN"
-    if(isNaN(heightC)) print*,"heightC NaN"
+        real(dp) :: zerom,firstm  
 
-  end subroutine average_height
-  
-  subroutine charge_polymer()
-    
-    use globals
-    use volume
-    use parameters
+        firstm=0.0_dp               ! first moment 
+        zerom=0.0_dp                ! zero moment  
+        do i=1,nz
+            zerom=zerom+xpolAB(i)*deltaG(i)
+            firstm=firstm+xpolAB(i)*zc(i)*deltaG(i)
+        enddo
 
-    implicit none
+        if(zerom>0.0_dp) then 
+            heightAB=firstm/zerom
+        else
+            heightAB=0.0_dp
+        endif
 
-    integer :: i
-    real(dp)  :: npolA,npolB
-    
-    
-    qpolA=0.0d0
-    qpolB=0.0d0
-    
-    
-    do i=1,nz
-       qpolA=qpolA+(zpolA(1)*fdisA(1,i)*rhopolA(i)+&  
-            zpolA(4)*fdisA(4,i)*rhopolA(i))*deltaG(i) 
-       qpolB=qpolB+(zpolB(1)*fdisB(1,i)*rhopolB(i)+&
-            zpolB(4)*fdisB(4,i)*rhopolB(i))*deltaG(i)
-    enddo
-    
-    qpolA=qpolA*delta
-    qpolB=qpolB*delta
-    qpol_tot=qpolA+qpolB
-    
-  end subroutine charge_polymer
+        firstm=0.0_dp               ! first moment 
+        zerom=0.0_dp                ! zero moment  
+        do i=1,nz
+            zerom=zerom+xpolC(i)*deltaG(i)
+            firstm=firstm+xpolC(i)*zc(i)*deltaG(i)
+        enddo
+
+        if(zerom>0.0_dp)then 
+          heightC=firstm/zerom
+        else
+          heightC=0.0_dp
+        endif
+
+        if(isNaN(heightAB)) print*,"heightAB NaN"
+        if(isNaN(heightC)) print*,"heightC NaN"
+
+    end subroutine average_height
+
+    subroutine charge_polymer()
+
+        use globals
+        use volume
+        use parameters
+
+        implicit none
+
+        integer :: i
+
+        qpolA=0.0_dp
+        qpolB=0.0_dp
+
+        do i=1,nz
+            qpolA=qpolA+(zpolA(1)*fdisA(1,i)*rhopolA(i)+&
+                zpolA(4)*fdisA(4,i)*rhopolA(i))*deltaG(i) 
+            qpolB=qpolB+(zpolB(1)*fdisB(1,i)*rhopolB(i)+&
+                zpolB(4)*fdisB(4,i)*rhopolB(i))*deltaG(i)
+        enddo
+
+        qpolA=qpolA*delta
+        qpolB=qpolB*delta
+        qpol_tot=qpolA+qpolB
+
+    end subroutine charge_polymer
 
   ! .. post : return average charge of state of 
   !   of polymers
@@ -190,7 +187,7 @@ module field
     implicit none 
    
     integer :: i,s,k
-    real(dp)  :: npolA,npolB
+    integer   :: npolA,npolB
     real(dp)  :: sigmaLR  
     
     ! .. number of A and B monomors 
@@ -206,7 +203,7 @@ module field
 
     if(npolA/=0 .and. sigmaLR/=0 ) then
        do k=1,5
-          avfdisA(k)=0.0d0
+          avfdisA(k)=0.0_dp
           do i=1,nz
              avfdisA(k)=avfdisA(k)+fdisA(k,i)*rhopolA(i)*deltaG(i) 
           enddo
@@ -214,13 +211,13 @@ module field
        enddo
     else
        do k=1,5
-          avfdisA(k)=0.0d0
+          avfdisA(k)=0.0_dp
        enddo
     endif
     
     if(npolB/=0 .and. sigmaLR/=0) then
        do k=1,5
-          avfdisB(k)=0.0d0
+          avfdisB(k)=0.0_dp
           do i=1,nz
              avfdisB(k)=avfdisB(k)+fdisB(k,i)*rhopolB(i)*deltaG(i) 
           enddo
@@ -228,7 +225,7 @@ module field
        enddo
     else
        do k=1,5
-          avfdisB(k)=0.0d0
+          avfdisB(k)=0.0_dp
        enddo
     endif
     

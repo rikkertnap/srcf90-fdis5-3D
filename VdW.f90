@@ -78,7 +78,7 @@ contains
     real(dp)  :: delta_file
     real(dp)  :: chibulk_file
     integer :: cutoff_file
-    integer :: i,j,nradius
+    integer :: i,j !,nradius
     integer :: ival,jval
     
     real(dp), dimension(:,:), allocatable :: VdWcoeff  ! matrix of interaction coeff

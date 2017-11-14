@@ -23,19 +23,20 @@ program brushweakpolyelectrolyte
     use surface
     use myio
     use myutils
+    use chaingenerator
     
     implicit none  
     
     real(dp),  dimension(:), allocatable :: x         ! iteration vector 
     real(dp),  dimension(:), allocatable :: xguess    ! guess iteration vector
     real(dp),  dimension(:), allocatable :: xstored   ! stored iteration vector
-    real(dp),  dimension(:), allocatable :: fvec     
+!    real(dp),  dimension(:), allocatable :: fvec     
   
-    integer :: i,c,eps          ! dummy indices
-    integer, parameter :: cmax=20
-    integer, parameter :: epsmax=19
-    real(dp)  :: cs(cmax)         ! salt concentrations     
-    real(dp)  :: VdWeps(epsmax)   ! VdW eps values
+    integer :: i ! ,c,eps          ! dummy indices
+!    integer, parameter :: cmax=20
+!    integer, parameter :: epsmax=19
+!    real(dp) :: cs(cmax)         ! salt concentrations     
+!    real(dp) :: VdWeps(epsmax)   ! VdW eps values
     integer :: countfile        ! file counter        
     logical :: use_xstored       
     logical :: isfirstguess   
@@ -53,7 +54,7 @@ program brushweakpolyelectrolyte
 
     call read_inputfile()
     call init_constants()
-    call init_matrices()        ! init matrices for chain generation
+    call init_matrices()         ! init matrices for chain generation
     call allocate_chains(cuantasAB,nsegAB,cuantasC,nsegC)  
     call make_chains(chainmethod) ! generate polymer configurations 
     call make_sequence_chain(period,chaintype)
@@ -65,13 +66,15 @@ program brushweakpolyelectrolyte
     call init_expmu()
     call init_surface(bcflag)
 
-
     !  .. computation starts
     
     nz=nzmax                    ! first distance 
     call set_size_neq()         ! number of non-linear equation neq
+    
     neqmax = neq
+    
     allocate(xstored(neq))
+
     isfirstguess = .true.    
     use_xstored = .false.
     countfile = 1                
@@ -97,7 +100,7 @@ program brushweakpolyelectrolyte
         use_xstored = .true.
         countfile = countfile+1  ! next  
         iter = 0                 ! reset of iteration counter 
-        nz = nz-nzstep             ! reduce distance 
+        nz = nz-nzstep           ! reduce distance 
         do i=1,neq
             xstored(i)=x(i)
         enddo
@@ -107,7 +110,6 @@ program brushweakpolyelectrolyte
     enddo   
 
     deallocate(xstored)
-
     call deallocate_field()
 
     text="program end"

@@ -44,7 +44,7 @@ module energy
     real(dp) :: qres                ! charge charge
     real(dp) :: checkphi            ! check integrate over phi
     
-    real(dp), parameter :: sigmaTOL = 0.00000001     ! tolerance of surface coverage below no polymers 
+    real(dp), parameter :: sigmaTOL = 0.00000001_dp     ! tolerance of surface coverage below no polymers 
 
     private :: sigmaTOL
 
@@ -95,26 +95,26 @@ contains
 
         !  .. computation of free energy 
     
-        FEpi  = 0.0d0
-        FErho = 0.0d0
-        FEel  = 0.0d0
-!        FEelsurf = 0.0d0
-        sumphiA = 0.0d0
-        sumphiB = 0.0d0
-        sumphiC = 0.0d0
+        FEpi  = 0.0_dp
+        FErho = 0.0_dp
+        FEel  = 0.0_dp
+!        FEelsurf = 0.0_dp
+        sumphiA = 0.0_dp
+        sumphiB = 0.0_dp
+        sumphiC = 0.0_dp
 
-        FEq = 0.0d0
-        FEbind = 0.0d0
-        FEchem = 0.0d0
-        FEVdWC = 0.0d0
-        FEVdWB = 0.0d0     
-        qres = 0.0d0
+        FEq = 0.0_dp
+        FEbind = 0.0_dp
+        FEchem = 0.0_dp
+        FEVdWC = 0.0_dp
+        FEVdWB = 0.0_dp     
+        qres = 0.0_dp
 
         do i=1,nz
             FEpi = FEpi  + dlog(xsol(i))
             FErho = FErho - (xsol(i) + xHplus(i) + xOHmin(i)+ xNa(i)/vNa + xCa(i)/vCa + xCl(i)/vCl+xK(i)/vK +&
                 xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
-            FEel = FEel  - rhoq(i) * psi(i)/2.0d0        
+            FEel = FEel  - rhoq(i) * psi(i)/2.0_dp        
             FEbind = FEbind + fdisA(5,i)*rhopolA(i)+fdisB(5,i)*rhopolB(i)
 
 !            do j=1,nz 
@@ -132,15 +132,15 @@ contains
         FEpi  = (delta/vsol)*FEpi
         FErho = (delta/vsol)*FErho
         
-        FEbind = delta*FEbind/2.0d0 !  check this 
+        FEbind = delta*FEbind/2.0_dp !  check this 
 
         qres = (delta/vsol)*qres
         sumphiA = delta*sumphiA
         sumphiB = delta*sumphiB
         sumphiC = delta*sumphiC
 
-        FEVdWC  = delta*FEVdWC*VdWepsC*vpolC*vsol/2.0d0   
-        FEVdWB  = delta*FEVdWB*VdWepsB*vpolB(3)*vsol/2.0d0   
+        FEVdWC  = delta*FEVdWC*VdWepsC*vpolC*vsol/2.0_dp   
+        FEVdWB  = delta*FEVdWB*VdWepsB*vpolB(3)*vsol/2.0_dp   
     
 !        if (sysflag=="elect") then 
 !            FEVdW=FEVdWC
@@ -170,7 +170,7 @@ contains
        
         elseif((sigmaABL <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
-            FEq = 0.0d0
+            FEq = 0.0_dp
         
         else
         
@@ -193,29 +193,29 @@ contains
         psiSurf(LEFT)     = psiSurfL
       
         do i = 1,2    
-            sigmaq0Surf(i)=  sigmaqSurf(i)/(delta*4.0d0*pi*lb) ! dimensional charge density  
-            FEelsurf(i) = sigmaq0Surf(i) * psiSurf(i) /2.0d0 
+            sigmaq0Surf(i)=  sigmaqSurf(i)/(delta*4.0_dp*pi*lb) ! dimensional charge density  
+            FEelsurf(i) = sigmaq0Surf(i) * psiSurf(i) /2.0_dp 
         enddo   
 
         if(bcflag(RIGHT)=='qu') then ! quartz
 
-            FEchemSurf(RIGHT) = dlog(fdisS(2))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT) = dlog(fdisS(2))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="cl" ) then  ! clay
         
-            FEchemSurf(RIGHT) = (dlog(fdisS(2))+qS(2)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT) = (dlog(fdisS(2))+qS(2)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="ca" ) then ! calcite
         
-            FEchemSurf(RIGHT) =(dlog(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT) =(dlog(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
         
-            FEchemSurf(RIGHT)= (dlog(fdisTaR(2))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb)) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT)= (dlog(fdisTaR(2))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="cc") then  
         
-            FEchemSurf(RIGHT)=0.0d0
+            FEchemSurf(RIGHT)=0.0_dp
         
         else
             print*,"Error in fcnenergy"
@@ -225,11 +225,11 @@ contains
 
         if(bcflag(LEFT)=="ta" ) then ! taurine 
 
-            FEchemSurf(LEFT)= dlog(fdisTaL(2))*sigmaSurf(LEFT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(LEFT)
+            FEchemSurf(LEFT)= dlog(fdisTaL(2))*sigmaSurf(LEFT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
         
         elseif(bcflag(LEFT)=="cc") then  
         
-            FEchemSurf(LEFT)=0.0d0
+            FEchemSurf(LEFT)=0.0_dp
         
         else
             print*,"Error in fcnenergy"
@@ -245,7 +245,7 @@ contains
 !        print*,"FE = " ,FE
         
         do i=LEFT,RIGHT     
-            qsurf(i) = sigmaqSurf(i)/(4.0d0*pi*lb*delta)
+            qsurf(i) = sigmaqSurf(i)/(4.0_dp*pi*lb*delta)
         enddo
 
 !        print*,"qsurf(LEFT)=",qsurf(LEFT),"qsurf(RIGHT)=",qsurf(RIGHT),"qres=",qres    
@@ -315,7 +315,7 @@ contains
 
         ! .. chemical potential + standard chemical potential 
 
-        FEchempot%sol   = 0.0d0 ! by construction  
+        FEchempot%sol   = 0.0_dp ! by construction  
         FEchempot%Na    = FEchem_pot(xNa,expmu%Na,vNa)
         FEchempot%Cl    = FEchem_pot(xCl,expmu%Cl,vCl)
         FEchempot%Ca    = FEchem_pot(xCa,expmu%Ca,vCa)
@@ -329,15 +329,15 @@ contains
         ! .. surface chemical contribution
 
         if(bcflag(RIGHT)=='qu') then ! quartz
-            FEchemSurfalt(RIGHT) = (dlog(fdisS(1))+qS(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurfalt(RIGHT) = (dlog(fdisS(1))+qS(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         elseif(bcflag(RIGHT)=="cl" ) then  ! clay        
-            FEchemSurfalt(RIGHT) = (dlog(fdisS(1))+qS(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurfalt(RIGHT) = (dlog(fdisS(1))+qS(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         elseif(bcflag(RIGHT)=="ca" ) then ! calcite
-            FEchemSurfalt(RIGHT) =(dlog(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurfalt(RIGHT) =(dlog(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
-            FEchemSurfalt(RIGHT)= ((dlog(fdisTaR(1))+qTA(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0d0*pi*lb)) -2.0d0*FEelsurf(RIGHT)
+            FEchemSurfalt(RIGHT)= ((dlog(fdisTaR(1))+qTA(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
         elseif(bcflag(RIGHT)=="cc") then  
-            FEchemSurfalt(RIGHT)=0.0d0
+            FEchemSurfalt(RIGHT)=0.0_dp
         else
             print*,"Error in fcnenergy"
             print*,"Wrong value bcflag(RIGHT) : ",bcflag(RIGHT)
@@ -345,9 +345,9 @@ contains
         endif 
 
         if(bcflag(LEFT)=="ta" ) then ! taurine 
-            FEchemSurfalt(LEFT)= (dlog(fdisTaL(1))+qTA(1)*psiSurfL)*sigmaSurf(LEFT)/(delta*4.0d0*pi*lb) -2.0d0*FEelsurf(LEFT)
+            FEchemSurfalt(LEFT)= (dlog(fdisTaL(1))+qTA(1)*psiSurfL)*sigmaSurf(LEFT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
         elseif(bcflag(LEFT)=="cc") then  
-            FEchemSurfalt(LEFT)=0.0d0
+            FEchemSurfalt(LEFT)=0.0_dp
         else
             print*,"Error in fcnenergy"
             print*,"Wrong value bcflag(LEFT) : ",bcflag(LEFT)
@@ -380,7 +380,7 @@ contains
 
         ! .. delta chemical potential + standard chemical potential 
 
-        FEchempotbulk%sol   = 0.0d0 ! by construction  
+        FEchempotbulk%sol   = 0.0_dp ! by construction  
         FEchempotbulk%Na    = FEchem_pot_bulk(xbulk%Na,expmu%Na,vNa)
         FEchempotbulk%Cl    = FEchem_pot_bulk(xbulk%Cl,expmu%Cl,vCl)
         FEchempotbulk%Ca    = FEchem_pot_bulk(xbulk%Ca,expmu%Ca,vCa)
@@ -433,19 +433,19 @@ contains
 
         
         if(bcflag(LEFT)=="ta" ) then 
-            diffFEchemsurf(LEFT)= (sigmaSurf(LEFT)/(4.0d0*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
+            diffFEchemsurf(LEFT)= (sigmaSurf(LEFT)/(4.0_dp*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
         else
-            diffFEchemsurf(LEFT)=0.0d0
+            diffFEchemsurf(LEFT)=0.0_dp
         endif
 
         if(bcflag(RIGHT)=='qu') then ! quartz
-            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0d0*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
+            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0_dp*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
         elseif(bcflag(RIGHT)=='cl') then ! quartz
-            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0d0*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
+            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0_dp*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
         elseif(bcflag(RIGHT)=="ta" ) then ! taurine       
-            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0d0*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
+            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0_dp*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
         else
-            diffFEchemsurf(RIGHT)=0.0d0
+            diffFEchemsurf(RIGHT)=0.0_dp
             ! not yet implemented 
         endif 
 
@@ -486,19 +486,19 @@ contains
 
         !     .. computation of free energy 
     
-        FEpi  = 0.0d0
-        FErho = 0.0d0
-        FEel  = 0.0d0
-        FEelsurf = 0.0d0
-        sumphiA = 0.0d0
-        sumphiB = 0.0d0
-        sumphiC = 0.0d0
+        FEpi  = 0.0_dp
+        FErho = 0.0_dp
+        FEel  = 0.0_dp
+        FEelsurf = 0.0_dp
+        sumphiA = 0.0_dp
+        sumphiB = 0.0_dp
+        sumphiC = 0.0_dp
 
-        FEq = 0.0d0
-        FEbind = 0.0d0
-        FEchem = 0.0d0
-        FEVdW = 0.0d0 
-        qres = 0.0d0
+        FEq = 0.0_dp
+        FEbind = 0.0_dp
+        FEchem = 0.0_dp
+        FEVdW = 0.0_dp 
+        qres = 0.0_dp
 
         do i=1,nz
             FEpi = FEpi  + deltaG(i)*dlog(xsol(i))
@@ -520,7 +520,7 @@ contains
         sumphiB = delta*sumphiB
         sumphiC = delta*sumphiC
 
-        FEVdW  = delta*FEVdW*(VdWepsB*vpolB(3)*vsol)/2.0d0   
+        FEVdW  = delta*FEVdW*(VdWepsB*vpolB(3)*vsol)/2.0_dp   
 
         FEq = -delta*(sigmaAB*dlog(qAB)+sigmaC*dlog(qC) )
     
@@ -530,12 +530,12 @@ contains
             FEq = -delta*sigmaAB*dlog(qAB) 
         endif
     
-        FEel = 0.0d0    
-        FEelsurf =0.0d0
-        FEchem =0.0d0
-        FEbind =0.0d0
-        qres =0.0d0
-        qsurf =0.0d0 
+        FEel = 0.0_dp    
+        FEelsurf =0.0_dp
+        FEchem =0.0_dp
+        FEbind =0.0_dp
+        qres =0.0_dp
+        qsurf =0.0_dp 
 
         !  .. total free energy per area of surface 
 
@@ -588,7 +588,7 @@ contains
         integer :: conf              ! counts number of conformations
         
 
-        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0e-9_dp  ! tolerance for constA and constB 
 
 
         !     .. executable statements 
@@ -599,7 +599,7 @@ contains
             exppiC(i)=(xsol(i)**vpolC)
        
             !     .. VdW interaction   
-            tmp = 0.0d0
+            tmp = 0.0_dp
             if((i+VdWcutoffdelta)<=nsize) then 
                 do j=minrange(i),i+VdWcutoffdelta
                     tmp = tmp + chis(i,j)*rhopolB(j)*vpolB(3)*vsol
@@ -610,10 +610,10 @@ contains
         enddo
 
         
-        FEconfAB=0.0d0
+        FEconfAB=0.0_dp
 
         do c=1,cuantasAB            ! loop over cuantas
-            pro=1.0d0                ! initial weight conformation 
+            pro=1.0_dp                ! initial weight conformation 
             do s=1,nsegAB            ! loop over segments 
                 k=indexchainAB(c,s)
                 if(isAmonomer(s)) then ! A segment 
@@ -628,9 +628,9 @@ contains
         ! normalize
         FEconfAB=(FEconfAB/qAB-dlog(qAB))*(sigmaAB*delta)    
 
-        FEconfC = 0.0d0                   
+        FEconfC = 0.0_dp                   
         do c=1,cuantasC            ! loop over cuantas                                                      
-            pro=1.0d0               ! initial weight conformation                                                   
+            pro=1.0_dp               ! initial weight conformation                                                   
             do s=1,nsegC            ! loop over segments                
                 k=indexchainC(c,s)
                 pro = pro*exppiC(k)
@@ -656,19 +656,19 @@ contains
         integer :: i
 
 
-        if(xvolbulk==0.0d0) then 
-            FEtrans_entropy=0.0d0
+        if(xvolbulk==0.0_dp) then 
+            FEtrans_entropy=0.0_dp
         else
-            FEtrans_entropy=0.0d0
+            FEtrans_entropy=0.0_dp
             if(present(flag)) then
             ! water special case because vsol treated diffetent then vi  
                 do i=1,nz
-                    FEtrans_entropy=FEtrans_entropy + xvol(i)*(dlog(xvol(i))-1.0d0)
+                    FEtrans_entropy=FEtrans_entropy + xvol(i)*(dlog(xvol(i))-1.0_dp)
                 enddo 
                 FEtrans_entropy = delta*FEtrans_entropy/vol
             else 
                 do i=1,nz
-                    FEtrans_entropy = FEtrans_entropy + xvol(i)*(log(xvol(i)/vol)-1.0d0)
+                    FEtrans_entropy = FEtrans_entropy + xvol(i)*(log(xvol(i)/vol)-1.0_dp)
                 enddo
                 FEtrans_entropy = delta*FEtrans_entropy/(vol*vsol)
             endif
@@ -693,10 +693,10 @@ contains
         real(dp) :: chempot ! chemical potential difference 
         real(dp) :: sumdens 
 
-        if(expchempot==0.0d0) then 
-            FEchem_pot=0.0d0
+        if(expchempot==0.0_dp) then 
+            FEchem_pot=0.0_dp
         else     
-            sumdens=0.0d0
+            sumdens=0.0_dp
             if(present(flag)) then  ! water special case because vsol treated diffetent then vi
                 chempot = -dlog(expchempot)    
                 do i=1,nz
@@ -727,15 +727,15 @@ contains
         integer :: i
 
 
-        if(xvolbulk==0.0d0) then 
-            FEtrans_entropy_bulk=0.0d0
+        if(xvolbulk==0.0_dp) then 
+            FEtrans_entropy_bulk=0.0_dp
         else
-            FEtrans_entropy_bulk=0.0d0
+            FEtrans_entropy_bulk=0.0_dp
             if(present(flag)) then
                 ! water special case because vsol treated diffetent then vi  
-                FEtrans_entropy_bulk=xvolbulk*(dlog(xvolbulk)-1.0d0)/vol
+                FEtrans_entropy_bulk=xvolbulk*(dlog(xvolbulk)-1.0_dp)/vol
             else 
-                FEtrans_entropy_bulk=xvolbulk*(dlog(xvolbulk/vol)-1.0d0)/(vol*vsol)
+                FEtrans_entropy_bulk=xvolbulk*(dlog(xvolbulk/vol)-1.0_dp)/(vol*vsol)
             endif
         endif
 
@@ -758,8 +758,8 @@ contains
         real(dp) :: chempot ! chemical potential difference 
         real(dp) :: sumdens 
 
-        if(expchempot==0.0d0) then 
-            FEchem_pot_bulk=0.0d0
+        if(expchempot==0.0_dp) then 
+            FEchem_pot_bulk=0.0_dp
         else     
             if(present(flag)) then  ! water special case because vsol treated diffetent then vi
                 FEchem_pot_bulk=-dlog(expchempot)*xvolbulk/vol            

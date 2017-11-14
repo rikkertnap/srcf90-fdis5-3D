@@ -1,9 +1,16 @@
 ! --------------------------------------------------------------|
 !                                                               | 
-! chainsgenerator.f:                                            |       
+! chainsgenerator.f90:                                          |       
 ! generator chains on planar surface                            |
 ! --------------------------------------------------------------|
 
+
+module chaingenerator 
+
+  
+    implicit none
+
+contains
 
 
 subroutine make_chains(chainmethod)
@@ -35,6 +42,7 @@ subroutine make_chains_mc()
     use parameters
     use volume
     use myutils
+    use cadenas_linear
 
     implicit none
 
@@ -61,7 +69,7 @@ subroutine make_chains_mc()
     do while (conf.le.max_conforAB)
         nchains= 0      ! init zero 
         !call cadenas(chain,nsegAB,lsegAB,nchain)  ! chain generator ! f77
-        call cadenas(chain,nchains,maxnchains,nsegAB,lsegAB)  ! chain generator f90
+        call make_linear_chains(chain,nchains,maxnchains,nsegAB,lsegAB)  ! chain generator f90
         do j=1,nchains   
             conf=conf +1
             do s=1,nsegAB         !     transforming form real- to lattice coordinates
@@ -83,7 +91,7 @@ subroutine make_chains_mc()
 
     do while (conf.le.max_conforC)
         nchains= 0      ! init zero 
-        call cadenas(chain,nchains,maxnchains,nsegC,lsegC) ! chain generator                                                               
+        call make_linear_chains(chain,nchains,maxnchains,nsegC,lsegC) ! chain generator                                                               
         do j=1,nchains
             conf=conf +1
             do s=1,nsegC         !     transforming form real- to lattice coordinates                                            
@@ -300,4 +308,4 @@ subroutine chain_filter()
 
 end subroutine  chain_filter
 
-
+end module chaingenerator

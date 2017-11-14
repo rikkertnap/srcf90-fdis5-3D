@@ -28,9 +28,9 @@ subroutine init_guess_electdouble(x, xguess)
 
     do i=1,nz
         x(i)=xbulk%sol
-        x(i+nz)=0.000d0
-        x(i+2*nz)=0.000001d0
-        x(i+3*nz)=0.00001d0
+        x(i+nz)=0.000_dp
+        x(i+2*nz)=0.000001_dp
+        x(i+3*nz)=0.00001_dp
     enddo
   
     if (infile.eq.1) then   ! infile is read in from file/stdio  
@@ -98,17 +98,17 @@ subroutine init_guess_electnopoly(x, xguess)
 
     do i=1,nz
         x(i)=xbulk%sol
-        x(i+nz)=0.000d0
+        x(i+nz)=0.000_dp
     enddo
 
     neq_bc=0
     if(bcflag(LEFT)/="cc") then
         neq_bc=neq_bc+1 
-        x(2*nz+neq_bc)=0.00d0
+        x(2*nz+neq_bc)=0.00_dp
     endif      
     if(bcflag(RIGHT)/="cc") then 
         neq_bc=neq_bc+1 
-        x(2*nz+neq_bc)=0.00d0
+        x(2*nz+neq_bc)=0.00_dp
     endif     
 
     if (infile.eq.1) then   ! infile is read in from file/stdio  
@@ -168,10 +168,10 @@ subroutine init_guess_elect(x, xguess)
 
     do i=1,nz
         x(i)=xbulk%sol
-        x(i+nz)=0.000d0
-        x(i+2*nz)=0.000001d0
-        x(i+3*nz)=0.00001d0
-!        x(i+4*nz)=0.00d0
+        x(i+nz)=0.000_dp
+        x(i+2*nz)=0.000001_dp
+        x(i+3*nz)=0.00001_dp
+!        x(i+4*nz)=0.00_dp
     enddo
   
     if (infile.eq.1) then   ! infile is read in from file/stdio  
@@ -238,7 +238,7 @@ subroutine init_guess_neutral(x, xguess)
 
     do i=1,nz
         x(i)=xbulk%sol
-        x(i+nz)=0.000d0
+        x(i+nz)=0.000_dp
     enddo
   
   

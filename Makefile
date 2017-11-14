@@ -79,7 +79,7 @@ FF= ifort
 else 
 
 
-FFLAGS= -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds 
+FFLAGS= -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds -Wall
 
 
 LDFLAGS=-lm -L/opt/local/kinsol-2.8.2-stat/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/opt/local/kinsol-2.8.2-stat/lib

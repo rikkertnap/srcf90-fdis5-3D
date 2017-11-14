@@ -2,7 +2,7 @@
 ! fcnCa.f90:                                                    |
 ! constructs the vector function  needed by the                 |
 ! routine solver, which solves the SCMFT eqs for weak poly-     |
-! electrolytes on a coated onto a spherical surface             |
+! electrolytes onto a tethered planar surface                   |
 ! --------------------------------------------------------------|
 
 
@@ -71,7 +71,7 @@ module listfcn
         real(dp) :: cn                 ! auxilary variable for Poisson Eq
 
 
-        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0e-9_dp  ! tolerance for constA and constB 
 
 
         !     .. executable statements 
@@ -89,11 +89,11 @@ module listfcn
         psiSurfL = psi(1)          ! surface potentail
 
         do i=1,n                  ! init volume fractions 
-            xpolAB(i)  = 0.0d0     ! AB polymer volume fraction 
-            xpolC(i)   = 0.0d0     ! C polymer volume fraction 
-            rhopolA(i) = 0.0d0     ! A polymer density 
-            rhopolB(i) = 0.0d0
-            rhopolC(i) = 0.0d0
+            xpolAB(i)  = 0.0_dp     ! AB polymer volume fraction 
+            xpolC(i)   = 0.0_dp     ! C polymer volume fraction 
+            rhopolA(i) = 0.0_dp     ! A polymer density 
+            rhopolB(i) = 0.0_dp
+            rhopolC(i) = 0.0_dp
         
             xNa(i)   = expmu%Na*(xsol(i)**vNa)*dexp(-psi(i)*zNa) ! ion plus volume fraction
             xK(i)    = expmu%K*(xsol(i)**vK)*dexp(-psi(i)*zK)    ! ion plus volume fraction
@@ -109,13 +109,13 @@ module listfcn
             xA(3)= (xCa(i)/vCa)/(K0a(3)*(xsol(i)**deltavA(3)))  ! ACa+/A-
        
             sumxA=xA(1)+xA(2)+xA(3)
-            constA=(2.0d0*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) ! A2Ca/(A-)^2
+            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) ! A2Ca/(A-)^2
             if(constA<=tolconst) then 
-                fdisA(1,i)=1.0d0/(1.0d0+sumxA)
-                fdisA(5,i)=0.0d0
+                fdisA(1,i)=1.0_dp/(1.0_dp+sumxA)
+                fdisA(5,i)=0.0_dp
             else
-                fdisA(1,i)= (-1.0d0+dsqrt(1.0d0+4.0d0*constA/((sumxA+1.0d0)**2)))
-                fdisA(1,i)= fdisA(1,i)*(sumxA+1.0d0)/(2.0d0*constA)
+                fdisA(1,i)= (-1.0_dp+dsqrt(1.0_dp+4.0_dp*constA/((sumxA+1.0_dp)**2)))
+                fdisA(1,i)= fdisA(1,i)*(sumxA+1.0_dp)/(2.0_dp*constA)
                 fdisA(5,i)= (fdisA(1,i)**2)*constA
             endif    
        
@@ -129,13 +129,13 @@ module listfcn
        
        
             sumxB=xB(1)+xB(2)+xB(3)
-            constB=(2.0d0*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0b(4)*(xsol(i)**deltavB(4)))
+            constB=(2.0_dp*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0b(4)*(xsol(i)**deltavB(4)))
             if(constB<=tolconst) then
-                fdisB(1,i)=1.0d0/(1.0d0+sumxB)
-                fdisB(5,i)=0.0d0
+                fdisB(1,i)=1.0_dp/(1.0_dp+sumxB)
+                fdisB(5,i)=0.0_dp
             else
-                fdisB(1,i)= (-1.0d0+dsqrt(1.0d0+4.0d0*constB/((sumxB+1.0d0)**2)))
-                fdisB(1,i)= fdisB(1,i)*(sumxB+1.0d0)/(2.0d0*constB) !B^-
+                fdisB(1,i)= (-1.0_dp+dsqrt(1.0_dp+4.0_dp*constB/((sumxB+1.0_dp)**2)))
+                fdisB(1,i)= fdisB(1,i)*(sumxB+1.0_dp)/(2.0_dp*constB) !B^-
                 fdisB(5,i)= (fdisB(1,i)**2)*constB                    ! B2Ca
             endif
        
@@ -155,7 +155,7 @@ module listfcn
 
        
             !     .. VdW interaction   
-            tmp = 0.0d0
+            tmp = 0.0_dp
             if((i+VdWcutoffdelta)<=nsize) then 
                 do j=minrange(i),i+VdWcutoffdelta
                     tmp = tmp + chis(i,j)*xpolCin(j)
@@ -167,10 +167,10 @@ module listfcn
 
         !   .. computation polymer volume fraction 
 
-        qAB = 0.0d0                 ! init q
+        qAB = 0.0_dp                 ! init q
 
-        do c=1,cuantasAB            ! loop over cuantas
-            pro=1.0d0                ! initial weight conformation 
+        do c=1,cuantasAB             ! loop over cuantas
+            pro=1.0_dp               ! initial weight conformation 
             do s=1,nsegAB            ! loop over segments 
                 k=indexchainAB(c,s)
                 if(isAmonomer(s)) then ! A segment 
@@ -191,9 +191,9 @@ module listfcn
             enddo
         enddo
 
-        qC = 0.0d0                 ! init q   
-        do c=1,cuantasC            ! loop over cuantas                                                      
-            pro=1.0d0               ! initial weight conformation                                                   
+        qC = 0.0_dp                 ! init q   
+        do c=1,cuantasC             ! loop over cuantas                                                      
+            pro=1.0_dp              ! initial weight conformation                                                   
             do s=1,nsegC            ! loop over segments                
                 k=indexchainC(c,s)
                 pro = pro*exppiC(k)
@@ -219,12 +219,12 @@ module listfcn
                 xpolAB(i)=xpolAB(i)+rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol  & 
                     +rhopolB(i)*fdisB(k,i)*vpolB(k)*vsol
             enddo    
-            xpolAB(i)=xpolAB(i)+rhopolA(i)*(fdisA(5,i)*vpolA(5)*vsol/2.0d0)
-            xpolAB(i)=xpolAB(i)+rhopolB(i)*(fdisB(5,i)*vpolB(5)*vsol/2.0d0)
+            xpolAB(i)=xpolAB(i)+rhopolA(i)*(fdisA(5,i)*vpolA(5)*vsol/2.0_dp)
+            xpolAB(i)=xpolAB(i)+rhopolB(i)*(fdisB(5,i)*vpolB(5)*vsol/2.0_dp)
        
             xpolC(i)=rhopolC(i)*vpolC*vsol
        
-            f(i)=xpolAB(i)+xpolC(i)+xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0d0
+            f(i)=xpolAB(i)+xpolC(i)+xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0_dp
        
             rhoq(i)= zNa*xNa(i)/vNa + zCa*xCa(i)/vCa +zK*xK(i)/vK + zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                 zpolA(1)*fdisA(1,i)*rhopolA(i)*vsol+ zpolA(4)*fdisA(4,i)*rhopolA(i)*vsol+ &
@@ -235,15 +235,15 @@ module listfcn
 
         ! .. electrostatics 
 
-        sigmaqSurfL=0.0d0 ! charge regulating surface charge 
-        psi(n+1)=0.0d0   ! bulk potential
+        sigmaqSurfL=0.0_dp ! charge regulating surface charge 
+        psi(n+1)=0.0_dp   ! bulk potential
 
         !    .. Poisson Eq 
 
-        f(n+1)= -0.5d0*((psi(2)-psi(1)) + sigmaqSurfL +rhoq(1)*constqW)      !     boundary
+        f(n+1)= -0.5_dp*((psi(2)-psi(1)) + sigmaqSurfL +rhoq(1)*constqW)      !     boundary
 
         do i=2,n
-            f(n+i)= -0.5d0*(psi(i+1)-2.0d0*psi(i) + psi(i-1) +rhoq(i)*constqW)
+            f(n+i)= -0.5_dp*(psi(i+1)-2.0_dp*psi(i) + psi(i-1) +rhoq(i)*constqW)
         enddo
 
         do i=1,n
@@ -252,10 +252,7 @@ module listfcn
             f(4*n+i)=xpolC(i)-xpolCin(i)
         enddo
 
-    !    norm=l2norm(f,5*n)
-    !    iter=iter+1
-
-    !    print*,'iter=', iter ,'norm=',norm
+        iter=iter+1
 
     end subroutine fcnelectHC
 
@@ -288,14 +285,14 @@ module listfcn
         integer :: i,j,k,c,s         ! dummy indices
         real(dp) :: norm
         integer :: conf              ! counts number of conformations
-!        real(dp) :: cn                 ! auxilary variable for Poisson Eq
+!
         integer :: neq_bc           
 
         !     .. executable statements 
+ 
+        n=nz                       ! size vector neq=5*nz x=(pi,psi,rhopolA,rhopolB,xpolC)
 
-        n=nz                      ! size vector neq=5*nz x=(pi,psi,rhopolA,rhopolB,xpolC)
-
-        do i=1,n                  ! init x 
+        do i=1,n                   ! init x 
             xsol(i)= x(i)          ! solvent volume fraction 
             psi(i) = x(i+n)        ! potential
         enddo
@@ -331,7 +328,7 @@ module listfcn
 
         do i=1,n
 
-            f(i)=xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0d0
+            f(i)=xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0_dp
        
             rhoq(i)= zNa*xNa(i)/vNa + zCa*xCa(i)/vCa +zK*xK(i)/vK + zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)
        
@@ -346,36 +343,32 @@ module listfcn
         ! .. Poisson Eq 
         
         if(n/=1) then 
-            f(n+1)= -0.5d0*( psi(2)-psi(1)  + sigmaqSurfL +rhoq(1)*constqW )      !     boundary
-            f(2*n)= -0.5d0*( sigmaqSurfR- (psi(n)-psi(n-1)) +rhoq(n)*constqW )
+            f(n+1)= -0.5_dp*( psi(2)-psi(1)  + sigmaqSurfL +rhoq(1)*constqW )      !     boundary
+            f(2*n)= -0.5_dp*( sigmaqSurfR- (psi(n)-psi(n-1)) +rhoq(n)*constqW )
             do i=2,n-1
-                f(n+i)= -0.5d0*( psi(i+1)-2.0d0*psi(i) + psi(i-1) +rhoq(i)*constqW) 
+                f(n+i)= -0.5_dp*( psi(i+1)-2.0_dp*psi(i) + psi(i-1) +rhoq(i)*constqW) 
             enddo
         else
-             f(2)= -0.5d0*( sigmaqSurfR  + sigmaqSurfL +rhoq(1)*constqW )
+             f(2)= -0.5_dp*( sigmaqSurfR  + sigmaqSurfL +rhoq(1)*constqW )
         endif       
 
         ! self consistent boundary conditions
         neq_bc=0
         if(bcflag(RIGHT)/='cc') then 
             neq_bc=neq_bc+1
-            f(2*n+neq_bc)=psisurfR-psi(n)-sigmaqSurfR/2.0d0
+            f(2*n+neq_bc)=psisurfR-psi(n)-sigmaqSurfR/2.0_dp
         else
-            psisurfR=psi(n)+sigmaqSurfR/2.0d0
+            psisurfR=psi(n)+sigmaqSurfR/2.0_dp
         endif   
 
         if(bcflag(LEFT)/='cc') then 
             neq_bc=neq_bc+1
-            f(2*n+neq_bc)=psi(1)-psisurfL+sigmaqSurfL/2.0d0
+            f(2*n+neq_bc)=psi(1)-psisurfL+sigmaqSurfL/2.0_dp
         else    
-            psisurfL=psi(1)+sigmaqSurfL/2.0d0
+            psisurfL=psi(1)+sigmaqSurfL/2.0_dp
         endif   
-
-    !    norm=l2norm(f,2*n+neq_bc)
-        
-        iter=iter+1
-
-    !    print*,'iter=', iter ,'norm=',norm
+       
+        iter=iter+1 
 
     end subroutine fcnelectNoPoly
 
@@ -415,24 +408,24 @@ module listfcn
         real(dp) :: tmp,expVdW 
         real(dp) :: norm
         integer :: conf              ! counts number of conformations
-        real(dp) :: cn                 ! auxilary variable for Poisson Eq
+        real(dp) :: cn               ! auxilary variable for Poisson Eq
         integer :: neq_bc           
 
-        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0e-9_dp  ! tolerance for constA and constB 
 
 
         !     .. executable statements 
-
-        n=nz                      ! size vector neq=5*nz x=(pi,psi,rhopolA,rhopolB,xpolC)
-        print*,"n=",n
-        do i=1,n                  ! init x 
+ 
+        n=nz                       ! size vector neq=5*nz x=(pi,psi,rhopolA,rhopolB,xpolC)
+        
+        do i=1,n                   ! init x 
             xsol(i)= x(i)          ! solvent volume fraction 
             psi(i) = x(i+n)        ! potential
             rhopolAin(i)=x(i+2*n)
             rhopolBin(i)=x(i+3*n)
         enddo
+        
         neq_bc=0
-
         if(bcflag(RIGHT)/="cc") then
             neq_bc=neq_bc+1 
             psiSurfR =x(4*n+neq_bc)          ! surface potentail
@@ -443,11 +436,11 @@ module listfcn
         endif    
         neq_bc=0
     
-        do i=1,n                  ! init volume fractions 
-            xpolAB(i)  = 0.0d0     ! AB polymer volume fraction 
-            xpolC(i)   = 0.0d0     ! C polymer volume fraction 
-            rhopolA(i) = 0.0d0     ! A polymer density 
-            rhopolB(i) = 0.0d0
+        do i=1,n                    ! init volume fractions 
+            xpolAB(i)  = 0.0_dp     ! AB polymer volume fraction 
+            xpolC(i)   = 0.0_dp     ! C polymer volume fraction 
+            rhopolA(i) = 0.0_dp     ! A polymer density 
+            rhopolB(i) = 0.0_dp
 
             xNa(i)   = expmu%Na*(xsol(i)**vNa)*dexp(-psi(i)*zNa) ! ion plus volume fraction
             xK(i)    = expmu%K*(xsol(i)**vK)*dexp(-psi(i)*zK)    ! ion plus volume fraction
@@ -463,13 +456,13 @@ module listfcn
             xA(3)= (xCa(i)/vCa)/(K0a(3)*(xsol(i)**deltavA(3)))  ! ACa+/A-
        
             sumxA=xA(1)+xA(2)+xA(3)
-            constA=(2.0d0*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) ! A2Ca/(A-)^2
+            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) ! A2Ca/(A-)^2
             if(constA<=tolconst) then 
-                fdisA(1,i)=1.0d0/(1.0d0+sumxA)
-                fdisA(5,i)=0.0d0
+                fdisA(1,i)=1.0_dp/(1.0_dp+sumxA)
+                fdisA(5,i)=0.0_dp
             else
-                fdisA(1,i)= (-1.0d0+dsqrt(1.0d0+4.0d0*constA/((sumxA+1.0d0)**2)))
-                fdisA(1,i)= fdisA(1,i)*(sumxA+1.0d0)/(2.0d0*constA)
+                fdisA(1,i)= (-1.0_dp+dsqrt(1.0_dp+4.0_dp*constA/((sumxA+1.0_dp)**2)))
+                fdisA(1,i)= fdisA(1,i)*(sumxA+1.0_dp)/(2.0_dp*constA)
                 fdisA(5,i)= (fdisA(1,i)**2)*constA
             endif    
        
@@ -483,13 +476,13 @@ module listfcn
        
        
             sumxB=xB(1)+xB(2)+xB(3)
-            constB=(2.0d0*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0b(4)*(xsol(i)**deltavB(4)))
+            constB=(2.0_dp*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0b(4)*(xsol(i)**deltavB(4)))
             if(constB<=tolconst) then
-                fdisB(1,i)=1.0d0/(1.0d0+sumxB)
-                fdisB(5,i)=0.0d0
+                fdisB(1,i)=1.0_dp/(1.0_dp+sumxB)
+                fdisB(5,i)=0.0_dp
             else
-                fdisB(1,i)= (-1.0d0+dsqrt(1.0d0+4.0d0*constB/((sumxB+1.0d0)**2)))
-                fdisB(1,i)= fdisB(1,i)*(sumxB+1.0d0)/(2.0d0*constB) !B^-
+                fdisB(1,i)= (-1.0_dp+dsqrt(1.0_dp+4.0_dp*constB/((sumxB+1.0_dp)**2)))
+                fdisB(1,i)= fdisB(1,i)*(sumxB+1.0_dp)/(2.0_dp*constB) !B^-
                 fdisB(5,i)= (fdisB(1,i)**2)*constB                    ! B2Ca
             endif
        
@@ -503,7 +496,7 @@ module listfcn
 
     !       exppiA(i)=(xsol(i)**vpolA(2))*dexp(-zpolA(2)*psi(i))/fdisA(2,i) ! auxiliary variable                                           
     !       exppiB(i)=(xsol(i)**vpolB(2))*dexp(-zpolB(2)*psi(i))/fdisB(2,i) ! auxiliary variable   
-            ! Na condensed ANa reference state
+    !        Na condensed ANa reference state
     !        exppiA(i)=(xsol(i)**vpolA(3))*dexp(-zpolA(3)*psi(i))/fdisA(3,i) ! auxiliary variable
     !        exppiB(i)=(xsol(i)**vpolB(3))*dexp(-zpolB(3)*psi(i))/fdisB(3,i) ! auxiliary variable   
 
@@ -512,11 +505,11 @@ module listfcn
 
         !   .. computation polymer volume fraction 
 
-        qAB = 0.0d0                 ! init q
+        qAB = 0.0_dp                  ! init q
 
-        do c=1,cuantasAB            ! loop over cuantas
-            pro=1.0d0                ! initial weight conformation 
-            do s=1,nsegAB            ! loop over segments 
+        do c=1,cuantasAB              ! loop over cuantas
+            pro=1.0_dp                ! initial weight conformation 
+            do s=1,nsegAB             ! loop over segments 
                 k=indexchainAB(c,s)
                 if(isAmonomer(s)) then ! A segment 
                     pro = pro*exppiA(k)
@@ -551,10 +544,10 @@ module listfcn
                 xpolAB(i)=xpolAB(i)+rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol  & 
                     +rhopolB(i)*fdisB(k,i)*vpolB(k)*vsol
             enddo    
-            xpolAB(i)=xpolAB(i)+rhopolA(i)*(fdisA(5,i)*vpolA(5)*vsol/2.0d0)
-            xpolAB(i)=xpolAB(i)+rhopolB(i)*(fdisB(5,i)*vpolB(5)*vsol/2.0d0)
+            xpolAB(i)=xpolAB(i)+rhopolA(i)*(fdisA(5,i)*vpolA(5)*vsol/2.0_dp)
+            xpolAB(i)=xpolAB(i)+rhopolB(i)*(fdisB(5,i)*vpolB(5)*vsol/2.0_dp)
        
-            f(i)=xpolAB(i)+xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0d0
+            f(i)=xpolAB(i)+xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0_dp
        
             rhoq(i)= zNa*xNa(i)/vNa + zCa*xCa(i)/vCa +zK*xK(i)/vK + zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                 zpolA(1)*fdisA(1,i)*rhopolA(i)*vsol+ zpolA(4)*fdisA(4,i)*rhopolA(i)*vsol+ &
@@ -570,10 +563,10 @@ module listfcn
 
         ! .. Poisson Eq 
 
-        f(n+1)= -0.5d0*((psi(2)-psi(1)) + sigmaqSurfL +rhoq(1)*constqW)      !     boundary
-        f(2*n)= -0.5d0*(sigmaqSurfR- (psi(n)-psi(n-1)) +rhoq(n)*constqW)
+        f(n+1)= -0.5_dp*((psi(2)-psi(1)) + sigmaqSurfL +rhoq(1)*constqW)      !     boundary
+        f(2*n)= -0.5_dp*(sigmaqSurfR- (psi(n)-psi(n-1)) +rhoq(n)*constqW)
         do i=2,n-1
-            f(n+i)= -0.5d0*(psi(i+1)-2.0d0*psi(i) + psi(i-1) +rhoq(i)*constqW)
+            f(n+i)= -0.5_dp*(psi(i+1)-2.0_dp*psi(i) + psi(i-1) +rhoq(i)*constqW)
         enddo
 
         do i=1,n
@@ -585,33 +578,29 @@ module listfcn
         neq_bc=0
         if(bcflag(RIGHT)/='cc') then 
             neq_bc=neq_bc+1
-            f(4*n+neq_bc)=psisurfR-psi(n)-sigmaqSurfR/2.0d0
+            f(4*n+neq_bc)=psisurfR-psi(n)-sigmaqSurfR/2.0_dp
         else
-            psisurfR=psi(n)+sigmaqSurfR/2.0d0
-!            print*,'psisurfR=',psisurfR,' sigmaqSurfR=',sigmaqSurfR
+            psisurfR=psi(n)+sigmaqSurfR/2.0_dp
         endif   
 
         if(bcflag(LEFT)/='cc') then 
             neq_bc=neq_bc+1
-            f(4*n+neq_bc)=psi(1)-psisurfL+sigmaqSurfL/2.0d0
+            f(4*n+neq_bc)=psi(1)-psisurfL+sigmaqSurfL/2.0_dp
         else    
-            psisurfL=psi(1)+sigmaqSurfL/2.0d0
-!            print*,'psisurfL=',psisurfL,' sigmaqSurfL=',sigmaqSurfL
+            psisurfL=psi(1)+sigmaqSurfL/2.0_dp
         endif   
 
-    !    norm=l2norm(f,4*n+neq_bc)
+   
         
         iter=iter+1
 
         qABL=qAB   ! defined both qAB and qABL, communcicates value     
 
-    !    print*,'iter=', iter ,'norm=',norm
-
     end subroutine fcnelect
 
     subroutine fcnelectdouble(x,f,nn)
 
-    !     .. variables and constant declaractions 
+        ! .. variables and constant declaractions 
 
         use globals
         use volume
@@ -638,34 +627,34 @@ module listfcn
         real(dp) :: xA(3),xB(3),sumxA,sumxB
         real(dp) :: constA,constB
         real(dp) :: proL,rhopolABL0,proR,rhopolABR0
-        integer :: n                 ! half of n
-        integer :: i,j,k,kL,kR,c,s         ! dummy indices
+        integer :: n                  ! half of n
+        integer :: i,j,k,kL,kR,c,s    ! dummy indices
         real(dp) :: norm
-        integer :: conf              ! counts number of conformations
-        real(dp) :: cn                 ! auxilary variable for Poisson Eq
+        integer :: conf               ! counts number of conformations
+        real(dp) :: cn                ! auxilary variable for Poisson Eq
 
-        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0e-9_dp  ! tolerance for constA and constB 
 
         !  .. executable statements 
 
-        n=nz                        ! size vector neq=5*nz
+        n=nz                         ! size vector neq=5*nz
 
-        do i=1,n                    ! init x 
-            xsol(i)= x(i)           ! solvent volume fraction 
-            psi(i) = x(i+n)         ! potential
+        do i=1,n                     ! init x 
+            xsol(i)= x(i)            ! solvent volume fraction 
+            psi(i) = x(i+n)          ! potential
             rhopolAin(i)=x(i+2*n)
             rhopolBin(i)=x(i+3*n)
         enddo
 
-        psiSurfR = psi(1)          ! surface potentail
+        psiSurfR = psi(1)            ! surface potentail
         psiSurfL = psi(n)
    
-        do i=1,n                   ! init volume fractions 
-            xpolAB(i)  = 0.0d0     ! AB polymer volume fraction 
-            rhopolAL(i) = 0.0d0     ! A polymer density 
-            rhopolBL(i) = 0.0d0     ! B polymer density  
-            rhopolAR(i) = 0.0d0     ! A polymer density 
-            rhopolBR(i) = 0.0d0     ! B polymer density 
+        do i=1,n                     ! init volume fractions 
+            xpolAB(i)  = 0.0_dp      ! AB polymer volume fraction 
+            rhopolAL(i) = 0.0_dp     ! A polymer density 
+            rhopolBL(i) = 0.0_dp     ! B polymer density  
+            rhopolAR(i) = 0.0_dp     ! A polymer density 
+            rhopolBR(i) = 0.0_dp     ! B polymer density 
 
             xNa(i)   = expmu%Na*(xsol(i)**vNa)*dexp(-psi(i)*zNa) ! ion plus volume fraction
             xK(i)    = expmu%K*(xsol(i)**vK)*dexp(-psi(i)*zK)    ! ion plus volume fraction
@@ -681,13 +670,13 @@ module listfcn
             xA(3)= (xCa(i)/vCa)/(K0a(3)*(xsol(i)**deltavA(3)))   ! ACa+/A-
        
             sumxA=xA(1)+xA(2)+xA(3)
-            constA=(2.0d0*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) ! A2Ca/(A-)^2
+            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) ! A2Ca/(A-)^2
             if(constA<=tolconst) then 
-                fdisA(1,i)=1.0d0/(1.0d0+sumxA)
-                fdisA(5,i)=0.0d0
+                fdisA(1,i)=1.0_dp/(1.0_dp+sumxA)
+                fdisA(5,i)=0.0_dp
             else
-                fdisA(1,i)= (-1.0d0+dsqrt(1.0d0+4.0d0*constA/((sumxA+1.0d0)**2)))
-                fdisA(1,i)= fdisA(1,i)*(sumxA+1.0d0)/(2.0d0*constA)
+                fdisA(1,i)= (-1.0_dp+dsqrt(1.0_dp+4.0_dp*constA/((sumxA+1.0_dp)**2)))
+                fdisA(1,i)= fdisA(1,i)*(sumxA+1.0_dp)/(2.0_dp*constA)
                 fdisA(5,i)= (fdisA(1,i)**2)*constA
             endif    
        
@@ -701,13 +690,13 @@ module listfcn
        
        
             sumxB=xB(1)+xB(2)+xB(3)
-            constB=(2.0d0*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0b(4)*(xsol(i)**deltavB(4)))
+            constB=(2.0_dp*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0b(4)*(xsol(i)**deltavB(4)))
             if(constB<=tolconst) then
-                fdisB(1,i)=1.0d0/(1.0d0+sumxB)
-                fdisB(5,i)=0.0d0
+                fdisB(1,i)=1.0_dp/(1.0_dp+sumxB)
+                fdisB(5,i)=0.0_dp
             else
-                fdisB(1,i)= (-1.0d0+dsqrt(1.0d0+4.0d0*constB/((sumxB+1.0d0)**2)))
-                fdisB(1,i)= fdisB(1,i)*(sumxB+1.0d0)/(2.0d0*constB) !B^-
+                fdisB(1,i)= (-1.0_dp+dsqrt(1.0_dp+4.0_dp*constB/((sumxB+1.0_dp)**2)))
+                fdisB(1,i)= fdisB(1,i)*(sumxB+1.0_dp)/(2.0_dp*constB) !B^-
                 fdisB(5,i)= (fdisB(1,i)**2)*constB                    ! B2Ca
             endif
        
@@ -730,15 +719,15 @@ module listfcn
 
         !  .. computation polymer volume fraction 
 
-        qABL = 0.0d0                  ! init q
-        qABR = 0.0d0
+        qABL = 0.0_dp                  ! init q
+        qABR = 0.0_dp
 
-        do c=1,cuantasAB              ! loop over cuantas
-            proL=1.0d0                ! initial weight conformation 
-            proR=1.0d0
-            do s=1,nsegAB             ! loop over segments 
-                kL=indexchainAB(c,s)
-                kR=nz+1-kL
+        do c=1,cuantasAB               ! loop over cuantas
+            proL=1.0_dp                ! initial weight conformation 
+            proR=1.0_dp
+            do s=1,nsegAB              ! loop over segments 
+                kL=indexchainAB(c,s)    
+                kR=nz+1-kL              
                 if(isAmonomer(s)) then ! A segment 
                     proL = proL*exppiA(kL)
                     proR = proR*exppiA(kR)
@@ -768,25 +757,21 @@ module listfcn
 
         rhopolABL0=sigmaABL/qABL
         rhopolABR0=sigmaABR/qABR
-!        print*,"sigmaABR=",sigmaABR,"sigmaABL=",sigmaABL
-!        print*,"qABL=",qABL,"qABR=",qABR
 
         do i=1,n
 
             rhopolA(i)= (rhopolABL0*rhopolAL(i)+rhopolABR0*rhopolAR(i))/deltaG(i)
             rhopolB(i)= (rhopolABL0*rhopolBL(i)+rhopolABR0*rhopolBR(i))/deltaG(i)
-            
-!            print*,i,rhopolB(i),rhopolBL(i),rhopolBR(i)
-
+        
             do k=1,4               ! polymer volume fraction
                 xpolAB(i)=xpolAB(i)+rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol  & 
                     +rhopolB(i)*fdisB(k,i)*vpolB(k)*vsol
             enddo    
-            xpolAB(i)=xpolAB(i)+rhopolA(i)*(fdisA(5,i)*vpolA(5)*vsol/2.0d0)
-            xpolAB(i)=xpolAB(i)+rhopolB(i)*(fdisB(5,i)*vpolB(5)*vsol/2.0d0)
+            xpolAB(i)=xpolAB(i)+rhopolA(i)*(fdisA(5,i)*vpolA(5)*vsol/2.0_dp)
+            xpolAB(i)=xpolAB(i)+rhopolB(i)*(fdisB(5,i)*vpolB(5)*vsol/2.0_dp)
        
        
-            f(i)=xpolAB(i)+xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0d0
+            f(i)=xpolAB(i)+xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0_dp
        
             rhoq(i)= zNa*xNa(i)/vNa + zCa*xCa(i)/vCa +zK*xK(i)/vK + zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                 zpolA(1)*fdisA(1,i)*rhopolA(i)*vsol+ zpolA(4)*fdisA(4,i)*rhopolA(i)*vsol+ &
@@ -797,16 +782,16 @@ module listfcn
 
         ! .. electrostatics 
         ! .. no charge regulating surface charge 
-        psisurfR = psi(n)+sigmaqSurfR/2.0d0 
-        psisurfL = psi(1)+sigmaqSurfL/2.0d0
+        psisurfR = psi(n)+sigmaqSurfR/2.0_dp 
+        psisurfL = psi(1)+sigmaqSurfL/2.0_dp
 
         ! .. Poisson Eq 
 
-        f(n+1)  = -0.5d0*( (psi(2)-psi(1)) + sigmaqSurfL  + rhoq(1)*constqW)      !     boundary
-        f(2*n)= -0.5d0*( sigmaqSurfR -(psi(n)-psi(n-1)) + rhoq(1)*constqW)      !     boundary
+        f(n+1)  = -0.5_dp*( (psi(2)-psi(1)) + sigmaqSurfL  + rhoq(1)*constqW)      !     boundary
+        f(2*n)= -0.5_dp*( sigmaqSurfR -(psi(n)-psi(n-1)) + rhoq(1)*constqW)        !     boundary
 
         do i=2,n-1
-            f(n+i)= -0.5d0*( psi(i+1)-2.0d0*psi(i) + psi(i-1) +rhoq(i)*constqW)
+            f(n+i)= -0.5_dp*( psi(i+1)-2.0_dp*psi(i) + psi(i-1) +rhoq(i)*constqW)
         enddo
 
         do i=1,n
@@ -814,10 +799,7 @@ module listfcn
             f(3*n+i)=rhopolB(i)-rhopolBin(i)
         enddo
 
-    !    norm=l2norm(f,4*n)
-         iter=iter+1
-
-    !    print*,'iter=', iter ,'norm=',norm
+        iter=iter+1
 
     end subroutine fcnelectdouble
 
@@ -854,34 +836,34 @@ module listfcn
         real(dp) :: tmp,expVdW 
         real(dp) :: norm
         integer :: conf              ! counts number of conformations
-        real(dp) :: cn                 ! auxilary variable for Poisson Eq
+        real(dp) :: cn               ! auxilary variable for Poisson Eq
 
 
-        real(dp), parameter :: tolconst = 1.0d-9  ! tolerance for constA and constB 
+        real(dp), parameter :: tolconst = 1.0e-9_dp  ! tolerance for constA and constB 
 
 
         !     .. executable statements 
 
-        n=nz                      ! size vector neq=5*nz x=(pi,psi,rhopolA,rhopolB,xpolC)
+        n=nz                        ! size vector neq=5*nz x=(pi,psi,rhopolA,rhopolB,xpolC)
 
-        do i=1,n                  ! init x 
-            xsol(i)= x(i)          ! solvent volume fraction 
-            xpolBin(i)=x(i+n)    ! volume fraction B-polymer 
+        do i=1,n                    ! init x 
+            xsol(i)= x(i)           ! solvent volume fraction 
+            xpolBin(i)=x(i+n)       ! volume fraction B-polymer 
         enddo
 
-        do i=1,n                  ! init volume fractions 
-            xpolAB(i)  = 0.0d0     ! AB polymer volume fraction 
-            xpolC(i)   = 0.0d0     ! C polymer volume fraction 
-            rhopolA(i) = 0.0d0     ! A polymer density 
-            rhopolB(i) = 0.0d0
-            rhopolC(i) = 0.0d0
+        do i=1,n                    ! init volume fractions 
+            xpolAB(i)  = 0.0_dp     ! AB polymer volume fraction 
+            xpolC(i)   = 0.0_dp     ! C polymer volume fraction 
+            rhopolA(i) = 0.0_dp     ! A polymer density 
+            rhopolB(i) = 0.0_dp
+            rhopolC(i) = 0.0_dp
         
             exppiA(i)=(xsol(i)**vpolA(3)) !*dexp(-zpolA(3)*psi(i))/fdisA(3,i) ! auxiliary variable
             exppiB(i)=(xsol(i)**vpolB(3)) !*dexp(-zpolB(3)*psi(i))/fdisB(3,i) ! auxiliary variable   
             exppiC(i)=(xsol(i)**vpolC)
        
             !     .. VdW interaction   
-            tmp = 0.0d0
+            tmp = 0.0_dp
             if((i+VdWcutoffdelta)<=nsize) then 
                 do j=minrange(i),i+VdWcutoffdelta
                     tmp = tmp + chis(i,j)*xpolBin(j)
@@ -893,10 +875,10 @@ module listfcn
 
         !   .. computation polymer volume fraction 
 
-        qAB = 0.0d0                 ! init q
+        qAB = 0.0_dp                 ! init q
 
         do c=1,cuantasAB            ! loop over cuantas
-            pro=1.0d0                ! initial weight conformation 
+            pro=1.0_dp                ! initial weight conformation 
             do s=1,nsegAB            ! loop over segments 
                 k=indexchainAB(c,s)
                 if(isAmonomer(s)) then ! A segment 
@@ -917,9 +899,9 @@ module listfcn
             enddo
         enddo
 
-        qC = 0.0d0                 ! init q   
-        do c=1,cuantasC            ! loop over cuantas                                                      
-            pro=1.0d0               ! initial weight conformation                                                   
+        qC = 0.0_dp                 ! init q   
+        do c=1,cuantasC             ! loop over cuantas                                                      
+            pro=1.0_dp              ! initial weight conformation                                                   
             do s=1,nsegC            ! loop over segments                
                 k=indexchainC(c,s)
                 pro = pro*exppiC(k)
@@ -945,7 +927,7 @@ module listfcn
             xpolAB(i)=(rhopolA(i)*vpolA(3)+rhopolB(i)*vpolB(3))*vsol
             xpolC(i)=rhopolC(i)*vpolC*vsol
        
-            f(i)=xpolAB(i)+xpolC(i)+xsol(i)-1.0d0
+            f(i)=xpolAB(i)+xpolC(i)+xsol(i)-1.0_dp
             f(n+i)=rhopolB(i)*vpolB(3)*vsol-xpolBin(i)
         enddo  !  .. end computation polymer density 
 
@@ -1003,24 +985,24 @@ module listfcn
         !     .. condensation equilibrium eq NaCl
 
         f(1)= phiNaCl-(phiNa*phiCl*K0ionNa*vsol*vNaCl/(vNa*vCl*vsol))*      & 
-         ((1.0d0 -phiNaCl-phiNa-phiCl-phiK-phiKCl-xbulk%Hplus-xbulk%OHmin-xbulk%Ca)**deltavolNaCl)
+         ((1.0_dp -phiNaCl-phiNa-phiCl-phiK-phiKCl-xbulk%Hplus-xbulk%OHmin-xbulk%Ca)**deltavolNaCl)
 
         !     .. charge neutrality
-        f(2)=phiNa/vNa-phiCl/vCl+2.0d0*xbulk%Ca/vCa+xbulk%Hplus-xbulk%OHmin+phiK/vK
+        f(2)=phiNa/vNa-phiCl/vCl+2.0_dp*xbulk%Ca/vCa+xbulk%Hplus-xbulk%OHmin+phiK/vK
 
         !     .. conservation of number NaCl
 
-        f(3)=phiNa/vNa+phiCl/vCl+2.0d0*phiNaCl/vNaCl + phiKCL/vKCL &    
-             -2.0d0*vsol*(Na/1.0d24)*cNaCl-dabs(xbulk%Hplus-xbulk%OHmin) &
-            -2.0d0*xbulk%Ca/vCa-vsol*(Na/1.0d24)*cKCl
+        f(3)=phiNa/vNa+phiCl/vCl+2.0_dp*phiNaCl/vNaCl + phiKCL/vKCL &    
+             -2.0_dp*vsol*(Na/1.0e24_dp)*cNaCl-dabs(xbulk%Hplus-xbulk%OHmin) &
+            -2.0_dp*xbulk%Ca/vCa-vsol*(Na/1.0e24_dp)*cKCl
 
         !     .. condensation equilibrium eq KCl
 
         f(4)= phiKCl-(phiK*phiCl*K0ionK*vsol*vKCl/(vK*vCl*vsol))* &
-             ((1.0d0 -phiNaCl-phiNa-phiCl-phiK-phiKCl-xbulk%Hplus-xbulk%OHmin-xbulk%Ca)**deltavolKCl)
+             ((1.0_dp -phiNaCl-phiNa-phiCl-phiK-phiKCl-xbulk%Hplus-xbulk%OHmin-xbulk%Ca)**deltavolKCl)
 
         !     .. conservation of number K
-        f(5)= phiK/vK+phiKCl/vKCl-vsol*(Na/1.0d24)*cKCl
+        f(5)= phiK/vK+phiKCl/vKCl-vsol*(Na/1.0e24_dp)*cKCl
 
     !    norm=l2norm(f,5)
         iter=iter+1
@@ -1028,6 +1010,40 @@ module listfcn
     !    print*,'iter=', iter ,'norm=',norm
 
     end subroutine fcnbulk
+
+
+
+ ! selects correct fcn function 
+
+    subroutine set_fcn
+
+        use globals
+        use fcnpointer
+        
+        implicit none   
+
+        select case (sysflag)
+        case ("elect") 
+            fcnptr => fcnelect
+        case ("electdouble")  
+            fcnptr => fcnelectdouble
+        case ("electnopoly") 
+            fcnptr => fcnelectNoPoly 
+        case ("electHC") 
+            fcnptr => fcnelectHC
+        case ("neutral") 
+            fcnptr => fcnneutral
+        case ("bulk water") 
+             fcnptr => fcnbulk
+        case default
+            print*,"Error in call to solver subroutine"    
+            print*,"Wrong value sysflag : ", sysflag
+            stop
+        end select  
+        
+    end subroutine set_fcn    
+
+
 
 
 end module listfcn
