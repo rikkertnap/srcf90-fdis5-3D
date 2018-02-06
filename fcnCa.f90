@@ -760,9 +760,17 @@ module listfcn
 
         do i=1,n
 
-            rhopolA(i)= (rhopolABL0*rhopolAL(i)+rhopolABR0*rhopolAR(i))/deltaG(i)
-            rhopolB(i)= (rhopolABL0*rhopolBL(i)+rhopolABR0*rhopolBR(i))/deltaG(i)
-        
+            !rhopolA(i)= (rhopolABL0*rhopolAL(i)+rhopolABR0*rhopolAR(i))/deltaG(i)
+            !rhopolB(i)= (rhopolABL0*rhopolBL(i)+rhopolABR0*rhopolBR(i))/deltaG(i)
+            
+            rhopolAL(i) = rhopolABL0*rhopolAL(i)
+            rhopolAR(i) = rhopolABR0*rhopolAR(i)
+            rhopolA(i)  = rhopolAL(i) + rhopolAR(i)
+
+            rhopolBL(i) = rhopolABL0*rhopolBL(i)
+            rhopolBR(i) = rhopolABR0*rhopolBR(i)
+            rhopolB(i)  = rhopolBL(i) + rhopolBR(i)
+            
             do k=1,4               ! polymer volume fraction
                 xpolAB(i)=xpolAB(i)+rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol  & 
                     +rhopolB(i)*fdisB(k,i)*vpolB(k)*vsol

@@ -5,18 +5,23 @@
 !       return= is_postive                                    |
 ! ------------------------------------------------------------|
 
+module chain_rotation
 
-subroutine rotation(xend,xendr,nseg,is_positive_z,lseg)
+  implicit none
+
+contains  
+
+function rotation(xend,xendr,nseg)result(is_positive_z)
   
     use random
     use mathconst
     
     implicit none
 
-    integer :: nseg  
-    logical :: is_positive_z
-    real(dp)  :: lseg
-    real(dp)  :: xend(3,nseg+5),xendr(3,nseg+5)  
+    integer,  intent(in)    :: nseg  
+    real(dp), intent(in)    :: xend(3,nseg+5)
+    real(dp), intent(inout) :: xendr(3,nseg+5)  
+    logical                 :: is_positive_z  ! output 
   
     ! ..local argument 
 
@@ -54,7 +59,7 @@ subroutine rotation(xend,xendr,nseg,is_positive_z,lseg)
          i=i+1
     enddo
 
-end subroutine rotation
+end function rotation
 
-
+end module chain_rotation
     

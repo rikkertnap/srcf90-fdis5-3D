@@ -137,7 +137,7 @@ contains
     ! transform VdW coefficients to chi values
     do i=1,nsize
        do j=1,nsize
-          chis(i,j)=-1.0d0*VdWcoeff(i,j)
+          chis(i,j)=-1.0_dp*VdWcoeff(i,j)
        enddo
     enddo
     

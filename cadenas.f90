@@ -18,7 +18,8 @@ subroutine make_linear_chains(chains,nchains,maxnchains,nseg,lseg)
     use mathconst
     use random
     use matrices
-    
+    use chain_rotation, only : rotation
+
     implicit none
   
     !     .. scalar arguments
@@ -116,8 +117,7 @@ subroutine make_linear_chains(chains,nchains,maxnchains,nseg,lseg)
 
         do while((i.le.maxattempts).and.(nchains.lt.maxnchains)) 
         
- 
-            call rotation(xend,xendr,nseg,is_positive_z,lseg)
+            is_positive_z=rotation(xend,xendr,nseg)
             if (is_positive_z) then 
                 nchains=nchains+1
                 do j=1,nseg

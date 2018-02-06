@@ -43,6 +43,7 @@ subroutine make_chains_mc()
     use volume
     use myutils
     use cadenas_linear
+    use cadenas_sequence
 
     implicit none
 
@@ -66,10 +67,19 @@ subroutine make_chains_mc()
     seed=435672               ! seed for random number generator 
     maxnchains=12
 
+    if(isHomopolymer.eqv..FALSE.) then 
+        allocate(lsegseq(nsegAB))
+        call make_lsegseq(lsegseq,nsegAB)
+    endif    
+
     do while (conf.le.max_conforAB)
         nchains= 0      ! init zero 
-        !call cadenas(chain,nsegAB,lsegAB,nchain)  ! chain generator ! f77
-        call make_linear_chains(chain,nchains,maxnchains,nsegAB,lsegAB)  ! chain generator f90
+        if(isHomopolymer) then 
+            call make_linear_chains(chain,nchains,maxnchains,nsegAB,lsegAB) ! chain generator f90
+        else
+            call make_linear_seq_chains(chain,nchains,maxnchains,nsegAB) 
+            
+        endif  
         do j=1,nchains   
             conf=conf +1
             do s=1,nsegAB         !     transforming form real- to lattice coordinates
@@ -115,6 +125,7 @@ subroutine make_chains_file()
     use random
     use parameters
     use volume
+    use chain_rotation, only : rotation
 
     implicit none
 
@@ -182,7 +193,7 @@ subroutine make_chains_file()
             nchain=1
             
             do while ((rottest.eqv. .false.).and.(nchain.lt.maxattempts)) 
-                call rotation(chain,chains_rot,nsegAB,rottest,lsegAB)
+                rottest=rotation(chain,chains_rot,nsegAB)
                 nchain=nchain+1
             enddo
             
@@ -307,5 +318,42 @@ subroutine chain_filter()
     cuantasC=allowed_confC-1    ! the number of allowed conformations
 
 end subroutine  chain_filter
+
+
+
+! set isHomopolymer and set proper segment lenght homopolymer 
+
+subroutine set_properties_chain(freq,chaintype)
+
+    use globals
+    use parameters, only : lsegAB, lsegPAA, lsegPAMPS
+    use chains
+
+
+    implicit none
+
+    integer, intent(in) :: freq
+    character(len=8), intent(in)   :: chaintype
+
+    if(freq>nsegAB) then 
+        isHomopolymer=.TRUE.
+    else 
+        if(freq==0.and.chaintype.eq."diblock") then 
+            isHomopolymer=.TRUE.
+        else
+            isHomopolymer=.FALSE.
+        endif      
+    endif    
+
+    if(isHomopolymer) then 
+        if (isAmonomer(1)) then ! it is a homopolymer so all segments the same 
+            lsegAB=lsegPAA
+        else
+            lsegAB=lsegPAMPS
+        endif   
+    endif    
+
+end subroutine set_properties_chain
+
 
 end module chaingenerator

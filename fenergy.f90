@@ -58,7 +58,7 @@ contains
         if(sysflag.eq."elect") then 
             call fcnenergy_elect()
         elseif(sysflag.eq."electdouble") then 
-            print*,"sysflag=electdouble"    
+            print*,"fcnenergy sysflag=electdouble"    
             call fcnenergy_elect()
         elseif(sysflag.eq."electnopoly") then 
             call fcnenergy_elect()

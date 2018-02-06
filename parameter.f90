@@ -42,7 +42,10 @@ module parameters
     real(dp) :: lsegA              ! segment length of A polymer in nm
     real(dp) :: lsegB              ! segment length of B polymer in nm
     real(dp) :: lsegC              ! segment length of C polymer in nm
-  
+    real(dp) :: lsegCH2 
+    real(dp) :: lsegPAA   
+    real(dp) :: lsegPAMPS
+    
     integer :: period            ! peridociy of repeat of A or B block 
   
     real(dp) :: VdWepsB            ! strenght VdW interaction in units of kT
@@ -198,7 +201,7 @@ contains
         
         implicit none      
         
-        real(dp) :: vA,vB
+        real(dp) :: vA,vB, vAA, vAMPS
         
         !  .. initializations of variables
  
@@ -256,39 +259,48 @@ contains
         !     .. volume polymer segments
         !     .. all volume scaled by vsol
         
-        vA   = 0.07448_dp/vsol ! volume based on VdW radii 
-        vB   = 0.2134_dp/vsol
-        
+        vAA  =  0.07448_dp/vsol ! volume based on VdW radii 
+        vAMPS = 0.2134_dp/vsol
+    
+        vA = vAA
+        vB = vAMPS
+
         vpolA(1)= vA              ! vA-
         vpolA(2)= vA              ! vAH
         vpolA(3)= vA+vNa          ! vANa
         vpolA(4)= vA+vCa          ! vACa
-        vpolA(5)= 2.0_dp*vA+vCa    ! vA2Ca
+        vpolA(5)= 2.0_dp*vA+vCa   ! vA2Ca
         
         vpolB(1)= vB              ! vB-
         vpolB(2)= vB              ! vBH
         vpolB(3)= vB+vNa          ! vBNa
         vpolB(4)= vB+vCa          ! vBCa
-        vpolB(5)= 2.0_dp*vB+vCa    ! vB2Ca
+        vpolB(5)= 2.0_dp*vB+vCa   ! vB2Ca
         
         deltavA(1)=vpolA(1)+1.0_dp-vpolA(2) ! vA-+vH+-vAH
-        deltavA(2)=vpolA(1)+vNa-vpolA(3) ! vA-+vNa+-vANa+
-        deltavA(3)=vpolA(1)+vCa-vpolA(4) ! vA- + vCa2+ -vACa+
+        deltavA(2)=vpolA(1)+vNa-vpolA(3)    ! vA-+vNa+-vANa+
+        deltavA(3)=vpolA(1)+vCa-vpolA(4)    ! vA- + vCa2+ -vACa+
         deltavA(4)=2.0_dp*vpolA(1)+vCa-vpolA(5) ! 2vA- + vCa2+ -vA2Ca
         
         deltavB(1)=vpolB(1)+1.0_dp-vpolB(2) ! vB-+vH+-vBH
-        deltavB(2)=vpolB(1)+vNa-vpolB(3) ! vB-+vNa+-vBNa+
-        deltavB(3)=vpolB(1)+vCa-vpolB(4) ! vB- +vCa2+ -vBCa+
+        deltavB(2)=vpolB(1)+vNa-vpolB(3)    ! vB-+vNa+-vBNa+
+        deltavB(3)=vpolB(1)+vCa-vpolB(4)    ! vB- +vCa2+ -vBCa+
         deltavB(4)=2.0_dp*vpolB(1)+vCa-vpolB(5) ! 2vB- + vCa2+ -vB2Ca+
         
         vpolC  = 0.0270_dp/vsol     ! volume CH2
        
         !     .. other physical varaibles
-        
-        lsegAB=0.545_dp             ! segment length in nm
-        lsegA=0.545_dp              ! segment length in nm
-        lsegB=0.545_dp              ! segment length in nm 
-        lsegC=0.153_dp              ! segment length in nm od CH2 check 
+        lsegPAA  = 0.36287_dp       ! segment length in nm
+        lsegPAMPS = 0.545_dp        ! segment length in nm
+        lsegCH2 =  0.153_dp         ! segment length in nm od CH2 check  
+
+        lsegAB=lsegPAMPS          
+        lsegA=lsegPAA            
+        lsegB=lsegPAMPS          
+        lsegC=lsegCH2            
+
+        ! see also subroutine set_chain_properties 
+
         
         pKw=14.0_dp                 ! water equilibruim constant
         
@@ -318,7 +330,6 @@ contains
 
         max_conforAB=cuantasAB
         max_conforC=cuantasC
-
 
 
     end subroutine init_constants

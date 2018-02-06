@@ -43,18 +43,18 @@ contains
     integer ::  i
     real(dp)  ::  vol
     real(dp)  ::  vtest
-    real(dp), parameter :: vtol=1.0d-5
+    real(dp), parameter :: vtol=1.0e-6_dp
 
   
-    vol=0.0d0
+    vol=0.0_dp
     
     do i=1,nz
-       zc(i)= (i-0.5d0) * delta  ! z-coordinate 
-       G(i) =  1.0d0  ! geometrical factor 
-       deltaG(i)=1.0d0  
-!G(i) +(delta*delta)/(12.0d0*radius*radius) ! delta G(i)= (1/delta) \int dr G(r) 
-!       Fplus(i)=1.0d0+ delta/rc(i)
-!       Fmin(i) = 2.0d0-Fplus(i)      ! factors in Poisson Equation
+       zc(i)= (i-0.5_dp) * delta  ! z-coordinate 
+       G(i) =  1.0_dp  ! geometrical factor 
+       deltaG(i)=1.0_dp  
+!G(i) +(delta*delta)/(12.0-dp*radius*radius) ! delta G(i)= (1/delta) \int dr G(r) 
+!       Fplus(i)=1.0_dp+ delta/rc(i)
+!       Fmin(i) = 2.0_dp-Fplus(i)      ! factors in Poisson Equation
        vol=vol+ deltaG(i)
     enddo
     

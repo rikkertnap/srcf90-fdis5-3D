@@ -2,7 +2,7 @@
 
 # put the name of the target program here
 TARGET = brush.weak.mixture.planar # the list of source files
-SRC =  precision.f90  mathconst.f90 physconst.f90 globals.f90 myutils.f90 molecule.f90 chains.f90 volume.f90 L2norm.f90 rands.f90 parameter.f90  field.f90 VdW.f90 surface.f90 fenergy.f90 initcha.f90  myio.f90 cadenas.f90 fcnCa.f90  rota.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  brush.weak.nzrange.f90
+SRC =  precision.f90  mathconst.f90 physconst.f90 globals.f90 myutils.f90 molecule.f90 chains.f90 volume.f90 L2norm.f90 rands.f90 parameter.f90  field.f90 VdW.f90 surface.f90 fenergy.f90 initcha.f90  myio.f90 rota.f90 cadenas.f90 cadenas-sequence.f90 fcnCa.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  brush.weak.nzrange.f90
 # some definitions
 SHELL = /bin/bash
 
@@ -79,7 +79,7 @@ FF= ifort
 else 
 
 
-FFLAGS= -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds -Wall
+FFLAGS= -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds #-Wall
 
 
 LDFLAGS=-lm -L/opt/local/kinsol-2.8.2-stat/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/opt/local/kinsol-2.8.2-stat/lib

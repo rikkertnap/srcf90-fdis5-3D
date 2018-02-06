@@ -9,6 +9,8 @@ module chains
     integer(2), dimension(:,:), allocatable :: indexchainAB_init 
     integer(2), dimension(:,:), allocatable :: indexchainC_init 
     logical, dimension(:), allocatable :: isAmonomer
+    logical :: isHomopolymer
+    double precision, dimension(:),allocatable :: lsegseq  ! only needed for copolymer
 
 contains
   
@@ -23,7 +25,6 @@ contains
         allocate(indexchainC(cuantasC+100,nsegC))
         allocate(indexchainAB_init(cuantasAB+100,nsegAB))
         allocate(indexchainC_init(cuantasC+100,nsegC))
-
         allocate(isAmonomer(nsegAB))
     
     end subroutine allocate_chains
