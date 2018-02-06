@@ -65,16 +65,22 @@ LFFLAGS=$(LDFLAGS)
 
 FF= gfortran
 
-else ifeq ($(shell hostname),quser)
 
-FFLAGS= -O3 -cpp -DVERSION=\"$(GIT_VERSION)\"
+else ifeq ($(shell hostname),quser13)
 
-LDFLAGS=  -L/home/rna878/kinsol/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial -lm -L/opt/intel/composerxe-2011.3.174/tbb/lib/intel64/cc4.1.0_libc2.4_kernel2.6.16.21 -L/opt/intel/composerxe-2011.3.174/mkl/lib/intel64 -L/opt/intel/composerxe-2011.3.174/ipp/lib/intel64 -L/opt/intel/composerxe-2011.3.174/compiler/lib/intel64 -L/hpc/opt/intel/composerxe-2011.3.174/compiler/lib/intel64 -L/usr/lib/gcc/x86_64-redhat-linux/4.4.7 -L/usr/lib/gcc/x86_64-redhat-linux/4.4.7/../../../../lib64 -L/lib/../lib64 -L/usr/lib/../lib64 -L/usr/lib/gcc/x86_64-redhat-linux/4.4.7/../../.. -L/lib64 -L/lib -L/usr/lib64 -L/usr/lib -limf -lm -lifport -lifcore -lsvml -lipgo -lirc -lpthread -lirc_s -ldl
+	is_quest = yes
 
+else ifeq ($(shell hostname),quser12)
 
-LFFLAGS=$(LDFLAGS)
+        is_quest = yes
 
-FF= ifort
+else ifeq ($(shell hostname),quser11)
+
+	is_quest = yes
+
+else ifeq ($(shell hostname),quser10)
+
+	is_quest = yes
 
 else 
 
@@ -93,6 +99,18 @@ FF= gfortran
 endif
 
 
+
+ifdef is_quest 
+
+FFLAGS= -O3 -cpp -DVERSION=\"$(GIT_VERSION)\" -no-wrap-margin
+
+LDFLAGS= -lm /usr/lib64/librt.so -L/home/rna878/sundials-2.6.1-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/home/rna878/sundials-2.6.1-openmpi/lib
+
+LFFLAGS=$(LDFLAGS)
+
+FF= ifort
+
+endif
 
 all:	$(TARGET)
 
