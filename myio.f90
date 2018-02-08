@@ -17,8 +17,8 @@ module myio
     integer, parameter ::  myio_err_bcflag    = 9 
 
     ! unit number 
-    integer, private  :: un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
-    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair 
+    integer :: un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
+    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB 
    
     ! format specifiers 
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
@@ -28,7 +28,7 @@ module myio
     character(len=80), parameter  :: fmt5reals = "(5ES25.16E3)"
     character(len=80), parameter  :: fmt6reals = "(6ES25.16E3)" 
     
-    !private ::  un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
+    private ::  un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
     private :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair  
     private :: fmt,fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals  
       
@@ -103,7 +103,8 @@ subroutine read_inputfile(info)
     read(un_input,*)nzmax            ! max distance
     read(un_input,*)nzmin            ! min distance
     read(un_input,*)nzstep           ! step distance  
-    read(un_input,*)verboseflag     
+    read(un_input,*)verboseflag  
+    read(un_input,*)delta   
 
     close(un_input)
 
@@ -692,6 +693,7 @@ subroutine output_electdouble()
     character(len=90) :: densfracAfilename
     character(len=90) :: densfracBfilename
     character(len=90) :: densfracionpairfilename
+    character(len=90) :: rhopolABfilename
 
     integer :: i,j,k        ! dummy indexes
     character(len=100) :: fnamelabel
@@ -713,7 +715,7 @@ subroutine output_electdouble()
         write(rstr,'(F7.3)')pHbulk
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
 
-        print*,fnamelabel
+        ! print*,fnamelabel
 
         !     .. make filenames 
         sysfilename='system.'//trim(fnamelabel)
@@ -732,6 +734,7 @@ subroutine output_electdouble()
         densfracAfilename='densityAfrac.'//trim(fnamelabel)
         densfracBfilename='densityBfrac.'//trim(fnamelabel)
         densfracionpairfilename='densityfracionpair.'//trim(fnamelabel)
+        rhopolABfilename='rhopolAB.'//trim(fnamelabel)
        
         !     .. opening files        
         open(unit=newunit(un_sys),file=sysfilename)       
@@ -740,6 +743,8 @@ subroutine output_electdouble()
         open(unit=newunit(un_xpolAB),file=xpolABfilename)
         open(unit=newunit(un_fdisA),file=densfracAfilename) 
         open(unit=newunit(un_fdisB),file=densfracBfilename) 
+        open(unit=newunit(un_rhopolAB),file=rhopolABfilename)    
+
         if(verboseflag=="yes") then    
             open(unit=newunit(un_xNa),file=xNafilename)
             open(unit=newunit(un_xK),file=xKfilename)
@@ -761,6 +766,8 @@ subroutine output_electdouble()
     write(un_xpolAB,*)'#D    = ',nz*delta 
     write(un_fdisA,*)'#D    = ',nz*delta    
     write(un_fdisB,*)'#D    = ',nz*delta 
+    write(un_rhopolAB,*)'#D    = ',nz*delta 
+     
    
     if(verboseflag=="yes") then    
         write(un_xNa,*)'#D    = ',nz*delta 
@@ -782,6 +789,7 @@ subroutine output_electdouble()
         write(un_fdisA,fmt6reals)zc(i),fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
         write(un_fdisA,fmt6reals)zc(i),fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)   
         write(un_psi,*)zc(i),psi(i)
+        write(un_rhopolAB,fmt5reals)zc(i),rhopolAL(i),rhopolBL(i),rhopolAR(i),rhopolBR(i)
     enddo
     write(un_psi,*)nz*delta,psiSurfR
 
@@ -933,6 +941,7 @@ subroutine output_electdouble()
         close(un_xpolAB)   
         close(un_fdisA)
         close(un_fdisB)
+        close(un_rhopolAB)
         if(verboseflag=="yes") then 
             close(un_xNa)   
             close(un_xK)

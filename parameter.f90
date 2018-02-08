@@ -309,7 +309,7 @@ contains
         
         lb=BjerrumLenght(T)        ! bjerrum length in water in nm
 
-        delta = 0.30_dp             ! size lattice spacing
+        ! delta = 0.30_dp             ! size lattice spacing
         seed  = 435672             ! seed for random number generator
         
         constqW = delta*delta*4.0_dp*pi*lb/vsol ! multiplicative constant Poisson Eq. 
