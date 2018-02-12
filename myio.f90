@@ -7,7 +7,7 @@ module myio
     ! return error values
 
     integer, parameter ::  myio_err_sysflag   = 1
- !   integer, parameter ::  myio_err_runflag   = 2
+    integer, parameter ::  myio_err_runflag   = 2
  !   integer, parameter ::  myio_err_geometry  = 3
     integer, parameter ::  myio_err_method    = 4
     integer, parameter ::  myio_err_chaintype = 5
@@ -75,7 +75,14 @@ subroutine read_inputfile(info)
     read(un_input,*)sigmaC
     read(un_input,*)error             
     read(un_input,*)infile              ! guess  1==yes
-    read(un_input,*)pHbulk
+    read(un_input,*)pH%val
+    read(un_input,*)runflag
+    if(runflag=="rangepH") then
+        read(un_input,*)pH%min
+        read(un_input,*)pH%max
+        read(un_input,*)pH%stepsize
+        read(un_input,*)pH%delta
+    endif 
     read(un_input,*)KionNa
     read(un_input,*)KionK
     read(un_input,*)sigmaSurfL
@@ -130,6 +137,14 @@ subroutine read_inputfile(info)
         if (present(info)) info = info_sys
         return
     endif
+
+    call check_value_runflag(runflag,info_sys) 
+    if (info_sys == myio_err_runflag) then
+        if (present(info)) info = info_run
+        return
+    endif
+
+
 
     call check_value_bcflag(bcflag,info_bc) 
     if (info_bc == myio_err_bcflag) then
@@ -189,6 +204,39 @@ subroutine check_value_sysflag(sysflag,info)
 
 end subroutine check_value_sysflag
 
+
+subroutine check_value_runflag(runflag,info)
+
+    implicit none
+
+    character(len=15), intent(in) :: runflag
+    integer, intent(out),optional :: info
+
+    character(len=15) :: runflagstr(2)
+    integer :: i
+    logical :: flag
+
+    ! permissible values of runflag
+
+    runflagstr(1)="rangepH"
+    runflagstr(2)="norangepH"
+
+    flag=.FALSE.
+
+    do i=1,2
+        if(runflag==runflagstr(i)) flag=.TRUE.
+    enddo
+
+    if (present(info)) info = 0
+
+    if (flag.eqv. .FALSE.) then
+        print*,"Error: value of runflag is not permissible"
+        print*,"runflag = ",runflag
+        if (present(info)) info = myio_err_runflag
+        return
+    end if
+
+end subroutine check_value_runflag
 
 subroutine check_value_bcflag(bcflag,info)
 

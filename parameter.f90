@@ -5,6 +5,7 @@ module parameters
     use random
     use volume
     use molecules
+    use loopvar
 
     implicit none
 
@@ -134,6 +135,7 @@ module parameters
     real(dp) :: pHbulk             ! pH of bulk pH = -log([H+])
     real(dp) :: pOHbulk            ! p0H of bulk p0H = -log([0H-])
   
+    type (looplist), target :: pH
         
 contains
 
@@ -358,6 +360,8 @@ contains
         
         !     .. initializations of input dependent variables, electrostatic part 
         
+        pHbulk=pH%val ! transfer pH value 
+
         cHplus = (10.0_dp)**(-pHbulk) ! concentration H+ in bulk
         pOHbulk = pKw -pHbulk       
         cOHmin  = (10.0_dp)**(-pOHbulk) ! concentration OH- in bulk
@@ -443,7 +447,7 @@ contains
         K0a(4) = (Ka(4)*vsol)*(Na/1.0e24_dp)
         K0b(4) = (Kb(4)*vsol)*(Na/1.0e24_dp)
          
-          
+
         pibulk = -dlog(xbulk%sol)  ! pressure (pi) of bulk
         ! exp(beta mu_i) = (rhobulk_i v_i) / exp(- beta pibulk v_i) 
         expmu%Na    = xbulk%Na   /(xbulk%sol**vNa) 
