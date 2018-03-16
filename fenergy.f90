@@ -154,7 +154,7 @@ contains
       
         if((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC > sigmaTOL)) then
         
-            FEq =-delta*(sigmaABL*dlog(qABL)+sigmaABR*dlog(qABR)+ sigmaABR*dlog(qABR) +sigmaC*dlog(qC) )
+            FEq =-delta*(sigmaABL*dlog(qABL)+ sigmaABR*dlog(qABR) +sigmaC*dlog(qC) )
        
         elseif((sigmaABL <= sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC > sigmaTOL)) then
         
