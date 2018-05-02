@@ -72,6 +72,8 @@ program brushweakpolyelectrolyte
     use_xstored = .false.             
     iter = 0
 
+    pH%val=pH%min ! added 
+    
     if(runflag=="rangepH") then 
 
         allocate(x(neq))

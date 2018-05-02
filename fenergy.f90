@@ -60,6 +60,7 @@ contains
         elseif(sysflag.eq."electdouble") then 
         !    print*,"fcnenergy sysflag=electdouble"    
             call fcnenergy_elect()
+            call fcnenergy_elect_alternative()
         elseif(sysflag.eq."electnopoly") then 
             call fcnenergy_elect()
             call fcnenergy_elect_alternative()
@@ -111,7 +112,7 @@ contains
         qres = 0.0_dp
 
         do i=1,nz
-            FEpi = FEpi  + dlog(xsol(i))
+            FEpi = FEpi  + log(xsol(i))
             FErho = FErho - (xsol(i) + xHplus(i) + xOHmin(i)+ xNa(i)/vNa + xCa(i)/vCa + xCl(i)/vCl+xK(i)/vK +&
                 xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
             FEel = FEel  - rhoq(i) * psi(i)/2.0_dp        
@@ -154,19 +155,19 @@ contains
       
         if((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC > sigmaTOL)) then
         
-            FEq =-delta*(sigmaABL*dlog(qABL)+ sigmaABR*dlog(qABR) +sigmaC*dlog(qC) )
+            FEq =-delta*(sigmaABL*log(qABL)+ sigmaABR*log(qABR) +sigmaC*log(qC) )
        
         elseif((sigmaABL <= sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC > sigmaTOL)) then
         
-            FEq = -delta*(sigmaC*dlog(qC) )
+            FEq = -delta*(sigmaC*log(qC) )
             
         elseif((sigmaABL > sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
-            FEq = -delta*(sigmaABL*dlog(qABL) )
+            FEq = -delta*(sigmaABL*log(qABL) )
        
         elseif((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
-            FEq = -delta*(sigmaABL*dlog(qABL) +sigmaABR*dlog(qABR))
+            FEq = -delta*(sigmaABL*log(qABL) +sigmaABR*log(qABR))
        
         elseif((sigmaABL <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
@@ -225,7 +226,7 @@ contains
 
         if(bcflag(LEFT)=="ta" ) then ! taurine 
 
-            FEchemSurf(LEFT)= dlog(fdisTaL(2))*sigmaSurf(LEFT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
+            FEchemSurf(LEFT)= log(fdisTaL(2))*sigmaSurf(LEFT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
         
         elseif(bcflag(LEFT)=="cc") then  
         
@@ -255,7 +256,7 @@ contains
         
         volumelat=nz*delta   ! volume lattice
 
-        FEbulk   = dlog(xbulk%sol)-(xbulk%sol+xbulk%Hplus +xbulk%OHmin+ & 
+        FEbulk   = log(xbulk%sol)-(xbulk%sol+xbulk%Hplus +xbulk%OHmin+ & 
             xbulk%Na/vNa +xbulk%Ca/vCa +xbulk%Cl/vCl+ xbulk%K/vK + xbulk%NaCl/vNaCl +xbulk%KCl/vKCl )
         FEbulk = volumelat*FEbulk/(vsol)
 
@@ -271,6 +272,7 @@ contains
         use field
         use VdW
         use surface
+        use conform_entropy
 
 
         implicit none
@@ -298,7 +300,8 @@ contains
     
         !  .. alternative computation free energy
 
-!        call FEconf_neutral()
+        call FEconf_entropy(FEconfAB,FEconfC)
+
 
         ! .. translational entropy 
 
@@ -357,13 +360,16 @@ contains
 
         ! .. summing all contrubutions
         
-!        FEalt= FEconfAB+FEconfC+FEVdW
         FEalt = FEtrans%sol +FEtrans%Na+ FEtrans%Cl +FEtrans%NaCl+FEtrans%Ca 
         FEalt = FEalt+FEtrans%OHmin +FEtrans%Hplus +FEtrans%K +FEtrans%KCl
         FEalt = FEalt+FEchempot%sol +FEchempot%Na+ FEchempot%Cl +FEchempot%NaCl+FEchempot%Ca 
         FEalt = FEalt+FEchempot%OHmin +FEchempot%Hplus+ FEchempot%K +FEchempot%K+FEchempot%KCl
         ! be vary carefull FE = -1/2 \int dz rho_q(z) psi(z)
 
+         ! .. chemical and binding contribution
+        FEchem = FEchem_react()
+        
+        FEalt = FEalt + FEconfAB + FEchem
         FEalt = FEalt- FEel + FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurfalt(RIGHT)+FEchemSurfalt(LEFT) 
 
         ! .. delta translational entropy
@@ -472,6 +478,7 @@ contains
         use parameters
         use field
         use VdW
+        use conform_entropy
 
         implicit none
 
@@ -555,7 +562,7 @@ contains
     
         ! altnative computation free energy
 
-        call FEconf_neutral()
+        call FEconf_entropy(FEconfAB,FEconfC)
 
         FEtrans%sol=FEtrans_entropy(xsol,xbulk%sol,vsol,"w")     
         
@@ -564,83 +571,6 @@ contains
     
     end subroutine fcnenergy_neutral
 
-    ! computes conformational entropy in neutral state 
-
-    subroutine FEconf_neutral()
-
-        !  .. variables and constant declaractions 
-
-        use globals
-        use volume
-        use chains
-        use field
-        use parameters
-        use VdW
-
-        implicit none
-        
-        !     .. declare local variables
-
-        real(dp) :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
-
-        integer :: i,j,k,c,s         ! dummy indices
-        real(dp) :: pro,tmp,expVdW 
-        integer :: conf              ! counts number of conformations
-        
-
-        real(dp), parameter :: tolconst = 1.0e-9_dp  ! tolerance for constA and constB 
-
-
-        !     .. executable statements 
-
-        do i=1,nz    
-            exppiA(i)=(xsol(i)**vpolA(3)) !*dexp(-zpolA(3)*psi(i))/fdisA(3,i) ! auxiliary variable
-            exppiB(i)=(xsol(i)**vpolB(3)) !*dexp(-zpolB(3)*psi(i))/fdisB(3,i) ! auxiliary variable   
-            exppiC(i)=(xsol(i)**vpolC)
-       
-            !     .. VdW interaction   
-            tmp = 0.0_dp
-            if((i+VdWcutoffdelta)<=nsize) then 
-                do j=minrange(i),i+VdWcutoffdelta
-                    tmp = tmp + chis(i,j)*rhopolB(j)*vpolB(3)*vsol
-                enddo
-            endif
-            expVdW=dexp(-VdWepsB*tmp)
-            exppiB(i)=exppiB(i)*expVdW ! auxiliary variable
-        enddo
-
-        
-        FEconfAB=0.0_dp
-
-        do c=1,cuantasAB            ! loop over cuantas
-            pro=1.0_dp                ! initial weight conformation 
-            do s=1,nsegAB            ! loop over segments 
-                k=indexchainAB(c,s)
-                if(isAmonomer(s)) then ! A segment 
-                    pro = pro*exppiA(k)
-                else
-                    pro = pro*exppiB(k)
-                endif
-            enddo
-            FEconfAB=FEconfAB+pro*dlog(pro)
-        enddo
-
-        ! normalize
-        FEconfAB=(FEconfAB/qAB-dlog(qAB))*(sigmaAB*delta)    
-
-        FEconfC = 0.0_dp                   
-        do c=1,cuantasC            ! loop over cuantas                                                      
-            pro=1.0_dp               ! initial weight conformation                                                   
-            do s=1,nsegC            ! loop over segments                
-                k=indexchainC(c,s)
-                pro = pro*exppiC(k)
-            enddo
-            FEconfC = FEconfC+pro*dlog(pro)
-        enddo
-        ! normalize
-        FEconfC=(FEConfC/qC -dlog(qC))*(sigmaC*delta)    
-
-    end subroutine FEconf_neutral
 
     real(dp) function FEtrans_entropy(xvol,xvolbulk,vol,flag)
     
@@ -663,7 +593,7 @@ contains
             if(present(flag)) then
             ! water special case because vsol treated diffetent then vi  
                 do i=1,nz
-                    FEtrans_entropy=FEtrans_entropy + xvol(i)*(dlog(xvol(i))-1.0_dp)
+                    FEtrans_entropy=FEtrans_entropy + xvol(i)*(log(xvol(i))-1.0_dp)
                 enddo 
                 FEtrans_entropy = delta*FEtrans_entropy/vol
             else 
@@ -698,13 +628,13 @@ contains
         else     
             sumdens=0.0_dp
             if(present(flag)) then  ! water special case because vsol treated diffetent then vi
-                chempot = -dlog(expchempot)    
+                chempot = -log(expchempot)    
                 do i=1,nz
                     sumdens=sumdens +xvol(i)
                 enddo
                 FEchem_pot=delta*chempot*sumdens/vol            
             else
-                chempot = -dlog(expchempot/vol)    
+                chempot = -log(expchempot/vol)    
                 do i=1,nz
                     sumdens=sumdens +xvol(i)
                 enddo
@@ -733,9 +663,9 @@ contains
             FEtrans_entropy_bulk=0.0_dp
             if(present(flag)) then
                 ! water special case because vsol treated diffetent then vi  
-                FEtrans_entropy_bulk=xvolbulk*(dlog(xvolbulk)-1.0_dp)/vol
+                FEtrans_entropy_bulk=xvolbulk*(log(xvolbulk)-1.0_dp)/vol
             else 
-                FEtrans_entropy_bulk=xvolbulk*(dlog(xvolbulk/vol)-1.0_dp)/(vol*vsol)
+                FEtrans_entropy_bulk=xvolbulk*(log(xvolbulk/vol)-1.0_dp)/(vol*vsol)
             endif
         endif
 
@@ -762,13 +692,65 @@ contains
             FEchem_pot_bulk=0.0_dp
         else     
             if(present(flag)) then  ! water special case because vsol treated diffetent then vi
-                FEchem_pot_bulk=-dlog(expchempot)*xvolbulk/vol            
+                FEchem_pot_bulk=-log(expchempot)*xvolbulk/vol            
             else
-                FEchem_pot_bulk=-dlog(expchempot/vol)*xvolbulk/(vol*vsol)               
+                FEchem_pot_bulk=-log(expchempot/vol)*xvolbulk/(vol*vsol)               
             endif
         endif
 
-    end function FEchem_pot_bulk   
+    end function FEchem_pot_bulk  
+
+
+    real(dp) function FEchem_react()
+
+        use globals, only : sysflag
+        use field
+        use volume
+        use parameters, only : vpolA,vsol,zpolA,vpolB,zpolB
+
+        implicit none
+
+        integer :: i, k
+        real(dp) :: lambdaA, lambdaB, rhopolAq, rhopolBq, xpolA, xpolB
+        real(dp) :: betapi
+
+        FEchem_react = 0.0_dp
+
+        do i=1,nz
+
+            betapi=-log(xsol(i))/vsol
+
+            lambdaA=-log(fdisA(1,i)) -psi(i)*zpolA(1)-betapi*vpolA(1)*vsol
+            lambdaB=-log(fdisB(1,i)) -psi(i)*zpolB(1)-betapi*vpolB(1)*vsol
+
+            rhopolAq = 0.0_dp
+            rhopolBq = 0.0_dp
+            xpolA=0.0_dp
+            xpolB=0.0_dp
+
+            do k=1,4
+                rhopolAq=rhopolAq+ zpolA(k)*fdisA(k,i)*rhopolA(i)
+                xpolA   =xpolA + rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol
+                rhopolBq=rhopolBq+ zpolB(k)*fdisB(k,i)*rhopolB(i)
+                xpolB   =xpolB + rhopolB(i)*fdisB(k,i)*vpolB(k)*vsol
+            enddo   
+            xpolA = xpolA +rhopolA(i)*fdisA(5,i)*vpolA(5)*vsol/2.0_dp
+            xpolB = xpolB +rhopolB(i)*fdisB(5,i)*vpolB(5)*vsol/2.0_dp
+            
+            FEchem_react = FEchem_react + deltaG(i)*(- rhopolA(i)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
+                +fdisA(5,i)*rhopolA(i)/2.0_dp)
+
+            FEchem_react = FEchem_react + deltaG(i)*(- rhopolB(i)*lambdaB -psi(i)*rhopolBq -betapi*xpolB &
+                +fdisB(5,i)*rhopolB(i)/2.0_dp)
+
+        enddo
+
+        FEchem_react=delta*FEChem_react    
+        
+        if(sysflag=="neutral") FEchem_react=0.0_dp
+
+
+    end function FEchem_react 
 
   
 end module energy

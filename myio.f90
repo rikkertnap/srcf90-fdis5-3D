@@ -18,7 +18,7 @@ module myio
 
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
-    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB 
+    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe 
    
     ! format specifiers 
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
@@ -29,7 +29,7 @@ module myio
     character(len=80), parameter  :: fmt6reals = "(6ES25.16E3)" 
     
     private ::  un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
-    private :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair  
+    private :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair , un_fe 
     private :: fmt,fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals  
       
 contains
@@ -1168,8 +1168,10 @@ subroutine output()
 
     if(sysflag=="elect") then 
         call output_elect
+        call output_individualcontr_fe
     elseif(sysflag=="electdouble") then
         call output_electdouble
+        call output_individualcontr_fe
     elseif(sysflag=="neutral") then
         call output_neutral
     elseif(sysflag=="electnopoly") then
@@ -1188,14 +1190,12 @@ subroutine output_individualcontr_fe
     use globals, only : LEFT,RIGHT, sysflag
     use energy
     use myutils, only : newunit
-    use parameters, only : sigmaAB,cNaCl,cCaCl2,pHbulk,VdWepsB
+    use parameters, only : sigmaAB,sigmaABL,sigmaABR,cNaCl,cCaCl2,pHbulk,VdWepsB
     use volume, only : delta,nz,nzmax,nzmin
 
     implicit none 
 
     ! local arguments
-
-    integer :: un_fe
 
     character(len=100) :: fenergyfilename   
     character(len=100) :: fnamelabel
@@ -1205,7 +1205,22 @@ subroutine output_individualcontr_fe
 
         !     .. make label filename
 
-        if(sysflag=="elect".or.sysflag=="electdouble".or.sysflag=="electnopoly") then 
+
+        if(sysflag=="electdouble") then 
+    
+            write(rstr,'(F5.3)')sigmaABL*delta 
+            fnamelabel="sgL"//trim(adjustl(rstr))
+            write(rstr,'(F5.3)')sigmaABR*delta 
+            fnamelabel=trim(fnamelabel)//"sgR"//trim(adjustl(rstr))  
+            write(rstr,'(F5.3)')cNaCl
+            fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
+            write(rstr,'(F5.3)')cCaCl2
+            fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
+            write(rstr,'(F7.3)')pHbulk
+            fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
+
+        elseif(sysflag=="elect".or.sysflag=="electnopoly") then 
+
             write(rstr,'(F5.3)')sigmaAB*delta 
             fnamelabel="sg"//trim(adjustl(rstr)) 
             write(rstr,'(F5.3)')cNaCl
@@ -1215,11 +1230,13 @@ subroutine output_individualcontr_fe
             write(rstr,'(F7.3)')pHbulk
             fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
         elseif(sysflag=="neutral") then 
+            
             write(rstr,'(F5.3)')sigmaAB*delta 
             fnamelabel="sg"//trim(adjustl(rstr)) 
             write(rstr,'(F5.3)')VdWepsB
             fnamelabel=trim(fnamelabel)//"VdWepsB"//trim(adjustl(rstr))//".dat"
         else
+            
             print*,"Error in output_individualcontr_fe subroutine"
             print*,"Wrong value sysflag : ", sysflag
         endif    
@@ -1231,13 +1248,25 @@ subroutine output_individualcontr_fe
         open(unit=newunit(un_fe),file=fenergyfilename) 
 
     endif      
-
+    write(un_fe,*)'#D              = ',nz*delta 
     write(un_fe,*)'FE              = ',FE  
     write(un_fe,*)'FEbulk          = ',FEbulk 
     write(un_fe,*)'deltaFE         = ',deltaFE
     write(un_fe,*)'FEalt           = ',FEalt  
     write(un_fe,*)'FEbulkalt       = ',FEbulkalt 
     write(un_fe,*)'deltaFEalt      = ',deltaFEalt
+    write(un_fe,*)'deltadeltaFE    = ',deltaFE-deltaFEalt
+    
+    write(un_fe,*)'FEq             = ',FEq  
+    write(un_fe,*)'FEpi            = ',FEpi
+    write(un_fe,*)'FErho           = ',FErho
+    write(un_fe,*)'FEel            = ',FEel
+    write(un_fe,*)'FEelsurf(LEFT)  = ',FEelsurf(LEFT)
+    write(un_fe,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT) 
+    write(un_fe,*)'FEbind          = ',FEbind 
+    write(un_fe,*)'FEchem          = ',FEchem
+    write(un_fe,*)'FEconfAB        = ',FEconfAB
+    write(un_fe,*)'FEconfC         = ',FEconfC
     
     write(un_fe,*)"FEtrans%sol     = ",FEtrans%sol   
     write(un_fe,*)"FEtrans%Na      = ",FEtrans%Na  
@@ -1258,12 +1287,12 @@ subroutine output_individualcontr_fe
     write(un_fe,*)"FEchempot%Hplus = ",FEchempot%Hplus
     write(un_fe,*)"FEchempot%OHmin = ",FEchempot%OHmin
 
-    write(un_fe,*)"FEchemsurf(LEFT)= ",FEchemsurf(LEFT)
-    write(un_fe,*)"FEchemsurf(RIGHT)= ",FEchemsurf(RIGHT)
-    write(un_fe,*)"FEchemsurfalt(LEFT)= ",FEchemsurfalt(LEFT)
-    write(un_fe,*)"FEchemsurfalt(RIGHT)= ",FEchemsurfalt(RIGHT)
+    write(un_fe,*)"FEchemsurf(LEFT)     = ",FEchemsurf(LEFT)
+    write(un_fe,*)"FEchemsurf(RIGHT)    = ",FEchemsurf(RIGHT)
+    write(un_fe,*)"FEchemsurfalt(LEFT)  = ",FEchemsurfalt(LEFT)
+    write(un_fe,*)"FEchemsurfalt(RIGHT) = ",FEchemsurfalt(RIGHT)
 
-    write(un_fe,*)"delta FEchemsurfalt(LEFT)= ",FEchemsurfalt(LEFT)-FEchemsurf(LEFT)-diffFEchemsurf(LEFT)
+    write(un_fe,*)"delta FEchemsurfalt(LEFT) = ",FEchemsurfalt(LEFT)-FEchemsurf(LEFT)-diffFEchemsurf(LEFT)
     write(un_fe,*)"delta FEchemsurfalt(RIGHT)= ",FEchemsurfalt(RIGHT)-FEchemsurf(RIGHT)-diffFEchemsurf(RIGHT)
 
 
