@@ -1,4 +1,3 @@
-
 module myio
 
     use precision_definition
@@ -28,9 +27,10 @@ module myio
     character(len=80), parameter  :: fmt5reals = "(5ES25.16E3)"
     character(len=80), parameter  :: fmt6reals = "(6ES25.16E3)" 
     
-    private ::  un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
-    private :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair , un_fe 
-    private :: fmt,fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals  
+
+    private
+    public :: read_inputfile, output, output_individualcontr_fe
+   
       
 contains
 
@@ -758,7 +758,11 @@ subroutine output_electdouble()
         fnamelabel=trim(fnamelabel)//"sgR"//trim(adjustl(rstr))  
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-        write(rstr,'(F5.3)')cCaCl2
+        if(cCaCl2>=0.001) then 
+            write(rstr,'(F5.3)')cCaCl2
+        else
+            write(rstr,'(ES8.2E2)')cCaCl2
+        endif    
         fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
         write(rstr,'(F7.3)')pHbulk
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
@@ -835,7 +839,7 @@ subroutine output_electdouble()
         write(un_xpolAB,fmt4reals)zc(i),xpolAB(i),rhopolA(i),rhopolB(i)
         write(un_xsol,*)zc(i),xsol(i)
         write(un_fdisA,fmt6reals)zc(i),fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
-        write(un_fdisA,fmt6reals)zc(i),fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)   
+        write(un_fdisB,fmt6reals)zc(i),fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)   
         write(un_psi,*)zc(i),psi(i)
         write(un_rhopolAB,fmt5reals)zc(i),rhopolAL(i),rhopolBL(i),rhopolAR(i),rhopolBR(i)
     enddo

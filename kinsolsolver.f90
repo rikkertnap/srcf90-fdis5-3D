@@ -78,6 +78,15 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
 
     implicit none
 
+    interface 
+        subroutine set_contraints(constr)
+            use precision_definition
+            implicit none
+            real(dp) :: constr(:)
+        end subroutine
+    end interface    
+
+
     ! .. neq iout(15) and msbre match C type long int.
     ! .. variables and constant declaractions 
 
@@ -122,11 +131,16 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
 
 
     do i = 1, neq             
-        constr(i) = 0.0_dp      ! constraint vector  
+        constr(i) = 1.0_dp      ! constraint vector  
         fscale(i) = 1.0_dp      ! scaling vector  
         x(i) = xguess(i)        ! initial guess
     enddo
   
+    !do i =neq/4+1, neq/2
+    !    constr(i)=0.0_dp
+    !enddo   
+    
+    call set_contraints(constr)
   
     call fnvinits(3, neq, ier) ! inits NVECTOR module
     
@@ -206,6 +220,27 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
   
 end subroutine kinsol_gmres_solver
 
+! set constrains on vector x  depending on sysflag value
+! 
+subroutine set_contraints(constr)
+    
+    use precision_definition
+    use globals, only : sysflag, neq
+
+    implicit none
+        
+    real(dp):: constr(:)
+
+    integer :: i
+ 
+    if(sysflag=="fcnelectdouble") then
+        do i =neq/4+1, neq/2
+            constr(i)=0.0_dp
+        enddo   
+    endif    
+
+end 
+
 
 
 !     .. wrapper function 
@@ -227,6 +262,7 @@ subroutine fkfun(x,f,ier)
     ier=0  
 
 end subroutine fkfun
+
 
 
 

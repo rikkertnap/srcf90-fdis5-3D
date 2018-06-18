@@ -610,6 +610,7 @@ module listfcn
         use VdW
         use surface
         use vectornorm
+        use myutils
 
         implicit none
 
@@ -624,7 +625,7 @@ module listfcn
 
         real(dp) :: exppiA(nsize),exppiB(nsize)  ! auxilairy variable for computing P(\alpha) 
         real(dp) :: rhopolAin(nsize),rhopolBin(nsize)
-        real(dp) :: xA(3),xB(3),sumxA,sumxB
+        real(dp) :: xA(3),xB(3),sumxA,sumxB, sgxA, qD 
         real(dp) :: constA,constB
         real(dp) :: proL,rhopolABL0,proR,rhopolABR0
         integer :: n                  ! half of n
@@ -632,9 +633,10 @@ module listfcn
         real(dp) :: norm
         integer :: conf               ! counts number of conformations
         real(dp) :: cn                ! auxilary variable for Poisson Eq
-
+        character(len=lenText) :: text, istr, rstr
+        
         real(dp), parameter :: tolconst = 1.0e-9_dp  ! tolerance for constA and constB 
-
+        
         !  .. executable statements 
 
         n=nz                         ! size vector neq=5*nz
@@ -669,17 +671,25 @@ module listfcn
             xA(2)= (xNa(i)/vNa)/(K0a(2)*(xsol(i)**deltavA(2)))   ! ANa/A-
             xA(3)= (xCa(i)/vCa)/(K0a(3)*(xsol(i)**deltavA(3)))   ! ACa+/A-
        
-            sumxA=xA(1)+xA(2)+xA(3)
-            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) ! A2Ca/(A-)^2
-            if(constA<=tolconst) then 
-                fdisA(1,i)=1.0_dp/(1.0_dp+sumxA)
-                fdisA(5,i)=0.0_dp
-            else
-                fdisA(1,i)= (-1.0_dp+dsqrt(1.0_dp+4.0_dp*constA/((sumxA+1.0_dp)**2)))
-                fdisA(1,i)= fdisA(1,i)*(sumxA+1.0_dp)/(2.0_dp*constA)
-                fdisA(5,i)= (fdisA(1,i)**2)*constA
-            endif    
-       
+            ! sumxA=xA(1)+xA(2)+xA(3)                                                         
+            ! constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) 
+            ! if(constA<=tolconst) then 
+            !     fdisA(1,i)=1.0_dp/(1.0_dp+sumxA)
+            !     fdisA(5,i)=0.0_dp
+            ! else
+            !     fdisA(1,i)= (-1.0_dp+dsqrt(1.0_dp+4.0_dp*constA/((sumxA+1.0_dp)**2)))
+            !     fdisA(1,i)= fdisA(1,i)*(sumxA+1.0_dp)/(2.0_dp*constA)
+            !     fdisA(5,i)= (fdisA(1,i)**2)*constA
+            ! endif    
+            
+            
+            sgxA=1.0_dp+xA(1)+xA(2)+xA(3)                                                         
+            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) 
+            qD = (sgxA+sqrt(sgxA*sgxA+4.0_dp*constA))/2.0_dp  ! remove minus
+
+            fdisA(1,i)  = 1.0_dp/qD   ! removed minus 
+            fdisA(5,i)  = (fdisA(1,i)**2)*constA
+
             fdisA(2,i)  = fdisA(1,i)*xA(1)                       ! AH 
             fdisA(3,i)  = fdisA(1,i)*xA(2)                       ! ANa 
             fdisA(4,i)  = fdisA(1,i)*xA(3)                       ! ACa+ 
@@ -807,7 +817,13 @@ module listfcn
             f(3*n+i)=rhopolB(i)-rhopolBin(i)
         enddo
 
+        norm=l2norm(f,4*n)
         iter=iter+1
+        write(rstr,'(E25.16)')norm
+        write(istr,'(I6)')iter
+        text="iter = "//trim(istr)//" fnorm = "//trim(rstr)
+        call print_to_log(LogUnit,text)
+
 
     end subroutine fcnelectdouble
 

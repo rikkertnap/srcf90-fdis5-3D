@@ -56,7 +56,7 @@ program brushweakpolyelectrolyte
     call make_geometry()            ! generate volume elements lattice 
     call allocate_field(nsize) 
 
-    !    call read_VdWCoeff() ! THIS NEED TO BE CHANGED !!!
+    !    call read_VdWCoeff() ! not used 
     
     call set_size_neq()             ! number of non-linear equation neq    
     call init_expmu()
@@ -83,10 +83,13 @@ program brushweakpolyelectrolyte
         !  .. first increase pH value
 
         do while (pH%min<=pH%val.and.pH%val<=pH%max.and.(abs(pH%stepsize)>=pH%delta)) 
-               
+            print*,"hello"
+            print*,"pHbulk=",pHbulk,"pH%val=",pH%val   
             call init_expmu()
+            print*,"pHbulk=",pHbulk,"pH%val=",pH%val 
             ! call make_guess(x,xguess,loop%val,loopbegin)
             call make_guess(x, xguess, isfirstguess) 
+            print*,"guess "
             call solver(x, xguess, error, fnorm) 
             if(isNaN(fnorm)) then  
                 text="no solution: backstep"
