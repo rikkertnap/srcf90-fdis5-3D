@@ -17,13 +17,10 @@ module surface
     real(dp) :: sigmaSurfL          ! surface density of acid on surface in nm^2
     real(dp) :: sigmaSurfR          ! surface density of acid on surface in nm^2
     
-    real(dp) :: sigmaqSurfL         ! surface charge density on surface in nm^2
-    real(dp) :: sigmaqSurfR         ! surface charge density on surface in nm^2
-    
-    real(dp) :: psiSurfL            ! surface potential     
-    real(dp) :: psiSurfR            ! surface potential 
-
-!    real(dp) :: sigmaSurf
+    real(dp), dimension(:), allocatable :: sigmaqSurfL         ! surface charge density on surface in nm^2
+    real(dp), dimension(:), allocatable :: sigmaqSurfR         ! surface charge density on surface in nm^2
+    real(dp), dimension(:), allocatable ::  psiSurfL            ! surface potential     
+    real(dp), dimension(:), allocatable ::  psiSurfR            ! surface potential 
     
    ! taurine
     real(dp) :: fdisTaL(4),fdisTaR(4) ! fraction of different surface states
@@ -31,15 +28,23 @@ module surface
     real(dp) :: pKTa(3)              ! experimental equilibruim constant pKS= -log[KS]   
     real(dp) :: K0Ta(3)              ! intrinsic equilibruim constant
     real(dp) :: qTa(4)               ! charge 
+ 
+    private  :: allocate_psiSurf_sigmaqSurf
+    private  :: init_surface_quartz, init_surface_calcite, init_surface_taurine, init_surface_constcharge, init_surface_clay
+
 
     contains
- 
-        subroutine init_surface(bc)
+
+        subroutine init_surface(bc,nsurf)
     
             implicit none
 
-            character(len=2) :: bc(2)
-        
+            character(len=2), intent(in) :: bc(2)
+            integer, intent(in) :: nsurf
+    
+
+            call allocate_psiSurf_sigmaqSurf(nsurf)
+
             select case (bc(RIGHT))
                 case ("qu")  
                     call  init_surface_quartz()
@@ -65,15 +70,16 @@ module surface
             end select 
         end subroutine init_surface
    
-        real(dp) function surface_charge(bc,psiSurf,side)
+        function surface_charge(bc,psiSurf,side) result(sigmaqSurf)
         
+            use volume,  only : nsurf
             implicit none
             
-            real(dp) :: psiSurf
-            character(len=2) :: bc
-            integer :: side 
+            real(dp), intent(in) :: psiSurf(:)
+            character(len=2), intent(in) :: bc
+            integer, intent(in) :: side 
 
-            real(dp) :: sigmaqSurf
+            real(dp) :: sigmaqSurf(nsurf)
             
             if(side==RIGHT) then 
                 select case (bc)
@@ -105,16 +111,26 @@ module surface
                 print*,"Error : side value is not equal to  LEFT or RIGHT"
                 stop
             endif
-                    
-            surface_charge=sigmaqSurf
-
-            return
 
         end function surface_charge
+
+
+
+        subroutine allocate_psiSurf_sigmaqSurf(nsurf)
+ 
+            integer, intent(in) :: nsurf
+
+            allocate(sigmaqSurfL(nsurf))
+            allocate(sigmaqSurfR(nsurf))
+            allocate(psiSurfL(nsurf))
+            allocate(psiSurfR(nsurf))
+        
+        end subroutine allocate_psiSurf_sigmaqSurf
+
+
      
         subroutine init_surface_quartz()
        
-            use mathconst 
             use physconst, only : Na
             use parameters,  only : vsol,delta,lb
 
@@ -192,7 +208,6 @@ module surface
        
         subroutine init_surface_clay()
 
-            use mathconst 
             use physconst, only : Na
             use parameters,  only : vsol,delta,lb
 
@@ -233,7 +248,6 @@ module surface
 
         subroutine init_surface_taurine(side)
 
-            use mathconst
             use physconst, only : Na
             use parameters,  only : vsol,delta,lb
 
@@ -279,177 +293,191 @@ module surface
 
         end subroutine init_surface_constcharge
 
-        real(dp) function surface_charge_quartz(psiS)
+        function surface_charge_quartz(psiS) result(surface_charge)
      
-            use physconst
-            use mathconst
-            use parameters
-        
+            use parameters, only : xbulk, vNa, vCl, vCa, vsol
+            use volume, only : nsurf    
+
             implicit none
         
-            real(dp) :: psiS
+            real(dp), intent(in) :: psiS(:)
+
+            real(dp) :: surface_charge(nsurf)
          
             ! .. local variables
         
             real(dp) :: xS(6)
             real(dp) :: A,avfdis
-            integer :: i
-        
-            xS(1)= ((xbulk%Hplus/xbulk%sol)/K0S(1))*dexp(-psiS) ! SOH/SO-
-            xS(2)= ((xbulk%Hplus/xbulk%sol)/K0S(2))*dexp(-psiS) ! SOH2+/SOH
-            xS(3)= (((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0S(3))*dexp(-psiS) ! SONa/SO-
-            xS(4)= (((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0S(4))*dexp(-2.0_dp*psiS) ! SOCa+/SO-
-            xS(5)= (((xbulk%Cl/vCl)/(xbulk%sol**(vCl)))/K0S(5))*dexp(psiS) ! SOH2Cl/SOH2+
+            integer :: i,s
 
-            A = xS(1)*(1.0_dp+xS(2))+xS(3)+xS(4)+xS(1)*xS(2)*xS(5)
-            fdisS(1)  = 1.0_dp/(1.0_dp +A) ! SO-
-            fdisS(2)  = fdisS(1)*xS(1) ! SOH
-            fdisS(3)  = fdisS(2)*xS(2) ! SOH2+
-            fdisS(4)  = fdisS(1)*xS(3) ! SONa
-            fdisS(5)  = fdisS(1)*xS(4) ! SOCa+
-            fdisS(6)  = fdisS(1)*xS(5)*xS(2)*xS(1)  ! SOH2Cl  
-        
-            avfdis=0.0_dp
-            do i=1,6
-                avfdis=avfdis +qS(i)*fdisS(i)
+            do s=1,nsurf      
+                xS(1)= ((xbulk%Hplus/xbulk%sol)/K0S(1))*exp(-psiS(s)) ! SOH/SO-
+                xS(2)= ((xbulk%Hplus/xbulk%sol)/K0S(2))*exp(-psiS(s)) ! SOH2+/SOH
+                xS(3)= (((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0S(3))*exp(-psiS(s)) ! SONa/SO-
+                xS(4)= (((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0S(4))*exp(-2.0_dp*psiS(s)) ! SOCa+/SO-
+                xS(5)= (((xbulk%Cl/vCl)/(xbulk%sol**(vCl)))/K0S(5))*exp(psiS(s)) ! SOH2Cl/SOH2+
+
+                A = xS(1)*(1.0_dp+xS(2))+xS(3)+xS(4)+xS(1)*xS(2)*xS(5)
+                fdisS(1)  = 1.0_dp/(1.0_dp +A) ! SO-
+                fdisS(2)  = fdisS(1)*xS(1) ! SOH
+                fdisS(3)  = fdisS(2)*xS(2) ! SOH2+
+                fdisS(4)  = fdisS(1)*xS(3) ! SONa
+                fdisS(5)  = fdisS(1)*xS(4) ! SOCa+
+                fdisS(6)  = fdisS(1)*xS(5)*xS(2)*xS(1)  ! SOH2Cl  
+            
+                avfdis=0.0_dp
+                do i=1,6
+                    avfdis=avfdis +qS(i)*fdisS(i)
+                enddo
+            
+                surface_charge(s)=sigmaSurfR*avfdis
             enddo
-        
-            surface_charge_quartz=sigmaSurfR*avfdis
-        
+
         end function surface_charge_quartz
 
 
-        real(dp) function surface_charge_calcite(psiS)
+        function surface_charge_calcite(psiS) result(surface_charge)
 
-            use physconst
-            use mathconst
-            use parameters
+            use parameters, only : xbulk, vNa, vCl, vCa, vsol
+            use volume, only : nsurf 
 
             implicit none
 
-            real(dp) :: psiS
+            real(dp), intent(in) :: psiS(:)
+            real(dp) :: surface_charge(nsurf)
+        
 
             ! .. local variables                                                                                                                                          
             real(dp) :: xS(6)
             real(dp) :: A,avfdis
-            integer :: i
+            integer :: i,s
 
-            xS(1)= ((xbulk%Hplus/xbulk%sol)/K0S(1))*dexp(-psiS) ! CO3H/CO3- =fdisS(2)/fdisS(1)
+            do s=1,nsurf
 
-            xS(2)= (xbulk%sol/xbulk%Hplus)*((xbulk%Ca*vsol/vCa)/(xbulk%sol**(vCa/vsol)))*K0S(2)*dexp(-psiS)   ! CO3Ca+/CO3H = fdisS(3)/fdisS(2)             
-            xS(3)= ((xbulk%Hplus/xbulk%sol)/K0S(4))*dexp(-psiS) ! CaOH/CaO- =fdisS(5)/fdisS(4)   
-            xS(4)= ((xbulk%Hplus/xbulk%sol)/K0S(3))*dexp(-psiS) ! CaOH2^+/CaOH = fdisS(6)/fdisS(5)
+                xS(1)= ((xbulk%Hplus/xbulk%sol)/K0S(1))*exp(-psiS(s)) ! CO3H/CO3- =fdisS(2)/fdisS(1)
 
-            A = xS(1)*(1.0_dp+xS(2))
-            fdisS(1)  = 1.0_dp/(1.0_dp +A) ! CO3^- 
-            fdisS(2)  = fdisS(1)*xS(1)   ! CO3H 
-            fdisS(3)  = fdisS(2)*xS(2)   ! CO3Ca+ 
-        
-            A=xS(3)*(1.0_dp+xS(4))
-            fdisS(4)  = 1.0_dp/(1.0_dp +A) ! CaO^- 
-            fdisS(5)  = fdisS(4)*xS(3)   ! CaOH  
-            fdisS(6)  = fdisS(5)*xS(4)   ! CaOH2^+                                                                                                              
-            avfdis=0.0_dp
-            do i=1,6
-                avfdis=avfdis +qS(i)*fdisS(i)
-            enddo
+                xS(2)= (xbulk%sol/xbulk%Hplus)*((xbulk%Ca*vsol/vCa)/(xbulk%sol**(vCa/vsol)))*K0S(2)*exp(-psiS(s))   ! CO3Ca+/CO3H = fdisS(3)/fdisS(2)             
+                xS(3)= ((xbulk%Hplus/xbulk%sol)/K0S(4))*exp(-psiS(s)) ! CaOH/CaO- =fdisS(5)/fdisS(4)   
+                xS(4)= ((xbulk%Hplus/xbulk%sol)/K0S(3))*exp(-psiS(s)) ! CaOH2^+/CaOH = fdisS(6)/fdisS(5)
 
-            surface_charge_calcite=sigmaSurfR*avfdis
+                A = xS(1)*(1.0_dp+xS(2))
+                fdisS(1)  = 1.0_dp/(1.0_dp +A) ! CO3^- 
+                fdisS(2)  = fdisS(1)*xS(1)   ! CO3H 
+                fdisS(3)  = fdisS(2)*xS(2)   ! CO3Ca+ 
+            
+                A=xS(3)*(1.0_dp+xS(4))
+                fdisS(4)  = 1.0_dp/(1.0_dp +A) ! CaO^- 
+                fdisS(5)  = fdisS(4)*xS(3)   ! CaOH  
+                fdisS(6)  = fdisS(5)*xS(4)   ! CaOH2^+                                                                                                              
+                avfdis=0.0_dp
+                do i=1,6
+                    avfdis=avfdis +qS(i)*fdisS(i)
+                enddo
+
+                surface_charge(s)=sigmaSurfR*avfdis
+            enddo    
 
         end function surface_charge_calcite
 
       
-        real(dp) function surface_charge_clay(psiS)
+        function surface_charge_clay(psiS) result(surface_charge)
 
-            use physconst
-            use mathconst
-            use parameters
-
+            use parameters, only : xbulk, vNa, vCl, vCa, vsol
+            use volume, only : nsurf 
             implicit none
 
-            real(dp) :: psiS
+            real(dp), intent(in) :: psiS(:)
+            real(dp) :: surface_charge(nsurf)
+
 
             ! .. local variables                                                                                                  
 
             real(dp) :: xS(6)
             real(dp) :: A,avfdis
-            integer :: i
+            integer :: i,s
 
-            xS(1)= ((xbulk%Hplus/xbulk%sol)/K0S(1))*dexp(-psiS) ! SOH_2^0.5/SOH^-0.5                       
-            xS(2)= (((xbulk%Hplus/xbulk%sol)**0.5_dp)/K0S(2))*dexp(-0.5_dp*psiS) ! SOH_1.5^0/SOH_2^0.5   
-            xS(3)= (((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0S(3))*dexp(-psiS) ! SOHNa^0.5/SOH^-0.5
-            xS(4)= (((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0S(4))*dexp(-2.0_dp*psiS) ! SOHCa^1.5/SOH^-0.5
-            xS(5)= (((xbulk%Cl/vCl)/(xbulk%sol**(vCl)))/K0S(5))*dexp(psiS) ! SOH2Cl^-0.5/SOH_2^0.5
+            do s=1,nsurf
 
-            xS(2)=0.0 ! make zero  
+                xS(1)= ((xbulk%Hplus/xbulk%sol)/K0S(1))*exp(-psiS(s)) ! SOH_2^0.5/SOH^-0.5                       
+                xS(2)= (((xbulk%Hplus/xbulk%sol)**0.5_dp)/K0S(2))*exp(-0.5_dp*psiS(s)) ! SOH_1.5^0/SOH_2^0.5   
+                xS(3)= (((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0S(3))*exp(-psiS(s)) ! SOHNa^0.5/SOH^-0.5
+                xS(4)= (((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0S(4))*exp(-2.0_dp*psiS(s)) ! SOHCa^1.5/SOH^-0.5
+                xS(5)= (((xbulk%Cl/vCl)/(xbulk%sol**(vCl)))/K0S(5))*exp(psiS(s)) ! SOH2Cl^-0.5/SOH_2^0.5
 
-            A = xS(1)*(1.0_dp+xS(2))+xS(3)+xS(4)+xS(1)*xS(5)
-            fdisS(1)  = 1.0_dp/(1.0_dp +A) ! SOH^-0.5                                                                                 
-            fdisS(2)  = fdisS(1)*xS(1) ! SOH_2^0.5 
-            fdisS(3)  = fdisS(2)*xS(2) ! SOH_1.5^0                                                                                  
-            fdisS(4)  = fdisS(1)*xS(3) ! SOHNa^0.5 
-            fdisS(5)  = fdisS(1)*xS(4) ! SOHCa^1.5            
-            fdisS(6)  = fdisS(1)*xS(1)*xS(5)  ! SOH_2Cl^-0.5                                                
+                xS(2)=0.0 ! make zero  
 
-            avfdis=0.0_dp
-            do i=1,6
-                avfdis=avfdis +qS(i)*fdisS(i)
-            enddo
+                A = xS(1)*(1.0_dp+xS(2))+xS(3)+xS(4)+xS(1)*xS(5)
+                fdisS(1)  = 1.0_dp/(1.0_dp +A) ! SOH^-0.5                                                                                 
+                fdisS(2)  = fdisS(1)*xS(1) ! SOH_2^0.5 
+                fdisS(3)  = fdisS(2)*xS(2) ! SOH_1.5^0                                                                                  
+                fdisS(4)  = fdisS(1)*xS(3) ! SOHNa^0.5 
+                fdisS(5)  = fdisS(1)*xS(4) ! SOHCa^1.5            
+                fdisS(6)  = fdisS(1)*xS(1)*xS(5)  ! SOH_2Cl^-0.5                                                
 
-            surface_charge_clay=sigmaSurfR*avfdis
+                avfdis=0.0_dp
+                do i=1,6
+                    avfdis=avfdis +qS(i)*fdisS(i)
+                enddo
+
+                surface_charge(s)=sigmaSurfR*avfdis
+
+            enddo    
 
         end function surface_charge_clay
 
-        real(dp) function surface_charge_taurine(psiS,side)
+        function surface_charge_taurine(psiS,side) result(surface_charge)
 
-            use physconst
-            use mathconst
-            use parameters
+          
+            use parameters, only : xbulk, vNa, vCl, vCa, vsol
+            use volume, only : nsurf 
 
             implicit none
 
-            real(dp) :: psiS
-            integer :: side
+            real(dp), intent(in) :: psiS(:)
+            integer, intent(in) :: side
+            real(dp) :: surface_charge(nsurf)
         
             ! .. local variables                                                                                                  
 
             real(dp) :: xS(3)
             real(dp) :: A,avfdis
-            integer :: i
+            integer :: i,s
 
+            do s=1,nsurf
 
-            xS(1)= ((xbulk%Hplus/xbulk%sol)/K0Ta(1))*dexp(-psiS) ! SOH/SO^-                       
-            xS(2)= (((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0Ta(2))*dexp(-psiS) ! SONa/SO^-
-            xS(3)= (((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0Ta(3))*dexp(-2.0_dp*psiS) ! SOCa^+/SO^-
+                xS(1)= ((xbulk%Hplus/xbulk%sol)/K0Ta(1))*exp(-psiS(s)) ! SOH/SO^-                       
+                xS(2)= (((xbulk%Na/vNa)/(xbulk%sol**(vNa)))/K0Ta(2))*exp(-psiS(s)) ! SONa/SO^-
+                xS(3)= (((xbulk%Ca/vCa)/(xbulk%sol**(vCa)))/K0Ta(3))*exp(-2.0_dp*psiS(s)) ! SOCa^+/SO^-
          
-            A = xS(1)+xS(2)+xS(3)
+                A = xS(1)+xS(2)+xS(3)
          
-            if(side==LEFT) then 
-                fdisTaL(1)  = 1.0_dp/(1.0_dp + A) ! SO^-
-                fdisTaL(2)  = fdisTal(1)*xS(1) ! SOH                                                                                 
-                fdisTal(3)  = fdisTaL(1)*xS(2) ! SONa 
-                fdisTaL(4)  = fdisTaL(1)*xS(3) ! SOCa^+                                                                                 
+                if(side==LEFT) then 
+                    fdisTaL(1)  = 1.0_dp/(1.0_dp + A) ! SO^-
+                    fdisTaL(2)  = fdisTal(1)*xS(1) ! SOH                                                                                 
+                    fdisTal(3)  = fdisTaL(1)*xS(2) ! SONa 
+                    fdisTaL(4)  = fdisTaL(1)*xS(3) ! SOCa^+                                                                                 
 
-                avfdis=0.0_dp
-                do i=1,4
-                    avfdis=avfdis +qTa(i)*fdisTaL(i)   
-                enddo
-            
-                surface_charge_taurine=sigmaSurfL*avfdis
-            
-            else if(side==RIGHT) then
-                fdisTaR(1)  = 1.0_dp/(1.0_dp + A) ! SO^-
-                fdisTaR(2)  = fdisTaR(1)*xS(1) ! SOH                                                                                 
-                fdisTaR(3)  = fdisTaR(1)*xS(2) ! SONa 
-                fdisTaR(4)  = fdisTaR(1)*xS(3) ! SOCa^+                                                                                 
+                    avfdis=0.0_dp
+                    do i=1,4
+                        avfdis=avfdis +qTa(i)*fdisTaL(i)   
+                    enddo
+                
+                    surface_charge(s)=sigmaSurfL*avfdis
+                
+                else if(side==RIGHT) then
+                    fdisTaR(1)  = 1.0_dp/(1.0_dp + A) ! SO^-
+                    fdisTaR(2)  = fdisTaR(1)*xS(1) ! SOH                                                                                 
+                    fdisTaR(3)  = fdisTaR(1)*xS(2) ! SONa 
+                    fdisTaR(4)  = fdisTaR(1)*xS(3) ! SOCa^+                                                                                 
 
-                avfdis=0.0_dp
-                do i=1,4
-                    avfdis=avfdis +qTa(i)*fdisTaR(i)
-                enddo
-                surface_charge_taurine=sigmaSurfR*avfdis
-            endif
-        
+                    avfdis=0.0_dp
+                    do i=1,4
+                        avfdis=avfdis +qTa(i)*fdisTaR(i)
+                    enddo
+                    surface_charge(s)=sigmaSurfR*avfdis
+                endif
+            enddo
+
         end function surface_charge_taurine
 
 

@@ -7,7 +7,7 @@ module myio
 
     integer, parameter ::  myio_err_sysflag   = 1
     integer, parameter ::  myio_err_runflag   = 2
- !   integer, parameter ::  myio_err_geometry  = 3
+    integer, parameter ::  myio_err_geometry  = 3
     integer, parameter ::  myio_err_method    = 4
     integer, parameter ::  myio_err_chaintype = 5
     integer, parameter ::  myio_err_domain    = 6
@@ -107,11 +107,15 @@ subroutine read_inputfile(info)
     read(un_input,*)VdWepsC
     read(un_input,*)VdWepsB    
     read(un_input,*)VdWcutoff
+    read(un_input,*)nx
+    read(un_input,*)ny
     read(un_input,*)nzmax            ! max distance
     read(un_input,*)nzmin            ! min distance
     read(un_input,*)nzstep           ! step distance  
     read(un_input,*)verboseflag  
-    read(un_input,*)delta   
+    read(un_input,*)delta
+    read(un_input,*)geometry
+    read(un_input,*)ngr_freq  
 
     close(un_input)
 
@@ -144,7 +148,11 @@ subroutine read_inputfile(info)
         return
     endif
 
-
+    call check_value_geometry(geometry,info_geo)
+    if (info_geo == myio_err_geometry) then
+        if (present(info)) info = info_geo
+        return
+    endif
 
     call check_value_bcflag(bcflag,info_bc) 
     if (info_bc == myio_err_bcflag) then
@@ -288,6 +296,42 @@ subroutine check_value_bcflag(bcflag,info)
 
 
 end subroutine check_value_bcflag
+
+
+
+    subroutine check_value_geometry(geometry,info)
+            
+        implicit none
+
+        character(len=11), intent(in) :: geometry
+        integer, intent(out),optional :: info
+
+        logical :: flag
+        character(len=11) :: geometrystr(3) 
+        integer :: i
+
+        ! permissible values of geometry
+
+        geometrystr(1)="cubic"
+        geometrystr(2)="square"
+        geometrystr(3)="hexagonal"
+       
+        flag=.FALSE.
+
+        do i=1,3
+            if(geometry==geometrystr(i)) flag=.TRUE.
+        enddo
+            
+        if (present(info)) info = 0
+
+        if (flag.eqv. .FALSE.) then 
+            print*,"Error: value of geometry is not permissible"
+            print*,"geometry = ",geometry
+            if (present(info)) info = myio_err_geometry 
+            return
+        endif
+        
+    end subroutine
 
 
 subroutine check_value_chaintype(chaintype,info)

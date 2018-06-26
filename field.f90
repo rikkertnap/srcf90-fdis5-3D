@@ -5,8 +5,8 @@ module field
 
     implicit none
     
-    real(dp), dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer on sphere
-    real(dp), dimension(:), allocatable :: xpolC   ! total volume fraction of polymer on sphere: hydrocarbon chain
+    real(dp), dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer 
+    real(dp), dimension(:), allocatable :: xpolC   ! total volume fraction of polymer 
     real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer on sphere
     real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer on sphere
     real(dp), dimension(:), allocatable :: rhopolC ! density C monomer of polymer on sphere
@@ -24,24 +24,26 @@ module field
     real(dp), dimension(:), allocatable :: qpol    ! charge density of polymer
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
     real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
-  
-    real(dp) :: qAB             ! normalization partion fnc polymer 
-    real(dp) :: qC              ! normalization partion fnc polymer 
+     
+    real(dp), dimension(:), allocatable :: qAB             ! normalization partion fnc polymer 
+    real(dp), dimension(:), allocatable :: qC              ! normalization partion fnc polymer 
 
     real(dp), dimension(:), allocatable :: rhopolAL ! density A monomer of polymer on sphere
     real(dp), dimension(:), allocatable :: rhopolBL ! density B monomer of polymer on sphere
     real(dp), dimension(:), allocatable :: rhopolAR ! density A monomer of polymer on sphere
     real(dp), dimension(:), allocatable :: rhopolBR ! density B monomer of polymer on sphere
 
-    real(dp) :: qABL,qABR
+    real(dp), dimension(:), allocatable :: qABL,qABR
 
   
 contains
 
-    subroutine allocate_field(N)
-        implicit none
+    subroutine allocate_field(Nx,Ny,Nz)
+ 
+        integer, intent(in) :: Nx,Ny,Nz
+        integer :: N
 
-        integer, intent(in) :: N
+        N=Nx*Ny*Nz
 
         allocate(xpolAB(N))
         allocate(xpolC(N))
@@ -49,7 +51,7 @@ contains
         allocate(rhopolB(N))
         allocate(rhopolC(N))
         allocate(xsol(N))
-        allocate(psi(N+1))
+        allocate(psi(N+2*Nx*Ny))
         allocate(xNa(N))
         allocate(xK(N))
         allocate(xCa(N))
@@ -71,8 +73,6 @@ contains
 
 
     subroutine deallocate_field()
-        implicit none
-        
         
         deallocate(xpolAB)
         deallocate(xpolC)
@@ -100,6 +100,17 @@ contains
         
     end subroutine deallocate_field
 
+
+    subroutine allocate_part_fnc(N)
+       
+        integer, intent(in) :: N
+
+        allocate(qAB(N))
+        allocate(qABL(N))
+        allocate(qABR(N))
+        allocate(qC(N))
+
+    end subroutine allocate_part_fnc
 
   
   !     .. compute average height of tethered layer 

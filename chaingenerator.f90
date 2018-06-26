@@ -7,8 +7,10 @@
 
 module chaingenerator 
 
-  
+    use precision_definition   
     implicit none
+
+    private :: pbc 
 
 contains
 
@@ -36,11 +38,13 @@ end subroutine make_chains
 
 subroutine make_chains_mc()
   
+    use mpivars
     use globals
     use chains
     use random
-    use parameters
-    use volume
+    use parameters, only : geometry, lsegAB
+    use volume, only : ngrx, ngry, nx, ny,  nz, delta, ngr, ngr_node, ngr_freq
+    use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
     use myutils
     use cadenas_linear
     use cadenas_sequence
@@ -49,28 +53,50 @@ subroutine make_chains_mc()
 
     !     .. variable and constant declaractions      
 
-    integer :: j,s               ! dummy indices
-    integer :: nchains            ! number of rotations
+    real(dp), dimension(:), allocatable :: x_ngr  ! x coordinate of  grafting point
+    real(dp), dimension(:), allocatable :: y_ngr  
+
+    integer :: i,j,k,s,g,gn      ! dummy indices
+    integer :: idx               ! index label
+    integer :: ix,iy,idxtmp
+    integer :: nchains           ! number of rotations
     integer :: maxnchains        ! number of rotations
     integer :: conf              ! counts number of conformations
-    real(dp)  :: chain(3,nsegAB,200) ! chains(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
-    real(dp)  :: x,y,z,r           ! coordinates
-    character(len=lenText) :: text
+    integer :: allowedconfAB
+    real(dp) :: chain(3,nsegAB,200) ! chain(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
+    real(dp) :: xp(nsegAB), yp(nsegAB), zp(nsegAB) ! coordinates
+    real(dp) :: x(nsegAB), y(nsegAB), z(nsegAB)
+    real(dp) :: Lx,Ly,Lz         ! sizes box
+    real(dp) :: xpt,ypt          ! coordinates
+    character(len=lenText) :: text, istr
+    integer  :: xc,yc,zc        
 
     !     .. executable statements
-
     !     .. initializations of variables     
-    !     .. init of  cuantas polymer configurations  
-    !     .. anchoring of polymer chain onto spherical surface
+    
+    allocate(x_ngr(ngrx))
+    allocate(y_ngr(ngry))
 
-    conf=0                    ! counter for conformations
-    seed=435672               ! seed for random number generator 
+    do i=1,ngrx            ! location graft points 
+        x_ngr(i)=(i-0.5_dp)*delta*ngr_freq
+    enddo
+    do i=1,ngry
+        y_ngr(i)=(i-0.5_dp)*delta*ngr_freq  
+    enddo
+
+    conf=1                  ! counter for conformations
+    seed=435672*(rank+1)    ! seed for random number generator  different on each node
     maxnchains=12
+
+    Lz= nz*delta            ! maximum height box 
+    Lx= nx*delta            ! maximum width box 
+    Ly= ny*delta            ! maximum depth box 
 
     if(isHomopolymer.eqv..FALSE.) then 
         allocate(lsegseq(nsegAB))
         call make_lsegseq(lsegseq,nsegAB)
     endif    
+
 
     do while (conf.le.max_conforAB)
         nchains= 0      ! init zero 
@@ -78,41 +104,148 @@ subroutine make_chains_mc()
             call make_linear_chains(chain,nchains,maxnchains,nsegAB,lsegAB) ! chain generator f90
         else
             call make_linear_seq_chains(chain,nchains,maxnchains,nsegAB) 
-            
         endif  
-        do j=1,nchains   
-            conf=conf +1
-            do s=1,nsegAB         !     transforming form real- to lattice coordinates
-                z = chain(1,s,j)
-                indexchainAB_init(conf,s)= int(z/delta)+1
-!                print*,"indexchain(",conf,",",s,")=",indexchainAB_init(conf,s)  
-            enddo
-         enddo                  ! end j loop
+
+        select case (geometry) 
+        case("cubic")
+            
+            do j=1,nchains   
+            
+                do s=1,nsegAB                      !  transforming form real- to lattice coordinates
+                    zp(s) = chain(1,s,j)
+                    xp(s) = chain(2,s,j)
+                    yp(s) = chain(3,s,j) 
+                enddo
+
+                do gn=1,ngr_node                   ! loop over grafted points per node
+               
+                    g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
+                  
+                    idxtmp = g
+                    ix     = mod(idxtmp-1,ngrx)+1  ! inverse of g
+                    idxtmp = int((idxtmp-1)/ngrx)+1
+                    iy = idxtmp
+               
+                    xpt = x_ngr(ix)                ! position of graft point
+                    ypt = y_ngr(iy) 
+                      
+                    weightchainAB(gn,conf)=.TRUE.  ! init weight
+
+                    do s=1,nsegAB
+
+                        ! .. translation onto correct grafting aream translation in xy plane 
+                        x(s)=xp(s)+xpt
+                        y(s)=yp(s)+ypt
+
+                        ! .. check z coordinate 
+                        if((0>z(s)).or.(z(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
+
+                        ! .. periodic boundary conditions in x-direction and y-direction  
+                        x(s)=pbc(x(s),Lx)
+                        y(s)=pbc(y(s),Ly)
+
+                        ! .. transforming form real- to lattice coordinates                 
+                        xc=int(x(s)/delta)+1
+                        yc=int(y(s)/delta)+1
+                        zc=int(zp(s)/delta)+1
+
+                        if(weightchainAB(gn,conf).eqv..TRUE.) then
+                            call linearIndexFromCoordinate(xc,yc,zc,idx)
+                            indexchainAB(s,gn,conf) = idx
+                            if(idx<=0) then
+                                print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
+                            endif
+                        endif
+
+                    enddo   
+                enddo         ! end g loop
+
+                conf=conf +1
+            
+            enddo             ! end j loop
+
+        case("square")
+        
+
+            do j=1,nchains   
+            
+                do s=1,nsegAB         !     transforming form real- to lattice coordinates
+                    zp(s) = chain(1,s,j)
+                    xp(s) = chain(2,s,j)
+                    yp(s) = chain(3,s,j) 
+                enddo
+
+                do gn=1,ngr_node ! loop over grafted points per node
+               
+                    g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
+                    idxtmp = g
+                    ix     = mod(idxtmp-1,ngrx)+1  ! inverse of g
+                    xpt = x_ngr(ix)                ! position of graft point
+
+                    weightchainAB(gn,conf)=.TRUE.   ! init weight
+
+                    do s=1,nsegAB
+
+                        ! .. translation onto correct grafting aream translation in xy plane 
+                        x(s)=xp(s)+xpt
+                   
+                        ! .. check z coordinate 
+                        if((0>z(s)).or.(z(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
+
+                        ! .. periodic boundary conditions in x-direction and y-direction  
+                        x(s)=pbc(x(s),Lx)
+                   
+                        ! .. transforming form real- to lattice coordinates                 
+                        xc=int(x(s)/delta)+1
+                        zc=int(zp(s)/delta)+1
+
+                        if(weightchainAB(gn,conf).eqv..TRUE.) then
+                            call linearIndexFromCoordinate(xc,1,zc,idx)
+                            indexchainAB(s,gn,conf) = idx
+                            if(idx<=0) then
+                                print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
+                            endif
+                        endif
+
+                    enddo   
+                enddo         ! end g loop
+
+                conf=conf +1
+            
+            enddo             ! end j loop
+
+        case("hexagon")     
+
+        case default
+           print*,"Error: geometry not cubic, square, or hexagon"
+           print*,"stopping program"
+           stop
+        end select
+     
+
     enddo                     ! end while loop
              
     !     .. end chains generation 
-     
-    write(text,'(A19)')'AB Chains generated'
+      
+    write(istr,'(I4)')rank
+    text='AB Chains generated on node '//istr
     call print_to_log(LogUnit,text)
+    print*,text
 
-    conf=0                    ! counter for conformations                                                                      
-    seed=43567                ! seed for random number generator 
-    maxnchains=12
+    do gn=1,ngr_node
+        allowedconfAB=0
+        do k=1,cuantasAB 
+            if(weightchainAB(gn,k).eqv..TRUE.)then
+                allowedconfAB=allowedconfAB+1
+            endif
+        enddo
+        print*,"allowedconf=",allowedconfAB,"gn=",gn,"rank=",rank
+    enddo
+      
+    deallocate(x_ngr)
+    deallocate(y_ngr)
+    if(isHomopolymer.eqv..FALSE.) deallocate(lsegseq)
 
-    do while (conf.le.max_conforC)
-        nchains= 0      ! init zero 
-        call make_linear_chains(chain,nchains,maxnchains,nsegC,lsegC) ! chain generator                                                               
-        do j=1,nchains
-            conf=conf +1
-            do s=1,nsegC         !     transforming form real- to lattice coordinates                                            
-                z = chain(1,s,j)
-                indexchainC_init(conf,s)= int(z/delta)+1
-            enddo
-        enddo                  ! end j loop  
-    enddo                     ! end while loop  
-
-    write(text,'(A18)')'C Chains generated'
-    call print_to_log(LogUnit,text)
 
 end subroutine make_chains_mc
 
@@ -153,74 +286,74 @@ subroutine make_chains_file()
         stop
     endif
 
-    !     .. first line  contains nseg
+    ! !     .. first line  contains nseg
 
-    !      read(1,*)nsegfile
-    !      read(1,*)cuantasfile
+    ! !      read(1,*)nsegfile
+    ! !      read(1,*)cuantasfile
 
-    nsegfile=50
-    cuantasfile=1000000
-    conf=0                    ! counter for conformations                   
-    conffile=0                ! counter for conformations in file
-    seed=435672               ! seed for random number generator 
-    rotmax=12                 ! maximum number of rotation conf 
-    maxattempts=72            ! maximum number of attempts to rotate conf
+    ! nsegfile=50
+    ! cuantasfile=1000000
+    ! conf=0                    ! counter for conformations                   
+    ! conffile=0                ! counter for conformations in file
+    ! seed=435672               ! seed for random number generator 
+    ! rotmax=12                 ! maximum number of rotation conf 
+    ! maxattempts=72            ! maximum number of attempts to rotate conf
 
-    if(nsegfile-1.ne.nsegAB) then
-        print*,"nseg chain file not equal internal nseg : stop program"
-        stop
-    endif
+    ! if(nsegfile-1.ne.nsegAB) then
+    !     print*,"nseg chain file not equal internal nseg : stop program"
+    !     stop
+    ! endif
 
-    do while ((conf.le.max_conforAB).and.(conffile.le.cuantasfile))
+    ! do while ((conf.le.max_conforAB).and.(conffile.le.cuantasfile))
      
-        conffile=conffile +1
+    !     conffile=conffile +1
      
-        read(1,*)x0,y0,z0      ! .. origin
+    !     read(1,*)x0,y0,z0      ! .. origin
      
-        chain(1,1) = 0.0
-        chain(2,1) = 0.0
-        chain(3,1) = 0.0
+    !     chain(1,1) = 0.0
+    !     chain(2,1) = 0.0
+    !     chain(3,1) = 0.0
      
-        do s=2,nsegfile        ! .. read form file
-            read(1,*)x,y,z
-            chain(1,s) = x-x0
-            chain(2,s) = y-y0
-            chain(3,s) = z-z0
-        enddo
+    !     do s=2,nsegfile        ! .. read form file
+    !         read(1,*)x,y,z
+    !         chain(1,s) = x-x0
+    !         chain(2,s) = y-y0
+    !         chain(3,s) = z-z0
+    !     enddo
          
-        do rot=1,rotmax        !  ..  transforming form real- to lattice coordinates                                  
-            rottest=.FALSE.
-            nchain=1
+    !     do rot=1,rotmax        !  ..  transforming form real- to lattice coordinates                                  
+    !         rottest=.FALSE.
+    !         nchain=1
             
-            do while ((rottest.eqv. .false.).and.(nchain.lt.maxattempts)) 
-                rottest=rotation(chain,chains_rot,nsegAB)
-                nchain=nchain+1
-            enddo
+    !         do while ((rottest.eqv. .false.).and.(nchain.lt.maxattempts)) 
+    !             rottest=rotation(chain,chains_rot,nsegAB)
+    !             nchain=nchain+1
+    !         enddo
             
-            if(rottest) then 
-                conf=conf+1 
-                do s=1,nsegAB 
-                    z = chains_rot(1,s+1)
-                    indexchainAB_init(conf,s)= int(z/delta)+1
-                enddo
-            endif
-        enddo                  ! end rot loop  
+    !         if(rottest) then 
+    !             conf=conf+1 
+    !             do s=1,nsegAB 
+    !                 z = chains_rot(1,s+1)
+    !                 indexchainAB_init(conf,s)= int(z/delta)+1
+    !             enddo
+    !         endif
+    !     enddo                  ! end rot loop  
          
-    enddo                     ! end while loop                
+    ! enddo                     ! end while loop                
 
-    !     .. end chains generation 
+    ! !     .. end chains generation 
 
-    if(conf.le.max_conforAB) then
-        print*,"Something went wrong"
-        print*,"conf     = ",conf," max_conforAB    = ",max_conforAB
-        print*,"conffile = ",conffile," cuantasfile = ",cuantasfile
-        stop
-    else
-        print*,"Chains generated"
-        readinchains=conffile
-    endif
+    ! if(conf.le.max_conforAB) then
+    !     print*,"Something went wrong"
+    !     print*,"conf     = ",conf," max_conforAB    = ",max_conforAB
+    !     print*,"conffile = ",conffile," cuantasfile = ",cuantasfile
+    !     stop
+    ! else
+    !     print*,"Chains generated"
+    !     readinchains=conffile
+    ! endif
 
-    close(1)
+    ! close(1)
 
 end subroutine make_chains_file
 
@@ -283,39 +416,45 @@ subroutine chain_filter()
     implicit none
 
     integer :: conf,s,allowed_confAB,allowed_confC
-    integer :: flag
-    integer(2) :: ind  ! temporary index of chain
+    integer :: count_seg 
+    integer :: indx  ! temporary index of chain
+    integer :: ix,iy,iz,gn
 
-
-    allowed_confAB=1            ! counts allowed conformations 
-    do conf=1,max_conforAB  ! loop of all polymer conformations to filter out allowed ones 
-        flag=0
-        do s=1,nsegAB
-            ind=indexchainAB_init(conf,s)
-            if(ind<=nz) then   ! nz is in between plates  
-                indexchainAB(allowed_confAB,s)=ind
-                flag=flag+1
-            endif
+    allowed_confAB=0            ! counts allowed conformations 
+    do conf=1,max_conforAB      ! loop of all polymer conformations to filter out allowed ones 
+        do gn=1,ngr_node        ! loop over grafted points per node
+            count_seg=0
+            do s=1,nsegAB
+                indx=indexchainAB_init(s,gn,conf)
+                call coordinateFromLinearIndex(indx,ix,iy,iz)
+                if(iz<=nz) then  ! nz is distance in between plates  
+                    indexchainAB(s,gn,allowed_confAB)=indx
+                    count_seg=count_seg+1
+                endif
+            enddo
+            if (count_seg.eq.nsegAB) allowed_confAB = allowed_confAB+1 ! conformation  is allowed  
         enddo
-        if (flag.eq.nsegAB) allowed_confAB= allowed_confAB+1 ! conformation  is allowed  
     enddo
 
-    cuantasAB=allowed_confAB-1    ! the number of allowed conformations
+    cuantasAB=allowed_confAB    ! the number of allowed conformations 
 
-    allowed_confC=1            ! counts allowed conformations 
-    do conf=1,max_conforC  ! loop of all polymer conformations to filter out allowed ones 
-        flag=0
-        do s=1,nsegC
-            ind=indexchainC_init(conf,s)
-            if(ind<=nz) then   ! nz is in between plates  
-                indexchainC(allowed_confC,s)=ind
-                flag=flag+1
-            endif
+    allowed_confC=0             ! counts allowed conformations 
+    do conf=1,max_conforC       ! loop of all polymer conformations to filter out allowed ones 
+        do gn=1,ngr_node        ! loop over grafted points per node
+            count_seg=0
+            do s=1,nsegC
+                indx=indexchainC_init(s,gn,conf)
+                call coordinateFromLinearIndex(indx,ix,iy,iz)
+                if(iz<=nz) then  ! nz is distance in between plates  
+                    indexchainC(s,gn,allowed_confC)=indx
+                    count_seg=count_seg+1
+                endif
+            enddo
+            if (count_seg.eq.nsegC) allowed_confC = allowed_confC+1 ! conformation  is allowed  
         enddo
-        if (flag.eq.nsegC) allowed_confC= allowed_confC+1 ! conformation  is allowed  
     enddo
 
-    cuantasC=allowed_confC-1    ! the number of allowed conformations
+    cuantasC=allowed_confC     ! the number of allowed conformations
 
 end subroutine  chain_filter
 
@@ -354,6 +493,23 @@ subroutine set_properties_chain(freq,chaintype)
     endif    
 
 end subroutine set_properties_chain
+
+
+
+! .. compute periodic boundary condition in z direction
+! .. maps z onto interval [0,deltaz]
+
+function pbc(z,deltaz) result(zpbc)
+    implicit none 
+    real(dp), intent(in) :: deltaz
+    real(dp), intent(in) :: z
+    real(dp) :: zpbc 
+    if(z>0) then 
+        zpbc=z-int(z/deltaz)*deltaz
+    else
+        zpbc=z-(int(z/deltaz)-1)*deltaz
+    endif   
+end function
 
 
 end module chaingenerator

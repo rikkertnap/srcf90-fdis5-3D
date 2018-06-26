@@ -1,3 +1,4 @@
+
 !  .. module file for free energy variables /calculations
 
 module energy 
@@ -89,10 +90,11 @@ contains
         real(dp) :: sigmaq0,psi0
         real(dp) :: qsurf(2)           ! total charge on surface 
         real(dp) :: qsurfg             ! total charge on grafting surface  
-        integer :: i,j               ! dummy variables 
+        integer :: i,j,s               ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
         integer :: nzadius
-        real(dp) :: sigmaSurf(2),sigmaqSurf(2),sigmaq0Surf(2),psiSurf(2)
+        real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
+        real(dp) :: FEchemSurftmp
 
         !  .. computation of free energy 
     
@@ -153,58 +155,73 @@ contains
 !        endif   
 
       
-        if((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC > sigmaTOL)) then
+        ! if((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC > sigmaTOL)) then
         
-            FEq =-delta*(sigmaABL*log(qABL)+ sigmaABR*log(qABR) +sigmaC*log(qC) )
+        !     FEq =-delta*(sigmaABL*log(qABL)+ sigmaABR*log(qABR) +sigmaC*log(qC) )
        
-        elseif((sigmaABL <= sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC > sigmaTOL)) then
+        ! elseif((sigmaABL <= sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC > sigmaTOL)) then
         
-            FEq = -delta*(sigmaC*log(qC) )
+        !     FEq = -delta*(sigmaC*log(qC) )
             
-        elseif((sigmaABL > sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
+        ! elseif((sigmaABL > sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
-            FEq = -delta*(sigmaABL*log(qABL) )
+        !     FEq = -delta*(sigmaABL*log(qABL) )
        
-        elseif((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC <= sigmaTOL)) then
+        ! elseif((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
-            FEq = -delta*(sigmaABL*log(qABL) +sigmaABR*log(qABR))
+        !     FEq = -delta*(sigmaABL*log(qABL) +sigmaABR*log(qABR))
        
-        elseif((sigmaABL <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
+        ! elseif((sigmaABL <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
         
-            FEq = 0.0_dp
+        !     FEq = 0.0_dp
         
-        else
+        ! else
         
-            print*,"Error in fcnerergy"
-            print*,"Something went wrong in evaluating FEq"   
-            print*,"sigmaABL=",sigmaABL
-            print*,"sigmaABL=",sigmaABL
-            print*,"sigmaC=",sigmaC
-            stop    
+        !     print*,"Error in fcnerergy"
+        !     print*,"Something went wrong in evaluating FEq"   
+        !     print*,"sigmaABL=",sigmaABL
+        !     print*,"sigmaABL=",sigmaABL
+        !     print*,"sigmaC=",sigmaC
+        !     stop    
         
-        endif
+        ! endif
     
         ! .. surface charge constribution 
 
         sigmaSurf(RIGHT)  = sigmaSurfR 
         sigmaSurf(LEFT)   = sigmaSurfL
-        sigmaqSurf(RIGHT) = sigmaqSurfR
-        sigmaqSurf(LEFT)  = sigmaqSurfL
-        psiSurf(RIGHT)    = psiSurfR
-        psiSurf(LEFT)     = psiSurfL
+
+        do s=1,nx*ny
+            sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
+            sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
+            psiSurf(RIGHT,s)    = psiSurfR(s)
+            psiSurf(LEFT,s)     = psiSurfL(s)
+        enddo    
       
-        do i = 1,2    
-            sigmaq0Surf(i)=  sigmaqSurf(i)/(delta*4.0_dp*pi*lb) ! dimensional charge density  
-            FEelsurf(i) = sigmaq0Surf(i) * psiSurf(i) /2.0_dp 
-        enddo   
+        do i = 1,2
+            FEelsurf(i)=0.0_dp
+            do s = 1, nx*ny    
+                sigmaq0Surf(i,s)=  sigmaqSurf(i,s)/(delta*4.0_dp*pi*lb) ! dimensional charge density  
+                FEelsurf(i) = FEelsurf(i)+sigmaq0Surf(i,s) * psiSurf(i,s) /2.0_dp 
+            enddo   
+        enddo    
 
         if(bcflag(RIGHT)=='qu') then ! quartz
 
-            FEchemSurf(RIGHT) = dlog(fdisS(2))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurftmp=0.0_dp
+            do s=1, nx*ny
+                FEchemSurftmp=FEchemSurftmp+log(fdisS(2)) ! area surface integration measure 
+            enddo    
+            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="cl" ) then  ! clay
         
-            FEchemSurf(RIGHT) = (dlog(fdisS(2))+qS(2)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurftmp=0.0_dp
+            do s=1, nx*ny
+                FEchemSurftmp=FEchemSurftmp+(log(fdisS(2))+qS(2)*psiSurfR(s)) 
+            enddo    
+
+            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="ca" ) then ! calcite
         
@@ -245,8 +262,11 @@ contains
         
 !        print*,"FE = " ,FE
         
-        do i=LEFT,RIGHT     
-            qsurf(i) = sigmaqSurf(i)/(4.0_dp*pi*lb*delta)
+        do i=LEFT,RIGHT
+            qsurf(i)=0.0_dp
+            do s=1,nx*ny     
+                qsurf(i) = qsurf(i)+sigmaqSurf(i,s)/(4.0_dp*pi*lb*delta)
+            enddo    
         enddo
 
 !        print*,"qsurf(LEFT)=",qsurf(LEFT),"qsurf(RIGHT)=",qsurf(RIGHT),"qres=",qres    
@@ -282,18 +302,21 @@ contains
         real(dp) :: sigmaq0,psi0
         real(dp) :: qsurf(2)           ! total charge on surface 
         real(dp) :: qsurfg             ! total charge on grafting surface  
-        integer :: i,j               ! dummy variables 
+        integer :: i,j,s               ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
         integer :: nzadius
-        real(dp) :: sigmaSurf(2),sigmaqSurf(2),sigmaq0Surf(2),psiSurf(2)
-        real(dp) :: diffFEchemTa
+        real(dp) :: sigmaSurf(2),sigmaqSurf(2,nx*ny),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
+        real(dp) :: diffFEchemTa, FEchemSurftmp
 
         sigmaSurf(RIGHT)  = sigmaSurfR 
         sigmaSurf(LEFT)   = sigmaSurfL
-        sigmaqSurf(RIGHT) = sigmaqSurfR
-        sigmaqSurf(LEFT)  = sigmaqSurfL
-        psiSurf(RIGHT)    = psiSurfR
-        psiSurf(LEFT)     = psiSurfL
+        
+        do s=1,nx*ny
+            sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
+            sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
+            psiSurf(RIGHT,s)    = psiSurfR(s)
+            psiSurf(LEFT,s)     = psiSurfL(s)
+        enddo    
 
 
         !  .. computation of free energy 
@@ -332,15 +355,37 @@ contains
         ! .. surface chemical contribution
 
         if(bcflag(RIGHT)=='qu') then ! quartz
-            FEchemSurfalt(RIGHT) = (dlog(fdisS(1))+qS(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurftmp=0.0_dp
+            do s=1,nx*ny
+                FEchemSurftmp=FEchemSurftmp+log(fdisS(1))+qS(1)*psiSurfR(s)
+            enddo
+
+            FEchemSurfalt(RIGHT) = (FEchemSurftmp)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+
         elseif(bcflag(RIGHT)=="cl" ) then  ! clay        
-            FEchemSurfalt(RIGHT) = (dlog(fdisS(1))+qS(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurftmp=0.0_dp
+            do s=1,nx*ny
+                FEchemSurftmp=FEchemSurftmp+log(fdisS(1))+qS(1)*psiSurfR(s)
+            enddo
+
+            FEchemSurfalt(RIGHT) = (FEchemSurftmp)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+
         elseif(bcflag(RIGHT)=="ca" ) then ! calcite
+        
             FEchemSurfalt(RIGHT) =(dlog(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+        
         elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
-            FEchemSurfalt(RIGHT)= ((dlog(fdisTaR(1))+qTA(1)*psiSurfR)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurftmp=0.0_dp
+            do s=1,nx*ny
+                FEchemSurftmp=FEchemSurftmp+log(fdisTaR(1))+qTA(1)*psiSurfR(s)
+            enddo
+
+            FEchemSurfalt(RIGHT)= (FEchemSurftmp*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
+        
         elseif(bcflag(RIGHT)=="cc") then  
+            
             FEchemSurfalt(RIGHT)=0.0_dp
+        
         else
             print*,"Error in fcnenergy"
             print*,"Wrong value bcflag(RIGHT) : ",bcflag(RIGHT)
@@ -348,12 +393,22 @@ contains
         endif 
 
         if(bcflag(LEFT)=="ta" ) then ! taurine 
-            FEchemSurfalt(LEFT)= (dlog(fdisTaL(1))+qTA(1)*psiSurfL)*sigmaSurf(LEFT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
+            FEchemSurftmp=0.0_dp
+            do s=1,nx*ny
+                FEchemSurftmp=FEchemSurftmp+log(fdisTaL(1))+qTA(1)*psiSurfL(s)
+            enddo
+            FEchemSurfalt(LEFT)= FEchemSurftmp*sigmaSurf(LEFT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
+        
+
         elseif(bcflag(LEFT)=="cc") then  
+        
             FEchemSurfalt(LEFT)=0.0_dp
+        
         else
+        
             print*,"Error in fcnenergy"
             print*,"Wrong value bcflag(LEFT) : ",bcflag(LEFT)
+        
         endif 
 
 
@@ -529,12 +584,12 @@ contains
 
         FEVdW  = delta*FEVdW*(VdWepsB*vpolB(3)*vsol)/2.0_dp   
 
-        FEq = -delta*(sigmaAB*dlog(qAB)+sigmaC*dlog(qC) )
+!        FEq = -delta*(sigmaAB*dlog(qAB)+sigmaC*dlog(qC) )
     
         if(sigmaAB <= sigmaTOL) then 
-            FEq = -delta*sigmaC*dlog(qC)
+!            FEq = -delta*sigmaC*dlog(qC)
         elseif (sigmaC <= sigmaTOL) then 
-            FEq = -delta*sigmaAB*dlog(qAB) 
+!            FEq = -delta*sigmaAB*dlog(qAB) 
         endif
     
         FEel = 0.0_dp    
@@ -642,7 +697,8 @@ contains
             endif
         endif
 
-    end function FEchem_pot   
+    end function FEchem_pot
+
 
     real(dp) function FEtrans_entropy_bulk(xvolbulk,vol,flag)
     
@@ -669,7 +725,7 @@ contains
             endif
         endif
 
-    end function FEtrans_entropy_bulk   
+    end function FEtrans_entropy_bulk
 
     real(dp) function FEchem_pot_bulk(xvolbulk,expchempot,vol,flag)
     

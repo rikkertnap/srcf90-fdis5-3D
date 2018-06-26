@@ -144,33 +144,36 @@ contains
     subroutine set_size_neq()
 
         use globals
-        use volume, only : nz
+        use volume, only : nx, ny, nz
 
         implicit none
 
         integer(8) :: neq_bc
 
+        nsize= nx*ny*nz
         neq_bc=0 
         if(bcflag(LEFT)/="cc") neq_bc=neq_bc+1
         if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+1
 
         select case (sysflag)
             case ("elect") 
-                neq = 4 * nz + neq_bc
+                neq = 4 * nsize + neq_bc
             case ("electdouble")  
-                neq = 4 * nz 
+                neq = 4 * nsize 
             case ("electnopoly") 
-                neq = 2 * nz + neq_bc
+                neq = 2 * nsize + neq_bc
             case ("electHC") 
-                neq = 5 * nz +neq_bc
+                neq = 5 * nsize +neq_bc
             case ("neutral") 
-                neq = 2 * nz
+                neq = 2 * nsize
             case ("bulk water") 
                 neq = 5 
             case default
                 print*,"Wrong value sysflag:  ",sysflag
                 stop
         end select  
+
+        neqint =neq ! used for MPI func binding, MPI has no integer(8)
          
     end subroutine set_size_neq
 
@@ -208,8 +211,9 @@ contains
         !  .. initializations of variables
  
         pi=acos(-1.0_dp)          ! pi = arccos(-1)
-        itmax=2000                ! maximum number of iterations
-        nz=nsize                  ! size of lattice in z-direction 
+        itmax=2000                ! maximum number of iterations      
+        nz=nzmax                  
+        nsize=nx*ny*nz            ! size of lattice 
         
         !     .. charges
         
