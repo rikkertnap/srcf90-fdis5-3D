@@ -33,7 +33,7 @@ module surface
     private  :: init_surface_quartz, init_surface_calcite, init_surface_taurine, init_surface_constcharge, init_surface_clay
 
 
-    contains
+contains
 
         subroutine init_surface(bc,nsurf)
     
@@ -42,7 +42,6 @@ module surface
             character(len=2), intent(in) :: bc(2)
             integer, intent(in) :: nsurf
     
-
             call allocate_psiSurf_sigmaqSurf(nsurf)
 
             select case (bc(RIGHT))

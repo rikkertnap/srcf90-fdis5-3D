@@ -72,15 +72,16 @@ program brushweakpolyelectrolyte
 
     call init_constants()
     call init_matrices()            ! init matrices for chain generation
-    call allocate_chains(cuantasAB,nsegAB,cuantasC,nsegC,ngr_node)  
-    call make_sequence_chain(period,chaintype)
-    call set_properties_chain(period,chaintype)  
-    call make_chains(chainmethod)   ! generate polymer configurations 
+!    call allocate_chains(cuantasAB,nsegAB,cuantasC,nsegC,ngr_node)  
+!    call make_sequence_chain(period,chaintype)
+!    call set_properties_chain(period,chaintype)  
+!    call make_chains(chainmethod)   ! generate polymer configurations 
+
     call allocate_geometry(nx,ny,nz)
     call make_geometry()            ! generate volume elements lattice 
     call allocate_field(nx,ny,nz) 
     call allocate_part_fnc(ngr)
-    call set_size_neq()             ! number of non-linear equation neq    
+    call set_size_neq()             ! number of non-linear equation neq   
     call init_surface(bcflag,nsurf)
 
     !  .. computation starts
@@ -88,12 +89,16 @@ program brushweakpolyelectrolyte
     nz = nzmax                    
     neqmax = neq    
     allocate(xstored(neq))
+    allocate(x(neq))
+    allocate(xguess(neq))
+    allocate(fvec(neq))
+
     isfirstguess = .true.    
     use_xstored = .false.         ! with both flags set false make_guess will set xguess equal to x    
     pH%val=pH%min ! added 
     call init_expmu()              ! set chemical potenitals  
     iter = 0
-        
+
     do while (nz>=nzmin)        ! loop distances
 
         call set_size_neq()  
@@ -102,15 +107,15 @@ program brushweakpolyelectrolyte
         if(.not.allocated(xguess)) allocate(xguess(neq))
         if(.not.allocated(fvec)) allocate(fvec(neq))
 
-        call chain_filter() 
+    !    call chain_filter() 
         call init_expmu()  
         !call init_vars_input()
 
         flag_solver = 0
            
         if(rank.eq.0) then     ! node rank=0
-
-            call make_guess(x, xguess, isfirstguess, use_xstored, xstored)
+            
+            call make_guess(x, xguess, isfirstguess, use_xstored, xstored)  
             call solver(x, xguess, error, fnorm)
 
             flag_solver = 0   ! stop nodes
@@ -143,10 +148,10 @@ program brushweakpolyelectrolyte
             ! call copy_solution(x)
             ! call compute_vars_and_output()
             
-            call fcnenergy()        
-            call average_height()      
-            call charge_polymer()
-            call average_charge_polymer()
+            ! call fcnenergy()        
+            ! call average_height()      
+            ! call charge_polymer()
+            ! call average_charge_polymer()
             call output()           ! writing of output
 
             isfirstguess =.false.    
@@ -171,16 +176,18 @@ program brushweakpolyelectrolyte
         endif
             
         iter  = 0              ! reset of iteration counter 
-
+ 
     enddo ! end while loop 
 
     call MPI_FINALIZE(ierr)  
+
+
 
     deallocate(x)   
     deallocate(xguess)
     deallocate(xstored)
     deallocate(fvec)
-    call deallocate_field()
+!    call deallocate_field()
 
     text="program end"
 

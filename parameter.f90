@@ -212,9 +212,8 @@ contains
  
         pi=acos(-1.0_dp)          ! pi = arccos(-1)
         itmax=2000                ! maximum number of iterations      
-        nz=nzmax                  
-        nsize=nx*ny*nz            ! size of lattice 
-        
+        nz=nzmax
+
         !     .. charges
         
         zsurf =-1                 ! valence surface charge 

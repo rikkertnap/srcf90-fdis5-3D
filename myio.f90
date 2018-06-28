@@ -17,23 +17,21 @@ module myio
 
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
-    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe 
+    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q 
    
     ! format specifiers 
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
+    character(len=80), parameter  :: fmt1reals = "(ES25.16E3)"   
     character(len=80), parameter  :: fmt2reals = "(2ES25.16E3)"   
     character(len=80), parameter  :: fmt3reals = "(3ES25.16E3)"  
     character(len=80), parameter  :: fmt4reals = "(4ES25.16E3)" 
     character(len=80), parameter  :: fmt5reals = "(5ES25.16E3)"
     character(len=80), parameter  :: fmt6reals = "(6ES25.16E3)" 
     
-
     private
     public :: read_inputfile, output, output_individualcontr_fe
-   
-      
+    
 contains
-
 
 subroutine read_inputfile(info)
 
@@ -132,7 +130,6 @@ subroutine read_inputfile(info)
         sigmaAB=sigmaABL
         sigmaABR=0.0_dp  
     endif
-    
     
     ! .. check error flag
 
@@ -294,44 +291,41 @@ subroutine check_value_bcflag(bcflag,info)
         stop
     endif
 
-
 end subroutine check_value_bcflag
 
-
-
-    subroutine check_value_geometry(geometry,info)
-            
-        implicit none
-
-        character(len=11), intent(in) :: geometry
-        integer, intent(out),optional :: info
-
-        logical :: flag
-        character(len=11) :: geometrystr(3) 
-        integer :: i
-
-        ! permissible values of geometry
-
-        geometrystr(1)="cubic"
-        geometrystr(2)="square"
-        geometrystr(3)="hexagonal"
-       
-        flag=.FALSE.
-
-        do i=1,3
-            if(geometry==geometrystr(i)) flag=.TRUE.
-        enddo
-            
-        if (present(info)) info = 0
-
-        if (flag.eqv. .FALSE.) then 
-            print*,"Error: value of geometry is not permissible"
-            print*,"geometry = ",geometry
-            if (present(info)) info = myio_err_geometry 
-            return
-        endif
+subroutine check_value_geometry(geometry,info)
         
-    end subroutine
+    implicit none
+
+    character(len=11), intent(in) :: geometry
+    integer, intent(out),optional :: info
+
+    logical :: flag
+    character(len=11) :: geometrystr(3) 
+    integer :: i
+
+    ! permissible values of geometry
+
+    geometrystr(1)="cubic"
+    geometrystr(2)="square"
+    geometrystr(3)="hexagonal"
+   
+    flag=.FALSE.
+
+    do i=1,3
+        if(geometry==geometrystr(i)) flag=.TRUE.
+    enddo
+        
+    if (present(info)) info = 0
+
+    if (flag.eqv. .FALSE.) then 
+        print*,"Error: value of geometry is not permissible"
+        print*,"geometry = ",geometry
+        if (present(info)) info = myio_err_geometry 
+        return
+    endif
+    
+end subroutine
 
 
 subroutine check_value_chaintype(chaintype,info)
@@ -368,6 +362,7 @@ subroutine check_value_chaintype(chaintype,info)
 
 end subroutine check_value_chaintype
 
+
 subroutine check_value_method(method,info)
 
     implicit none
@@ -397,6 +392,30 @@ subroutine check_value_method(method,info)
     endif
 
 end subroutine check_value_method
+
+
+subroutine output()
+
+    use globals, only : sysflag
+    implicit none
+
+    if(sysflag=="elect") then 
+        call output_elect
+        call output_individualcontr_fe
+    elseif(sysflag=="electdouble") then
+        call output_electdouble
+        call output_individualcontr_fe
+    elseif(sysflag=="neutral") then
+        call output_neutral
+    elseif(sysflag=="electnopoly") then
+        call output_elect
+        call output_individualcontr_fe
+    else
+        print*,"Error in output subroutine"
+        print*,"Wrong value sysflag : ", sysflag
+    endif     
+
+end subroutine output
 
 
 subroutine output_elect
@@ -435,6 +454,7 @@ subroutine output_elect
     character(len=90) :: xOHminfilename
     character(len=90) :: densfracAfilename
     character(len=90) :: densfracBfilename
+    character(len=90) :: qfilename
     character(len=90) :: densfracionpairfilename
     integer :: i,j,k          ! dummy indexes
     character(len=100) :: fnamelabel
@@ -472,6 +492,7 @@ subroutine output_elect
         densfracAfilename='densityAfrac.'//trim(fnamelabel)
         densfracBfilename='densityBfrac.'//trim(fnamelabel)
         densfracionpairfilename='densityfracionpair.'//trim(fnamelabel)
+        qfilename='q.'//trim(fnamelabel)
 
         !     .. opening files        
         
@@ -483,6 +504,7 @@ subroutine output_elect
             open(unit=newunit(un_xpolC),file=xpolCfilename)
             open(unit=newunit(un_fdisA),file=densfracAfilename) 
             open(unit=newunit(un_fdisB),file=densfracBfilename) 
+            open(unit=newunit(un_q),file=qfilename)
         endif       
         if(verboseflag=="yes") then    
             open(unit=newunit(un_xNa),file=xNafilename)
@@ -507,9 +529,7 @@ subroutine output_elect
 
     endif       
 
-
     !   .. writting files
-
     !   .. this line seperates different distances 
       
     write(un_xsol,*)'#D    = ',nz*delta 
@@ -531,36 +551,47 @@ subroutine output_elect
         write(un_xCl,*)'#D    = ',nz*delta 
         write(un_xHplus,*)'#D    = ',nz*delta 
         write(un_xOHMin,*)'#D    = ',nz*delta 
-    endif    
+    endif
 
-    write(un_psi,*)0.0_dp,psiSurfL
-    do i=1,nz
-        write(un_xsol,*)zc(i),xsol(i)
-        write(un_psi,*)zc(i),psi(i)
+    do i=1,nsurf
+        write(un_psi,*)psiSurfL(i)
+    enddo 
+        
+    do i=1,nsize
+        write(un_xsol,*)xsol(i)
+        write(un_psi,*)psi(i)
     enddo    
-    write(un_psi,*)nz*delta,psiSurfR 
+
+    do i=1,nsurf
+        write(un_psi,*)psiSurfR(i)
+    enddo         
 
     if(sysflag/="electnopoly") then 
-        do i=1,nz
-            write(un_xpolAB,fmt4reals)zc(i),xpolAB(i),rhopolA(i),rhopolB(i)
-            write(un_xpolC,fmt2reals)zc(i),xpolC(i)
-            write(un_fdisA,fmt6reals)zc(i),fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
-            write(un_fdisB,fmt6reals)zc(i),fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)
+
+        do i =1, ngr
+            write(un_q,*) qABL(i),qABR(i)
+        enddo 
+
+        do i=1,nsize
+            write(un_xpolAB,fmt3reals)xpolAB(i),rhopolA(i),rhopolB(i)
+            write(un_xpolC,fmt1reals)xpolC(i)
+            write(un_fdisA,fmt5reals)fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
+            write(un_fdisB,fmt5reals)fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)
         enddo
     endif   
     
     if(verboseflag=="yes") then 
-        do i=1,nz
-            write(un_xNa,*)zc(i),xNa(i)
-            write(un_xK,*)zc(i),xK(i)
-            write(un_xCa,*)zc(i),xCa(i)
-            write(un_xNaCl,*)zc(i),xNaCl(i)
-            write(un_xKCl,*)zc(i),xKCl(i)
-            write(un_xpair,*)zc(i),(xNaCl(i)/vNaCl)/(xNa(i)/vNa+xCl(i)/vCl+xNaCl(i)/vNaCl)
-            write(un_xCl,*)zc(i),xCl(i)
-            write(un_charge,*)zc(i),rhoq(i)
-            write(un_xHplus,*)zc(i),xHplus(i)
-            write(un_xOHmin,*)zc(i),xOHmin(i)    
+        do i=1,nsize
+            write(un_xNa,*)xNa(i)
+            write(un_xK,*)xK(i)
+            write(un_xCa,*)xCa(i)
+            write(un_xNaCl,*)xNaCl(i)
+            write(un_xKCl,*)xKCl(i)
+            write(un_xpair,*)(xNaCl(i)/vNaCl)/(xNa(i)/vNa+xCl(i)/vCl+xNaCl(i)/vNaCl)
+            write(un_xCl,*)xCl(i)
+            write(un_charge,*)rhoq(i)
+            write(un_xHplus,*)xHplus(i)
+            write(un_xOHmin,*)xOHmin(i)    
         enddo    
     endif
 
@@ -582,7 +613,6 @@ subroutine output_elect
         write(un_sys,*)'nsegC       = ',nsegC
         write(un_sys,*)'lsegC       = ',lsegC
         write(un_sys,*)'period      = ',period
-        write(un_sys,*)'nz          = ',nz
         write(un_sys,*)'delta       = ',delta   
         write(un_sys,*)'vsol        = ',vsol
         write(un_sys,*)'vpolA(1)    = ',vpolA(1)*vsol
@@ -645,10 +675,16 @@ subroutine output_elect
         write(un_sys,*)'zNa         = ',zNa
         write(un_sys,*)'zCa         = ',zCa
         write(un_sys,*)'zK          = ',zK
-        write(un_sys,*)'zCl         = ',zCl
+        write(un_sys,*)'zCl         = ',zCl 
+        write(un_sys,*)'nzmax       = ',nzmax
+        write(un_sys,*)'nzmin       = ',nzmin
+        write(un_sys,*)'nzstep      = ',nzstep
+
         write(un_sys,*)'===end distance independent settings=='
     endif
     write(un_sys,*)'D   plates  = ',nz*delta 
+    write(un_sys,*)'nx          = ',nx
+    write(un_sys,*)'ny          = ',ny
     write(un_sys,*)'nz          = ',nz
     write(un_sys,*)'free energy = ',FE
     write(un_sys,*)'energy bulk = ',FEbulk 
@@ -670,10 +706,6 @@ subroutine output_elect
     write(un_sys,*)'FEbind      = ',FEbind
     write(un_sys,*)'FEVdW       = ',FEVdW 
     write(un_sys,*)'FEalt       = ',FEalt
-    write(un_sys,*)'qAB         = ',qAB
-    write(un_sys,*)'qC          = ',qC
-    write(un_sys,*)'muAB        = ',-log(qAB)
-    write(un_sys,*)'muC         = ',-log(qC)
     write(un_sys,*)'heightAB    = ',heightAB
     write(un_sys,*)'heightC     = ',heightC
     write(un_sys,*)'qpolA       = ',qpolA
@@ -695,8 +727,6 @@ subroutine output_elect
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaqSurfL = ',sigmaqSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaqSurfR = ',sigmaqSurfR/((4.0_dp*pi*lb)*delta)
-    write(un_sys,*)'psiSurfL    = ',psiSurfL
-    write(un_sys,*)'psiSurfR    = ',psiSurfR
    
     if(bcflag(LEFT)=='ta') then
       do i=1,4   
@@ -878,30 +908,35 @@ subroutine output_electdouble()
         write(un_xOHMin,*)'#D    = ',nz*delta 
     endif    
 
-    write(un_psi,*)0.0_dp,psiSurfL
-    do i=1,nz
-        write(un_xpolAB,fmt4reals)zc(i),xpolAB(i),rhopolA(i),rhopolB(i)
-        write(un_xsol,*)zc(i),xsol(i)
-        write(un_fdisA,fmt6reals)zc(i),fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
-        write(un_fdisB,fmt6reals)zc(i),fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)   
-        write(un_psi,*)zc(i),psi(i)
-        write(un_rhopolAB,fmt5reals)zc(i),rhopolAL(i),rhopolBL(i),rhopolAR(i),rhopolBR(i)
+    do i=1,nsurf
+        write(un_psi,*)psiSurfL(i)
+    enddo     
+    do i=1,nsize
+        write(un_xpolAB,fmt3reals) xpolAB(i),rhopolA(i),rhopolB(i)
+        write(un_xsol,fmt1reals) xsol(i)
+        write(un_fdisA,fmt5reals) fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
+        write(un_fdisB,fmt5reals) fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)   
+        write(un_psi,fmt1reals) psi(i)
+        write(un_rhopolAB,fmt4reals) rhopolAL(i),rhopolBL(i),rhopolAR(i),rhopolBR(i)
     enddo
-    write(un_psi,*)nz*delta,psiSurfR
+
+    do i=1,nsurf
+        write(un_psi,*)psiSurfR(i)
+    enddo     
 
 
     if(verboseflag=="yes") then  
-        do i=1,nz   
-            write(un_xNa,*)zc(i),xNa(i)
-            write(un_xK,*)zc(i),xK(i)
-            write(un_xCa,*)zc(i),xCa(i)
-            write(un_xNaCl,*)zc(i),xNaCl(i)
-            write(un_xKCl,*)zc(i),xKCl(i)
-            write(un_xpair,*)zc(i),(xNaCl(i)/vNaCl)/(xNa(i)/vNa+xCl(i)/vCl+xNaCl(i)/vNaCl)
-            write(un_xCl,*)zc(i),xCl(i)
-            write(un_charge,*)zc(i),rhoq(i)
-            write(un_xHplus,*)zc(i),xHplus(i)
-            write(un_xOHmin,*)zc(i),xOHmin(i)           
+        do i=1,nsize   
+            write(un_xNa,*)xNa(i)
+            write(un_xK,*)xK(i)
+            write(un_xCa,*)xCa(i)
+            write(un_xNaCl,*)xNaCl(i)
+            write(un_xKCl,*)xKCl(i)
+            write(un_xpair,*)(xNaCl(i)/vNaCl)/(xNa(i)/vNa+xCl(i)/vCl+xNaCl(i)/vNaCl)
+            write(un_xCl,*)xCl(i)
+            write(un_charge,*)rhoq(i)
+            write(un_xHplus,*)xHplus(i)
+            write(un_xOHmin,*)xOHmin(i)           
         enddo
     endif  
   
@@ -1052,7 +1087,6 @@ subroutine output_electdouble()
         endif
     endif    
 
-
 end subroutine output_electdouble
 
 subroutine output_neutral
@@ -1123,10 +1157,10 @@ subroutine output_neutral
     endif    
         
 
-    do i=1,nz    
-       write(un_xpolAB,fmt4reals)zc(i),xpolAB(i),rhopolA(i),rhopolB(i)
-       write(un_xpolC,fmt2reals)zc(i),xpolC(i)
-       write(un_xsol,fmt2reals)zc(i),xsol(i)
+    do i=1,nsize    
+       write(un_xpolAB,fmt3reals)xpolAB(i),rhopolA(i),rhopolB(i)
+       write(un_xpolC,fmt1reals)xpolC(i)
+       write(un_xsol,fmt1reals)xsol(i)
     !     write(40,*)zc(i),endpol(i)
     enddo
         
@@ -1208,29 +1242,6 @@ subroutine output_neutral
     endif
   
 end subroutine output_neutral
-
-subroutine output()
-
-    use globals, only : sysflag
-    implicit none
-
-    if(sysflag=="elect") then 
-        call output_elect
-        call output_individualcontr_fe
-    elseif(sysflag=="electdouble") then
-        call output_electdouble
-        call output_individualcontr_fe
-    elseif(sysflag=="neutral") then
-        call output_neutral
-    elseif(sysflag=="electnopoly") then
-        call output_elect
-        call output_individualcontr_fe
-    else
-        print*,"Error in output subroutine"
-        print*,"Wrong value sysflag : ", sysflag
-    endif     
-
-end subroutine output
 
 
 subroutine output_individualcontr_fe
@@ -1345,7 +1356,6 @@ subroutine output_individualcontr_fe
 
 
     if(nz==nzmin) close(un_fe)
-
 
 end subroutine   output_individualcontr_fe
 

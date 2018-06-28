@@ -338,13 +338,11 @@ contains
 
             !   .. construction of fcn 
             
-
             do i=1,n
 
                 f(i)=xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0_dp
            
                 rhoq(i)= zNa*xNa(i)/vNa + zCa*xCa(i)/vCa +zK*xK(i)/vK + zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)
-           
                 !   ..  total charge density in units of vsol
             enddo 
 
@@ -353,15 +351,13 @@ contains
 
             sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
             sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
-
             
             ! .. Poisson Eq 
             call Poisson_Equation(f,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
 
             ! .. selfconsistent boundary conditions
             call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)
-
-    
+                    
             norm=l2norm(f,2*n+neq_bc)
             iter=iter+1
         
@@ -371,8 +367,6 @@ contains
             call print_to_log(LogUnit,text)
 
         endif
-
-
 
     end subroutine fcnelectNoPoly
 

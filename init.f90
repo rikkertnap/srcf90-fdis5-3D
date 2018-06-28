@@ -71,9 +71,9 @@ subroutine init_guess(x, xguess)
     else if(sysflag=="electdouble") then 
         call init_guess_electdouble(x,xguess)  
     else if(sysflag=="electnopoly") then 
-        call init_guess_neutral(x,xguess)
-    else if(sysflag=="neutral") then 
         call init_guess_electnopoly(x,xguess)
+    else if(sysflag=="neutral") then 
+        call init_guess_neutral(x,xguess)
     else     
         print*,"Wrong value sysflag : ", sysflag
     endif
@@ -328,10 +328,11 @@ end subroutine init_guess_elect
 
 subroutine init_guess_neutral(x, xguess)
     
-    use globals, only : neq
+    use globals, only : neq,nsize
     use volume, only : nz
     use field, only : xsol,rhopolB 
     use parameters, only : xbulk, infile
+    use myutils, only : newunit
 
     implicit none
   
@@ -341,13 +342,13 @@ subroutine init_guess_neutral(x, xguess)
     !     ..local variables 
     integer :: n, i
     character(len=8) :: fname(2)
-    integer :: ios,nfile(2)
+    integer :: ios,un_file(2)
   
     !     .. init guess all xbulk      
 
-    do i=1,nz
+    do i=1,nsize
         x(i)=xbulk%sol
-        x(i+nz)=0.000_dp
+        x(i+nsize)=0.000_dp
     enddo
   
   
@@ -355,27 +356,24 @@ subroutine init_guess_neutral(x, xguess)
         write(fname(1),'(A7)')'xsol.in'
         write(fname(2),'(A6)')'rhopolB.in'
      
-        nfile(1)=100
-        nfile(2)=200
-     
         do i=1,2
-            open(unit=nfile(i),file=fname(i),iostat=ios,status='old')
+            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
             if(ios >0 ) then
-                print*, 'file number =',nfile(i),' file name =',fname(i)
+                print*, 'file number =',un_file(i),' file name =',fname(i)
                 print*, 'Error opening file : iostat =', ios
                 stop
             endif
         enddo
      
-        do i=1,nz
-            read(100,*)xsol(i)       ! solvent
-            read(200,*)rhopolB(i)    ! density polymer B
+        do i=1,nsize
+            read(un_file(1),*)xsol(i)       ! solvent
+            read(un_file(2),*)rhopolB(i)    ! density polymer B
             x(i)      = xsol(i)       ! placing xsol  in vector x
             x(i+nz)   = rhopolB(i)    ! placing rhopolB  in vector x
         enddo
         
-        close(100)
-        close(200)
+        close(un_file(1))
+        close(un_file(2))
     endif
     !     .. end init from file 
   

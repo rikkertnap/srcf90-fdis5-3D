@@ -43,7 +43,9 @@ contains
         
         integer :: ntot
 
-        ntot=nx*ny*ny    
+        ntot=nx*ny*nz    
+        
+    !    print*," allocate_geometry : ntot=",ntot,"rank=",rank
 
         allocate(xc(nx))
         allocate(yc(ny))
@@ -88,7 +90,7 @@ contains
         vol=0.0_dp
         
         ntot=nx*ny*nz
-
+  
         do idx=1,ntot ! nsize=nx*ny*nz 
             deltaG(idx)=1.0_dp  
             vol=vol+ deltaG(idx)
@@ -117,9 +119,8 @@ contains
            
             nsize = nx*ny*nz                ! total number of cells or layers
             volcell = delta*delta*delta     ! volume of one latice volume 
-
+            nsurf = nx*ny   
             ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
-
             ! check 
             if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
                 print*,"ngr test failed: exiting"
@@ -138,10 +139,9 @@ contains
             endif
            
         case("hexagonal") ! hexagonal lattica 
-            
             nsize = nx*ny*nz                ! total number of cells or layers
             !volcell = delta*delta*delta     ! volume of one latice volume 
-
+            nsurf = nx*ny
             ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
 
             ! check 
@@ -162,10 +162,10 @@ contains
             endif
         
         case("square") ! square lattice in x-z axes 
-            
             ny=1      ! one layer in y-direction 
             nsize = nx*nz                ! total number of cells or layers
             !volcell = delta*delta*delta     ! volume of one latice volume 
+            nsurf = nx
 
             ngr = int(nx/ngr_freq)! number of surface elements to be end-grafted with chains
 
@@ -208,7 +208,9 @@ contains
         character(len=lenText) :: text, str 
 
     !    vol=0.0_dp
-      
+
+        call init_lattice
+
         select case (geometry) 
         case("cubic")
             call volume_elements_cubic(nx,ny,nz)   

@@ -32,6 +32,17 @@ contains
        
         noffset=nsize
 
+        ! do iz=1,nz
+        !     do iy=1,ny
+        !         do ix=1,nx
+        !             call linearIndexFromCoordinate(ix,iy,iz  ,id)
+        !             print*,"(",ix,iy,iz,") index ",id 
+        !         enddo    
+        !     enddo
+        ! enddo        
+
+
+
         do ix=1,nx
             do iy=1,ny
                 do iz=2,nz-1
@@ -60,6 +71,8 @@ contains
                 call linearIndexFromCoordinate(ix,           iy,iz+1,idzpls)
                 call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
                 call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+
+            !    print*,ix,iy,iz,id,idypls,ipbc(iy+1,ny)
 
                 fvec(noffset+id)= -0.5_dp*( psi(idxpls)+psi(idxmin) +psi(idypls)+psi(idymin)+psi(idzpls) +sigmaqSurfL(id) &
                     - 5.0_dp*psi(id) +rhoq(id)*constqW)
@@ -180,9 +193,9 @@ contains
         integer :: intpbc
 
         if(ival>0) then
-            intpbc=ival-int(ival/imax)*imax
+            intpbc=ival-int((ival-1)/imax)*imax
         else
-            intpbc=ival-(int(ival/imax)-1)*imax
+            intpbc=ival-(int((ival-1)/imax)-1)*imax
         endif
 
     end function

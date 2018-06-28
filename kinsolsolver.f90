@@ -136,10 +136,6 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
         x(i) = xguess(i)        ! initial guess
     enddo
   
-    !do i =neq/4+1, neq/2
-    !    constr(i)=0.0_dp
-    !enddo   
-    
     call set_contraints(constr)
   
     call fnvinits(3, neq, ier) ! inits NVECTOR module
