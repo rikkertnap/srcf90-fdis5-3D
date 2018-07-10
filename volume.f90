@@ -119,7 +119,10 @@ contains
            
             nsize = nx*ny*nz                ! total number of cells or layers
             volcell = delta*delta*delta     ! volume of one latice volume 
-            nsurf = nx*ny   
+            nsurf = nx*ny  
+            ngrx=int(nx/ngr_freq)
+            ngry=int(ny/ngr_freq)
+
             ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
             ! check 
             if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
@@ -143,7 +146,8 @@ contains
             !volcell = delta*delta*delta     ! volume of one latice volume 
             nsurf = nx*ny
             ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
-
+            ngrx=int(nx/ngr_freq)
+            ngry=int(ny/ngr_freq)
             ! check 
             if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
                 print*,"ngr test failed: exiting"

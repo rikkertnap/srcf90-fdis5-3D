@@ -86,10 +86,13 @@ else ifeq ($(shell hostname),quser10)
 else 
 
 
-FFLAGS= -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds #-Wall
+FFLAGS= -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check -Warray-bounds -g -fbacktrace #-Wall
 
 
-LDFLAGS=-lm -L/opt/local/kinsol-2.8.2-stat/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/opt/local/kinsol-2.8.2-stat/lib
+#LDFLAGS=-lm -L/opt/local/kinsol-2.8.2-stat/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/opt/local/kinsol-2.8.2-stat/lib
+
+LDFLAGS= -lm -L/opt/local/sundials-2.6.1-mpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/opt/local/sundials-2.6.1-mpi/lib
+
 
 LFFLAGS=$(LDFLAGS)
 

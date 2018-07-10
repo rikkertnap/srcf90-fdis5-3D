@@ -71,10 +71,12 @@ end subroutine fkpsol
 
 subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
   
-    use globals, only : nsize, neq 
+    use mpivars
+    use globals, only : nsize, neq, sysflag
     use kinsolvars
     use parameters, only : iter
     use myutils
+
 
     implicit none
 
@@ -116,6 +118,7 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
   
     !     .. executable statements 
 
+    ! print*,"inside kinsol_grmers_solver: rank",rank," sysflag=",sysflag
     !     .. init of kinsol variables 
                             
     msbpre  = 5               ! maximum number of iterations without prec. setup 
@@ -229,7 +232,7 @@ subroutine set_contraints(constr)
 
     integer :: i
  
-    if(sysflag=="fcnelectdouble") then
+    if(sysflag=="electdouble") then
         do i =neq/4+1, neq/2
             constr(i)=0.0_dp
         enddo   

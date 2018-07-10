@@ -432,7 +432,8 @@ contains
             ! reset of flags
             iter=0
             sysflag=sysflag_old         ! switch solver back
-            call set_size_neq()         ! number of non-linear  equation        
+            call set_size_neq()         ! set number of non-linear equation  
+            ! call set_fcn()              ! set fcnptr to correct fcn        
             
             xbulk%sol=1.0_dp-xbulk%Hplus-xbulk%OHmin - xbulk%Cl -xbulk%Na -xbulk%K-xbulk%NaCl-xbulk%KCl-xbulk%Ca 
             
@@ -451,7 +452,7 @@ contains
         K0b(4) = (Kb(4)*vsol)*(Na/1.0e24_dp)
          
 
-        pibulk = -dlog(xbulk%sol)  ! pressure (pi) of bulk
+        pibulk = -log(xbulk%sol)  ! pressure (pi) of bulk
         ! exp(beta mu_i) = (rhobulk_i v_i) / exp(- beta pibulk v_i) 
         expmu%Na    = xbulk%Na   /(xbulk%sol**vNa) 
         expmu%K     = xbulk%K    /(xbulk%sol**vK)
@@ -505,5 +506,36 @@ contains
         endif   
 
     end subroutine init_expmu
+
+
+    ! inits chem potential and calls chainfilter 
+    subroutine init_vars_input()
+
+        use globals, only : sysflag
+     
+        implicit none
+        
+        ! local variable
+        integer :: i
+
+        select case (sysflag)
+        case ("elect")
+            
+            call init_expmu_elect() 
+        case ("electdouble") 
+            
+            call init_expmu_elect() 
+        case ("electnopoly")
+            call init_expmu_elect()
+        case ("neutral")
+            call init_expmu_neutral()   
+        case default   
+            print*,"Error: sysflag incorrect at init_vars_input" 
+            print*,"Wrong value sysflag : ", sysflag
+            print*,"stopping program"
+            stop
+         end select
+             
+     end subroutine init_vars_input
 
  end module parameters

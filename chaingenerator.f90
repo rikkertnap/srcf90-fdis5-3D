@@ -74,14 +74,20 @@ subroutine make_chains_mc()
     !     .. executable statements
     !     .. initializations of variables     
     
+    !print*,"chaingen: ngr =",ngr 
+    !print*,"chaingen: ngrx=",ngrx
+    !print*,"chaingen: ngry=",ngry
+
     allocate(x_ngr(ngrx))
     allocate(y_ngr(ngry))
 
     do i=1,ngrx            ! location graft points 
         x_ngr(i)=(i-0.5_dp)*delta*ngr_freq
+    !    print*,"x",i,x_ngr(i)
     enddo
     do i=1,ngry
-        y_ngr(i)=(i-0.5_dp)*delta*ngr_freq  
+        y_ngr(i)=(i-0.5_dp)*delta*ngr_freq
+    !    print*,"y",i,y_ngr(i)  
     enddo
 
     conf=1                  ! counter for conformations
@@ -92,11 +98,14 @@ subroutine make_chains_mc()
     Lx= nx*delta            ! maximum width box 
     Ly= ny*delta            ! maximum depth box 
 
+    !print*,"make_chains_mc: Lz=",Lz," ngr_node=",ngr_node
+
     if(isHomopolymer.eqv..FALSE.) then 
         allocate(lsegseq(nsegAB))
         call make_lsegseq(lsegseq,nsegAB)
     endif    
-
+  
+    
 
     do while (conf.le.max_conforAB)
         nchains= 0      ! init zero 
@@ -105,6 +114,7 @@ subroutine make_chains_mc()
         else
             call make_linear_seq_chains(chain,nchains,maxnchains,nsegAB) 
         endif  
+
 
         select case (geometry) 
         case("cubic")
@@ -122,14 +132,16 @@ subroutine make_chains_mc()
                     g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
                   
                     idxtmp = g
-                    ix     = mod(idxtmp-1,ngrx)+1  ! inverse of g
-                    idxtmp = int((idxtmp-1)/ngrx)+1
-                    iy = idxtmp
-               
+                    ix = mod(idxtmp-1,ngrx)+1  ! inverse of g
+                    iy = int((idxtmp-1)/ngrx)+1
+                    
                     xpt = x_ngr(ix)                ! position of graft point
                     ypt = y_ngr(iy) 
-                      
-                    weightchainAB(gn,conf)=.TRUE.  ! init weight
+                     
+                    ! print*,"rank=",rank," g=",g," ix=",ix," iy=",iy,'xpt=',xpt," ypt=",ypt
+
+                    weightchainAB(gn,conf)=.TRUE.  ! init weight     
+
 
                     do s=1,nsegAB
 
@@ -138,7 +150,7 @@ subroutine make_chains_mc()
                         y(s)=yp(s)+ypt
 
                         ! .. check z coordinate 
-                        if((0>z(s)).or.(z(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
+                        if((0>zp(s)).or.(zp(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
 
                         ! .. periodic boundary conditions in x-direction and y-direction  
                         x(s)=pbc(x(s),Lx)
@@ -152,12 +164,15 @@ subroutine make_chains_mc()
                         if(weightchainAB(gn,conf).eqv..TRUE.) then
                             call linearIndexFromCoordinate(xc,yc,zc,idx)
                             indexchainAB(s,gn,conf) = idx
+                            ! print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
                             if(idx<=0) then
                                 print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
                             endif
                         endif
 
-                    enddo   
+                    enddo  
+                                   
+
                 enddo         ! end g loop
 
                 conf=conf +1
@@ -224,7 +239,7 @@ subroutine make_chains_mc()
      
 
     enddo                     ! end while loop
-             
+            
     !     .. end chains generation 
       
     write(istr,'(I4)')rank

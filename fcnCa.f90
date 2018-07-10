@@ -702,13 +702,16 @@ contains
         character(len=lenText) :: text, istr, rstr
 
         ! quick fix for psiSurf 
-        real(dp) :: psiSurfR_local(nx*ny), psiSurfL_local(nx*ny)
+        !real(dp) :: psiSurfR_local(nx*ny), psiSurfL_local(nx*ny)
         
         ! real(dp), parameter :: tolconst = 1.0e-9_dp  ! tolerance for constA and constB 
         
         !     .. executable statements 
         !     .. communication between processors
 
+        print*,"fcn: hello rank=", rank
+
+        
         if (rank.eq.0) then
             flag_solver = 1      !  continue program
             do i = 1, size-1
@@ -717,7 +720,7 @@ contains
                 call MPI_SEND(x,neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
             enddo    
         endif
-        
+        print*,"fcn: send rank=", rank
         n=nsize                      ! size vector 4*n x=(pi,psi,rhopolA,rhopolB]
     
         do i=1,n                     ! init x 
@@ -781,6 +784,7 @@ contains
 
         enddo
 
+         print*,"fcn: compute rank=", rank
 
         if(rank==0) then            ! global polymer density
             do i=1,n
@@ -795,11 +799,16 @@ contains
                 qABR(g)=0.0_dp
             enddo
         endif
+
+        print*,"fcn: compute polymer  rank=", rank
         !     .. computation polymer volume fraction 
         do gn=1,ngr_node
             qABL_local(gn)=0.0d0       ! init qB
             qABR_local(gn)=0.0d0
         enddo 
+
+
+        print*,"fcn: ngr_node=",ngr_node," cuantasAB=",cuantasAB
 
         do gn=1,ngr_node              ! loop over grafted points <=>  grafted area on different nodes 
  
@@ -862,11 +871,14 @@ contains
         !     .. import results
 
         if (rank==0) then
+            print*,"fcn: reduce"
 
             call MPI_REDUCE(rhopolAL_local, rhopolAL, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
             call MPI_REDUCE(rhopolBL_local, rhopolBL, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
             call MPI_REDUCE(rhopolAR_local, rhopolAR, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
             call MPI_REDUCE(rhopolBR_local, rhopolBR, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+
+            print*,"fcn: reduce complete"
 
             do gn=1,ngr_node
                 g = (0)*ngr_node+gn
@@ -939,6 +951,7 @@ contains
         else          ! Export results
 
             dest = 0
+            print*,"fcn, rank=",rank
          
             call MPI_REDUCE(rhopolAL_local, rhopolAL, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
             call MPI_REDUCE(rhopolBL_local, rhopolBL, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
@@ -994,7 +1007,7 @@ contains
 
         !     .. executable statements 
 
-        n=nz                        ! size vector neq=5*nz x=(pi,psi,rhopolA,rhopolB,xpolC)
+        n=nsize                        ! size vector neq=5*nz x=(pi,psi,rhopolA,rhopolB,xpolC)
 
         do i=1,n                    ! init x 
             xsol(i)= x(i)           ! solvent volume fraction 

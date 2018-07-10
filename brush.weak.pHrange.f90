@@ -46,6 +46,7 @@ program brushweakpolyelectrolyte
     ! .. executable statements 
 
     ! .. mpi
+
     call MPI_INIT(ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, size, ierr)
@@ -70,22 +71,40 @@ program brushweakpolyelectrolyte
         stop
     endif
 
+
     call init_constants()
-    call init_matrices()            ! init matrices for chain generation
-!    call allocate_chains(cuantasAB,nsegAB,cuantasC,nsegC,ngr_node)  
-!    call make_sequence_chain(period,chaintype)
-!    call set_properties_chain(period,chaintype)  
-!    call make_chains(chainmethod)   ! generate polymer configurations 
 
     call allocate_geometry(nx,ny,nz)
     call make_geometry()            ! generate volume elements lattice 
+    call init_matrices()            ! init matrices for chain generation
+    call allocate_chains(cuantasAB,nsegAB,cuantasC,nsegC,ngr_node)  
+    call make_chains(chainmethod)   ! generate polymer configurations 
+
+
+    call make_sequence_chain(period,chaintype)
+    call set_properties_chain(period,chaintype)  
+
+    print*,"main: ierr=",ierr," rank=",rank
+    
+
+   
+    call make_sequence_chain(period,chaintype)
+    call set_properties_chain(period,chaintype)  
+
+   
+    ! call allocate_geometry(nx,ny,nz)
+    !call make_geometry()            ! generate volume elements lattice 
     call allocate_field(nx,ny,nz) 
     call allocate_part_fnc(ngr)
-    call set_size_neq()             ! number of non-linear equation neq   
+    call set_size_neq()             ! number of non-linear equation neq  
+    call set_fcn()     
     call init_surface(bcflag,nsurf)
 
     !  .. computation starts
     
+    print*,"main: cuantasAB=",cuantasAB
+
+
     nz = nzmax                    
     neqmax = neq    
     allocate(xstored(neq))
@@ -95,39 +114,48 @@ program brushweakpolyelectrolyte
 
     isfirstguess = .true.    
     use_xstored = .false.         ! with both flags set false make_guess will set xguess equal to x    
-    pH%val=pH%min ! added 
-    call init_expmu()              ! set chemical potenitals  
+    
+    pH%val=pH%min   
+    call init_expmu()             ! set chemical potenitals  
+    
     iter = 0
-
+    print*,"main : nz=",nz,"nzmin=",nzmin," rank=",rank,"size=",size
     do while (nz>=nzmin)        ! loop distances
 
+        print*,"main : inside while loop rank=",rank
         call set_size_neq()  
         
         if(.not.allocated(x)) allocate(x(neq))
         if(.not.allocated(xguess)) allocate(xguess(neq))
         if(.not.allocated(fvec)) allocate(fvec(neq))
 
-    !    call chain_filter() 
-        call init_expmu()  
-        !call init_vars_input()
-
+        !call init_expmu   
+        call init_vars_input()  ! sets up chem potenitals 
+        call set_fcn()    
+        
         flag_solver = 0
            
         if(rank.eq.0) then     ! node rank=0
-            
+
+            print*,"main: solver called rank=",rank," neqint=",neqint            
             call make_guess(x, xguess, isfirstguess, use_xstored, xstored)  
-            call solver(x, xguess, error, fnorm)
+            call fcnptr(x, fvec, neq)  
+            !  call solver(x, xguess, error, fnorm)
 
             flag_solver = 0   ! stop nodes
                 
-            do dest = 1, size-1
+            do i = 1, size-1
+                dest =i
                 call MPI_SEND(flag_solver, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
             enddo
         
         endif
   
+        print*,"main: rank=",rank
+
         if(rank.ne.0) then 
 
+            print*,"main: rank=",rank," neqint=",neqint  
             flag_solver = 1
  
             do while(flag_solver.eq.1) 
@@ -136,8 +164,10 @@ program brushweakpolyelectrolyte
                 source = 0 
                 call MPI_RECV(flag_solver, 1, MPI_INTEGER, source, tag,MPI_COMM_WORLD,stat, ierr)
                 if(flag_solver.eq.1) then
+                    print*,"main : flag_solver=",flag_solver
                     call MPI_RECV(x, neqint, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)                        
                     call fcnptr(x, fvec, neq)  
+                     print*,"main : fcnptr neq=",neq," neqint=",neqint
                 endif    
 
             enddo  
@@ -146,13 +176,8 @@ program brushweakpolyelectrolyte
 
         if(rank==0) then
             ! call copy_solution(x)
-            ! call compute_vars_and_output()
-            
-            ! call fcnenergy()        
-            ! call average_height()      
-            ! call charge_polymer()
-            ! call average_charge_polymer()
-            call output()           ! writing of output
+            !call compute_vars_and_output()
+            call output()          
 
             isfirstguess =.false.    
             use_xstored = .true.

@@ -29,7 +29,7 @@ module myio
     character(len=80), parameter  :: fmt6reals = "(6ES25.16E3)" 
     
     private
-    public :: read_inputfile, output, output_individualcontr_fe
+    public :: read_inputfile, output_individualcontr_fe, output, compute_vars_and_output
     
 contains
 
@@ -470,7 +470,11 @@ subroutine output_elect
         fnamelabel="sg"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-        write(rstr,'(F5.3)')cCaCl2
+        if(cCaCl2>=0.001) then 
+            write(rstr,'(F5.3)')cCaCl2
+        else
+            write(rstr,'(ES8.2E2)')cCaCl2
+        endif    
         fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
         write(rstr,'(F7.3)')pHbulk
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
@@ -1224,8 +1228,8 @@ subroutine output_neutral
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'qAB         = ',qAB
     write(un_sys,*)'qC          = ',qC
-    write(un_sys,*)'muAB        = ',-dlog(qAB)
-    write(un_sys,*)'muC         = ',-dlog(qC)
+    write(un_sys,*)'muAB        = ',-log(qAB)
+    write(un_sys,*)'muC         = ',-log(qC)
     write(un_sys,*)'heightAB    = ',heightAB
     write(un_sys,*)'heightC     = ',heightC
     write(un_sys,*)'nsize       = ',nsize  
@@ -1358,6 +1362,136 @@ subroutine output_individualcontr_fe
     if(nz==nzmin) close(un_fe)
 
 end subroutine   output_individualcontr_fe
+
+     
+subroutine copy_solution(x)
+
+    use globals, only : sysflag, neq, nsize, bcflag, LEFT, RIGHT
+    use volume, only  : nx,ny
+    use surface, only : psiSurfL, psiSurfR
+    use field
+ 
+    implicit none
+
+    real(dp), dimension(neq) :: x  ! expliciet size array 
+    
+    ! local variable
+    integer :: i, neq_bc
+
+    select case (sysflag)
+    case ("elect")   
+
+        do i=1,nsize                   
+            xsol(i)= x(i)              
+            psi(i) = x(i+nsize)        
+            rhopolA(i)=x(i+2*nsize)
+            rhopolB(i)=x(i+3*nsize)
+        enddo
+        
+        neq_bc=0 ! surface potential  
+        if(bcflag(RIGHT)/="cc") then
+            neq_bc=nx*ny
+            do i=1,neq_bc
+                psiSurfR(i) =x(4*nsize+i) 
+            enddo
+        endif   
+        if(bcflag(LEFT)/="cc") then 
+            do i=1,nx*ny
+                psiSurfL(i) =x(4*nsize+neq_bc+i)         
+            enddo
+            neq_bc=neq_bc+nx*ny
+        endif    
+       
+    case ("electdouble")
+
+        do i=1,nsize                     
+            xsol(i)= x(i)            
+            psi(i) = x(i+nsize)         
+            rhopolA(i)=x(i+2*nsize)
+            rhopolB(i)=x(i+3*nsize)
+        enddo
+
+    case ("electnopoly")
+    
+        do i=1,nsize                   
+            xsol(i)= x(i)          
+            psi(i) = x(i+nsize)     
+        enddo
+            
+        neq_bc=0
+        if(bcflag(RIGHT)/="cc") then
+            neq_bc=nx*ny
+            do i=1,neq_bc
+                psiSurfR(i) =x(2*nsize+i)                 
+            enddo
+        endif   
+        if(bcflag(LEFT)/="cc") then 
+            do i=1,nx*ny
+                psiSurfL(i) =x(2*nsize+neq_bc+i)          
+            enddo
+            neq_bc=neq_bc+nx*ny
+        endif    
+
+    case ("neutral")
+
+        do i=1,nsize                   
+            xsol(i)= x(i)             
+            rhopolB(i)=x(i+nsize)       
+        enddo
+        print*,"copy_solution: case neutral not correct"
+        print*,"stopping program"
+        stop
+
+    case default   
+        print*,"Error: sysflag incorrect at copy_solution"
+        print*,"stopping program"
+        stop
+     end select
+         
+ end subroutine copy_solution
+
+! output routine 
+
+subroutine compute_vars_and_output()
+
+    use globals, only : sysflag
+    use energy
+    use field
+    implicit none
+
+    select case (sysflag)
+    case ("elect")
+    
+    !     call fcnenergy()       
+    !     call average_height()      
+    !     call charge_polymer()
+    !     call average_charge_polymer()
+        call output()
+
+    case ("electdouble")
+    
+    !     call fcnenergy()       
+    !     call average_height()      
+    !     call charge_polymer()
+    !     call average_charge_polymer()
+        call output()
+    
+    case ("electnopoly")
+        call fcnenergy()        
+        call output()           ! writing of output
+     
+    case ("neutral")   
+        call output()           ! writing of output
+     
+    case default   
+        print*,"Error: sysflag incorrect at set_vars_and_output"
+        print*,"stopping program"
+        stop
+     end select
+         
+end subroutine compute_vars_and_output
+
+
 
 end module
 
