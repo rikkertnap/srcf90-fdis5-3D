@@ -130,7 +130,7 @@ contains
 
         ! .. electrostatics: self consistent boundary conditions
         
-        if(sysflag=="electdouble") then 
+        if(sysflag=="elect") then 
             noffset=4*nsize
         else if(sysflag=="electdouble") then 
             noffset=4*nsize

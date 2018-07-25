@@ -212,6 +212,10 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
     write(istr,'(I8)')iter
     text="number of iterations  = "//trim(istr)
     call print_to_log(LogUnit,text)
+
+    write(istr,'(I8)')ier
+    text="kinsol return value  = "//trim(istr)
+    call print_to_log(LogUnit,text)
     
     call fkinfree             ! free memory
     deallocate(pp)
@@ -232,12 +236,12 @@ subroutine set_contraints(constr)
 
     integer :: i
  
-    if(sysflag=="electdouble") then
+    if(sysflag=="electdouble".or. sysflag=="elect") then
         do i =neq/4+1, neq/2
             constr(i)=0.0_dp
         enddo   
-    endif    
-
+    endif
+        
 end 
 
 

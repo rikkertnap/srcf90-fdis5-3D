@@ -113,7 +113,7 @@ contains
         FEVdWB = 0.0_dp     
         qres = 0.0_dp
 
-        do i=1,nz
+        do i=1,nsize
             FEpi = FEpi  + log(xsol(i))
             FErho = FErho - (xsol(i) + xHplus(i) + xOHmin(i)+ xNa(i)/vNa + xCa(i)/vCa + xCl(i)/vCl+xK(i)/vK +&
                 xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
@@ -131,19 +131,19 @@ contains
             sumphiC = sumphiC +  rhopolC(i)
         enddo
     
-        FEel  = (delta/vsol)*FEel
-        FEpi  = (delta/vsol)*FEpi
-        FErho = (delta/vsol)*FErho
+        FEel  = (volcell/vsol)*FEel
+        FEpi  = (volcell/vsol)*FEpi
+        FErho = (volcell/vsol)*FErho
         
-        FEbind = delta*FEbind/2.0_dp !  check this 
+        FEbind = volcell*FEbind/2.0_dp !  check this 
 
-        qres = (delta/vsol)*qres
-        sumphiA = delta*sumphiA
-        sumphiB = delta*sumphiB
-        sumphiC = delta*sumphiC
+        qres = (volcell/vsol)*qres
+        sumphiA = volcell*sumphiA
+        sumphiB = volcell*sumphiB
+        sumphiC = volcell*sumphiC
 
-        FEVdWC  = delta*FEVdWC*VdWepsC*vpolC*vsol/2.0_dp   
-        FEVdWB  = delta*FEVdWB*VdWepsB*vpolB(3)*vsol/2.0_dp   
+!        FEVdWC  = deltavoll*FEVdWC*VdWepsC*vpolC*vsol/2.0_dp   
+!        FEVdWB  = deltavoll*FEVdWB*VdWepsB*vpolB(3)*vsol/2.0_dp   
     
 !        if (sysflag=="elect") then 
 !            FEVdW=FEVdWC
@@ -225,11 +225,11 @@ contains
         
         elseif(bcflag(RIGHT)=="ca" ) then ! calcite
         
-            FEchemSurf(RIGHT) =(dlog(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT) =(log(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
         
-            FEchemSurf(RIGHT)= (dlog(fdisTaR(2))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT)= (log(fdisTaR(2))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="cc") then  
         
@@ -274,7 +274,7 @@ contains
         qres = qres + qsurf(RIGHT)+qsurf(LEFT)  ! total residual charge 
 
         
-        volumelat=nz*delta   ! volume lattice
+        volumelat= volcell*nsize !nz*delta   ! volume lattice
 
         FEbulk   = log(xbulk%sol)-(xbulk%sol+xbulk%Hplus +xbulk%OHmin+ & 
             xbulk%Na/vNa +xbulk%Ca/vCa +xbulk%Cl/vCl+ xbulk%K/vK + xbulk%NaCl/vNaCl +xbulk%KCl/vKCl )
@@ -372,7 +372,7 @@ contains
 
         elseif(bcflag(RIGHT)=="ca" ) then ! calcite
         
-            FEchemSurfalt(RIGHT) =(dlog(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurfalt(RIGHT) =(log(fdisS(2))+log(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
             FEchemSurftmp=0.0_dp
@@ -528,8 +528,8 @@ contains
 
         !  .. variable and constant declaractions 
     
-        use globals
-        use volume
+        use globals, only : nsize
+        use volume, only : volcell
         use parameters
         use field
         use VdW
@@ -544,7 +544,7 @@ contains
         real(dp) :: qsurfg             ! total charge on grafting surface 
         integer :: i,j               ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
-        integer :: nzadius
+    !    integer :: nzadius
 
         !     .. computation of free energy 
     
@@ -562,7 +562,7 @@ contains
         FEVdW = 0.0_dp 
         qres = 0.0_dp
 
-        do i=1,nz
+        do i=1,nsize
             FEpi = FEpi  + deltaG(i)*dlog(xsol(i))
             FErho = FErho - deltaG(i)*xsol(i) 
 
@@ -575,14 +575,14 @@ contains
             sumphiC = sumphiC + deltaG(i) * rhopolC(i)
         enddo
     
-        FEpi  = (delta/vsol)*FEpi
-        FErho = (delta/vsol)*FErho
+        FEpi  = (volcell/vsol)*FEpi
+        FErho = (volcell/vsol)*FErho
     
-        sumphiA = delta*sumphiA
-        sumphiB = delta*sumphiB
-        sumphiC = delta*sumphiC
+        sumphiA = volcell*sumphiA
+        sumphiB = volcell*sumphiB
+        sumphiC = volcell*sumphiC
 
-        FEVdW  = delta*FEVdW*(VdWepsB*vpolB(3)*vsol)/2.0_dp   
+        FEVdW  = volcell*FEVdW*(VdWepsB*vpolB(3)*vsol)/2.0_dp   
 
 !        FEq = -delta*(sigmaAB*dlog(qAB)+sigmaC*dlog(qC) )
     
@@ -606,10 +606,10 @@ contains
         print*,"FE =",FE
     
        
-        volumelat=nz*delta  ! volume lattice divide by area surface
+        volumelat= volcell*nsize  ! nz*delta  ! volume lattice divide by area surface
         
         print*,"volumelat=",volumelat
-        FEbulk  = dlog(xbulk%sol)-xbulk%sol
+        FEbulk  = log(xbulk%sol)-xbulk%sol
         print*,"FEbulk=",FEbulk
         FEbulk = volumelat*FEbulk/(vsol)
 
@@ -629,8 +629,9 @@ contains
 
     real(dp) function FEtrans_entropy(xvol,xvolbulk,vol,flag)
     
-        use globals
-        use parameters
+        use globals, only : nsize
+        use parameters, only : vsol 
+        use volume, only : volcell
         implicit none
 
         real(dp), intent(in) :: xvol(nsize)
@@ -646,26 +647,27 @@ contains
         else
             FEtrans_entropy=0.0_dp
             if(present(flag)) then
-            ! water special case because vsol treated diffetent then vi  
-                do i=1,nz
+            ! water special case because vsol treated different then vi  
+                do i=1,nsize
                     FEtrans_entropy=FEtrans_entropy + xvol(i)*(log(xvol(i))-1.0_dp)
                 enddo 
-                FEtrans_entropy = delta*FEtrans_entropy/vol
+                FEtrans_entropy = volcell*FEtrans_entropy/vol
             else 
-                do i=1,nz
+                do i=1,nsize
                     FEtrans_entropy = FEtrans_entropy + xvol(i)*(log(xvol(i)/vol)-1.0_dp)
                 enddo
-                FEtrans_entropy = delta*FEtrans_entropy/(vol*vsol)
+                FEtrans_entropy = volcell*FEtrans_entropy/(vol*vsol)
             endif
         endif
 
-    end function FEtrans_entropy   
+    end function FEtrans_entropy
+
 
     real(dp) function FEchem_pot(xvol,expchempot,vol,flag)
     
-        use globals
-        use field
-        use parameters
+        use globals, only : nsize
+        use volume, only : volcell
+        use parameters, only : vsol
         implicit none
 
         real(dp), intent(in) :: xvol(nsize)
@@ -684,16 +686,16 @@ contains
             sumdens=0.0_dp
             if(present(flag)) then  ! water special case because vsol treated diffetent then vi
                 chempot = -log(expchempot)    
-                do i=1,nz
+                do i=1,nsize
                     sumdens=sumdens +xvol(i)
                 enddo
-                FEchem_pot=delta*chempot*sumdens/vol            
+                FEchem_pot=volcell*chempot*sumdens/vol            
             else
                 chempot = -log(expchempot/vol)    
-                do i=1,nz
+                do i=1,nsize
                     sumdens=sumdens +xvol(i)
                 enddo
-                FEchem_pot=delta*chempot*sumdens/(vol*vsol)               
+                FEchem_pot=volcell*chempot*sumdens/(vol*vsol)               
             endif
         endif
 
@@ -759,7 +761,7 @@ contains
 
     real(dp) function FEchem_react()
 
-        use globals, only : sysflag
+        use globals, only : sysflag, nsize
         use field
         use volume
         use parameters, only : vpolA,vsol,zpolA,vpolB,zpolB
@@ -772,7 +774,7 @@ contains
 
         FEchem_react = 0.0_dp
 
-        do i=1,nz
+        do i=1,nsize
 
             betapi=-log(xsol(i))/vsol
 
@@ -793,20 +795,20 @@ contains
             xpolA = xpolA +rhopolA(i)*fdisA(5,i)*vpolA(5)*vsol/2.0_dp
             xpolB = xpolB +rhopolB(i)*fdisB(5,i)*vpolB(5)*vsol/2.0_dp
             
-            FEchem_react = FEchem_react + deltaG(i)*(- rhopolA(i)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
+            FEchem_react = FEchem_react + (- rhopolA(i)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
                 +fdisA(5,i)*rhopolA(i)/2.0_dp)
 
-            FEchem_react = FEchem_react + deltaG(i)*(- rhopolB(i)*lambdaB -psi(i)*rhopolBq -betapi*xpolB &
+            FEchem_react = FEchem_react + (- rhopolB(i)*lambdaB -psi(i)*rhopolBq -betapi*xpolB &
                 +fdisB(5,i)*rhopolB(i)/2.0_dp)
 
         enddo
 
-        FEchem_react=delta*FEChem_react    
+        FEchem_react=volcell*FEChem_react    
         
         if(sysflag=="neutral") FEchem_react=0.0_dp
 
 
-    end function FEchem_react 
+    end function FEchem_react
 
-  
+
 end module energy

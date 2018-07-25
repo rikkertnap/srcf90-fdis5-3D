@@ -21,14 +21,9 @@ subroutine make_guess(x, xguess, isfirstguess, flagstored, xstored)
     logical, intent(in) :: isfirstguess     ! first guess   
     logical, optional, intent(in) :: flagstored
     real(dp), optional, intent(in) :: xstored(:)
-
+    
     !  ..local variables 
-    integer :: i,neq_bc
-  
-    neq_bc=0    
-
-    if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nsurf
-    if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nsurf
+    integer :: i ,neq_bc
 
     if(present(flagstored)) then
         if(present(xstored)) then
@@ -104,8 +99,8 @@ subroutine init_guess_electdouble(x, xguess)
     ! .. init guess all xbulk     
     do i=1,nsize
         x(i)=xbulk%sol
-        x(i+  nsize)=0.000_dp
-        x(i+2*nsize)=0.000001_dp
+        x(i+  nsize)=0.0_dp
+        x(i+2*nsize)=0.0_dp        ! 0.000001_dp
         x(i+3*nsize)=0.0_dp
     enddo
   
@@ -223,7 +218,7 @@ subroutine init_guess_electnopoly(x, xguess)
         do i=1,nsize
             read(un_file(1),*)xsol(i)    ! solvent
             read(un_file(2),*)psi(i)     ! degree of complexation A
-            x(i)      = xsol(i)    ! placing xsol  in vector x
+            x(i)      = xsol(i)     ! placing xsol  in vector x
             x(i+nsize) = psi(i)     ! placing xsol  in vector x
         enddo
         if(bcflag(RIGHT)/="cc") then 
@@ -243,6 +238,7 @@ subroutine init_guess_electnopoly(x, xguess)
     enddo
 
 end subroutine init_guess_electnopoly
+
 !     purpose: initalize x and xguess
 
 subroutine init_guess_elect(x, xguess)
@@ -264,15 +260,13 @@ subroutine init_guess_elect(x, xguess)
     character(len=8) :: fname(4)
     integer :: ios,un_file(4)
   
-  
     ! .. init guess all xbulk     
 
     do i=1,nsize
         x(i)=xbulk%sol
         x(i+nsize)=0.0_dp
-        x(i+2*nsize)=0.000001_dp
+        x(i+2*nsize)=0.0_dp
         x(i+3*nsize)=0.0_dp
-!        x(i+4*nz)=0.00_dp
     enddo
   
     if (infile.eq.1) then   ! infile is read in from file/stdio  
@@ -384,8 +378,8 @@ subroutine init_guess_neutral(x, xguess)
 end subroutine init_guess_neutral
 
 
-!     .. copy solution of previous solution ( distance ) to create new guess
-!     .. data x=(pi,psi) and pi and psi order and split into  blocks
+! .. copy solution of previous solution ( distance ) to create new guess
+! .. data x=(pi,psi) and pi and psi order and split into  blocks
 
 
 subroutine make_guess_from_xstored(xguess,xstored)
@@ -395,19 +389,34 @@ subroutine make_guess_from_xstored(xguess,xstored)
 
     implicit none
 
-    real(dp), intent(out) :: xguess(neq)    ! guess volume fraction solvent and potentia
-    real(dp), intent(in) :: xstored(neqmax)
+    real(dp), intent(out) :: xguess(:)    ! guess volume fraction solvent and potentia
+    real(dp), intent(in) :: xstored(:)
 
     !   .. local variables
-    integer :: i,neq_bc
+    integer :: i, neq_bc
 
-    neq_bc=0    
+    neq_bc=0  
+      
     if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nsurf
     if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nsurf 
 
-    if(sysflag=="elect".or.sysflag=="electdouble") then 
+    if(sysflag=="elect") then 
+        
+        do i=1,nsize
+            xguess(i)=xstored(i)                                ! volume fraction solvent 
+            xguess(i+  nsize)=xstored(i+   nsize+nsurf*nzstep)       ! potential
+            xguess(i+2*nsize)=xstored(i+2*(nsize+nsurf*nzstep))  
+            xguess(i+3*nsize)=xstored(i+3*(nsize+nsurf*nzstep))  
+        enddo
+        
+        do i=1,neq_bc
+            xguess(4*nsize+i)=xstored(4*(nsize+nsurf*nzstep)+i) 
+        enddo
+
+    elseif(sysflag=="electdouble") then 
+        ! assume xstored xsol,psi symetric xsol(1)=xsol(nsize) etc     
         do i=1,nsize/2
-            xguess(i)=xstored(i)                    ! volume fraction solvent 
+            xguess(i)=xstored(i)                                ! volume fraction solvent 
             xguess(i+nsize)=xstored(i+nsize+nsurf*nzstep)       ! potential
             xguess(i+2*nsize)=xstored(i+2*(nsize+nsurf*nzstep))  
             xguess(i+3*nsize)=xstored(i+3*(nsize+nsurf*nzstep))  
@@ -421,7 +430,10 @@ subroutine make_guess_from_xstored(xguess,xstored)
 
         do i=1,neq_bc
             xguess(4*nsize+i)=xstored(4*(nsize+nsurf*nzstep)+i) 
-        enddo   
+        enddo
+
+            
+
     elseif (sysflag=="electnopoly") then 
         do i=1,nsize/2
             xguess(i)=xstored(i)                    ! volume fraction solvent 

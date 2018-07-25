@@ -130,7 +130,6 @@ contains
                 print*,"nx= ",nx," ny= ",ny," ngr_freq = ",ngr_freq
                 stop
             endif    
-
             !     .. compute ngr_node = the number of grafted areas assigned to one node
             !     .. part of the parallelization of program
             ngr_node = int(ngr/size)
@@ -190,14 +189,12 @@ contains
                 stop
             endif
     
-
-
         case default
-            print*,"Error: geometry not CUBIC, or PLANAR"
+            print*,"Error: init_lattice: geometry not CUBIC, or PLANAR"
             print*,"stopping program"
             stop
         end select
-
+            
     end subroutine init_lattice
          
 
@@ -211,8 +208,6 @@ contains
         integer ::  i
         character(len=lenText) :: text, str 
 
-    !    vol=0.0_dp
-
         call init_lattice
 
         select case (geometry) 
@@ -223,13 +218,7 @@ contains
             print*,"stopping program"
             stop
         end select
-        
 
-    !    if(abs(Vtest/vol-1.0_dp)>=Veps) then 
-    !        print*,"Error: volume incorrect"
-    !        print*,"vol=",vol,"vtest=",Vtest
-    !    endif
-        
         write(str,'(A20)')geometry
         text="geometry="//trim(adjustl(str)) 
         call print_to_log(LogUnit,text) 

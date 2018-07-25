@@ -68,9 +68,9 @@ subroutine read_inputfile(info)
     read(un_input,*)bcflag(RIGHT)
     read(un_input,*)chainmethod
     read(un_input,*)chaintype
-    read(un_input,*)sigmaABL
-    read(un_input,*)sigmaABR
-    read(un_input,*)sigmaC
+    !read(un_input,*)sigmaABL
+    !read(un_input,*)sigmaABR
+    ! read(un_input,*)sigmaC
     read(un_input,*)error             
     read(un_input,*)infile              ! guess  1==yes
     read(un_input,*)pH%val
@@ -428,6 +428,7 @@ subroutine output_elect
     use energy
     use surface 
     use myutils, only : newunit
+    use chains, only : isHomopolymer
   
     implicit none
       
@@ -466,15 +467,17 @@ subroutine output_elect
     if(nz.eq.nzmax)  then 
         !     .. make label filenames 
 
-        write(rstr,'(F5.3)')sigmaABL*delta 
+        write(rstr,'(F5.3)')sigmaABL
         fnamelabel="sg"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
         if(cCaCl2>=0.001) then 
             write(rstr,'(F5.3)')cCaCl2
-        else
+        elseif(cCaCl2>0.0) then  
             write(rstr,'(ES8.2E2)')cCaCl2
-        endif    
+        else 
+            write(rstr,'(F3.1)')cCaCl2
+        endif 
         fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
         write(rstr,'(F7.3)')pHbulk
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
@@ -604,20 +607,80 @@ subroutine output_elect
         write(un_sys,*)'===begin distance independent settings=='  
         write(un_sys,*)'system      = planar weakpolyelectrolyte brush'
         write(un_sys,*)'version     = ',VERSION
+        ! chain description 
         write(un_sys,*)'chainmethod = ',chainmethod
         write(un_sys,*)'chaintype   = ',chaintype
+        write(un_sys,*)"isHomopolymer= ",isHomopolymer
         if(chainmethod.eq."FILE") then
            write(un_sys,*)'readinchains = ',readinchains
         endif
-        write(un_sys,*)'sysflag     = ',sysflag
-        write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
-        write(un_sys,*)'bcflag(RIGHT) = ',bcflag(RIGHT)
         write(un_sys,*)'nsegAB      = ',nsegAB
         write(un_sys,*)'lsegAB      = ',lsegAB
         write(un_sys,*)'nsegC       = ',nsegC
         write(un_sys,*)'lsegC       = ',lsegC
         write(un_sys,*)'period      = ',period
-        write(un_sys,*)'delta       = ',delta   
+        write(un_sys,*)'cuantasAB   = ',cuantasAB
+
+        ! system description
+        write(un_sys,*)'sysflag     = ',sysflag
+        write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
+        write(un_sys,*)'bcflag(RIGHT) = ',bcflag(RIGHT)
+        write(un_sys,*)'delta       = ',delta  
+        write(un_sys,*)'nx          = ',nx
+        write(un_sys,*)'ny          = ',ny
+        write(un_sys,*)'nzmax       = ',nzmax
+        write(un_sys,*)'nzmin       = ',nzmin
+        write(un_sys,*)'nzstep      = ',nzstep
+        write(un_sys,*)'tol_conf    = ',error
+        ! concentration 
+        write(un_sys,*)'cNaCl       = ',cNaCl
+        write(un_sys,*)'cKCl        = ',cKCl
+        write(un_sys,*)'cCaCl2      = ',cCaCl2
+        write(un_sys,*)'xNabulk     = ',xbulk%Na
+        write(un_sys,*)'xClbulk     = ',xbulk%Cl
+        write(un_sys,*)'xKbulk      = ',xbulk%K
+        write(un_sys,*)'xNaClbulk   = ',xbulk%NaCl
+        write(un_sys,*)'xKClbulk    = ',xbulk%KCl
+        write(un_sys,*)'xCabulk     = ',xbulk%Ca
+        write(un_sys,*)'xHplusbulk  = ',xbulk%Hplus
+        write(un_sys,*)'xOHminbulk  = ',xbulk%OHmin
+        write(un_sys,*)'pHbulk      = ',pHbulk
+        ! disociation constants 
+        write(un_sys,*)'pKa         = ',pKa(1)      
+        write(un_sys,*)'pKaNa       = ',pKa(2)
+        write(un_sys,*)'pKaACa      = ',pKa(3)
+        write(un_sys,*)'pKaA2Ca     = ',pKa(4)
+        write(un_sys,*)'pKb         = ',pKb(1)      
+        write(un_sys,*)'pKbNa       = ',pKb(2)
+        write(un_sys,*)'pKbBCa      = ',pKb(3)
+        write(un_sys,*)'pKbB2Ca     = ',pKb(4)
+        write(un_sys,*)'KionNa      = ',KionNa
+        write(un_sys,*)'KionK       = ',KionK
+        write(un_sys,*)'K0ionNa     = ',K0ionNa
+        write(un_sys,*)'K0ionK      = ',K0ionK
+        ! other physcial parameters
+        write(un_sys,*)'sigmaAB     = ',sigmaAB
+        write(un_sys,*)'sigmaC      = ',sigmaC
+        write(un_sys,*)'dielectW    = ',dielectW
+        write(un_sys,*)'lb          = ',lb
+        write(un_sys,*)'T           = ',T
+        write(un_sys,*)'VdWepsC     = ',VdWepsC*vpolC*vsol 
+        write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
+        ! charge components
+        write(un_sys,*)'zpolA(1)    = ',zpolA(1)
+        write(un_sys,*)'zpolA(2)    = ',zpolA(2)
+        write(un_sys,*)'zpolA(3)    = ',zpolA(3)
+        write(un_sys,*)'zpolA(4)    = ',zpolA(4)
+        write(un_sys,*)'zpolB(1)    = ',zpolB(1)
+        write(un_sys,*)'zpolB(2)    = ',zpolB(2)
+        write(un_sys,*)'zpolB(3)    = ',zpolB(3)
+        write(un_sys,*)'zpolB(4)    = ',zpolB(4)
+        write(un_sys,*)'zpolB(5)    = ',zpolB(5)
+        write(un_sys,*)'zNa         = ',zNa
+        write(un_sys,*)'zCa         = ',zCa
+        write(un_sys,*)'zK          = ',zK
+        write(un_sys,*)'zCl         = ',zCl 
+         ! volume  
         write(un_sys,*)'vsol        = ',vsol
         write(un_sys,*)'vpolA(1)    = ',vpolA(1)*vsol
         write(un_sys,*)'vpolA(2)    = ',vpolA(2)*vsol
@@ -636,67 +699,19 @@ subroutine output_elect
         write(un_sys,*)'vK          = ',vK*vsol
         write(un_sys,*)'vNaCl       = ',vNaCl*vsol
         write(un_sys,*)'vKCl        = ',vKCl*vsol
-        write(un_sys,*)'cNaCl       = ',cNaCl
-        write(un_sys,*)'cKCl        = ',cKCl
-        write(un_sys,*)'cCaCl2      = ',cCaCl2
-        write(un_sys,*)'pHbulk      = ',pHbulk
-        write(un_sys,*)'pKa         = ',pKa(1)      
-        write(un_sys,*)'pKaNa       = ',pKa(2)
-        write(un_sys,*)'pKaACa      = ',pKa(3)
-        write(un_sys,*)'pKaA2Ca     = ',pKa(4)
-        write(un_sys,*)'pKb         = ',pKb(1)      
-        write(un_sys,*)'pKbNa       = ',pKb(2)
-        write(un_sys,*)'pKbBCa      = ',pKb(3)
-        write(un_sys,*)'pKbB2Ca     = ',pKb(4)
-        write(un_sys,*)'KionNa      = ',KionNa
-        write(un_sys,*)'KionK       = ',KionK
-        write(un_sys,*)'K0ionNa     = ',K0ionNa
-        write(un_sys,*)'K0ionK      = ',K0ionK
-        write(un_sys,*)'xNabulk     = ',xbulk%Na
-        write(un_sys,*)'xClbulk     = ',xbulk%Cl
-        write(un_sys,*)'xKbulk      = ',xbulk%K
-        write(un_sys,*)'xNaClbulk   = ',xbulk%NaCl
-        write(un_sys,*)'xKClbulk    = ',xbulk%KCl
-        write(un_sys,*)'xCabulk     = ',xbulk%Ca
-        write(un_sys,*)'xHplusbulk  = ',xbulk%Hplus
-        write(un_sys,*)'xOHminbulk  = ',xbulk%OHmin
-        write(un_sys,*)'sigmaAB     = ',sigmaAB*delta
-        write(un_sys,*)'sigmaC      = ',sigmaC*delta
-        write(un_sys,*)'dielectW    = ',dielectW
-        write(un_sys,*)'lb          = ',lb
-        write(un_sys,*)'T           = ',T
-        write(un_sys,*)'VdWepsC     = ',VdWepsC*vpolC*vsol 
-        write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
-        write(un_sys,*)'zpolA(1)    = ',zpolA(1)
-        write(un_sys,*)'zpolA(2)    = ',zpolA(2)
-        write(un_sys,*)'zpolA(3)    = ',zpolA(3)
-        write(un_sys,*)'zpolA(4)    = ',zpolA(4)
-        write(un_sys,*)'zpolB(1)    = ',zpolB(1)
-        write(un_sys,*)'zpolB(2)    = ',zpolB(2)
-        write(un_sys,*)'zpolB(3)    = ',zpolB(3)
-        write(un_sys,*)'zpolB(4)    = ',zpolB(4)
-        write(un_sys,*)'zpolB(5)    = ',zpolB(5)
-        write(un_sys,*)'zNa         = ',zNa
-        write(un_sys,*)'zCa         = ',zCa
-        write(un_sys,*)'zK          = ',zK
-        write(un_sys,*)'zCl         = ',zCl 
-        write(un_sys,*)'nzmax       = ',nzmax
-        write(un_sys,*)'nzmin       = ',nzmin
-        write(un_sys,*)'nzstep      = ',nzstep
-
+    
         write(un_sys,*)'===end distance independent settings=='
     endif
-    write(un_sys,*)'D   plates  = ',nz*delta 
-    write(un_sys,*)'nx          = ',nx
-    write(un_sys,*)'ny          = ',ny
+    write(un_sys,*)'D plates    = ',nz*delta 
     write(un_sys,*)'nz          = ',nz
+    write(un_sys,*)'nsize       = ',nsize  
     write(un_sys,*)'free energy = ',FE
     write(un_sys,*)'energy bulk = ',FEbulk 
     write(un_sys,*)'deltafenergy = ',deltaFE
     write(un_sys,*)'fnorm       = ',fnorm
     write(un_sys,*)'q residual  = ',qres
     write(un_sys,*)'error       = ',error
-    write(un_sys,*)'sigmaAB     = ',sigmaAB*delta
+    write(un_sys,*)'sigmaAB     = ',sigmaAB
     write(un_sys,*)'sumphiA     = ',sumphiA
     write(un_sys,*)'sumphiB     = ',sumphiB
     write(un_sys,*)'sumphiC     = ',sumphiC
@@ -725,8 +740,6 @@ subroutine output_elect
     write(un_sys,*)'avfdisB(3)  = ',avfdisB(3)
     write(un_sys,*)'avfdisB(4)  = ',avfdisB(4)
     write(un_sys,*)'avfdisB(5)  = ',avfdisB(5)
-    write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
-    write(un_sys,*)'bcflag(RIGHT) = ',bcflag(RIGHT)
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaqSurfL = ',sigmaqSurfL/((4.0_dp*pi*lb)*delta)
@@ -792,6 +805,7 @@ subroutine output_electdouble()
     use energy
     use surface
     use myutils, only : newunit
+    use chains, only : isHomopolymer
     !     use endpoint
   
     implicit none
@@ -830,16 +844,18 @@ subroutine output_electdouble()
     if(nz.eq.nzmax) then 
 
         !     .. make label filenames 
-        write(rstr,'(F5.3)')sigmaABL*delta 
+        write(rstr,'(F5.3)')sigmaABL
         fnamelabel="sgL"//trim(adjustl(rstr))
-        write(rstr,'(F5.3)')sigmaABR*delta 
+        write(rstr,'(F5.3)')sigmaABR
         fnamelabel=trim(fnamelabel)//"sgR"//trim(adjustl(rstr))  
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
         if(cCaCl2>=0.001) then 
             write(rstr,'(F5.3)')cCaCl2
-        else
+        elseif(cCaCl2>0.0) then  
             write(rstr,'(ES8.2E2)')cCaCl2
+        else 
+            write(rstr,'(F3.1)')cCaCl2
         endif    
         fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
         write(rstr,'(F7.3)')pHbulk
@@ -950,19 +966,80 @@ subroutine output_electdouble()
         write(un_sys,*)'===begin distance independent settings=='  
         write(un_sys,*)'system      = planar weakpolyelectrolyte brush'
         write(un_sys,*)'version     = ',VERSION
+        ! chain description 
         write(un_sys,*)'chainmethod = ',chainmethod
         write(un_sys,*)'chaintype   = ',chaintype
+        write(un_sys,*)"isHomopolymer= ",isHomopolymer
         if(chainmethod.eq."FILE") then
-            write(un_sys,*)'readinchains = ',readinchains
+           write(un_sys,*)'readinchains = ',readinchains
         endif
-        write(un_sys,*)'sysflag     = ',sysflag
         write(un_sys,*)'nsegAB      = ',nsegAB
         write(un_sys,*)'lsegAB      = ',lsegAB
+        write(un_sys,*)'nsegC       = ',nsegC
+        write(un_sys,*)'lsegC       = ',lsegC
         write(un_sys,*)'period      = ',period
-        write(un_sys,*)'nz          = ',nz
-        write(un_sys,*)'delta       = ',delta   
+        write(un_sys,*)'cuantasAB   = ',cuantasAB
+        write(un_sys,*)'cuantasC   = ',cuantasC
+        
+        ! system description
+        write(un_sys,*)'sysflag     = ',sysflag
+        write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
+        write(un_sys,*)'bcflag(RIGHT) = ',bcflag(RIGHT)
+        write(un_sys,*)'delta       = ',delta  
+        write(un_sys,*)'nx          = ',nx
+        write(un_sys,*)'ny          = ',ny
+        write(un_sys,*)'nzmax       = ',nzmax
+        write(un_sys,*)'nzmin       = ',nzmin
+        write(un_sys,*)'nzstep      = ',nzstep
         write(un_sys,*)'tol_conf    = ',error
-        write(un_sys,*)'distance    = ',nz*delta   
+        ! concentration 
+         write(un_sys,*)'cNaCl       = ',cNaCl
+        write(un_sys,*)'cKCl        = ',cKCl
+        write(un_sys,*)'cCaCl2      = ',cCaCl2
+        write(un_sys,*)'pHbulk      = ',pHbulk
+        write(un_sys,*)'xNabulk     = ',xbulk%Na
+        write(un_sys,*)'xClbulk     = ',xbulk%Cl
+        write(un_sys,*)'xKbulk      = ',xbulk%K
+        write(un_sys,*)'xNaClbulk   = ',xbulk%NaCl
+        write(un_sys,*)'xKClbulk    = ',xbulk%KCl
+        write(un_sys,*)'xCabulk     = ',xbulk%Ca
+        write(un_sys,*)'xHplusbulk  = ',xbulk%Hplus
+        write(un_sys,*)'xOHminbulk  = ',xbulk%OHmin
+        ! disociation constant 
+        write(un_sys,*)'pKa         = ',pKa(1)      
+        write(un_sys,*)'pKaNa       = ',pKa(2)
+        write(un_sys,*)'pKaACa      = ',pKa(3)
+        write(un_sys,*)'pKaA2Ca     = ',pKa(4)
+        write(un_sys,*)'pKb         = ',pKb(1)      
+        write(un_sys,*)'pKbNa       = ',pKb(2)
+        write(un_sys,*)'pKbBCa      = ',pKb(3)
+        write(un_sys,*)'pKbB2Ca     = ',pKb(4)
+        write(un_sys,*)'KionNa      = ',KionNa
+        write(un_sys,*)'KionK       = ',KionK
+        write(un_sys,*)'K0ionNa     = ',K0ionNa
+        write(un_sys,*)'K0ionK      = ',K0ionK
+        !
+        write(un_sys,*)'sigmaABL    = ',sigmaABL
+        write(un_sys,*)'sigmaABR    = ',sigmaABR
+        write(un_sys,*)'dielectW    = ',dielectW
+        write(un_sys,*)'lb          = ',lb
+        write(un_sys,*)'T           = ',T 
+        write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
+        ! charge
+        write(un_sys,*)'zpolA(1)    = ',zpolA(1)
+        write(un_sys,*)'zpolA(2)    = ',zpolA(2)
+        write(un_sys,*)'zpolA(3)    = ',zpolA(3)
+        write(un_sys,*)'zpolA(4)    = ',zpolA(4)
+        write(un_sys,*)'zpolB(1)    = ',zpolB(1)
+        write(un_sys,*)'zpolB(2)    = ',zpolB(2)
+        write(un_sys,*)'zpolB(3)    = ',zpolB(3)
+        write(un_sys,*)'zpolB(4)    = ',zpolB(4)
+        write(un_sys,*)'zpolB(5)    = ',zpolB(5)
+        write(un_sys,*)'zNa         = ',zNa
+        write(un_sys,*)'zCa         = ',zCa
+        write(un_sys,*)'zK          = ',zK
+        write(un_sys,*)'zCl         = ',zCl
+        ! volume   
         write(un_sys,*)'vsol        = ',vsol
         write(un_sys,*)'vpolA(1)    = ',vpolA(1)*vsol
         write(un_sys,*)'vpolA(2)    = ',vpolA(2)*vsol
@@ -980,55 +1057,13 @@ subroutine output_electdouble()
         write(un_sys,*)'vK          = ',vK*vsol
         write(un_sys,*)'vNaCl       = ',vNaCl*vsol
         write(un_sys,*)'vKCl        = ',vKCl*vsol
-        write(un_sys,*)'cNaCl       = ',cNaCl
-        write(un_sys,*)'cKCl        = ',cKCl
-        write(un_sys,*)'cCaCl2      = ',cCaCl2
-        write(un_sys,*)'pHbulk      = ',pHbulk
-        write(un_sys,*)'pKa         = ',pKa(1)      
-        write(un_sys,*)'pKaNa       = ',pKa(2)
-        write(un_sys,*)'pKaACa      = ',pKa(3)
-        write(un_sys,*)'pKaA2Ca     = ',pKa(4)
-        write(un_sys,*)'pKb         = ',pKb(1)      
-        write(un_sys,*)'pKbNa       = ',pKb(2)
-        write(un_sys,*)'pKbBCa      = ',pKb(3)
-        write(un_sys,*)'pKbB2Ca     = ',pKb(4)
-        write(un_sys,*)'KionNa      = ',KionNa
-        write(un_sys,*)'KionK       = ',KionK
-        write(un_sys,*)'K0ionNa     = ',K0ionNa
-        write(un_sys,*)'K0ionK      = ',K0ionK
-        write(un_sys,*)'xNabulk     = ',xbulk%Na
-        write(un_sys,*)'xClbulk     = ',xbulk%Cl
-        write(un_sys,*)'xKbulk      = ',xbulk%K
-        write(un_sys,*)'xNaClbulk   = ',xbulk%NaCl
-        write(un_sys,*)'xKClbulk    = ',xbulk%KCl
-        write(un_sys,*)'xCabulk     = ',xbulk%Ca
-        write(un_sys,*)'xHplusbulk  = ',xbulk%Hplus
-        write(un_sys,*)'xOHminbulk  = ',xbulk%OHmin
-        write(un_sys,*)'sigmaABL    = ',sigmaABL*delta
-        write(un_sys,*)'sigmaABR    = ',sigmaABR*delta
-        write(un_sys,*)'dielectW    = ',dielectW
-        write(un_sys,*)'lb          = ',lb
-        write(un_sys,*)'T           = ',T 
-        write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
-        write(un_sys,*)'zpolA(1)    = ',zpolA(1)
-        write(un_sys,*)'zpolA(2)    = ',zpolA(2)
-        write(un_sys,*)'zpolA(3)    = ',zpolA(3)
-        write(un_sys,*)'zpolA(4)    = ',zpolA(4)
-        write(un_sys,*)'zpolB(1)    = ',zpolB(1)
-        write(un_sys,*)'zpolB(2)    = ',zpolB(2)
-        write(un_sys,*)'zpolB(3)    = ',zpolB(3)
-        write(un_sys,*)'zpolB(4)    = ',zpolB(4)
-        write(un_sys,*)'zpolB(5)    = ',zpolB(5)
-        write(un_sys,*)'zNa         = ',zNa
-        write(un_sys,*)'zCa         = ',zCa
-        write(un_sys,*)'zK          = ',zK
-        write(un_sys,*)'zCl         = ',zCl
-        write(un_sys,*)'nsize       = ',nsize  
-        write(un_sys,*)'cuantasAB   = ',cuantasAB         
+
+
         write(un_sys,*)'===end distance independent settings=='
     endif
-    write(un_sys,*)'D/2 plates  = ',nz*delta 
+    write(un_sys,*)'D   plates  = ',nz*delta 
     write(un_sys,*)'nz          = ',nz
+    write(un_sys,*)'nsize       = ',nsize
     write(un_sys,*)'free energy = ',FE
     write(un_sys,*)'energy bulk = ',FEbulk 
     write(un_sys,*)'deltafenergy = ',deltaFE
@@ -1048,7 +1083,7 @@ subroutine output_electdouble()
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'qABL        = ',qABL
     write(un_sys,*)'qABR        = ',qABR
-    write(un_sys,*)'muAB        = ',-dlog(qAB)
+    write(un_sys,*)'muAB        = ',-log(qAB)
     write(un_sys,*)'qpolA       = ',qpolA
     write(un_sys,*)'qpolB       = ',qpolB
     write(un_sys,*)'qpoltot     = ',qpol_tot
@@ -1102,7 +1137,8 @@ subroutine output_neutral
     use field
     use energy
     use myutils, only : newunit
-    !     use endpoint
+    use chains, only : isHomopolymer
+   
   
     implicit none
 
@@ -1174,20 +1210,34 @@ subroutine output_neutral
         write(un_sys,*)'===begin distance independent settings=='  
         write(un_sys,*)'system      = planar  brush' 
         write(un_sys,*)'version     = ',VERSION
-        write(un_sys,*)'sysflag     = ',sysflag
+        ! chain description 
         write(un_sys,*)'chainmethod = ',chainmethod
         write(un_sys,*)'chaintype   = ',chaintype
+        write(un_sys,*)"isHomopolymer= ",isHomopolymer
         if(chainmethod.eq."FILE") then
            write(un_sys,*)'readinchains = ',readinchains
-            endif
-        write(un_sys,*)'sysflag     = ',sysflag
+        endif
         write(un_sys,*)'nsegAB      = ',nsegAB
         write(un_sys,*)'lsegAB      = ',lsegAB
         write(un_sys,*)'nsegC       = ',nsegC
         write(un_sys,*)'lsegC       = ',lsegC
         write(un_sys,*)'period      = ',period
-        write(un_sys,*)'delta       = ',delta
-        write(un_sys,*)'tol_conv    = ',error
+        write(un_sys,*)'cuantasAB   = ',cuantasAB
+        write(un_sys,*)'cuantasC    = ',cuantasC
+        ! system description 
+        write(un_sys,*)'sysflag     = ',sysflag
+        write(un_sys,*)'delta       = ',delta  
+        write(un_sys,*)'nx          = ',nx
+        write(un_sys,*)'ny          = ',ny
+        write(un_sys,*)'nzmax       = ',nzmax
+        write(un_sys,*)'nzmin       = ',nzmin
+        write(un_sys,*)'nzstep      = ',nzstep
+        write(un_sys,*)'tol_conf    = ',error
+        ! other physcial parameters
+        write(un_sys,*)'T           = ',T
+        write(un_sys,*)'VdWepsC     = ',VdWepsC*vpolC*vsol
+        write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
+        ! volume 
         write(un_sys,*)'vsol        = ',vsol
         write(un_sys,*)'vpolA(1)    = ',vpolA(1)*vsol
         write(un_sys,*)'vpolA(2)    = ',vpolA(2)*vsol
@@ -1200,16 +1250,12 @@ subroutine output_neutral
         write(un_sys,*)'vpolB(4)    = ',vpolB(4)*vsol
         write(un_sys,*)'vpolB(5)    = ',vpolB(5)*vsol
         write(un_sys,*)'vpolC       = ',vpolC*vsol
-        write(un_sys,*)'T           = ',T
-        write(un_sys,*)'VdWepsC     = ',VdWepsC*vpolC*vsol
-        write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
-        write(un_sys,*)'cuantasAB   = ',cuantasAB
-        write(un_sys,*)'cuantasC    = ',cuantasC
         write(un_sys,*)'===end distance independent settings=='
     endif
     
-    write(un_sys,*)'distance  = ',nz*delta 
+    write(un_sys,*)'distance    = ',nz*delta 
     write(un_sys,*)'nz          = ',nz
+    write(un_sys,*)'nsize       = ',nsize
     write(un_sys,*)'free energy = ',FE  
     write(un_sys,*)'energy bulk = ',FEbulk 
     write(un_sys,*)'deltafenergy = ',deltaFE

@@ -74,39 +74,30 @@ subroutine make_chains_mc()
     !     .. executable statements
     !     .. initializations of variables     
     
-    !print*,"chaingen: ngr =",ngr 
-    !print*,"chaingen: ngrx=",ngrx
-    !print*,"chaingen: ngry=",ngry
 
     allocate(x_ngr(ngrx))
     allocate(y_ngr(ngry))
 
     do i=1,ngrx            ! location graft points 
         x_ngr(i)=(i-0.5_dp)*delta*ngr_freq
-    !    print*,"x",i,x_ngr(i)
     enddo
     do i=1,ngry
         y_ngr(i)=(i-0.5_dp)*delta*ngr_freq
-    !    print*,"y",i,y_ngr(i)  
     enddo
 
     conf=1                  ! counter for conformations
-    seed=435672*(rank+1)    ! seed for random number generator  different on each node
+    seed=435672 ! *(rank+1)    ! seed for random number generator  different on each node
     maxnchains=12
 
     Lz= nz*delta            ! maximum height box 
     Lx= nx*delta            ! maximum width box 
     Ly= ny*delta            ! maximum depth box 
 
-    !print*,"make_chains_mc: Lz=",Lz," ngr_node=",ngr_node
-
     if(isHomopolymer.eqv..FALSE.) then 
         allocate(lsegseq(nsegAB))
         call make_lsegseq(lsegseq,nsegAB)
     endif    
   
-    
-
     do while (conf.le.max_conforAB)
         nchains= 0      ! init zero 
         if(isHomopolymer) then 
@@ -114,7 +105,6 @@ subroutine make_chains_mc()
         else
             call make_linear_seq_chains(chain,nchains,maxnchains,nsegAB) 
         endif  
-
 
         select case (geometry) 
         case("cubic")
@@ -138,10 +128,7 @@ subroutine make_chains_mc()
                     xpt = x_ngr(ix)                ! position of graft point
                     ypt = y_ngr(iy) 
                      
-                    ! print*,"rank=",rank," g=",g," ix=",ix," iy=",iy,'xpt=',xpt," ypt=",ypt
-
                     weightchainAB(gn,conf)=.TRUE.  ! init weight     
-
 
                     do s=1,nsegAB
 
@@ -163,8 +150,8 @@ subroutine make_chains_mc()
 
                         if(weightchainAB(gn,conf).eqv..TRUE.) then
                             call linearIndexFromCoordinate(xc,yc,zc,idx)
-                            indexchainAB(s,gn,conf) = idx
-                            ! print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
+                            indexchainAB_init(s,gn,conf) = idx
+                            !print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
                             if(idx<=0) then
                                 print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
                             endif
@@ -172,7 +159,6 @@ subroutine make_chains_mc()
 
                     enddo  
                                    
-
                 enddo         ! end g loop
 
                 conf=conf +1
@@ -216,7 +202,7 @@ subroutine make_chains_mc()
 
                         if(weightchainAB(gn,conf).eqv..TRUE.) then
                             call linearIndexFromCoordinate(xc,1,zc,idx)
-                            indexchainAB(s,gn,conf) = idx
+                            indexchainAB_init(s,gn,conf) = idx
                             if(idx<=0) then
                                 print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
                             endif
@@ -245,7 +231,7 @@ subroutine make_chains_mc()
     write(istr,'(I4)')rank
     text='AB Chains generated on node '//istr
     call print_to_log(LogUnit,text)
-    print*,text
+    !print*,text
 
     do gn=1,ngr_node
         allowedconfAB=0
@@ -254,7 +240,8 @@ subroutine make_chains_mc()
                 allowedconfAB=allowedconfAB+1
             endif
         enddo
-        print*,"allowedconf=",allowedconfAB,"gn=",gn,"rank=",rank
+        !print*,"allowedconf=",allowedconfAB,"gn=",gn,"rank=",rank
+        if(allowedconfAB/=cuantasAB) print*,"make_chains_mc: Not all conformations were allowed"    
     enddo
       
     deallocate(x_ngr)
@@ -435,7 +422,7 @@ subroutine chain_filter()
     integer :: indx  ! temporary index of chain
     integer :: ix,iy,iz,gn
 
-    allowed_confAB=0            ! counts allowed conformations 
+    allowed_confAB=1            ! counts allowed conformations 
     do conf=1,max_conforAB      ! loop of all polymer conformations to filter out allowed ones 
         do gn=1,ngr_node        ! loop over grafted points per node
             count_seg=0
@@ -451,9 +438,9 @@ subroutine chain_filter()
         enddo
     enddo
 
-    cuantasAB=allowed_confAB    ! the number of allowed conformations 
+    cuantasAB=allowed_confAB-1    ! the number of allowed conformations 
 
-    allowed_confC=0             ! counts allowed conformations 
+    allowed_confC=1             ! counts allowed conformations 
     do conf=1,max_conforC       ! loop of all polymer conformations to filter out allowed ones 
         do gn=1,ngr_node        ! loop over grafted points per node
             count_seg=0
@@ -469,7 +456,7 @@ subroutine chain_filter()
         enddo
     enddo
 
-    cuantasC=allowed_confC     ! the number of allowed conformations
+    cuantasC=allowed_confC-1     ! the number of allowed conformations
 
 end subroutine  chain_filter
 

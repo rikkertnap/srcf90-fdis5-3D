@@ -112,6 +112,34 @@ contains
 
     end subroutine allocate_part_fnc
 
+
+    !  debug routine
+
+    subroutine check_integral_rholpolAB(sumrhopolAB, checkintegralAB)
+
+        use volume, only : volcell, ngr
+        use globals, only : nsize, nsegAB, sysflag
+
+        real(dp), intent(inout) :: sumrhopolAB,checkintegralAB 
+        integer :: i
+        real(dp) :: intrhopolAB
+
+        sumrhopolAB=0.0_dp
+        do i=1,nsize
+            sumrhopolAB=sumrhopolAB+(rhopolA(i)+rhopolB(i))
+        enddo    
+        sumrhopolAB=sumrhopolAB*volcell
+
+        intrhopolAB=nsegAB*ngr
+        if(sysflag=="electdouble") intrhopolAB=intrhopolAB*2.0_dp  
+
+        checkintegralAB=sumrhopolAB-intrhopolAB
+
+    end subroutine
+        
+
+
+        
   
   !     .. compute average height of tethered layer 
   !     .. first moment of density profile 

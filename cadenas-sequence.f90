@@ -238,7 +238,8 @@ function segment_lengthsqr(s,t)
   segment_lengthsqr=lseg2
   return
 
-end function   
+end function
+
 
 
 subroutine make_lsegseq(lsegseq,nseg)
@@ -266,10 +267,9 @@ subroutine make_lsegseq(lsegseq,nseg)
         endif
     enddo
 
-end subroutine 
-  
-  
+end subroutine
 
-
-end module    
+  
+end module
+    
    

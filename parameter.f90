@@ -320,11 +320,12 @@ contains
         constqW = delta*delta*4.0_dp*pi*lb/vsol ! multiplicative constant Poisson Eq. 
         
         !  .. initializations of input dependent variables 
+        !  .. this is not good anymore
         
-        sigmaABL = sigmaABL * (1.0_dp/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!! 
-        sigmaABR = sigmaABR * (1.0_dp/(delta)) 
-        sigmaAB = sigmaAB * (1.0_dp/(delta))  
-        sigmaC   = sigmaC * (1.0_dp/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!!
+        ! sigmaABL = sigmaABL * (1.0_dp/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!! 
+        ! sigmaABR = sigmaABR * (1.0_dp/(delta)) 
+        ! sigmaAB = sigmaAB * (1.0_dp/(delta))  
+        ! sigmaC   = sigmaC * (1.0_dp/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!!
         
         ! VdWepsC  = VdWepsC/(vpolC*vsol) ! VdW eps scaled 
         ! VdWepsB  = VdWepsB/(vpolB(3)*vsol) ! VdW eps scaled 
@@ -339,6 +340,33 @@ contains
 
     end subroutine init_constants
    
+
+    subroutine init_sigma()
+
+        use globals, only : sysflag
+        use volume, only : ngr, nsurf, delta
+
+        select case (sysflag) 
+        case("elect") 
+            sigmaABL = ngr/(nsurf*delta*delta)
+            sigmaABR = 0.0_dp
+            sigmaAB  = sigmaABL
+        case("electdouble")
+            sigmaABL = ngr/(nsurf*delta*delta)
+            sigmaABR = sigmaABL
+            sigmaAB  = sigmaABL
+        case('electnopoly')    
+            sigmaABL = 0.0_dp
+            sigmaABR = 0.0_dp
+            sigmaAB  = 0.0_dp
+        case default
+            print*,"Error: init_lattice: sysflag wrong value"
+            print*,"stopping program"
+            stop
+        end select
+
+    end subroutine
+         
    
     !     purpose: initialize expmu needed by fcn 
     !     pre: first read_inputfile has to be called
