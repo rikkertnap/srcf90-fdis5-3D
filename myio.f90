@@ -620,6 +620,8 @@ subroutine output_elect
         write(un_sys,*)'lsegC       = ',lsegC
         write(un_sys,*)'period      = ',period
         write(un_sys,*)'cuantasAB   = ',cuantasAB
+        write(un_sys,*)'sigmaAB     = ',sigmaAB
+        write(un_sys,*)'sigmaC      = ',sigmaC
 
         ! system description
         write(un_sys,*)'sysflag     = ',sysflag
@@ -659,8 +661,6 @@ subroutine output_elect
         write(un_sys,*)'K0ionNa     = ',K0ionNa
         write(un_sys,*)'K0ionK      = ',K0ionK
         ! other physcial parameters
-        write(un_sys,*)'sigmaAB     = ',sigmaAB
-        write(un_sys,*)'sigmaC      = ',sigmaC
         write(un_sys,*)'dielectW    = ',dielectW
         write(un_sys,*)'lb          = ',lb
         write(un_sys,*)'T           = ',T
@@ -742,8 +742,8 @@ subroutine output_elect
     write(un_sys,*)'avfdisB(5)  = ',avfdisB(5)
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
-    write(un_sys,*)'sigmaqSurfL = ',sigmaqSurfL/((4.0_dp*pi*lb)*delta)
-    write(un_sys,*)'sigmaqSurfR = ',sigmaqSurfR/((4.0_dp*pi*lb)*delta)
+    !write(un_sys,*)'sigmaqSurfL = ',sigmaqSurfL/((4.0_dp*pi*lb)*delta)
+    !write(un_sys,*)'sigmaqSurfR = ',sigmaqSurfR/((4.0_dp*pi*lb)*delta)
    
     if(bcflag(LEFT)=='ta') then
       do i=1,4   
@@ -975,11 +975,10 @@ subroutine output_electdouble()
         endif
         write(un_sys,*)'nsegAB      = ',nsegAB
         write(un_sys,*)'lsegAB      = ',lsegAB
-        write(un_sys,*)'nsegC       = ',nsegC
-        write(un_sys,*)'lsegC       = ',lsegC
         write(un_sys,*)'period      = ',period
         write(un_sys,*)'cuantasAB   = ',cuantasAB
-        write(un_sys,*)'cuantasC   = ',cuantasC
+        write(un_sys,*)'sigmaAB     = ',sigmaAB
+        
         
         ! system description
         write(un_sys,*)'sysflag     = ',sysflag

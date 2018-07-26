@@ -64,7 +64,7 @@ contains
             call fcnenergy_elect_alternative()
         elseif(sysflag.eq."electnopoly") then 
             call fcnenergy_elect()
-            call fcnenergy_elect_alternative()
+            !call fcnenergy_elect_alternative()
         elseif(sysflag.eq."neutral") then 
             call fcnenergy_neutral()
         else
@@ -90,9 +90,9 @@ contains
         real(dp) :: sigmaq0,psi0
         real(dp) :: qsurf(2)           ! total charge on surface 
         real(dp) :: qsurfg             ! total charge on grafting surface  
-        integer :: i,j,s               ! dummy variables 
+        integer  :: i,j,s               ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
-        integer :: nzadius
+        integer  :: nzadius
         real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
         real(dp) :: FEchemSurftmp
 
@@ -120,15 +120,17 @@ contains
             FEel = FEel  - rhoq(i) * psi(i)/2.0_dp        
             FEbind = FEbind + fdisA(5,i)*rhopolA(i)+fdisB(5,i)*rhopolB(i)
 
+            qres = qres + rhoq(i)
+            sumphiA = sumphiA +  rhopolA(i)
+            sumphiB = sumphiB +  rhopolB(i)
+            sumphiC = sumphiC +  rhopolC(i)
+
+
 !            do j=1,nz 
 !                FEVdWC = FEVdWC + deltaG(i)*rhopolC(i)* rhopolC(j)*chis(i,j)
 !                FEVdWB = FEVdWB + deltaG(i)*rhopolB(i)* rhopolB(j)*chis(i,j)       
 !            enddo   
 
-            qres = qres + rhoq(i)
-            sumphiA = sumphiA +  rhopolA(i)
-            sumphiB = sumphiB +  rhopolB(i)
-            sumphiC = sumphiC +  rhopolC(i)
         enddo
     
         FEel  = (volcell/vsol)*FEel
@@ -265,13 +267,14 @@ contains
         do i=LEFT,RIGHT
             qsurf(i)=0.0_dp
             do s=1,nx*ny     
-                qsurf(i) = qsurf(i)+sigmaqSurf(i,s)/(4.0_dp*pi*lb*delta)
-            enddo    
+                qsurf(i) = qsurf(i)+sigmaqSurf(i,s)
+            enddo
+            qsurf(i)=(qsurf(i)/(4.0_dp*pi*lb*delta))*delta*delta  ! delta*delta=area size one surface element, 4*pi*lb*delta make correct dimensional full unit    
         enddo
 
 !        print*,"qsurf(LEFT)=",qsurf(LEFT),"qsurf(RIGHT)=",qsurf(RIGHT),"qres=",qres    
 
-        qres = qres + qsurf(RIGHT)+qsurf(LEFT)  ! total residual charge 
+        qres = qres + (qsurf(RIGHT)+qsurf(LEFT))  ! total residual charge 
 
         
         volumelat= volcell*nsize !nz*delta   ! volume lattice

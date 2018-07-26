@@ -60,7 +60,10 @@ program brushweakpolyelectrolyte
     write(istr,'(I4)')rank
     text='program begins : rank '//istr
     call print_to_log(LogUnit,text)
-
+    write(istr,'(A40)')VERSION
+    text='program version     = '//istr
+    call print_to_log(LogUnit,text)
+    if(rank==0) print*,text
 
     ! .. init
     call read_inputfile(info)
@@ -119,27 +122,17 @@ program brushweakpolyelectrolyte
         
         flag_solver = 0
            
-        if(rank.eq.0) then     ! node rank=0
-                       
+        if(rank.eq.0) then     ! node rank=0    
             call make_guess(x, xguess, isfirstguess, use_xstored, xstored)  
-            do i=1,neq
-                write(nz,*)xguess(i)
-            enddo    
             call solver(x, xguess, error, fnorm)
-            
             flag_solver = 0   ! stop nodes
-                
             do i = 1, size-1
                 dest =i
                 call MPI_SEND(flag_solver, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
             enddo
-        
         else
-
             flag_solver = 1
- 
             do while(flag_solver.eq.1) 
- 
                 flag_solver = 0
                 source = 0 
                 call MPI_RECV(flag_solver, 1, MPI_INTEGER, source, tag,MPI_COMM_WORLD,stat, ierr)
@@ -150,13 +143,11 @@ program brushweakpolyelectrolyte
             enddo  
         endif
 
-
-
         if(rank==0) then
             ! call copy_solution(x)
             ! call compute_vars_and_output()
+            call fcnenergy()
             call output()          
-
             isfirstguess =.false.    
             use_xstored = .true.
             iter = 0                ! reset of iteration counter 
@@ -164,14 +155,12 @@ program brushweakpolyelectrolyte
             do i=1,neq
                 xstored(i)=x(i)
             enddo
-            ! commucitate new values of nz from master to  compute  nodes
-            ! to advance while loop on compute nodes
+            ! commucitate new values of nz from master to  compute  nodes to advance while loop on compute nodes
             do i = 1, size-1
                 dest = i
                 call MPI_SEND(nz, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
             enddo
-        else 
-            ! receive values 
+        else ! receive values 
             source = 0
             call MPI_RECV(nz , 1, MPI_INTEGER, source, tag,MPI_COMM_WORLD,stat, ierr)
         endif
@@ -179,14 +168,14 @@ program brushweakpolyelectrolyte
         iter  = 0              ! reset of iteration counter 
         deallocate(x)   
         deallocate(xguess)
+        deallocate(fvec)
  
     enddo ! end while loop 
 
     call MPI_FINALIZE(ierr)  
 
     deallocate(xstored)
-    deallocate(fvec)
-!    call deallocate_field()
+    call deallocate_field()
 
     text="program end"
 

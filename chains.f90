@@ -21,11 +21,6 @@ contains
     
         integer, intent(in) :: cuantasAB,nsegAB,cuantasC,nsegC,ngr_node
     
-        print*,"allocate_chains: cuantasAB=",cuantasAB
-        print*,"allocate_chains: nsegAB=",nsegAB
-        print*,"allocate_chains: ngr_node=",ngr_node
-        
-
         !     .. extra 100 in index because of  nchain rotations
 
         allocate(indexchainAB(nsegAB,ngr_node,cuantasAB+100))

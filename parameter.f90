@@ -340,7 +340,7 @@ contains
 
     end subroutine init_constants
    
-
+    ! compute surfac e coverge based on number of grafted point (ngr) 
     subroutine init_sigma()
 
         use globals, only : sysflag
