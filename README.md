@@ -1,11 +1,11 @@
 # srcf90-fdis5-planar
  
 
-## Description-branch develop
+## Description-branch develop-3D
 
 Uses molecular theory approach to compute the structure of weak polyelectrolyte layer end-tethered to two oppossing 
-planar surfaces. Aquesou solution charaterize by pH, NaCl (KCl) and Ca2Cl. Formation of Ca-bridges takeing into account.
-Surfaces can have various charged or chargeable groups.
+planar surfaces in 3D (cartesian) coordinates. Aqueous solution charaterized by pH, NaCl (KCl) and Ca2Cl. 
+Formation of Ca-bridges takeing into account. Surfaces can have various charged or chargeable groups.
 
 
 ### Prerequisites
@@ -15,7 +15,7 @@ Sundials/kinsol version < 3.0.
 
 ### Installing
 
-Modify Makefile such that in constains the apprioapiate linker flags to the sundails library.
+Modify Makefile such that in constains the appropriate linker flags to the sundails library.
 Linker flags can be obtained for the examples directory of the sundails installation.
 
 
@@ -37,10 +37,12 @@ The program uses an input file called 'input.in' that contain following key word
 | sysflag  `char`       |Sets the type of system																								                   | __elect__: weak polyacid no VdW interaction |
 | 	   		      	       |  																											     		     	      	     		  | __neutral__: AB copolyem and C polymer neutral |
 |				       																																		    		    	     |	   	   	         |__electdouble__: weak polyacid different surface coverage surfaces|
-|																																									     				 		   		 	   |	   	            |__electnopoly__: nopolymers:|
-|																																																		   			    		         |          |__electHC__: elect plus neutral polymer plus VdW interactions neutral :|
-|runflag `char`																																																							 	    		  | Sets type of run 	     	      		   	   |__rangepH__: scan over pH values for nz=nzmax |
-|	 																																																										    	      	 | 					   		      	      	     	 	                    |__norangepH__: noscan over pH at nz=nzmax |   
+|																						|	   	            |__electnopoly__: nopolymers:|
+|																					 |                 |__electHC__: elect plus neutral polymer plus VdW interactions neutral :|
+|																						|	   	            |__dipolarstrong__: strong polyelectrolyte with explicit dipoles:|
+|												          |	   	            |__dipolarweak__: weak polyelectrolyte with explicit dipoles:|
+|runflag `char`								| Sets type of run 	     	      		   	   |__rangepH__: scan over pH values for nz=nzmax |
+|	 																				| 					   		      	      	     	 	                    |__norangepH__: noscan over pH at nz=nzmax |   
 |bcflag(RIGHT) `char`																																																											 													    		    | Sets type of boundary condition for RIGHT surface  |__qu__: quartz |
 |	       																																																																											      	   	   | 	    	      	  		 	  	                    |__cl__: clay  |
 |																																																																														   									    	     	     |                           |__ca__: calcite |
