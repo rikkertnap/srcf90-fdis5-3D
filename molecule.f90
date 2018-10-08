@@ -14,5 +14,13 @@ module molecules
      real(dp) :: Hplus
      real(dp) :: OHmin
   end type moleclist
+
+
+    type dipolelist
+        real(dp) :: sol
+        real(dp) :: pol
+    end type dipolelist
+
   
-end module 
+end module molecules
+

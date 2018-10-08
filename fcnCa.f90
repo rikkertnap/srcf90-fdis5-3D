@@ -1154,7 +1154,383 @@ contains
 
     end subroutine fcnbulk
 
+     subroutine fcndipolar(x,f,nn)
 
+        !     .. variables and constant declaractions 
+
+        use globals
+        use volume
+        use chains
+        use field
+        use parameters
+        use surface
+        use vectornorm
+        use myutils
+        use auxfcn
+        use poisson
+
+    
+        implicit none
+
+        !     .. scalar arguments
+
+        integer(8), intent(in) :: nn
+
+        !     .. array arguments
+
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+
+        !     .. declare local variables
+
+        real(dp) :: exppiA(nsize),exppiB(nsize),xpi(nsize), absDpsi(nsize)   ! auxilairy variable for computing P(\alpha) 
+        integer  :: signDpsi(nsize)
+        
+        real(dp) :: rhopolAin(nsize),rhopolBin(nsize)    
+        real(dp) :: rhopolAL_tmp(nsize),rhopolBL_tmp(nsize)
+        real(dp) :: rhopolAR_tmp(nsize),rhopolBR_tmp(nsize)
+        real(dp) :: rhopolAL_local(nsize),rhopolBL_local(nsize)
+        real(dp) :: rhopolAR_local(nsize),rhopolBR_local(nsize)
+
+        real(dp) :: qABL_local(ngr_node), qABR_local(ngr_node)
+        real(dp) :: xA(3),xB(3),sumxA,sumxB, sgxA, sgxB, qAD, qBD 
+        real(dp) :: constA,constB
+        real(dp) :: proL,rhopolABL0,proR,rhopolABR0
+        integer :: n,ix,iy,iz                  ! half of n
+        integer :: i,j,k,kL,kR,c,s,g,gn   ! dummy indices
+        real(dp) :: norm
+        integer :: conf               ! counts number of conformations
+        real(dp) :: cn                ! auxilary variable for Poisson Eq
+        character(len=lenText) :: text, istr, rstr
+
+        real(dp):: checkintegralAB,sumrhopolAB
+        
+        !     .. executable statements 
+        !     .. communication between processors
+        
+        if (rank.eq.0) then
+            flag_solver = 1      !  continue program
+            do i = 1, size-1
+                dest = i
+                call MPI_SEND(flag_solver, 1,   MPI_INTEGER, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(x,neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+            enddo    
+        endif
+    
+        n=nsize                      ! size vector neq=4*nsizeß x=(pi,psi,rhopolA,rhopolB]
+    
+        do i=1,n                     ! init x 
+            xsol(i)= x(i)            ! solvent volume fraction 
+            psi(i) = x(i+n)          ! potential
+            rhopolAin(i)=x(i+2*n)
+            rhopolBin(i)=x(i+3*n)
+        enddo
+   
+        do i=1,n                     ! init volume fractions 
+            rhopolAL_local(i) = 0.0_dp     ! A polymer density 
+            rhopolBL_local(i) = 0.0_dp     ! B polymer density  
+            rhopolAR_local(i) = 0.0_dp     ! A polymer density 
+            rhopolBR_local(i) = 0.0_dp     ! B polymer density 
+            rhopolAL_tmp(i)   = 0.0_dp     ! 
+            rhopolBL_tmp(i)   = 0.0_dp
+            rhopolAR_tmp(i)   = 0.0_dp     ! 
+            rhopolBR_tmp(i)   = 0.0_dp
+
+            xpi(i)    = xsol(i)/sinhc(dipole%sol*absDpsi(i))
+            xNa(i)    = expmu%Na*(xpi(i)**vNa)*exp(-psi(i)*zNa) ! ion plus volume fraction
+            xK(i)     = expmu%K*(xpi(i)**vK)*exp(-psi(i)*zK)    ! ion plus volume fraction
+            xCa(i)    = expmu%Ca*(xpi(i)**vCa)*exp(-psi(i)*zCa) ! ion divalent pos volume fraction
+            xNaCl(i)  = expmu%NaCl*(xpi(i)**vNaCl)               ! ion pair  volume fraction
+            xKCl(i)   = expmu%KCl*(xpi(i)**vKCl)                 ! ion pair  volume fraction
+            xCl(i)    = expmu%Cl*(xpi(i)**vCl)*exp(-psi(i)*zCl) ! ion neg volume fraction
+            xHplus(i) = expmu%Hplus*(xpi(i))*exp(-psi(i))      ! H+  volume fraction
+            xOHmin(i) = expmu%OHmin*(xpi(i))*exp(+psi(i))      ! OH-  volume fraction
+       
+            ! use A^- reference state
+
+            exppiA(i) = (xpi(i)**vpolA(1))*exp(-zpolA(1)*psi(i))         ! acid monomer ! auxiliary variable
+            exppiB(i) = (xpi(i)**vpolB(2))*sinhc(dipole%pol*absDpsi(i))  ! neutral monomer
+        enddo
+
+        if(rank==0) then            ! global polymer density
+            do i=1,n
+                xpolAB(i) = 0.0_dp 
+                rhopolAL(i) = 0.0_dp     ! A polymer density 
+                rhopolBL(i) = 0.0_dp     ! B polymer density  
+                rhopolAR(i) = 0.0_dp     ! A polymer density 
+                rhopolBR(i) = 0.0_dp     ! B polymer density 
+            enddo
+            do g=1,ngr
+                qABL(g)=0.0_dp
+                qABR(g)=0.0_dp
+            enddo
+        endif
+
+        !     .. computation polymer volume fraction 
+        do gn=1,ngr_node
+            qABL_local(gn)=0.0d0       ! init qB
+            qABR_local(gn)=0.0d0
+        enddo 
+
+        do gn=1,ngr_node              ! loop over grafted points <=>  grafted area on different nodes 
+ 
+            g=gn+rank*ngr_node
+     
+            do c=1,cuantasAB               ! loop over cuantas
+            
+                proL=0.0_dp                ! initial weight conformation 
+                proR=0.0_dp
+            
+                if(weightchainAB(gn,c)) then ! initial weight conformation 
+
+                    proL=1.0_dp
+                    proR=1.0_dp
+
+                    do s=1,nsegAB              ! loop over segments 
+                        kL=indexchainAB(s,gn,c)           
+                        kR=mirror_index(kL,nz)   
+
+                        if(isAmonomer(s)) then ! A segment 
+                            proL = proL*exppiA(kL)
+                            proR = proR*exppiA(kR)
+                        else
+                            proL = proL*exppiB(kL)
+                            proR = proR*exppiB(kR)
+                        endif
+                    enddo
+
+                    qABL_local(gn) = qABL_local(gn)+proL
+                    qABR_local(gn) = qABR_local(gn)+proR
+
+                    do s=1,nsegAB
+                        kL=indexchainAB(s,gn,c)
+                        kR=mirror_index(kL,nz)
+                        if(isAmonomer(s)) then ! A segment 
+                            rhopolAL_tmp(kL)=rhopolAL_tmp(kL)+proL
+                            rhopolAR_tmp(kR)=rhopolAR_tmp(kR)+proR
+                        else
+                            rhopolBL_tmp(kL)=rhopolBL_tmp(kL)+proL
+                            rhopolBR_tmp(kR)=rhopolBR_tmp(kR)+proR
+                        endif
+                    enddo
+                
+                endif
+            
+            enddo   ! end cuantas loop 
+
+            do i=1,n                   ! normalization with local_qi(g) 
+                rhopolAL_local(i)=rhopolAL_local(i)+rhopolAL_tmp(i)/qABL_local(gn)
+                rhopolAL_tmp(i)=0.0_dp
+                rhopolBL_local(i)=rhopolBL_local(i)+rhopolBL_tmp(i)/qABL_local(gn)
+                rhopolBL_tmp(i)=0.0_dp
+                rhopolAR_local(i)=rhopolAR_local(i)+rhopolAR_tmp(i)/qABR_local(gn)
+                rhopolAR_tmp(i)=0.0_dp
+                rhopolBR_local(i)=rhopolBR_local(i)+rhopolBR_tmp(i)/qABR_local(gn)
+                rhopolBR_tmp(i)=0.0_dp
+            enddo
+
+        enddo    
+
+        !     .. import results
+
+        if (rank==0) then
+          
+            call MPI_REDUCE(rhopolAL_local, rhopolAL, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+            call MPI_REDUCE(rhopolBL_local, rhopolBL, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+            call MPI_REDUCE(rhopolAR_local, rhopolAR, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+            call MPI_REDUCE(rhopolBR_local, rhopolBR, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+
+            do gn=1,ngr_node
+                g = gn+ rank*ngr_node
+                qABL(g)=qABL_local(gn)
+                qABR(g)=qABR_local(gn)
+            enddo
+
+            do i=1, size-1
+                source = i
+                call MPI_RECV(qABL_local, ngr_node, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                call MPI_RECV(qABR_local, ngr_node, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)                
+                do gn=1,ngr_node
+                    g = (i)*ngr_node+gn
+                    qABL(g)=qABL_local(gn)
+                    qABR(g)=qABR_local(gn)
+                enddo
+            enddo 
+
+            !   .. construction of fcn and volume fraction polymer        
+            rhopolABL0=1.0_dp/volcell ! volume polymer segment per volume cell
+            rhopolABR0=1.0_dp/volcell 
+
+            do i=1,n
+
+                rhopolAL(i) = rhopolABL0*rhopolAL(i)   ! /deltaG(i) not nessesary since deltaG=1
+                rhopolAR(i) = rhopolABR0*rhopolAR(i)
+                rhopolA(i)  = rhopolAL(i) + rhopolAR(i)
+
+                rhopolBL(i) = rhopolABL0*rhopolBL(i)
+                rhopolBR(i) = rhopolABR0*rhopolBR(i)
+                rhopolB(i)  = rhopolBL(i) + rhopolBR(i)
+            
+                do k=1,4               ! polymer volume fraction
+                    xpolAB(i)=xpolAB(i)+rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol  & 
+                        +rhopolB(i)*fdisB(k,i)*vpolB(k)*vsol
+                enddo    
+
+                xpolAB(i)=xpolAB(i)+rhopolA(i)*(fdisA(5,i)*vpolA(5)*vsol/2.0_dp)
+                xpolAB(i)=xpolAB(i)+rhopolB(i)*(fdisB(5,i)*vpolB(5)*vsol/2.0_dp)
+       
+                f(i)=xpolAB(i)+xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0_dp
+       
+                !rhoq(i)= zNa*xNa(i)/vNa + zCa*xCa(i)/vCa +zK*xK(i)/vK + zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
+                !    zpolA(1)*fdisA(1,i)*rhopolA(i)*vsol+ zpolA(4)*fdisA(4,i)*rhopolA(i)*vsol+ &
+                !    zpolB(1)*fdisB(1,i)*rhopolB(i)*vsol+ zpolB(4)*fdisB(4,i)*rhopolB(i)*vsol  
+
+                rhoq(i)= zNa*xNa(i)/vNa + zCa*xCa(i)/vCa +zK*xK(i)/vK + zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
+                    ((zpolA(1)*fdisA(1,i)+ zpolA(4)*fdisA(4,i))*rhopolA(i) + &
+                     (zpolB(1)*fdisB(1,i)+ zpolB(4)*fdisB(4,i))*rhopolB(i) )*vsol         
+       
+                !   ..  total charge density in units of vsol
+            enddo  !  .. end computation polymer density and charge density  
+
+           
+            !call check_integral_rholpolAB(sumrhopolAB, checkintegralAB)
+            !print*,"sumrholAB=",sumrhopolAB," check= ",checkintegralAB
+            !print*,"qABL=",qABL
+            !print*,"qABR=",qABR
+
+            ! .. electrostatics 
+
+            ! .. surface charge  
+            sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
+            sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
+
+            call Polarization(xpolAB,xsol,electPol,rhodip)
+
+            call Poisson_Pol_Equation(f,psi,rhoq,rhodip,electPol,sigmaqSurfR,sigmaqSurfL)
+ 
+            ! .. selfconsistent boundary conditions
+            call Poisson_Pol_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)
+
+            do i=1,n
+                f(2*n+i)=rhopolA(i)-rhopolAin(i)
+                f(3*n+i)=rhopolB(i)-rhopolBin(i)
+            enddo
+
+            norm=l2norm(f,4*n)
+            iter=iter+1
+        
+            write(rstr,'(E25.16)')norm
+            write(istr,'(I6)')iter
+            text="iter = "//trim(istr)//" fnorm = "//trim(rstr)
+            call print_to_log(LogUnit,text)
+
+
+        else          ! Export results
+
+            dest = 0
+         
+            call MPI_REDUCE(rhopolAL_local, rhopolAL, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+            call MPI_REDUCE(rhopolBL_local, rhopolBL, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+            call MPI_REDUCE(rhopolAR_local, rhopolAR, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+            call MPI_REDUCE(rhopolBR_local, rhopolBR, nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+
+            call MPI_SEND(qABL_local, ngr_node , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(qABR_local, ngr_node , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+
+        endif
+
+
+
+    end subroutine fcndipolar
+
+
+    subroutine fcndipolarweak(x,f,nn)
+       
+        use globals
+        use volume
+        use chains
+        use field
+        use parameters
+        use vectornorm
+        use myutils
+        use auxfcn
+
+        implicit none
+
+        !     .. scalar arguments
+
+        integer(8), intent(in) :: nn
+
+        !     .. array arguments
+
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+
+        !     .. declare local variables
+    
+    end subroutine fcndipolarweak
+
+    !     set constrains on vector x  depending on sysflag value
+
+    subroutine set_contraints(constr)
+    
+        use precision_definition
+        use globals, only : sysflag, neq 
+
+
+        implicit none
+            
+        real(dp):: constr(:)
+
+        integer :: i, neqint
+
+        neqint=int(neq,kind(neqint))     ! explict conversion from integer(8) to integer
+        
+        select case (sysflag)
+            case ("elect")               !
+                do i=1,neqint/2
+                    constr(i)=1.0_dp
+                    constr(i+neqint/2)=0.0_dp   !  electrostatic potential
+                enddo  
+            case ("dipolarstrong")       ! copolymer: strong polyacidplus dipoles
+                do i=1,neqint/2
+                    constr(i)=1.0_dp
+                    constr(i+neqint/2)=0.0_dp   !  electrostatic potential
+                enddo  
+            case ("dipolarweak")          ! home polymer: weak polyacidplus dipoles
+                do i=1,neqint/2
+                    constr(i)=1.0_dp
+                    constr(i+neqint/2)=0.0_dp  !  electrostatic potential
+                enddo  
+            case ("electdouble")            
+                do i=1,neqint/3
+                    constr(i)=1.0_dp
+                    constr(i+neqint/3)=0.0_dp   !  electrostatic potential
+                    constr(i+2*neqint/3)=1.0_dp
+                enddo  
+            case ("electnopoly")      ! no polymers only surface chgarges  
+                do i=1,neqint
+                    constr(i)=1.0_dp
+                enddo      
+            case ("electHC")        ! neutral polymrs 
+                 do i=1,neqint
+                    constr(i)=1.0_dp
+                enddo 
+            case ("neutral")          ! neutral polymers
+                do i=1,5*neqint/6
+                    constr(i)=1.0_dp
+                enddo 
+                do i=5*neqint/6+1, neqint
+                    constr(i)=0.0_dp     ! electrostatic potential
+                enddo 
+            
+            case default
+                do i=1,neqint
+                    constr(i)=1.0_dp
+                enddo 
+        end select  
+
+    end subroutine set_contraints
 
 
  ! selects correct fcn function 
@@ -1167,6 +1543,10 @@ contains
         implicit none   
 
         select case (sysflag)
+        case ("dipolarstrong")       ! copolymer: strong polyacid no VdW interaction 
+            fcnptr => fcndipolar
+        case ("dipolarweak")         ! copolymeer weak polyacid no VdW interaction 
+            fcnptr => fcndipolarweak
         case ("elect") 
             fcnptr => fcnelect
         case ("electdouble")  

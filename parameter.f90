@@ -12,6 +12,7 @@ module parameters
     !  .. list of parameters
 
     type(moleclist) :: xbulk,expmu
+    type(dipolelist):: dipole
 
     !  .. volume 
   
@@ -45,6 +46,7 @@ module parameters
     real(dp) :: lsegC              ! segment length of C polymer in nm
     real(dp) :: lsegCH2 
     real(dp) :: lsegPAA   
+    real(dp) :: lsegPEG  
     real(dp) :: lsegPAMPS
     
     integer :: period            ! peridociy of repeat of A or B block 
@@ -66,10 +68,13 @@ module parameters
     integer :: zCl               ! valence charge negative ion 
     integer :: zsurf             ! valence surface charge 
   
-    real(dp) :: T                  ! temperature in K
-    real(dp) :: dielectW           ! dielectric constant of water 
-    real(dp) :: lb                 ! Bjerrum length	   
-    real(dp) :: constqW            ! constant in Poisson eq dielectric constant of water 
+    real(dp) :: Tref             ! temperature in K
+    real(dp) :: dielectW         ! dielectric constant of water 
+    real(dp) :: lb               ! Bjerrum length	   
+    real(dp) :: constqW          ! constant in Poisson eq dielectric constant of water 
+    real(dp) :: lb0              ! Bjerrum length in vacuum       
+    real(dp) :: constq0          ! constant in Poisson eq dielectric constant of vacuum 
+
 
     real(dp) :: sigmaAB            ! sigma AB polymer coated on planar surface
     real(dp) :: sigmaABL           ! sigma AB polymer coated on planar surface
@@ -194,6 +199,21 @@ contains
 
     end function BjerrumLenght
         
+
+    ! unit of dipole moment need to be in e unit of unit charge X nm
+    
+    subroutine init_dipolesmoment(dipolemoment)
+
+        type(dipolelist), intent(inout) :: dipolemoment
+
+        real(dp) :: unit_Debye_to_enm=0.020819434_dp  ! 1D= 0.020819434 e·nm 
+
+        dipolemoment%sol=1.8546_dp*unit_Debye_to_enm !
+        dipolemoment%pol=1.7_dp*unit_Debye_to_enm !
+         
+    end subroutine
+
+
     !     purpose: initialize all constants parameter 
     !     pre: first read_inputfile has to be called   
     
@@ -206,7 +226,7 @@ contains
         
         implicit none      
         
-        real(dp) :: vA,vB, vAA, vAMPS
+        real(dp) :: vA,vB, vAA, vAMPS, vPEG
         
         !  .. initializations of variables
  
@@ -247,7 +267,8 @@ contains
         if(sysflag/="neutral") then 
             vsol = 0.030_dp              ! volume water solvent molecule in (nm)^3
         elseif(sysflag=="neutral") then 
-            vsol = 0.218_dp             ! volume hexane Mw=86.18 g/mol and rho=0.6548 g/ml  
+            vsol  = 0.030_dp
+           ! vsol = 0.218_dp             ! volume hexane Mw=86.18 g/mol and rho=0.6548 g/ml  
         else 
             print*,"Error in call to init_constants subroutine"   
             print*,"Wrong system flag"
@@ -266,7 +287,8 @@ contains
         
         vAA  =  0.07448_dp/vsol ! volume based on VdW radii 
         vAMPS = 0.2134_dp/vsol
-    
+        vPEG  = 0.065_dp/vsol
+
         vA = vAA
         vB = vAMPS
 
@@ -292,32 +314,36 @@ contains
         deltavB(3)=vpolB(1)+vCa-vpolB(4)    ! vB- +vCa2+ -vBCa+
         deltavB(4)=2.0_dp*vpolB(1)+vCa-vpolB(5) ! 2vB- + vCa2+ -vB2Ca+
         
-        vpolC  = 0.0270_dp/vsol     ! volume CH2
+        vpolC  = vPEG  ! volume PEG   !0.0270_dp/vsol     ! volume CH2
        
         !     .. other physical varaibles
         lsegPAA  = 0.36287_dp       ! segment length in nm
         lsegPAMPS = 0.545_dp        ! segment length in nm
-        lsegCH2 =  0.153_dp         ! segment length in nm od CH2 check  
-
+        lsegCH2 =  0.153_dp         ! segment length in nm of CH2 check  
+        lsegPEG =  0.3_dp           ! segment length in nm 
+        
         lsegAB=lsegPAMPS          
         lsegA=lsegPAA            
         lsegB=lsegPAMPS          
-        lsegC=lsegCH2            
+        lsegC=lsegPEG     !lsegCH2            
 
         ! see also subroutine set_chain_properties 
 
         
         pKw=14.0_dp                 ! water equilibruim constant
         
-        T=298.0_dp                  ! temperature in Kelvin
+        Tref=298.0_dp                  ! temperature in Kelvin
         dielectW=78.54_dp           ! dielectric constant water
         
-        lb=BjerrumLenght(T)        ! bjerrum length in water in nm
+        !lb=BjerrumLenght(T)        ! bjerrum length in water in nm
 
         ! delta = 0.30_dp             ! size lattice spacing
         seed  = 435672             ! seed for random number generator
         
-        constqW = delta*delta*4.0_dp*pi*lb/vsol ! multiplicative constant Poisson Eq. 
+
+        call init_elect_constants(Tref)  
+
+        !constqW = delta*delta*4.0_dp*pi*lb/vsol ! multiplicative constant Poisson Eq. 
         
         !  .. initializations of input dependent variables 
         !  .. this is not good anymore
@@ -339,6 +365,43 @@ contains
 
 
     end subroutine init_constants
+
+
+    function dielectric_constant_water(Temp) result(eps)
+        implicit none
+        real(dp), intent(in) :: Temp ! temperature in Kelvin
+        real(dp) :: eps, Tc
+
+        Tc=Temp-273.15_dp
+        eps=(3.70886e4_dp - 8.2168e1_dp*Tc)/( 4.21854e2_dp + Tc)        !   Meissner and  Wentz 
+        !eps= 87.7410_dp - 0.4008_dp*Tc + 9.398e-4_dp*Tc**2 - 1.410e-6_dp*Tc**3 ! Malmber and Maryott 
+
+    end function
+
+    subroutine init_elect_constants(Temp)
+        
+        use globals
+        use volume, only : delta
+        use physconst
+
+        real(dp), intent(in) :: Temp 
+
+        dielectW=dielectric_constant_water(Temp)
+
+        lb=(elemcharge**2)/(4.0_dp*pi*dielectW*dielect0*kBoltzmann*Temp) ! bjerrum length in water=solvent in m
+        lb=lb/1.0e-9_dp                           ! bjerrum length in water in nm
+        constqW = delta*delta*(4.0_dp*pi*lb)/vsol ! multiplicative constant Poisson Eq. 
+
+        lb0=(elemcharge**2)/(4.0_dp*pi*dielect0*kBoltzmann*Temp) ! bjerrum length in vacum in m
+        lb0= lb0/1.0e-9_dp                          ! bjerrum length in vacum in nm
+        constq0 = delta*delta*(4.0_dp*pi*lb0)/vsol ! multiplicative constant Poisson Eq. 
+
+
+        !sigmaqSurf = sigmaqSurfin * 4.0_dp*pi*lb *delta ! dimensionless surface charge  !!!!!!! WARNING WARNING 
+
+        ! if(sysflag=="dipolarstrong".or. sysflag=="dipolarweak") sigmaqSurf = sigmaqSurfin * 4.0_dp*pi*lb0 *delta  
+
+    end subroutine init_elect_constants
    
     ! compute surfac e coverge based on number of grafted point (ngr) 
     subroutine init_sigma()

@@ -20,7 +20,9 @@ module field
     real(dp), dimension(:), allocatable :: xCl     ! volume fraction of negative ion
     real(dp), dimension(:), allocatable :: xHplus  ! volume fraction of Hplus
     real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
-    real(dp), dimension(:), allocatable :: rhoq    ! total charge density in units of vsol
+    real(dp), dimension(:), allocatable :: rhoq    ! total charge density in units of vsol  
+    real(dp), dimension(:), allocatable :: rhodip  ! total dipole density in units of vsol
+    real(dp), dimension(:,:), allocatable :: electPol ! elect polarization in z-direction 
     real(dp), dimension(:), allocatable :: qpol    ! charge density of polymer
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
     real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
@@ -52,6 +54,7 @@ contains
         allocate(rhopolC(N))
         allocate(xsol(N))
         allocate(psi(N+2*Nx*Ny))
+         allocate(electPol(N+2*Nx*Ny,3))
         allocate(xNa(N))
         allocate(xK(N))
         allocate(xCa(N))
@@ -61,6 +64,7 @@ contains
         allocate(xHplus(N))
         allocate(xOHmin(N))
         allocate(rhoq(N))
+        allocate(rhodip(N))
         allocate(qpol(N))
         allocate(fdisA(5,N))
         allocate(fdisB(5,N))

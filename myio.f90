@@ -14,6 +14,7 @@ module myio
     integer, parameter ::  myio_err_inputfile = 7
     integer, parameter ::  myio_err_input     = 8
     integer, parameter ::  myio_err_bcflag    = 9 
+    integer, parameter ::  myio_err_label     = 10 
 
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
@@ -49,7 +50,11 @@ subroutine read_inputfile(info)
     integer :: info_sys, info_bc, info_run, info_geo, info_meth, info_chaintype, info_combi
     character(len=8) :: fname
     integer :: ios,un_input  ! un = unit number    
-    character(len=80) :: fcnname
+    character(len=100) :: buffer, label
+    integer :: pos
+    integer :: line
+
+
 
     if (present(info)) info = 0
     
@@ -62,63 +67,136 @@ subroutine read_inputfile(info)
         return
     endif
 
-    read(un_input,*)method
-    read(un_input,*)sysflag
-    read(un_input,*)bcflag(LEFT)
-    read(un_input,*)bcflag(RIGHT)
-    read(un_input,*)chainmethod
-    read(un_input,*)chaintype
-    !read(un_input,*)sigmaABL
-    !read(un_input,*)sigmaABR
-    ! read(un_input,*)sigmaC
-    read(un_input,*)error             
-    read(un_input,*)infile              ! guess  1==yes
-    read(un_input,*)pH%val
-    read(un_input,*)runflag
-    if(runflag=="rangepH") then
-        read(un_input,*)pH%min
-        read(un_input,*)pH%max
-        read(un_input,*)pH%stepsize
-        read(un_input,*)pH%delta
-    endif 
-    read(un_input,*)KionNa
-    read(un_input,*)KionK
-    read(un_input,*)sigmaSurfL
-    read(un_input,*)sigmaSurfR
-    read(un_input,*)cNaCl
-    read(un_input,*)cKCl
-    read(un_input,*)cCaCl2
-    read(un_input,*)pKa(1)           !   AH   <=> A- + H+ 
-    read(un_input,*)pKa(2)           !   ANa  <=> A- + Na+  
-    read(un_input,*)pKa(3)           !   ACa+ <=> A- + Ca2+ 
-    read(un_input,*)pKa(4)           !   A2Ca <=> 2A- + Ca2+
-    read(un_input,*)pKb(1)           !   BH   <=> B- + H+ 
-    read(un_input,*)pKb(2)           !   BNa  <=> B- + Na+ 
-    read(un_input,*)pKb(3)           !   BCa+ <=> B- + Ca2+   
-    read(un_input,*)pKb(4)           !   B2Ca <=> 2B- + Ca2+   
-    read(un_input,*)period
-    read(un_input,*)nsize
-    read(un_input,*)nsegAB
-    read(un_input,*)cuantasAB
-    read(un_input,*)nsegC
-    read(un_input,*)cuantasC
-    read(un_input,*)VdWepsC
-    read(un_input,*)VdWepsB    
-    read(un_input,*)VdWcutoff
-    read(un_input,*)nx
-    read(un_input,*)ny
-    read(un_input,*)nzmax            ! max distance
-    read(un_input,*)nzmin            ! min distance
-    read(un_input,*)nzstep           ! step distance  
-    read(un_input,*)verboseflag  
-    read(un_input,*)delta
-    read(un_input,*)geometry
-    read(un_input,*)ngr_freq  
+    ios=0 
+    line = 0
+
+    ! ios<0 : if an end of record condition is encountered or if an endfile condition was detected.  
+    ! ios>0 : if an error occured 
+    ! ios=0 : otherwise.
+
+    do while (ios == 0)
+        read(un_input, '(A)', iostat=ios) buffer
+
+        if (ios == 0) then
+        
+            line = line + 1
+
+            !  Split label and data based on first occurence of a whitespace
+            pos = scan(buffer, '     ')
+            label = buffer(1:pos)
+            buffer = buffer(pos+1:)
+
+            select case (label) !list-directed The CHARACTER variable is treated as an 'internal file'
+            case ('method')
+                read(buffer, *,iostat=ios) method
+            case ('sysflag')
+                read(buffer, *,iostat=ios) sysflag
+            case ('runflag')
+                read(buffer, *,iostat=ios) runflag
+            case ('bcflag(LEFT)')
+                read(buffer,*,iostat=ios) bcflag(LEFT)
+            case ('bcflag(RIGHT)')
+                read(buffer,*,iostat=ios) bcflag(RIGHT)
+            case ('chainmethod')
+                read(buffer,*,iostat=ios) chainmethod
+            case ('chaintype')
+                read(buffer,*,iostat=ios) chaintype
+            case ('tolerance')
+                read(buffer,*,iostat=ios) error             
+            case ('infile')
+                read(buffer,*,iostat=ios) infile              ! guess  1==yes
+            case ('pH%val')
+                read(buffer,*,iostat=ios) pH%val
+            case ('pH%min')
+                read(buffer,*,iostat=ios) pH%min
+            case ('pH%max')
+                read(buffer,*,iostat=ios) pH%max
+            case ('pH%stepsize')
+                read(buffer,*,iostat=ios) pH%stepsize
+            case ('pH%delta')
+                read(buffer,*,iostat=ios) pH%delta
+            case ('KionNa')
+                read(buffer,*,iostat=ios) KionNa
+            case ('KionK')
+                read(buffer,*,iostat=ios) KionK
+            case ('sigmaSurfL')
+                read(buffer,*,iostat=ios) sigmaSurfL
+            case ('sigmaSurfR')
+                read(buffer,*,iostat=ios) sigmaSurfR
+            case ('cNaCl')
+                read(buffer,*,iostat=ios) cNaCl
+            case ('cKCl')
+                read(buffer,*,iostat=ios) cKCl
+            case ('cCaCl2')
+                read(buffer,*,iostat=ios) cCaCl2
+            case ('pKa(1)')
+                read(buffer,*,iostat=ios) pKa(1)           !   AH   <=> A- + H+ 
+            case ('pKa(2)')
+                read(buffer,*,iostat=ios) pKa(2)           !   ANa  <=> A- + Na+  
+            case ('pKa(3)')
+                read(buffer,*,iostat=ios) pKa(3)           !   ACa+ <=> A- + Ca2+ 
+            case ('pKa(4)')
+                read(buffer,*,iostat=ios) pKa(4)           !   A2Ca <=> 2A- + Ca2+
+            case ('pKb(1)')
+                read(buffer,*,iostat=ios) pKb(1)           !   BH   <=> B- + H+ 
+            case ('pKb(2)')
+                read(buffer,*,iostat=ios) pKb(2)           !   BNa  <=> B- + Na+ 
+            case ('pKb(3)')
+                read(buffer,*,iostat=ios) pKb(3)           !   BCa+ <=> B- + Ca2+   
+            case ('pKb(4)')
+                read(buffer,*,iostat=ios) pKb(4)           !   B2Ca <=> 2B- + Ca2+   
+            case ('chainperiod')
+                read(buffer,*,iostat=ios) period
+            case ('nsize')
+                read(buffer,*,iostat=ios) nsize
+            case ('nsegAB')
+                read(buffer,*,iostat=ios) nsegAB
+            case ('cuantasAB')
+                read(buffer,*,iostat=ios) cuantasAB
+            case ('nsegC')
+                read(buffer,*,iostat=ios) nsegC
+            case ('cuantasC')
+                read(buffer,*,iostat=ios) cuantasC
+            case ('VdWepsC')
+                read(buffer,*,iostat=ios) VdWepsC
+            case ('VdWepsB ')
+                read(buffer,*,iostat=ios) VdWepsB    
+            case ('VdWcutoff')                             
+                read(buffer,*,iostat=ios) VdWcutoff  
+            case ('nx')
+                read(buffer,*,iostat=ios) nx
+            case ('ny')
+                read(buffer,*,iostat=ios) ny
+            case ('nzmax')
+                read(buffer,*,iostat=ios) nzmax
+            case ('nzmin')
+                read(buffer,*,iostat=ios) nzmin
+            case ('nzstep')
+                read(buffer,*,iostat=ios) nzstep
+            case ('verboseflag  ')
+                read(buffer,*,iostat=ios) verboseflag  
+            case ('delta')
+                read(buffer,*,iostat=ios) delta   
+            case ('geometry')
+                read(buffer,*,iostat=ios) geometry
+            case ('ngr_freq')
+                read(buffer,*,iostat=ios) ngr_freq  
+            case default
+                if(pos>1) then 
+                    print *, 'Invalid label at line', line  ! empy lines are skipped
+                endif
+            end select
+        end if
+    end do
+
+
+    if(ios >0 ) then
+        print*, 'Error parsing file : iostat =', ios
+        if (present(info)) info = myio_err_inputfile
+        return
+    endif
 
     close(un_input)
-
-
-    write(fcnname,'(A14)')'read_inputfile'
     
     ! override input bcflags 
     
@@ -179,7 +257,7 @@ subroutine check_value_sysflag(sysflag,info)
     character(len=15), intent(in) :: sysflag
     integer, intent(out),optional :: info
 
-    character(len=15) :: sysflagstr(6)
+    character(len=15) :: sysflagstr(8)
     integer :: i
     logical :: flag
 
@@ -191,10 +269,12 @@ subroutine check_value_sysflag(sysflag,info)
     sysflagstr(4)="electdouble"
     sysflagstr(5)="electnopoly"
     sysflagstr(6)="electHC"
+    sysflagstr(7)="dipolarweak"
+    sysflagstr(8)="dipolarstrong"
 
     flag=.FALSE.
 
-    do i=1,6
+    do i=1,8
         if(sysflag==sysflagstr(i)) flag=.TRUE.
     enddo
 
@@ -663,7 +743,7 @@ subroutine output_elect
         ! other physcial parameters
         write(un_sys,*)'dielectW    = ',dielectW
         write(un_sys,*)'lb          = ',lb
-        write(un_sys,*)'T           = ',T
+        write(un_sys,*)'T           = ',Tref
         write(un_sys,*)'VdWepsC     = ',VdWepsC*vpolC*vsol 
         write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
         ! charge components
@@ -1022,7 +1102,7 @@ subroutine output_electdouble()
         write(un_sys,*)'sigmaABR    = ',sigmaABR
         write(un_sys,*)'dielectW    = ',dielectW
         write(un_sys,*)'lb          = ',lb
-        write(un_sys,*)'T           = ',T 
+        write(un_sys,*)'T           = ',Tref 
         write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
         ! charge
         write(un_sys,*)'zpolA(1)    = ',zpolA(1)
@@ -1233,7 +1313,7 @@ subroutine output_neutral
         write(un_sys,*)'nzstep      = ',nzstep
         write(un_sys,*)'tol_conf    = ',error
         ! other physcial parameters
-        write(un_sys,*)'T           = ',T
+        write(un_sys,*)'T           = ',Tref
         write(un_sys,*)'VdWepsC     = ',VdWepsC*vpolC*vsol
         write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
         ! volume 
