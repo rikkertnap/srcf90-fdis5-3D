@@ -99,9 +99,10 @@ program brushweakpolyelectrolyte
     allocate(fvec(neq))
 
 
+   
 
     if(runflag=="rangedist") then ! loop over distances
-         
+        print*,"hello " 
         nz = nzmax                    
         neqmax = neq   
 
@@ -122,7 +123,7 @@ program brushweakpolyelectrolyte
 
             call init_vars_input()  ! sets up chem potenitals 
             call chain_filter()
-            call set_fcn()! why 
+            call set_fcn()    
             
             flag_solver = 0
                
@@ -178,19 +179,20 @@ program brushweakpolyelectrolyte
 
     else if(runflag=="rangepH") then  ! loop over pH values 
         
-        ! select pH variable with which loop is associated
-        loop => pH 
 
         nz = nzmax                    
         neqmax = neq   
         isfirstguess = .true.    
-        use_xstored = .false.         ! with both flags set false make_guess will set xguess equal to x          
+        use_xstored = .false.         ! with both flags set false make_guess will set xguess equal to x    
+        ! select pH variable with which loop is associated
+        loop => pH       
         iter = 0                    ! iteration counter      
-
         if(loop%stepsize>0) then 
             loop%val=loop%min
+            !loopbegin=loop%min 
         else
             loop%val=loop%max
+            !loopbegin=loop%max
         endif    
 
         do while (loop%min<=loop%val.and.loop%val<=loop%max.and.&
@@ -198,13 +200,11 @@ program brushweakpolyelectrolyte
 
             call init_vars_input()  ! sets up chem potenitals 
             call chain_filter()
-            call set_fcn()
-
-
+        
             flag_solver = 0
            
             if(rank.eq.0) then     ! node rank=0    
-                call make_guess(x, xguess, isfirstguess)  
+                call make_guess(x, xguess, isfirstguess, use_xstored)  
                 call solver(x, xguess, error, fnorm, issolution)
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
@@ -248,7 +248,7 @@ program brushweakpolyelectrolyte
                 enddo
             else ! receive values 
                 source = 0
-                call MPI_RECV(loop%val, 1, MPI_DOUBLE_PRECISION, source, tag,MPI_COMM_WORLD,stat, ierr)
+                call MPI_RECV(loop%val , 1, MPI_DOUBLE_PRECISION, source, tag,MPI_COMM_WORLD,stat, ierr)
             endif
                 
             iter  = 0              ! reset of iteration counter 

@@ -18,7 +18,8 @@ module myio
 
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
-    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q 
+    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q
+    integer :: un_dip ,un_dielec,un_xpolABz  
    
     ! format specifiers 
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
@@ -183,7 +184,7 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) ngr_freq  
             case default
                 if(pos>1) then 
-                    print *, 'Invalid label at line', line  ! empy lines are skipped
+                    print *, 'Invalid label at line', line  ! empty lines are skipped
                 endif
             end select
         end if
@@ -217,7 +218,7 @@ subroutine read_inputfile(info)
         return
     endif
 
-    call check_value_runflag(runflag,info_sys) 
+    call check_value_runflag(runflag,info_run) 
     if (info_sys == myio_err_runflag) then
         if (present(info)) info = info_run
         return
@@ -304,7 +305,7 @@ subroutine check_value_runflag(runflag,info)
     ! permissible values of runflag
 
     runflagstr(1)="rangepH"
-    runflagstr(2)="norangepH"
+    runflagstr(2)="rangedist"
 
     flag=.FALSE.
 
@@ -490,6 +491,10 @@ subroutine output()
     elseif(sysflag=="electnopoly") then
         call output_elect
         call output_individualcontr_fe
+    elseif(sysflag=="dipolarstrong") then
+        call output_elect
+    elseif(sysflag=="dipolarweak") then
+        call output_elect
     else
         print*,"Error in output subroutine"
         print*,"Wrong value sysflag : ", sysflag
@@ -511,16 +516,15 @@ subroutine output_elect
     use chains, only : isHomopolymer
   
     implicit none
-      
-    !     .. scalar argument
     
     !     .. local arguments
-
+   
     !     .. output file names       
     
     character(len=90) :: sysfilename     
     character(len=90) :: xsolfilename 
     character(len=90) :: xpolABfilename 
+    character(len=90) :: xpolABzfilename 
     character(len=90) :: xpolCfilename 
     character(len=90) :: xpolendfilename 
     character(len=90) :: xNafilename
@@ -537,6 +541,8 @@ subroutine output_elect
     character(len=90) :: densfracBfilename
     character(len=90) :: qfilename
     character(len=90) :: densfracionpairfilename
+    character(len=90)  :: dipolefilename
+    character(len=100) :: dielecfilename
     integer :: i,j,k          ! dummy indexes
     character(len=100) :: fnamelabel
     character(len=20) :: rstr
@@ -565,6 +571,7 @@ subroutine output_elect
         sysfilename='system.'//trim(fnamelabel)
         xpolABfilename='xpolAB.'//trim(fnamelabel)
         xpolCfilename='xpolC.'//trim(fnamelabel)
+        xpolABzfilename='xpolABz.'//trim(fnamelabel)
         xsolfilename='xsol.'//trim(fnamelabel)
         xNafilename='xNaions.'//trim(fnamelabel)
         xKfilename='xKions.'//trim(fnamelabel)
@@ -580,19 +587,27 @@ subroutine output_elect
         densfracBfilename='densityBfrac.'//trim(fnamelabel)
         densfracionpairfilename='densityfracionpair.'//trim(fnamelabel)
         qfilename='q.'//trim(fnamelabel)
+        dipolefilename='dipole.'//trim(fnamelabel)//'.dat'
+        dielecfilename='dielectrel.'//trim(fnamelabel)//'.dat'
 
         !     .. opening files        
         
         open(unit=newunit(un_sys),file=sysfilename)       
         open(unit=newunit(un_xsol),file=xsolfilename)
         open(unit=newunit(un_psi),file=potentialfilename)
+
         if(sysflag/="electnopoly") then          
             open(unit=newunit(un_xpolAB),file=xpolABfilename)
             open(unit=newunit(un_xpolC),file=xpolCfilename)
             open(unit=newunit(un_fdisA),file=densfracAfilename) 
             open(unit=newunit(un_fdisB),file=densfracBfilename) 
             open(unit=newunit(un_q),file=qfilename)
-        endif       
+            open(unit=newunit(un_xpolABz),file=xpolABzfilename)
+        endif     
+        if(sysflag=="dipolarweak".or.sysflag=="dipolarstrong") then          
+            open(unit=newunit(un_dielec),file=dielecfilename)
+            open(unit=newunit(un_dip),file=dipolefilename)
+        endif
         if(verboseflag=="yes") then    
             open(unit=newunit(un_xNa),file=xNafilename)
             open(unit=newunit(un_xK),file=xKfilename)
@@ -665,6 +680,9 @@ subroutine output_elect
             write(un_fdisA,fmt5reals)fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
             write(un_fdisB,fmt5reals)fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)
         enddo
+        do i=1,nz
+            write(un_xpolABz,fmt1reals)xpolABz(i)
+        enddo    
     endif   
     
     if(verboseflag=="yes") then 
@@ -680,6 +698,13 @@ subroutine output_elect
             write(un_xHplus,*)xHplus(i)
             write(un_xOHmin,*)xOHmin(i)    
         enddo    
+    endif
+
+    if(sysflag=="dipolarweak".or.sysflag=="dipolarstrong") then          
+        do i = 1, nsize
+            write(un_dip,*)rhob(i),electPol(1,i),electPol(2,i),electPol(3,i)
+        !    write(un_dielec,*)dielectrel(i)
+        enddo   
     endif
 
     ! .. writing system information 
@@ -741,6 +766,11 @@ subroutine output_elect
         write(un_sys,*)'K0ionNa     = ',K0ionNa
         write(un_sys,*)'K0ionK      = ',K0ionK
         ! other physcial parameters
+        if(sysflag=="dipolarweak".or.sysflag=="dipolarstrong") then 
+            write(un_sys,*)'dipole pol  = ',dipole%pol
+            write(un_sys,*)'dipole sol  = ',dipole%sol
+        endif    
+
         write(un_sys,*)'dielectW    = ',dielectW
         write(un_sys,*)'lb          = ',lb
         write(un_sys,*)'T           = ',Tref
@@ -856,6 +886,7 @@ subroutine output_elect
             close(un_xpolC)
             close(un_fdisA)
             close(un_fdisB)
+            close(un_xpolABz)
         endif
         if(verboseflag=="yes") then 
             close(un_xNa)   
@@ -869,6 +900,10 @@ subroutine output_elect
             close(un_xHplus)
             close(un_xOHmin)
         endif
+        if(sysflag=="dipolarstrong".or.sysflag=="dipolarweak") then
+            close(un_dip)    
+        endif    
+
     endif
         
 
@@ -1567,11 +1602,55 @@ subroutine copy_solution(x)
         print*,"stopping program"
         stop
 
+    case ("dipolarstrong")
+    
+        do i=1,nsize                   
+            xsol(i)= x(i)          
+            psi(i) = x(i+nsize)     
+        enddo
+            
+        neq_bc=0
+        if(bcflag(RIGHT)/="cc") then
+            neq_bc=nx*ny
+            do i=1,neq_bc
+                psiSurfR(i) =x(2*nsize+i)                 
+            enddo
+        endif   
+        if(bcflag(LEFT)/="cc") then 
+            do i=1,nx*ny
+                psiSurfL(i) =x(2*nsize+neq_bc+i)          
+            enddo
+            neq_bc=neq_bc+nx*ny
+        endif    
+    
+    case ("dipolarweak")
+    
+        do i=1,nsize                   
+            xsol(i)= x(i)          
+            psi(i) = x(i+nsize)     
+        enddo
+            
+        neq_bc=0
+        if(bcflag(RIGHT)/="cc") then
+            neq_bc=nx*ny
+            do i=1,neq_bc
+                psiSurfR(i) =x(2*nsize+i)                 
+            enddo
+        endif   
+        if(bcflag(LEFT)/="cc") then 
+            do i=1,nx*ny
+                psiSurfL(i) =x(2*nsize+neq_bc+i)          
+            enddo
+            neq_bc=neq_bc+nx*ny
+        endif 
+
     case default   
+
         print*,"Error: sysflag incorrect at copy_solution"
         print*,"stopping program"
         stop
-     end select
+    
+    end select
          
  end subroutine copy_solution
 
@@ -1582,6 +1661,7 @@ subroutine compute_vars_and_output()
     use globals, only : sysflag
     use energy
     use field
+    use parameters, only : heightAB
     implicit none
 
     select case (sysflag)
@@ -1602,17 +1682,28 @@ subroutine compute_vars_and_output()
         call output()
     
     case ("electnopoly")
+
         call fcnenergy()        
         call output()           ! writing of output
      
-    case ("neutral")   
+    case ("neutral")  
+
         call output()           ! writing of output
-     
+    
+    case ("dipolarweak")
+
+        call average_polymer(xpolAB,xpolABz,heightAB)  
+        call output()           ! writing of output 
+
+    case ("dipolarstrong")
+        call average_polymer(xpolAB,xpolABz,heightAB)  
+        call output()           ! writing of output 
+
     case default   
-        print*,"Error: sysflag incorrect at set_vars_and_output"
+        print*,"Error: sysflag incorrect at compute_vars_and_output"
         print*,"stopping program"
         stop
-     end select
+    end select
          
 end subroutine compute_vars_and_output
 

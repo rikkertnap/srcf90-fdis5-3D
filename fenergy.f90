@@ -58,6 +58,12 @@ contains
     
         if(sysflag.eq."elect") then 
             call fcnenergy_elect()
+        elseif(sysflag.eq."dipolarstrong") then
+            !call fcnenergy_elect()
+            print*,"Free energy: warning not yet implemented "
+        elseif(sysflag.eq."dipolarweak") then
+            !call fcnenergy_elect()
+            print*,"Free energy: warning not yet implemented "
         elseif(sysflag.eq."electdouble") then 
         !    print*,"fcnenergy sysflag=electdouble"    
             call fcnenergy_elect()

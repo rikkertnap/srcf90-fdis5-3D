@@ -92,9 +92,6 @@ module parameters
     character(len=8) :: chainmethod      ! method of generating chains ="MC" or "FILE" 
     character(len=8) :: chaintype        ! type of chain: diblock,alt
     integer :: readinchains              ! nunmber of used/readin chains
-    !integer, parameter :: numsys= 6      ! number of method   
-    !character(len=15) :: sysvalues(numsys) ! different system methodes 
-    !character(len=2) :: bcvalues(2,5)      ! boundary condition bc="qu" quartz,"cl" clay or "ca" calcite
     character(len=3) ::  verboseflag       ! select input falg 
 
     real(dp) :: heightAB           ! average height of layer
@@ -157,10 +154,14 @@ contains
 
         nsize= nx*ny*nz
         neq_bc=0 
-        if(bcflag(LEFT)/="cc") neq_bc=neq_bc+1
-        if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+1
+        if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nx*ny
+        if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nx*ny
 
         select case (sysflag)
+            case ("dipolarweak") 
+                neq = 2 * nsize + neq_bc
+            case ("dipolarstrong")  
+                neq = 2 * nsize + neq_bc 
             case ("elect") 
                 neq = 4 * nsize + neq_bc
             case ("electdouble")  
@@ -292,29 +293,29 @@ contains
         vA = vAA
         vB = vAMPS
 
-        vpolA(1)= vA              ! vA-
-        vpolA(2)= vA              ! vAH
-        vpolA(3)= vA+vNa          ! vANa
-        vpolA(4)= vA+vCa          ! vACa
-        vpolA(5)= 2.0_dp*vA+vCa   ! vA2Ca
+        vpolA(1) = vA              ! vA-
+        vpolA(2) = vA              ! vAH
+        vpolA(3) = vA+vNa          ! vANa
+        vpolA(4) = vA+vCa          ! vACa
+        vpolA(5) = 2.0_dp*vA+vCa   ! vA2Ca
         
-        vpolB(1)= vB              ! vB-
-        vpolB(2)= vB              ! vBH
-        vpolB(3)= vB+vNa          ! vBNa
-        vpolB(4)= vB+vCa          ! vBCa
-        vpolB(5)= 2.0_dp*vB+vCa   ! vB2Ca
+        vpolB(1) = vB              ! vB-
+        vpolB(2) = vB              ! vBH
+        vpolB(3) = vB+vNa          ! vBNa
+        vpolB(4) = vB+vCa          ! vBCa
+        vpolB(5) = 2.0_dp*vB+vCa   ! vB2Ca
         
-        deltavA(1)=vpolA(1)+1.0_dp-vpolA(2) ! vA-+vH+-vAH
-        deltavA(2)=vpolA(1)+vNa-vpolA(3)    ! vA-+vNa+-vANa+
-        deltavA(3)=vpolA(1)+vCa-vpolA(4)    ! vA- + vCa2+ -vACa+
-        deltavA(4)=2.0_dp*vpolA(1)+vCa-vpolA(5) ! 2vA- + vCa2+ -vA2Ca
+        deltavA(1) = vpolA(1)+1.0_dp-vpolA(2) ! vA-+vH+-vAH
+        deltavA(2) = vpolA(1)+vNa-vpolA(3)    ! vA-+vNa+-vANa+
+        deltavA(3) = vpolA(1)+vCa-vpolA(4)    ! vA- + vCa2+ -vACa+
+        deltavA(4) = 2.0_dp*vpolA(1)+vCa-vpolA(5) ! 2vA- + vCa2+ -vA2Ca
         
-        deltavB(1)=vpolB(1)+1.0_dp-vpolB(2) ! vB-+vH+-vBH
-        deltavB(2)=vpolB(1)+vNa-vpolB(3)    ! vB-+vNa+-vBNa+
-        deltavB(3)=vpolB(1)+vCa-vpolB(4)    ! vB- +vCa2+ -vBCa+
-        deltavB(4)=2.0_dp*vpolB(1)+vCa-vpolB(5) ! 2vB- + vCa2+ -vB2Ca+
+        deltavB(1) = vpolB(1)+1.0_dp-vpolB(2) ! vB-+vH+-vBH
+        deltavB(2) = vpolB(1)+vNa-vpolB(3)    ! vB-+vNa+-vBNa+
+        deltavB(3) = vpolB(1)+vCa-vpolB(4)    ! vB- +vCa2+ -vBCa+
+        deltavB(4) = 2.0_dp*vpolB(1)+vCa-vpolB(5) ! 2vB- + vCa2+ -vB2Ca+
         
-        vpolC  = vPEG  ! volume PEG   !0.0270_dp/vsol     ! volume CH2
+        vpolC = vPEG  ! volume PEG   !0.0270_dp/vsol     ! volume CH2
        
         !     .. other physical varaibles
         lsegPAA  = 0.36287_dp       ! segment length in nm
@@ -325,40 +326,18 @@ contains
         lsegAB=lsegPAMPS          
         lsegA=lsegPAA            
         lsegB=lsegPAMPS          
-        lsegC=lsegPEG     !lsegCH2            
+        lsegC=lsegPEG               
 
         ! see also subroutine set_chain_properties 
 
-        
         pKw=14.0_dp                 ! water equilibruim constant
-        
-        Tref=298.0_dp                  ! temperature in Kelvin
+        Tref=298.0_dp               ! temperature in Kelvin
         dielectW=78.54_dp           ! dielectric constant water
         
-        !lb=BjerrumLenght(T)        ! bjerrum length in water in nm
-
-        ! delta = 0.30_dp             ! size lattice spacing
-        seed  = 435672             ! seed for random number generator
+        seed  = 435672              ! seed for random number generator
         
 
         call init_elect_constants(Tref)  
-
-        !constqW = delta*delta*4.0_dp*pi*lb/vsol ! multiplicative constant Poisson Eq. 
-        
-        !  .. initializations of input dependent variables 
-        !  .. this is not good anymore
-        
-        ! sigmaABL = sigmaABL * (1.0_dp/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!! 
-        ! sigmaABR = sigmaABR * (1.0_dp/(delta)) 
-        ! sigmaAB = sigmaAB * (1.0_dp/(delta))  
-        ! sigmaC   = sigmaC * (1.0_dp/(delta)) ! dimensionless sigma no vpol*vsol !!!!!!!!!!!!
-        
-        ! VdWepsC  = VdWepsC/(vpolC*vsol) ! VdW eps scaled 
-        ! VdWepsB  = VdWepsB/(vpolB(3)*vsol) ! VdW eps scaled 
-        
-        ! .. make radius integer multiply of delta
-        ! .. needed because VdW-coefficeint computed on grid 
-        ! Íradius=delta*int(radius/delta)
 
         max_conforAB=cuantasAB
         max_conforC=cuantasC
@@ -392,18 +371,21 @@ contains
         lb=lb/1.0e-9_dp                           ! bjerrum length in water in nm
         constqW = delta*delta*(4.0_dp*pi*lb)/vsol ! multiplicative constant Poisson Eq. 
 
-        lb0=(elemcharge**2)/(4.0_dp*pi*dielect0*kBoltzmann*Temp) ! bjerrum length in vacum in m
-        lb0= lb0/1.0e-9_dp                          ! bjerrum length in vacum in nm
-        constq0 = delta*delta*(4.0_dp*pi*lb0)/vsol ! multiplicative constant Poisson Eq. 
+        if(sysflag.eq."dipolarweak".or.sysflag.eq."dipolarstrong") then 
 
+            lb=(elemcharge**2)/(4.0_dp*pi*dielect0*kBoltzmann*Temp)  ! bjerrum length in vacum in m
+            lb= lb/1.0e-9_dp                                         ! bjerrum length in vacum in nm
+            constqW = delta*delta*(4.0_dp*pi*lb)/vsol                ! multiplicative constant Poisson Eq. 
 
-        !sigmaqSurf = sigmaqSurfin * 4.0_dp*pi*lb *delta ! dimensionless surface charge  !!!!!!! WARNING WARNING 
+            lb0=(elemcharge**2)/(4.0_dp*pi*dielect0*kBoltzmann*Temp) ! bjerrum length in vacum in m
+            lb0= lb0/1.0e-9_dp                                       ! bjerrum length in vacum in nm
+            constq0 = delta*delta*(4.0_dp*pi*lb0)/vsol               ! multiplicative constant Poisson Eq. 
 
-        ! if(sysflag=="dipolarstrong".or. sysflag=="dipolarweak") sigmaqSurf = sigmaqSurfin * 4.0_dp*pi*lb0 *delta  
+        endif     
 
     end subroutine init_elect_constants
    
-    ! compute surfac e coverge based on number of grafted point (ngr) 
+    ! compute surface coverge based on number of grafted point (ngr) 
     subroutine init_sigma()
 
         use globals, only : sysflag
@@ -422,6 +404,14 @@ contains
             sigmaABL = 0.0_dp
             sigmaABR = 0.0_dp
             sigmaAB  = 0.0_dp
+        case("dipolarstrong") 
+            sigmaABL = ngr/(nsurf*delta*delta)
+            sigmaABR = sigmaABL
+            sigmaAB  = sigmaABL
+        case("dipolarweak") 
+            sigmaABL = ngr/(nsurf*delta*delta)
+            sigmaABR = sigmaABL
+            sigmaAB  = sigmaABL
         case default
             print*,"Error: init_lattice: sysflag wrong value"
             print*,"stopping program"
@@ -445,9 +435,9 @@ contains
         
         real(dp),  dimension(:), allocatable :: x         ! volume fraction solvent iteration vector 
         real(dp),  dimension(:), allocatable :: xguess  
-        
         integer :: i
         character(len=15) :: sysflag_old
+        logical :: issolution
         
         allocate(x(5))
         allocate(xguess(5))
@@ -473,6 +463,7 @@ contains
             xbulk%Cl=xNaClsalt*vCl/(vNa+vCl)  
         endif
         
+
         xKClsalt = (cKCl*Na/(1.0e24_dp))*((vK+vCl)*vsol) ! volume fraction KCl salt in mol/l
         xbulk%K = xKClsalt*vK/(vK+vCl)  
         xbulk%Cl = xbulk%Cl+xKClsalt*vCl/(vK+vCl)  
@@ -510,7 +501,7 @@ contains
             xguess(4)=x(4)
             xguess(5)=x(5)
            
-            call solver(x, xguess, error, fnorm) 
+            call solver(x, xguess, error, fnorm, issolution) 
             
             !     .. return solution
             
@@ -524,7 +515,7 @@ contains
             iter=0
             sysflag=sysflag_old         ! switch solver back
             call set_size_neq()         ! set number of non-linear equation  
-            ! call set_fcn()              ! set fcnptr to correct fcn        
+            !call set_fcn()              ! set fcnptr to correct fcn        
             
             xbulk%sol=1.0_dp-xbulk%Hplus-xbulk%OHmin - xbulk%Cl -xbulk%Na -xbulk%K-xbulk%NaCl-xbulk%KCl-xbulk%Ca 
             
@@ -581,7 +572,6 @@ contains
         use globals, only : sysflag
         implicit none
 
-
         if(sysflag=="elect") then 
             call init_expmu_elect()
         elseif(sysflag=="electdouble") then 
@@ -590,6 +580,10 @@ contains
             call init_expmu_elect()
         elseif(sysflag=="neutral") then
             call init_expmu_neutral()
+        elseif(sysflag=="dipolarstrong") then 
+            call init_expmu_elect()
+        elseif(sysflag=="dipolarweak") then 
+            call init_expmu_elect()
         else
             print*,"Error in call to init_expmu subroutine"    
             print*,"Wrong value sysflag : ", sysflag
@@ -611,13 +605,22 @@ contains
 
         select case (sysflag)
         case ("elect")
-            
             call init_expmu_elect() 
+        !    call init_elect_constants(T%val) ! check if this call is neccesary 
+        case ("dipolarstrong")
+            call init_expmu() 
+        !    call init_elect_constants(T%val)
+            call init_dipolesmoment(dipole)
+        case ("dipolarweak")
+            call init_expmu() 
+        !    call init_elect_constants(T%val)
+            call init_dipolesmoment(dipole)
         case ("electdouble") 
-            
             call init_expmu_elect() 
+        !    call init_elect_constants(T%val)
         case ("electnopoly")
             call init_expmu_elect()
+        !    call init_elect_constants(T%val)
         case ("neutral")
             call init_expmu_neutral()   
         case default   

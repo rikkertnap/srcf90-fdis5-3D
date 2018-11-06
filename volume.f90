@@ -23,6 +23,10 @@ module volume
     integer :: ngr_freq             ! frequence spacing in terms of delta 
     integer :: ngrx                 ! total number of graft points along x-axis 
     integer :: ngry                 ! total number of graft points along y-axis 
+ 
+    real(dp) :: gamma               ! angle oblique lattice: cubic = gamma=90 degree 
+                                    !                        hexagonal gamma=45 degree     
+
 
     real(dp), dimension(:), allocatable :: zc ! z-coordinate
     real(dp), dimension(:), allocatable :: xc ! z-coordinate
@@ -276,6 +280,74 @@ contains
 
     end function mirror_index
 
+
+    ! coordinate transformation from cartesian x,y to oblique u,v  coordinates
+
+    function ut(x, y, gamma) result(ut_val)
+    
+        use mathconst
+
+        real(dp), intent(in) :: x, y, gamma
+        real(dp) :: ut_val
+        real(dp) :: beta 
+
+        beta = (pi/2.0_dp - gamma) / 2.0_dp
+        ut_val = -sin(beta)*x + cos(beta)*y
+        ut_val = ut_val / sqrt(cos(beta)**2 - sin(beta)**2)
+    
+    end function ut
+
+   ! coordinate transformation from cartesian x,y to oblique u,v  coordinates
+
+    function vt(x, y, gamma) result(vt_val)
+       
+        use mathconst
+
+        real(dp), intent(in) :: x, y, gamma
+        real(dp) :: vt_val
+        real(dp) :: beta 
+
+        beta = (pi/2.0_dp - gamma) / 2.0_dp
+        vt_val = cos(beta)*x - sin(beta)*y
+        vt_val = vt_val / sqrt(cos(beta)**2 - sin(beta)**2)
+    
+    end function vt
+
+    ! inverse coordinate transformation from oblique u,v to  cartesian x,y  coordinates
+
+    function xt(v, u, gamma) result(xt_val)
+        
+        use mathconst
+
+        real(dp), intent(in) :: u, v, gamma
+        real(dp) :: xt_val
+        real(dp) :: beta
+    
+        beta = (pi/2.0_dp - gamma) / 2.0_dp
+        xt_val = cos(beta)*v + sin(beta)*u
+        xt_val = xt_val / sqrt(cos(beta)**2 - sin(beta)**2)
+    end function xt
+
+    ! inverse coordinate transformation from oblique u,v to  cartesian x,y  coordinates
+
+    function yt(v, u, gamma) result(yt_val)
+        
+        use mathconst
+
+        real(dp), intent(in) :: u, v, gamma
+        real(dp) :: yt_val
+        real(dp) :: beta
+    
+        beta = (pi/2.0_dp - gamma) / 2.0_dp
+
+        yt_val = sin(beta)*v + cos(beta)*u
+        yt_val = yt_val / sqrt(cos(beta)**2 - sin(beta)**2)
+    
+    end function yt
+ 
+
+
+
     function isEven(number) result(val) 
         integer, intent(in) :: number
         logical :: val
@@ -287,6 +359,11 @@ contains
         endif 
    
     end function
+
+
+
+
+
 
 end module volume
   

@@ -69,24 +69,17 @@ end subroutine fkpsol
 !     post: solution of SCMFT stored in x and  fnorm residual error            
 
 
-subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
+subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
   
     use mpivars
+    use ieee_arithmetic, only : ieee_is_nan
     use globals, only : nsize, neq, sysflag
     use kinsolvars
     use parameters, only : iter
     use myutils
-
+    use listfcn, only : set_contraints
 
     implicit none
-
-    interface 
-        subroutine set_contraints(constr)
-            use precision_definition
-            implicit none
-            real(dp) :: constr(:)
-        end subroutine
-    end interface    
 
 
     ! .. neq iout(15) and msbre match C type long int.
@@ -97,10 +90,10 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
     real(dp) :: xguess(neq)
 
     !  .. scalar arguments
-    real(dp) :: fnorm 
-    real(dp) :: error
-    integer(8) :: n                 !  number of equations
-
+    real(dp), intent(out) :: fnorm 
+    real(dp), intent(in) :: error
+    logical, intent(out) :: isSolution
+   
     !  .. local arguments 
 
     integer(8) :: iout(15)         ! Kinsol additional output information
@@ -139,7 +132,7 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
         x(i) = xguess(i)        ! initial guess
     enddo
   
-    call set_contraints(constr)
+    call set_contraints(constr)    
   
     call fnvinits(3, neq, ier) ! inits NVECTOR module
     
@@ -198,52 +191,44 @@ subroutine kinsol_gmres_solver(x, xguess, n, error, fnorm)
     call fkinsol(x, globalstrat, fscale, fscale, ier) 
     fnorm=rout(1) 
   
-    if (ier .lt. 0) then
-        print*, 'SUNDIALS_ERROR: FKINSOL returned IER = ', ier
-        print*, 'Linear Solver returned IER = ', iout(9)
-        call fkinfree
-        stop
-    endif
+    ! dtermine lity solution
     
-    write(rstr,'(E25.16)')fnorm
-    text="Found solution: fnorm = "//trim(rstr)//" "
-    call print_to_log(LogUnit,text)
+    isSolution=(fnorm<error).or.(ier>=0).or.(.not.ieee_is_nan(fnorm))
 
-    write(istr,'(I8)')iter
-    text="number of iterations  = "//trim(istr)
-    call print_to_log(LogUnit,text)
-
-    write(istr,'(I8)')ier
+    if(isSolution) then  
+    
+        write(rstr,'(E25.16)')fnorm
+        text="Found solution: fnorm = "//trim(rstr)
+        call print_to_log(LogUnit,text)
+        write(istr,'(I8)')iter
+        text="number of iterations  = "//trim(istr)
+        call print_to_log(LogUnit,text)
+        write(istr,'(I8)')ier
     text="kinsol return value  = "//trim(istr)
     call print_to_log(LogUnit,text)
+    
+    else
+    
+        write(rstr,'(E25.16)')fnorm
+        text="No solution: fnorm = "//trim(rstr)
+        call print_to_log(LogUnit,text)
+        write(istr,'(I5)')iout(9) 
+        text='Linear Solver returned IER = '//trim(istr)
+        call print_to_log(LogUnit,text)  
+
+        if(ier/=0) then
+            write(istr,'(I5)')ier
+            text='SUNDIALS_ERROR: FKINSOL returned IER = '//trim(istr)
+            call print_to_log(LogUnit,text)  
+         endif
+    
+    endif    
     
     call fkinfree             ! free memory
     deallocate(pp)
     return
   
 end subroutine kinsol_gmres_solver
-
-! set constrains on vector x  depending on sysflag value
-! 
-subroutine set_contraints(constr)
-    
-    use precision_definition
-    use globals, only : sysflag, neq
-
-    implicit none
-        
-    real(dp):: constr(:)
-
-    integer :: i
- 
-    if(sysflag=="electdouble".or. sysflag=="elect") then
-        do i =neq/4+1, neq/2
-            constr(i)=0.0_dp
-        enddo   
-    endif
-        
-end 
-
 
 
 !     .. wrapper function 

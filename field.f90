@@ -6,6 +6,7 @@ module field
     implicit none
     
     real(dp), dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer 
+    real(dp), dimension(:), allocatable :: xpolABz  ! total volume fraction of polymer 
     real(dp), dimension(:), allocatable :: xpolC   ! total volume fraction of polymer 
     real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer on sphere
     real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer on sphere
@@ -20,9 +21,9 @@ module field
     real(dp), dimension(:), allocatable :: xCl     ! volume fraction of negative ion
     real(dp), dimension(:), allocatable :: xHplus  ! volume fraction of Hplus
     real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
-    real(dp), dimension(:), allocatable :: rhoq    ! total charge density in units of vsol  
-    real(dp), dimension(:), allocatable :: rhodip  ! total dipole density in units of vsol
-    real(dp), dimension(:,:), allocatable :: electPol ! elect polarization in z-direction 
+    real(dp), dimension(:), allocatable :: rhoq    ! total free charge density in units of vsol  
+    real(dp), dimension(:), allocatable :: rhob    ! total bond charge density in units of vsol
+    real(dp), dimension(:,:), allocatable :: electPol ! elect polarization in 3d-direction 
     real(dp), dimension(:), allocatable :: qpol    ! charge density of polymer
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
     real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
@@ -48,13 +49,14 @@ contains
         N=Nx*Ny*Nz
 
         allocate(xpolAB(N))
+        allocate(xpolABz(Nz))
         allocate(xpolC(N))
         allocate(rhopolA(N))
         allocate(rhopolB(N))
         allocate(rhopolC(N))
         allocate(xsol(N))
         allocate(psi(N+2*Nx*Ny))
-         allocate(electPol(N+2*Nx*Ny,3))
+        allocate(electPol(3,N+2*Nx*Ny))
         allocate(xNa(N))
         allocate(xK(N))
         allocate(xCa(N))
@@ -64,7 +66,7 @@ contains
         allocate(xHplus(N))
         allocate(xOHmin(N))
         allocate(rhoq(N))
-        allocate(rhodip(N))
+        allocate(rhob(N))
         allocate(qpol(N))
         allocate(fdisA(5,N))
         allocate(fdisB(5,N))
@@ -79,12 +81,14 @@ contains
     subroutine deallocate_field()
         
         deallocate(xpolAB)
+        deallocate(xpolABz)
         deallocate(xpolC)
         deallocate(rhopolA)
         deallocate(rhopolB)
         deallocate(rhopolC)
         deallocate(xsol)
         deallocate(psi)
+        deallocate(electPol)
         deallocate(xNa)
         deallocate(xK)
         deallocate(xCa)
@@ -94,6 +98,7 @@ contains
         deallocate(xHplus)
         deallocate(xOHmin)
         deallocate(rhoq)
+        deallocate(rhob)
         deallocate(qpol)
         deallocate(fdisA)
         deallocate(fdisB)
@@ -142,55 +147,6 @@ contains
     end subroutine
         
 
-
-        
-  
-  !     .. compute average height of tethered layer 
-  !     .. first moment of density profile 
-  
-    subroutine average_height()
-
-        use globals
-        use parameters
-        use volume
-
-        implicit none
-
-        integer :: i
-
-        real(dp) :: zerom,firstm  
-
-        firstm=0.0_dp               ! first moment 
-        zerom=0.0_dp                ! zero moment  
-        do i=1,nz
-            zerom=zerom+xpolAB(i)*deltaG(i)
-            firstm=firstm+xpolAB(i)*zc(i)*deltaG(i)
-        enddo
-
-        if(zerom>0.0_dp) then 
-            heightAB=firstm/zerom
-        else
-            heightAB=0.0_dp
-        endif
-
-        firstm=0.0_dp               ! first moment 
-        zerom=0.0_dp                ! zero moment  
-        do i=1,nz
-            zerom=zerom+xpolC(i)*deltaG(i)
-            firstm=firstm+xpolC(i)*zc(i)*deltaG(i)
-        enddo
-
-        if(zerom>0.0_dp)then 
-          heightC=firstm/zerom
-        else
-          heightC=0.0_dp
-        endif
-
-        if(isNaN(heightAB)) print*,"heightAB NaN"
-        if(isNaN(heightC)) print*,"heightC NaN"
-
-    end subroutine average_height
-
     subroutine charge_polymer()
 
         use globals
@@ -217,74 +173,106 @@ contains
 
     end subroutine charge_polymer
 
-  ! .. post : return average charge of state of 
-  !   of polymers
+    ! .. post : return average charge of state of 
+    !   of polymers
 
-  subroutine average_charge_polymer()
+    subroutine average_charge_polymer()
         
-    use globals
-    use volume
-    use parameters
-    use chains
+        use globals
+        use volume
+        use parameters
+        use chains
 
-    implicit none 
-   
-    integer :: i,s,k
-    integer   :: npolA,npolB
-    real(dp)  :: sigmaLR  
-    
-    ! .. number of A and B monomors 
-    npolA=0
-    do s=1,nsegAB
-       if(isAmonomer(s).eqv..true.) then
-          npolA=npolA+1
-       endif
-    enddo
-    npolB=nsegAB-npolA
-      
-    sigmaLR=sigmaABL+sigmaABR
+        implicit none 
 
-    if(npolA/=0 .and. sigmaLR/=0 ) then
-       do k=1,5
-          avfdisA(k)=0.0_dp
-          do i=1,nz
-             avfdisA(k)=avfdisA(k)+fdisA(k,i)*rhopolA(i)*deltaG(i) 
-          enddo
-          avfdisA(k)=avfdisA(k)*delta/(sigmaLR*delta*npolA)
-       enddo
-    else
-       do k=1,5
-          avfdisA(k)=0.0_dp
-       enddo
-    endif
-    
-    if(npolB/=0 .and. sigmaLR/=0) then
-       do k=1,5
-          avfdisB(k)=0.0_dp
-          do i=1,nz
-             avfdisB(k)=avfdisB(k)+fdisB(k,i)*rhopolB(i)*deltaG(i) 
-          enddo
-          avfdisB(k)=avfdisB(k)*delta/(sigmaLR*delta*npolB)
-       enddo
-    else
-       do k=1,5
-          avfdisB(k)=0.0_dp
-       enddo
-    endif
-    
-  end subroutine average_charge_polymer
+        integer :: i,s,k
+        integer   :: npolA,npolB
+        real(dp)  :: sigmaLR  
+
+        ! .. number of A and B monomors 
+        npolA=0
+        do s=1,nsegAB
+           if(isAmonomer(s).eqv..true.) then
+              npolA=npolA+1
+           endif
+        enddo
+        npolB=nsegAB-npolA
+          
+        sigmaLR=sigmaABL+sigmaABR
+
+        if(npolA/=0 .and. sigmaLR/=0 ) then
+           do k=1,5
+              avfdisA(k)=0.0_dp
+              do i=1,nz
+                 avfdisA(k)=avfdisA(k)+fdisA(k,i)*rhopolA(i)*deltaG(i) 
+              enddo
+              avfdisA(k)=avfdisA(k)*delta/(sigmaLR*delta*npolA)
+           enddo
+        else
+           do k=1,5
+              avfdisA(k)=0.0_dp
+           enddo
+        endif
+
+        if(npolB/=0 .and. sigmaLR/=0) then
+           do k=1,5
+              avfdisB(k)=0.0_dp
+              do i=1,nz
+                 avfdisB(k)=avfdisB(k)+fdisB(k,i)*rhopolB(i)*deltaG(i) 
+              enddo
+              avfdisB(k)=avfdisB(k)*delta/(sigmaLR*delta*npolB)
+           enddo
+        else
+           do k=1,5
+              avfdisB(k)=0.0_dp
+           enddo
+        endif
+
+    end subroutine average_charge_polymer
   
 
-  logical function isNaN(x)
-    implicit none
-    real(dp) :: x
-    if (x /= x) then
-        isNaN=.true.
-    else
-      isNaN=.false.
-    endif 
+  !     .. compute average height of tethered layer 
+  !     .. first moment of density profile 
+  
+    subroutine average_polymer(xpol,xpolz,meanz)
 
-  end function isNaN 
+        use volume, only : nz,nx,ny,delta,linearIndexFromCoordinate
+
+        real(dp), intent(in) :: xpol(:)
+        real(dp), intent(out) :: xpolz(:)
+        real(dp), intent(out) :: meanz    
+
+        integer :: ix, iy, iz, id
+        real(dp) :: sumrhoz, sumxpol
+
+        sumrhoz = 0.0_dp
+        meanz= 0.0_dp
+
+        do iz = 1, nz
+
+            sumxpol = 0.0_dp       
+            do ix=1, nx
+                do iy=1, ny
+                    call linearIndexFromCoordinate(ix,iy,iz ,id)
+                    sumxpol=sumxpol+ xpol(id)
+                enddo
+            enddo
+
+            xpolz(iz)=sumxpol/(1.0_dp*nx*ny)
+
+            meanz=meanz+sumxpol*(iz-0.5_dp)*delta
+            sumrhoz=sumrhoz+sumxpol
+        enddo
+
+        if(sumrhoz>0.0_dp) then 
+            meanz=meanz/sumrhoz
+        else
+            meanz=0.0_dp
+        endif
+
+    end subroutine average_polymer
+
+   
   
 end module field
 

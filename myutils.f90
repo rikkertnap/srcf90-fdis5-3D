@@ -86,4 +86,18 @@ contains
         if (present(unit)) unit=newunit
     end function newunit
 
+
+    logical function isNaN(x)
+        implicit none
+        real(dp) :: x
+         
+        if (x /= x) then
+            isNaN=.true.
+        else
+            isNaN=.false.
+        endif 
+
+    end function isNaN
+
+
 end module myutils
