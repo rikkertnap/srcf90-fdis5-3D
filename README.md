@@ -5,12 +5,12 @@
 
 Uses molecular theory approach to compute the structure of weak polyelectrolyte layer end-tethered to two oppossing 
 planar surfaces in 3D (cartesian) coordinates. Aqueous solution charaterized by pH, NaCl (KCl) and Ca2Cl. 
-Formation of Ca-bridges takeing into account. Surfaces can have various charged or chargeable groups.
+Formation of Ca-bridges is taken  into account. Surfaces can have various charged or chargeable groups.
 
 
 ### Prerequisites
 
-The program uses the kinsol solver form the library package sundails.
+The program uses the kinsol solver form the library package sundials.
 Sundials/kinsol version < 3.0.
 
 ### Installing
@@ -97,7 +97,7 @@ The program uses an input file called 'input.in' that contain following key word
 
 ## Built With
 
-* [Sundails](https://computation.llnl.gov/projects/sundials/)
+* [Sundials](https://computation.llnl.gov/projects/sundials/)
 
 
 ## Versioning
