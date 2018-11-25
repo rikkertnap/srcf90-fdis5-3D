@@ -191,9 +191,9 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
     call fkinsol(x, globalstrat, fscale, fscale, ier) 
     fnorm=rout(1) 
   
-    ! dtermine lity solution
+    ! determine quality of solution
     
-    isSolution=(fnorm<error).or.(ier>=0).or.(.not.ieee_is_nan(fnorm))
+    isSolution=(ier==0).and.(.not.ieee_is_nan(fnorm))
 
     if(isSolution) then  
     
@@ -204,23 +204,17 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
         text="number of iterations  = "//trim(istr)
         call print_to_log(LogUnit,text)
         write(istr,'(I8)')ier
-    text="kinsol return value  = "//trim(istr)
-    call print_to_log(LogUnit,text)
+        text="kinsol return value  = "//trim(istr)
+        call print_to_log(LogUnit,text)
     
     else
     
+        write(istr,'(I5)')ier
+        text='SUNDIALS_ERROR: FKINSOL returned IER = '//trim(istr)
+        call print_to_log(LogUnit,text)  
         write(rstr,'(E25.16)')fnorm
         text="No solution: fnorm = "//trim(rstr)
         call print_to_log(LogUnit,text)
-        write(istr,'(I5)')iout(9) 
-        text='Linear Solver returned IER = '//trim(istr)
-        call print_to_log(LogUnit,text)  
-
-        if(ier/=0) then
-            write(istr,'(I5)')ier
-            text='SUNDIALS_ERROR: FKINSOL returned IER = '//trim(istr)
-            call print_to_log(LogUnit,text)  
-         endif
     
     endif    
     

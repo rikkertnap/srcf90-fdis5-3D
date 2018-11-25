@@ -18,6 +18,7 @@ program brushweakpolyelectrolyte
     use parameters
     use matrices
     use energy
+    use conform_entropy
     use chains
     use chaingenerator
 !    use VdW
@@ -99,7 +100,6 @@ program brushweakpolyelectrolyte
     allocate(fvec(neq))
 
 
-
     if(runflag=="rangedist") then ! loop over distances
          
         nz = nzmax                    
@@ -147,6 +147,8 @@ program brushweakpolyelectrolyte
                 enddo  
             endif
 
+            call FEconf_entropy(FEconfAB,FEconfC) ! parrallel computation of conf entropy
+
             if(rank==0) then
                 
                 call compute_vars_and_output()
@@ -158,7 +160,7 @@ program brushweakpolyelectrolyte
                 do i=1,neq
                     xstored(i)=x(i)
                 enddo
-                ! commucitate new values of nz from master to  compute  nodes to advance while loop on compute nodes
+                ! communicate new values of nz from master to  compute  nodes to advance while loop on compute nodes
                 do i = 1, size-1
                     dest = i
                     call MPI_SEND(nz, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
@@ -200,10 +202,9 @@ program brushweakpolyelectrolyte
             call chain_filter()
             call set_fcn()
 
-
             flag_solver = 0
            
-            if(rank.eq.0) then     ! node rank=0    
+            if(rank==0) then     ! node rank=0    
                 call make_guess(x, xguess, isfirstguess)  
                 call solver(x, xguess, error, fnorm, issolution)
                 flag_solver = 0   ! stop nodes
@@ -224,6 +225,7 @@ program brushweakpolyelectrolyte
                 enddo  
             endif
 
+            call FEconf_entropy(FEconfAB,FEconfC) ! parrallel computation of conf FEconf_entropy
             if(rank==0) then
             
                 if(isSolution) then 
@@ -241,7 +243,7 @@ program brushweakpolyelectrolyte
                     enddo       
                 endif
 
-                ! commucitate new values of loop from master to  compute  nodes to advance while loop on compute nodes
+                ! commucitate new values of loop from master to compute nodes to advance while loop on compute nodes
                 do i = 1, size-1
                     dest = i
                     call MPI_SEND(loop%val, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)

@@ -76,6 +76,7 @@ subroutine read_inputfile(info)
     ! ios=0 : otherwise.
 
     do while (ios == 0)
+
         read(un_input, '(A)', iostat=ios) buffer
 
         if (ios == 0) then
@@ -181,7 +182,11 @@ subroutine read_inputfile(info)
             case ('geometry')
                 read(buffer,*,iostat=ios) geometry
             case ('ngr_freq')
-                read(buffer,*,iostat=ios) ngr_freq  
+                read(buffer,*,iostat=ios) ngr_freq 
+            case ('gamma')
+                read(buffer,*,iostat=ios) gamma  
+            case ('isRandom_pos_graft')
+                read(buffer,*,iostat=ios) isRandom_pos_graft  
             case default
                 if(pos>1) then 
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -382,18 +387,17 @@ subroutine check_value_geometry(geometry,info)
     integer, intent(out),optional :: info
 
     logical :: flag
-    character(len=11) :: geometrystr(3) 
+    character(len=11) :: geometrystr(2) 
     integer :: i
 
     ! permissible values of geometry
 
     geometrystr(1)="cubic"
-    geometrystr(2)="square"
-    geometrystr(3)="hexagonal"
+    geometrystr(2)="prism"
    
     flag=.FALSE.
 
-    do i=1,3
+    do i=1,2
         if(geometry==geometrystr(i)) flag=.TRUE.
     enddo
         
@@ -670,8 +674,9 @@ subroutine output_elect
 
     if(sysflag/="electnopoly") then 
 
+        print*,"hello output: ngr=",ngr
         do i =1, ngr
-            write(un_q,*) qABL(i),qABR(i)
+            write(un_q,*)qABL(i),qABR(i)
         enddo 
 
         do i=1,nsize
@@ -732,7 +737,8 @@ subroutine output_elect
         write(un_sys,*)'sysflag     = ',sysflag
         write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
         write(un_sys,*)'bcflag(RIGHT) = ',bcflag(RIGHT)
-        write(un_sys,*)'delta       = ',delta  
+        write(un_sys,*)'delta       = ',delta
+        write(un_sys,*)'ngr         = ',ngr  
         write(un_sys,*)'nx          = ',nx
         write(un_sys,*)'ny          = ',ny
         write(un_sys,*)'nzmax       = ',nzmax
@@ -1428,30 +1434,44 @@ subroutine output_individualcontr_fe
 
         !     .. make label filename
 
-
         if(sysflag=="electdouble") then 
-    
-            write(rstr,'(F5.3)')sigmaABL*delta 
+
+            write(rstr,'(F5.3)')sigmaABL
             fnamelabel="sgL"//trim(adjustl(rstr))
-            write(rstr,'(F5.3)')sigmaABR*delta 
+            write(rstr,'(F5.3)')sigmaABR
             fnamelabel=trim(fnamelabel)//"sgR"//trim(adjustl(rstr))  
             write(rstr,'(F5.3)')cNaCl
             fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-            write(rstr,'(F5.3)')cCaCl2
+            if(cCaCl2>=0.001) then 
+                write(rstr,'(F5.3)')cCaCl2
+            elseif(cCaCl2>0.0) then  
+                write(rstr,'(ES8.2E2)')cCaCl2
+            else 
+                write(rstr,'(F3.1)')cCaCl2
+            endif    
             fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
             write(rstr,'(F7.3)')pHbulk
             fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
+
 
         elseif(sysflag=="elect".or.sysflag=="electnopoly") then 
 
-            write(rstr,'(F5.3)')sigmaAB*delta 
+
+            write(rstr,'(F5.3)')sigmaABL
             fnamelabel="sg"//trim(adjustl(rstr)) 
             write(rstr,'(F5.3)')cNaCl
             fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-            write(rstr,'(F5.3)')cCaCl2
+            if(cCaCl2>=0.001) then 
+                write(rstr,'(F5.3)')cCaCl2
+            elseif(cCaCl2>0.0) then  
+                write(rstr,'(ES8.2E2)')cCaCl2
+            else 
+                write(rstr,'(F3.1)')cCaCl2
+            endif 
             fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
             write(rstr,'(F7.3)')pHbulk
             fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
+
         elseif(sysflag=="neutral") then 
             
             write(rstr,'(F5.3)')sigmaAB*delta 
@@ -1521,7 +1541,7 @@ subroutine output_individualcontr_fe
 
     if(nz==nzmin) close(un_fe)
 
-end subroutine   output_individualcontr_fe
+end subroutine output_individualcontr_fe
 
      
 subroutine copy_solution(x)
@@ -1652,7 +1672,7 @@ subroutine copy_solution(x)
     
     end select
          
- end subroutine copy_solution
+end subroutine copy_solution
 
 ! output routine 
 
@@ -1667,18 +1687,19 @@ subroutine compute_vars_and_output()
     select case (sysflag)
     case ("elect")
     
-    !     call fcnenergy()       
+        call fcnenergy()       
     !     call average_height()      
     !     call charge_polymer()
-    !     call average_charge_polymer()
+        call average_polymer(xpolAB,xpolABz,heightAB)  
         call output()
 
     case ("electdouble")
     
-    !     call fcnenergy()       
+        call fcnenergy()       
     !     call average_height()      
     !     call charge_polymer()
     !     call average_charge_polymer()
+        call average_polymer(xpolAB,xpolABz,heightAB)  
         call output()
     
     case ("electnopoly")

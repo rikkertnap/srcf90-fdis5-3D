@@ -6,11 +6,11 @@ module field
     implicit none
     
     real(dp), dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer 
-    real(dp), dimension(:), allocatable :: xpolABz  ! total volume fraction of polymer 
+    real(dp), dimension(:), allocatable :: xpolABz ! total volume fraction of polymer in z-direction
     real(dp), dimension(:), allocatable :: xpolC   ! total volume fraction of polymer 
-    real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer on sphere
-    real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer on sphere
-    real(dp), dimension(:), allocatable :: rhopolC ! density C monomer of polymer on sphere
+    real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer 
+    real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer 
+    real(dp), dimension(:), allocatable :: rhopolC ! density C monomer of polymer
     real(dp), dimension(:), allocatable :: xsol    ! volume fraction solvent
     real(dp), dimension(:), allocatable :: psi     ! electrostatic potential 
     real(dp), dimension(:), allocatable :: xNa     ! volume fraction of positive Na+ ion
@@ -28,13 +28,13 @@ module field
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
     real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
      
-    real(dp), dimension(:), allocatable :: qAB             ! normalization partion fnc polymer 
-    real(dp), dimension(:), allocatable :: qC              ! normalization partion fnc polymer 
+    real(dp), dimension(:), allocatable :: qAB      ! normalization partion fnc polymer 
+    real(dp), dimension(:), allocatable :: qC      ! normalization partion fnc polymer 
 
-    real(dp), dimension(:), allocatable :: rhopolAL ! density A monomer of polymer on sphere
-    real(dp), dimension(:), allocatable :: rhopolBL ! density B monomer of polymer on sphere
-    real(dp), dimension(:), allocatable :: rhopolAR ! density A monomer of polymer on sphere
-    real(dp), dimension(:), allocatable :: rhopolBR ! density B monomer of polymer on sphere
+    real(dp), dimension(:), allocatable :: rhopolAL ! density A monomer of polymer z=0 surface
+    real(dp), dimension(:), allocatable :: rhopolBL ! density B monomer of polymer z=0 surface
+    real(dp), dimension(:), allocatable :: rhopolAR ! density A monomer of polymer z=nz delta surface 
+    real(dp), dimension(:), allocatable :: rhopolBR ! density B monomer of polymer z=nz delta surface
 
     real(dp), dimension(:), allocatable :: qABL,qABR
 

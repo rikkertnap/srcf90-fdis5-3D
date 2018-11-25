@@ -1,5 +1,5 @@
                                                                   
-    !     .. module file of global variables 
+!     .. module file of global variables 
 
 module globals
 
@@ -21,6 +21,7 @@ module globals
     integer  :: cuantasC      ! number of polymer configurations
     integer  :: max_conforAB  ! maximum number of polymer configurations
     integer  :: max_conforC   ! maximum number of polymer configurations
+    
     character(len=15) :: sysflag   ! sysflag selects fcn    
     character(len=15) :: runflag   ! runflag
     character(len=2)  :: bcflag(2) ! bcflag selects bc surface 

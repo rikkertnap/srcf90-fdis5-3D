@@ -43,8 +43,10 @@ subroutine make_chains_mc()
     use chains
     use random
     use parameters, only : geometry, lsegAB
-    use volume, only : ngrx, ngry, nx, ny,  nz, delta, ngr, ngr_node, ngr_freq
+    use volume, only : ngrx, ngry, nx, ny, nz, delta, ngr, ngr_node, ngr_freq 
+    use volume, only : position_graft
     use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
+    use volume, only : ut, vt
     use myutils
     use cadenas_linear
     use cadenas_sequence
@@ -74,19 +76,20 @@ subroutine make_chains_mc()
     !     .. executable statements
     !     .. initializations of variables     
     
+    if(geometry=="cubic") then
+        allocate(x_ngr(ngrx))
+        allocate(y_ngr(ngry))
 
-    allocate(x_ngr(ngrx))
-    allocate(y_ngr(ngry))
-
-    do i=1,ngrx            ! location graft points 
-        x_ngr(i)=(i-0.5_dp)*delta*ngr_freq
-    enddo
-    do i=1,ngry
-        y_ngr(i)=(i-0.5_dp)*delta*ngr_freq
-    enddo
+        do i=1,ngrx            ! location graft points 
+            x_ngr(i)=(i-0.5_dp)*delta*ngr_freq
+        enddo
+        do i=1,ngry
+            y_ngr(i)=(i-0.5_dp)*delta*ngr_freq
+        enddo
+    endif    
 
     conf=1                  ! counter for conformations
-    seed=435672 ! *(rank+1)    ! seed for random number generator  different on each node
+    seed=435672 ! *(rank+1) ! seed for random number generator  different on each node
     maxnchains=12
 
     Lz= nz*delta            ! maximum height box 
@@ -98,7 +101,7 @@ subroutine make_chains_mc()
         call make_lsegseq(lsegseq,nsegAB)
     endif    
   
-    do while (conf.le.max_conforAB)
+    do while (conf<=max_conforAB)
         nchains= 0      ! init zero 
         if(isHomopolymer) then 
             call make_linear_chains(chain,nchains,maxnchains,nsegAB,lsegAB) ! chain generator f90
@@ -106,8 +109,7 @@ subroutine make_chains_mc()
             call make_linear_seq_chains(chain,nchains,maxnchains,nsegAB) 
         endif  
 
-        select case (geometry) 
-        case("cubic")
+        if(geometry=="cubic") then
             
             do j=1,nchains   
             
@@ -127,12 +129,12 @@ subroutine make_chains_mc()
                     
                     xpt = x_ngr(ix)                ! position of graft point
                     ypt = y_ngr(iy) 
-                     
+                    
                     weightchainAB(gn,conf)=.TRUE.  ! init weight     
 
                     do s=1,nsegAB
 
-                        ! .. translation onto correct grafting aream translation in xy plane 
+                        ! .. translation onto correct grafting area translation in xy plane 
                         x(s)=xp(s)+xpt
                         y(s)=yp(s)+ypt
 
@@ -165,65 +167,65 @@ subroutine make_chains_mc()
             
             enddo             ! end j loop
 
-        case("square")
-        
-
+        else if(geometry=="prism") then
+            
             do j=1,nchains   
             
-                do s=1,nsegAB         !     transforming form real- to lattice coordinates
+                do s=1,nsegAB                      !  transforming form real- to lattice coordinates
                     zp(s) = chain(1,s,j)
                     xp(s) = chain(2,s,j)
                     yp(s) = chain(3,s,j) 
                 enddo
 
-                do gn=1,ngr_node ! loop over grafted points per node
+                do gn=1,ngr_node                   ! loop over grafted points per node
                
                     g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
-                    idxtmp = g
-                    ix     = mod(idxtmp-1,ngrx)+1  ! inverse of g
-                    xpt = x_ngr(ix)                ! position of graft point
-
-                    weightchainAB(gn,conf)=.TRUE.   ! init weight
+                     
+                    xpt = position_graft(g,1)
+                    ypt = position_graft(g,2)
+                    
+                    weightchainAB(gn,conf)=.TRUE.  ! init weight     
 
                     do s=1,nsegAB
 
-                        ! .. translation onto correct grafting aream translation in xy plane 
-                        x(s)=xp(s)+xpt
-                   
+                        ! .. translation onto correct grafting area translation in xy plane 
+                        x(s)=ut(xp(s),yp(s))+xpt
+                        y(s)=vt(xp(s),yp(s))+ypt
+
                         ! .. check z coordinate 
-                        if((0>z(s)).or.(z(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
+                        if((0>zp(s)).or.(zp(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
 
                         ! .. periodic boundary conditions in x-direction and y-direction  
                         x(s)=pbc(x(s),Lx)
-                   
+                        y(s)=pbc(y(s),Ly)
+
                         ! .. transforming form real- to lattice coordinates                 
                         xc=int(x(s)/delta)+1
+                        yc=int(y(s)/delta)+1
                         zc=int(zp(s)/delta)+1
 
                         if(weightchainAB(gn,conf).eqv..TRUE.) then
-                            call linearIndexFromCoordinate(xc,1,zc,idx)
+                            call linearIndexFromCoordinate(xc,yc,zc,idx)
                             indexchainAB_init(s,gn,conf) = idx
                             if(idx<=0) then
                                 print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
                             endif
                         endif
 
-                    enddo   
+                    enddo  
+                                   
                 enddo         ! end g loop
 
                 conf=conf +1
             
             enddo             ! end j loop
 
-        case("hexagon")     
-
-        case default
-           print*,"Error: geometry not cubic, square, or hexagon"
+        else 
+           print*,"Error: in make_chains_mc: geometry not cubic, prism, or square"
            print*,"stopping program"
            stop
-        end select
+        endif
      
-
     enddo                     ! end while loop
             
     !     .. end chains generation 
@@ -244,10 +246,12 @@ subroutine make_chains_mc()
         if(allowedconfAB/=cuantasAB) print*,"make_chains_mc: Not all conformations were allowed"    
     enddo
       
-    deallocate(x_ngr)
-    deallocate(y_ngr)
+    if(geometry=="cubic") then 
+        deallocate(x_ngr)
+        deallocate(y_ngr)
+    endif 
+        
     if(isHomopolymer.eqv..FALSE.) deallocate(lsegseq)
-
 
 end subroutine make_chains_mc
 
@@ -422,9 +426,9 @@ subroutine chain_filter()
     integer :: indx  ! temporary index of chain
     integer :: ix,iy,iz,gn
 
-    allowed_confAB=1            ! counts allowed conformations 
-    do conf=1,max_conforAB      ! loop of all polymer conformations to filter out allowed ones 
-        do gn=1,ngr_node        ! loop over grafted points per node
+    do gn=1,ngr_node        ! loop over grafted points per node
+        allowed_confAB=1            ! counts allowed conformations 
+        do conf=1,max_conforAB      ! loop of all polymer conformations to filter out allowed ones 
             count_seg=0
             do s=1,nsegAB
                 indx=indexchainAB_init(s,gn,conf)
@@ -440,9 +444,9 @@ subroutine chain_filter()
 
     cuantasAB=allowed_confAB-1    ! the number of allowed conformations 
 
-    allowed_confC=1             ! counts allowed conformations 
-    do conf=1,max_conforC       ! loop of all polymer conformations to filter out allowed ones 
-        do gn=1,ngr_node        ! loop over grafted points per node
+    do gn=1,ngr_node        ! loop over grafted points per node
+        allowed_confC=1             ! counts allowed conformations 
+        do conf=1,max_conforC       ! loop of all polymer conformations to filter out allowed ones 
             count_seg=0
             do s=1,nsegC
                 indx=indexchainC_init(s,gn,conf)

@@ -15,6 +15,7 @@ module volume
     integer :: ny                   ! ny number of lattice sites in y-direction 
     integer :: nsurf                ! nsurf numer of lattice site  at z=0 ore z=nz*delta
     real(dp) :: volcell             ! volcell=delta**3
+    real(dp) :: areasurf            ! area surfaces spanned by x and y direction
     integer :: nzmax                ! nzmax  maximum number of lattice sites in z-direction
     integer :: nzmin                ! nzmin minimumal number of lattice sites in z-direction  
     integer :: nzstep               ! nzstep number of lattice sites stepped over or reduced 
@@ -22,11 +23,14 @@ module volume
     integer :: ngr_node             ! number of grafted areas assigned to an individual node
     integer :: ngr_freq             ! frequence spacing in terms of delta 
     integer :: ngrx                 ! total number of graft points along x-axis 
-    integer :: ngry                 ! total number of graft points along y-axis 
- 
-    real(dp) :: gamma               ! angle oblique lattice: cubic = gamma=90 degree 
-                                    !                        hexagonal gamma=45 degree     
-
+    integer :: ngry                 ! total number of graft points along y-axis                                                       
+    logical :: isRandom_pos_graft   ! true random position, false regual pattern   
+    real(dp) :: gamma               ! angle between oblique basis vectors u and v: cubic = gamma=90=pi/2 hexagonl gamma=60=2pi/3                          
+    real(dp) :: beta                ! related beta = (pi/2- gamma)/2, angle between basis vector u and x and v and y
+    real(dp) :: cos_two_beta        ! sqrt(cos(beta)**2 - sin(beta)**2)=cos(2beta) scales u and v coordinates 
+    real(dp) :: sin_two_beta        ! sin(2beta)  
+    
+    real(dp), dimension(:,:), allocatable :: position_graft
 
     real(dp), dimension(:), allocatable :: zc ! z-coordinate
     real(dp), dimension(:), allocatable :: xc ! z-coordinate
@@ -38,6 +42,8 @@ module volume
 
     character(len=11) :: geometry
   
+    private :: beta           
+
 contains
   
     subroutine allocate_geometry(nx,ny,nz)
@@ -117,88 +123,41 @@ contains
 
         implicit none 
 
-        select case (geometry) 
+        beta = (pi/2.0_dp - gamma) / 2.0_dp       ! used by ut, vt, xt and yt functions
+        cos_two_beta=cos(2*beta) ! sqrt(cos(beta)**2 - sin(beta)**2)  ! scaling of u and v coordinates
+        sin_two_beta=sin(2*beta)
 
-        case("cubic")   ! cubic lattice  surfac in x-y direction at z=0 and z=nz  
-           
-            nsize = nx*ny*nz                ! total number of cells or layers
-            volcell = delta*delta*delta     ! volume of one latice volume 
-            nsurf = nx*ny  
-            ngrx=int(nx/ngr_freq)
-            ngry=int(ny/ngr_freq)
+        ! cubic lattice  or prism surface in x-y direction at z=0 and z=nz  
+       
+        nsize = nx*ny*nz                ! total number of cells or layers
+        volcell = delta*delta*delta*1.0_dp     ! volume of one latice volume 
+        nsurf = nx*ny  
+        areasurf=nsurf*delta*delta
+        ngrx=int(nx/ngr_freq)
+        ngry=int(ny/ngr_freq)
 
-            ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
-            ! check 
-            if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
-                print*,"ngr test failed: exiting"
-                print*,"nx= ",nx," ny= ",ny," ngr_freq = ",ngr_freq
-                stop
-            endif    
-            !     .. compute ngr_node = the number of grafted areas assigned to one node
-            !     .. part of the parallelization of program
-            ngr_node = int(ngr/size)
-            !     ..testing
-            if(ngr/=(ngr_node*size)) then
-                print*,"ngr_node test failed: exiting"
-                print*,"ngrnode=",ngr_node,"ngr=",ngr,"size=",size
-                stop
-            endif
-           
-        case("hexagonal") ! hexagonal lattica 
-            nsize = nx*ny*nz                ! total number of cells or layers
-            !volcell = delta*delta*delta     ! volume of one latice volume 
-            nsurf = nx*ny
-            ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
-            ngrx=int(nx/ngr_freq)
-            ngry=int(ny/ngr_freq)
-            ! check 
-            if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
-                print*,"ngr test failed: exiting"
-                print*,"nx= ",nx," ny= ",ny," ngr_freq = ",ngr_freq
-                stop
-            endif    
+        ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
 
-            !     .. compute ngr_node = the number of grafted areas assigned to one node
-            !     .. part of the parallelization of program
-            ngr_node = int(ngr/size)
-            !     ..testing
-            if(ngr/=(ngr_node*size)) then
-                print*,"ngr_node test failed: exiting"
-                print*,"ngrnode=",ngr_node,"ngr=",ngr,"size=",size
-                stop
-            endif
-        
-        case("square") ! square lattice in x-z axes 
-            ny=1      ! one layer in y-direction 
-            nsize = nx*nz                ! total number of cells or layers
-            !volcell = delta*delta*delta     ! volume of one latice volume 
-            nsurf = nx
-
-            ngr = int(nx/ngr_freq)! number of surface elements to be end-grafted with chains
-
-            ! check 
-            if(.not.(mod(nx,ngr_freq).eq.0)) then 
-                print*,"ngr test failed: exiting"
-                print*,"nx= ",nx,"ngr_freq = ",ngr_freq
-                stop
-            endif    
-
-            !     .. compute ngr_node = the number of grafted areas assigned to one node
-            !     .. part of the parallelization of program
-            ngr_node = int(ngr/size)
-            !     ..testing
-            if(ngr/=(ngr_node*size)) then
-                print*,"ngr_node test failed: exiting"
-                print*,"ngrnode=",ngr_node,"ngr=",ngr,"size=",size
-                stop
-            endif
-    
-        case default
-            print*,"Error: init_lattice: geometry not CUBIC, or PLANAR"
-            print*,"stopping program"
+        ! check 
+        if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
+            print*,"ngr test failed: exiting"
+            print*,"nx= ",nx," ny= ",ny," ngr_freq = ",ngr_freq
             stop
-        end select
-            
+        endif    
+        !     .. compute ngr_node = the number of grafted areas assigned to one node
+        !     .. part of the parallelization of program
+        ngr_node = int(ngr/size)
+        ! ..testing
+        if(ngr/=(ngr_node*size)) then
+            print*,"ngr_node test failed: exiting"
+            print*,"ngrnode=",ngr_node,"ngr=",ngr,"size=",size
+            stop
+        endif
+
+        allocate(position_graft(ngr,2)) ! only after ngr has been established position_graft can be allocated
+
+        call init_graftpoints()
+
     end subroutine init_lattice
          
 
@@ -280,74 +239,60 @@ contains
 
     end function mirror_index
 
+    ! coordinate transformation from cartesian x,y to prism or oblique u,v coordinates
+    ! u = s(cos(gamma)*x -sin(gamma)*y); s=1/srqt(cos(gamma)^2-sin(gamma)^2)
+    ! v = s(-sin(gamma)*x +sin(gamma)*y); 
+    ! metric ds^2= s^2 du^2 + s^2 dv^2 + ss^2 sin(2 gamma) du dv +dz^2
 
-    ! coordinate transformation from cartesian x,y to oblique u,v  coordinates
-
-    function ut(x, y, gamma) result(ut_val)
-    
-        use mathconst
-
-        real(dp), intent(in) :: x, y, gamma
+    function ut(x, y) result(ut_val)
+       
+        real(dp), intent(in) :: x, y
         real(dp) :: ut_val
-        real(dp) :: beta 
-
-        beta = (pi/2.0_dp - gamma) / 2.0_dp
-        ut_val = -sin(beta)*x + cos(beta)*y
-        ut_val = ut_val / sqrt(cos(beta)**2 - sin(beta)**2)
+        
+        ut_val = cos(beta)*x - sin(beta)*y
+        ut_val = ut_val / cos_two_beta
     
     end function ut
 
-   ! coordinate transformation from cartesian x,y to oblique u,v  coordinates
 
-    function vt(x, y, gamma) result(vt_val)
-       
-        use mathconst
+    ! coordinate transformation from cartesian x,y to prism u,v  coordinates
 
-        real(dp), intent(in) :: x, y, gamma
+    function vt(x, y) result(vt_val)
+    
+        real(dp), intent(in) :: x, y
         real(dp) :: vt_val
-        real(dp) :: beta 
-
-        beta = (pi/2.0_dp - gamma) / 2.0_dp
-        vt_val = cos(beta)*x - sin(beta)*y
-        vt_val = vt_val / sqrt(cos(beta)**2 - sin(beta)**2)
+       
+        vt_val = -sin(beta)*x + cos(beta)*y
+        vt_val = vt_val / cos_two_beta
     
     end function vt
 
-    ! inverse coordinate transformation from oblique u,v to  cartesian x,y  coordinates
 
-    function xt(v, u, gamma) result(xt_val)
+
+    ! inverse coordinate transformation from prism u,v to  cartesian x,y  coordinates
+
+    function xt(u, v) result(xt_val)
         
-        use mathconst
-
-        real(dp), intent(in) :: u, v, gamma
+        real(dp), intent(in) :: u, v
         real(dp) :: xt_val
-        real(dp) :: beta
     
-        beta = (pi/2.0_dp - gamma) / 2.0_dp
-        xt_val = cos(beta)*v + sin(beta)*u
-        xt_val = xt_val / sqrt(cos(beta)**2 - sin(beta)**2)
+        xt_val = cos(beta)*u + sin(beta)*v
+        xt_val = xt_val / cos_two_beta
+    
     end function xt
 
-    ! inverse coordinate transformation from oblique u,v to  cartesian x,y  coordinates
-
-    function yt(v, u, gamma) result(yt_val)
-        
-        use mathconst
-
-        real(dp), intent(in) :: u, v, gamma
-        real(dp) :: yt_val
-        real(dp) :: beta
+    ! inverse coordinate transformation from prism u,v to  cartesian x,y  coordinates
     
-        beta = (pi/2.0_dp - gamma) / 2.0_dp
+    function yt(u, v) result(yt_val)
 
-        yt_val = sin(beta)*v + cos(beta)*u
-        yt_val = yt_val / sqrt(cos(beta)**2 - sin(beta)**2)
+        real(dp), intent(in) :: u, v
+        real(dp) :: yt_val
+    
+        yt_val = sin(beta)*u + cos(beta)*v
+        yt_val = yt_val / cos_two_beta
     
     end function yt
  
-
-
-
     function isEven(number) result(val) 
         integer, intent(in) :: number
         logical :: val
@@ -361,8 +306,45 @@ contains
     end function
 
 
+    subroutine init_graftpoints()
 
+        use random 
 
+        integer :: i, j, ig
+        real(dp) :: rnd
+
+        if(.not.isRandom_pos_graft) then
+
+            ig = 1   
+
+            do i=1,ngrx            ! location graft points 
+                do j=1,ngry
+                
+                    position_graft(ig,1) = (i-0.5_dp)*delta*ngr_freq
+                    position_graft(ig,2) = (j-0.5_dp)*delta*ngr_freq
+                    ig = ig + 1
+                enddo
+            enddo
+        
+        else 
+
+            seed=435672 
+
+            do ig=1,ngr          
+                rnd = (rands(seed)-0.5_dp)*1.5_dp
+                position_graft(ig,1) = position_graft(ig,1) + delta*rnd
+                rnd = (rands(seed)-0.5_dp)*1.5_dp
+                position_graft(ig,2) = position_graft(ig,2) + delta*rnd
+            enddo
+        
+        endif        
+        
+        print*,"position graft point"
+        do ig=1,ngr          
+            print*,position_graft(ig,1),position_graft(ig,2) 
+        enddo
+
+    end subroutine init_graftpoints
 
 
 end module volume

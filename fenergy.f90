@@ -3,6 +3,7 @@
 
 module energy 
 
+    use mpivars    
     use precision_definition
     use molecules
     
@@ -57,25 +58,37 @@ contains
         implicit none
     
         if(sysflag.eq."elect") then 
+        
             call fcnenergy_elect()
+            call fcnenergy_elect_alternative()
+        
         elseif(sysflag.eq."dipolarstrong") then
             !call fcnenergy_elect()
             print*,"Free energy: warning not yet implemented "
+        
         elseif(sysflag.eq."dipolarweak") then
             !call fcnenergy_elect()
             print*,"Free energy: warning not yet implemented "
+        
         elseif(sysflag.eq."electdouble") then 
         !    print*,"fcnenergy sysflag=electdouble"    
             call fcnenergy_elect()
             call fcnenergy_elect_alternative()
+        
         elseif(sysflag.eq."electnopoly") then 
+        
             call fcnenergy_elect()
-            !call fcnenergy_elect_alternative()
+            call fcnenergy_elect_alternative()
+        
         elseif(sysflag.eq."neutral") then 
+        
             call fcnenergy_neutral()
+        
         else
+        
             print*,"Error in fcnenergy"
             print*,"Wrong value sysflag : ",sysflag
+        
         endif 
     end subroutine fcnenergy
 
@@ -96,7 +109,7 @@ contains
         real(dp) :: sigmaq0,psi0
         real(dp) :: qsurf(2)           ! total charge on surface 
         real(dp) :: qsurfg             ! total charge on grafting surface  
-        integer  :: i,j,s               ! dummy variables 
+        integer  :: i,j,s,g               ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
         integer  :: nzadius
         real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
@@ -123,7 +136,7 @@ contains
             FEpi = FEpi  + log(xsol(i))
             FErho = FErho - (xsol(i) + xHplus(i) + xOHmin(i)+ xNa(i)/vNa + xCa(i)/vCa + xCl(i)/vCl+xK(i)/vK +&
                 xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
-            FEel = FEel  - rhoq(i) * psi(i)/2.0_dp        
+            FEel = FEel  - rhoq(i) * psi(i)/2.0_dp    
             FEbind = FEbind + fdisA(5,i)*rhopolA(i)+fdisB(5,i)*rhopolB(i)
 
             qres = qres + rhoq(i)
@@ -143,57 +156,40 @@ contains
         FEpi  = (volcell/vsol)*FEpi
         FErho = (volcell/vsol)*FErho
         
-        FEbind = volcell*FEbind/2.0_dp !  check this 
+        FEbind = volcell*FEbind/2.0_dp !  
 
         qres = (volcell/vsol)*qres
         sumphiA = volcell*sumphiA
         sumphiB = volcell*sumphiB
         sumphiC = volcell*sumphiC
 
-!        FEVdWC  = deltavoll*FEVdWC*VdWepsC*vpolC*vsol/2.0_dp   
-!        FEVdWB  = deltavoll*FEVdWB*VdWepsB*vpolB(3)*vsol/2.0_dp   
-    
-!        if (sysflag=="elect") then 
-!            FEVdW=FEVdWC
-!        elseif (sysflag=="neutral") then
-!            FEVdW=FEVdWB
-!        else 
-!            print*,"Wrong value sysflag : ", sysflag
-!            stop    
-!        endif   
-
-      
-        ! if((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC > sigmaTOL)) then
-        
-        !     FEq =-delta*(sigmaABL*log(qABL)+ sigmaABR*log(qABR) +sigmaC*log(qC) )
-       
-        ! elseif((sigmaABL <= sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC > sigmaTOL)) then
-        
-        !     FEq = -delta*(sigmaC*log(qC) )
+        if(sysflag=="nopoly") FEbind=0.0_dp
             
-        ! elseif((sigmaABL > sigmaTOL).and.(sigmaABR <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
-        
-        !     FEq = -delta*(sigmaABL*log(qABL) )
-       
-        ! elseif((sigmaABL > sigmaTOL).and.(sigmaABR > sigmaTOL).and.(sigmaC <= sigmaTOL)) then
-        
-        !     FEq = -delta*(sigmaABL*log(qABL) +sigmaABR*log(qABR))
-       
-        ! elseif((sigmaABL <= sigmaTOL).and.(sigmaC <= sigmaTOL)) then
-        
-        !     FEq = 0.0_dp
-        
-        ! else
-        
-        !     print*,"Error in fcnerergy"
-        !     print*,"Something went wrong in evaluating FEq"   
-        !     print*,"sigmaABL=",sigmaABL
-        !     print*,"sigmaABL=",sigmaABL
-        !     print*,"sigmaC=",sigmaC
-        !     stop    
-        
-        ! endif
-    
+        ! .. calcualtion of FEq
+        if(sysflag=="electnopoly") then 
+            FEq=0.0_dp
+        elseif(sysflag=="elect") then 
+            FEq=0.0_dp
+            do g=1,ngr
+                FEq=FEq-log(qABL(g))    
+            enddo
+        elseif(sysflag=="electdouble".or.sysflag=="dipolarweak".or.sysflag=="dipolarstrong") then
+            FEq=0.0_dp
+            do g=1,ngr
+                FEq=FEq-log(qABL(g)) -log(qABR(g))   
+            enddo
+        elseif(sysflag=="neutral") then
+            FEq=0.0_dp
+            do g=1,ngr
+                FEq=FEq-log(qAB(g))  
+            enddo
+        else
+            print*,"Error in fcnenergy"
+            print*,"Calculation FEq failed, wrong sysflag : ",sysflag 
+            stop   
+        endif
+            
+
         ! .. surface charge constribution 
 
         sigmaSurf(RIGHT)  = sigmaSurfR 
@@ -212,6 +208,7 @@ contains
                 sigmaq0Surf(i,s)=  sigmaqSurf(i,s)/(delta*4.0_dp*pi*lb) ! dimensional charge density  
                 FEelsurf(i) = FEelsurf(i)+sigmaq0Surf(i,s) * psiSurf(i,s) /2.0_dp 
             enddo   
+            FEelsurf(i)=FEelsurf(i)*delta*delta
         enddo    
 
         if(bcflag(RIGHT)=='qu') then ! quartz
@@ -332,7 +329,7 @@ contains
     
         !  .. alternative computation free energy
 
-        call FEconf_entropy(FEconfAB,FEconfC)
+        ! call FEconf_entropy(FEconfAB,FEconfC)
 
 
         ! .. translational entropy 
@@ -463,7 +460,7 @@ contains
         
         ! .. bulk free energy
 
-        volumelat=nz*delta   ! volume lattice divide by area surface
+        volumelat = volcell*nsize   ! volume lattice 
         FEbulkalt = FEtransbulk%sol +FEtransbulk%Na+ FEtransbulk%Cl +FEtransbulk%NaCl+FEtransbulk%Ca 
         FEbulkalt = FEbulkalt+FEtransbulk%OHmin +FEtransbulk%Hplus +FEtransbulk%K +FEtransbulk%KCl
         FEbulkalt = FEbulkalt+FEchempotbulk%sol +FEchempotbulk%Na+FEchempotbulk%Cl +FEchempotbulk%NaCl+FEchempotbulk%Ca 
@@ -814,8 +811,8 @@ contains
 
         FEchem_react=volcell*FEChem_react    
         
-        if(sysflag=="neutral") FEchem_react=0.0_dp
-
+        if(sysflag=="neutral".or.sysflag=="electnopoly") FEchem_react=0.0_dp
+    
 
     end function FEchem_react
 

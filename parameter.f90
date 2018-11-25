@@ -2,7 +2,7 @@ module parameters
 
     use physconst
     use mathconst
-    use random
+    !use random
     use volume
     use molecules
     use loopvar
@@ -168,10 +168,8 @@ contains
                 neq = 4 * nsize 
             case ("electnopoly") 
                 neq = 2 * nsize + neq_bc
-            case ("electHC") 
-                neq = 5 * nsize +neq_bc
             case ("neutral") 
-                neq = 2 * nsize
+                neq = nsize
             case ("bulk water") 
                 neq = 5 
             case default
@@ -361,7 +359,7 @@ contains
         
         use globals
         use volume, only : delta
-        use physconst
+    !    use physconst
 
         real(dp), intent(in) :: Temp 
 
@@ -412,8 +410,12 @@ contains
             sigmaABL = ngr/(nsurf*delta*delta)
             sigmaABR = sigmaABL
             sigmaAB  = sigmaABL
+        case("neutral") 
+            sigmaABL = ngr/(nsurf*delta*delta)
+            sigmaABR = 0.0_dp
+            sigmaAB  = sigmaABL    
         case default
-            print*,"Error: init_lattice: sysflag wrong value"
+            print*,"Error: init_sigma: sysflag wrong value"
             print*,"stopping program"
             stop
         end select
