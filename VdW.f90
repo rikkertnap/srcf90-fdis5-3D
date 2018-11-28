@@ -1,15 +1,18 @@
 !    .. module file for VdWcoeff
 module VdW
-  use precision_definition
-  implicit none
+    use precision_definition
+    implicit none
   
-  real(dp), dimension(:,:), allocatable :: chis  ! matrix of interaction coeff
-  integer, dimension(:), allocatable :: minj 
-  integer, dimension(:), allocatable :: maxj
+    real(dp), dimension(:,:), allocatable :: chis  ! matrix of interaction coeff
+    integer, dimension(:), allocatable :: minj 
+    integer, dimension(:), allocatable :: maxj
   
+
+    private :: ipbc 
+
 contains
   
-  integer function minrange(i)
+integer function minrange(i)
     
     use parameters, only :  VdWcutoffdelta
     implicit none
@@ -22,9 +25,9 @@ contains
        minrange=1
     endif
     
-  end function minrange
+end function minrange
   
-  integer function maxrange(i,n)
+integer function maxrange(i,n)
 
     use parameters, only :  VdWcutoffdelta
     implicit none
@@ -37,11 +40,11 @@ contains
        maxrange=n
     endif
 
-  end function maxrange
+end function maxrange
 
   
   
-  subroutine allocate_matrix(M,n)
+subroutine allocate_matrix(M,n)
     implicit none
 
     real(dp), dimension(:,:), allocatable :: M
@@ -59,7 +62,7 @@ contains
        print*,'Allocation warning: matrix already allocated'
     endif
     
-  end subroutine allocate_matrix
+end subroutine allocate_matrix
 
   
     subroutine read_VdWcoeff()
@@ -253,7 +256,75 @@ contains
 
         if(rank.eq.0)print*, 'Sum Total', sum
      
-    end
+    end subroutine
+
+
+
+    subroutine VdW_contribution_exp(VdWcoeff,rhopol,exppi)
+
+        use globals, only : nsize
+        use volume, only : nx,ny,nz,coordinateFromLinearIndex,linearIndexFromCoordinate
+        
+        real(dp), intent(in) :: VdWcoeff(:,:,:)
+        real(dp), intent(in) :: rhopol(:)
+        real(dp), intent(inout) :: exppi(:)
+
+        integer :: id,ix,iy,iz, jx,jy,jz, ax,ay,az
+        real(dp) :: protemp
+
+        real(dp), dimension(:,:,:), allocatable ::rhopoltmp
+
+        
+
+        do id=1,nsize
+            call coordinateFromLinearIndex(id, ix, iy, iz)
+            rhopoltmp(ix,iy,iz) = rhopol(id)   
+        enddo
+        
+        ! VdWsttemp = eps*vpol*vsol
+
+        do ix=1,nx
+            do iy=1,ny
+                do iz=1,nz
+                    protemp = 0.0_dp
+                    do ax = -2,2 
+                        jx = ix+ax
+                        jx = ipbc(jx,nx) ! mod(jx-1+5*dimx, dimx) + 1
+                        do ay = -2,2
+                            jy = iy+ay
+                            jy = ipbc(jy,ny) ! mod(jy-1+5*dimy, dimy) + 1
+                            do az = -2,2
+                                jz = iz+az
+                                if(1<=jz.and.jz<=nz) then 
+                                    protemp=protemp + VdWcoeff(ax,ay,az)*rhopoltmp(jx, jy, jz)
+                                endif    
+                            enddo
+                        enddo
+                    enddo
+                    call linearIndexFromCoordinate(ix,iy,iz,id)
+                    exppi(id) = exppi(id)*exp(protemp)
+
+                enddo
+            enddo
+        enddo
+ 
+    end subroutine
+
+
+    function ipbc(ival,imax) result(intpbc)
+        implicit none 
+        integer, intent(in) :: ival
+        integer, intent(in) :: imax
+        integer :: intpbc
+
+        if(ival>0) then
+            intpbc=ival-int((ival-1)/imax)*imax
+        else
+            intpbc=ival-(int((ival-1)/imax)-1)*imax
+        endif
+
+    end function
+
 
   
 end module VdW
