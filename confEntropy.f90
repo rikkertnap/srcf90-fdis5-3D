@@ -32,6 +32,9 @@ contains
         case ("elect")
             call FEconf_elect(FEconfAB)
             FEconfC=0.0_dp
+        case ("electA")
+            call FEconf_electA(FEconfAB)
+            FEconfC=0.0_dp    
         case ("electdouble")
             call FEconf_electdouble(FEconfAB)
             FEconfC=0.0_dp
@@ -261,19 +264,138 @@ contains
             FEconfABL=0.0_dp
             do g=1,ngr 
                 FEconfABL = FEconfABL+ (FEconfABL_array(g)/qABL(g)-log(qABL(g)))    
-                print*,"g=",g," FE=",FEconfABL
             enddo    
-
             FEconfAB=FEconfABL
         endif
         
-
-
         deallocate(fdisAone)
         deallocate(fdisBone)
 
 
     end subroutine FEconf_elect
+
+
+
+    subroutine FEconf_electA(FEconfAB)
+
+        !  .. variables and constant declaractions 
+
+        use globals
+        use volume
+        use chains
+        use field
+        use parameters
+
+        implicit none
+
+        real(dp), intent(out) :: FEconfAB
+        
+        !     .. declare local variables
+
+        real(dp) :: exppiA(nsize)    ! auxilairy variable for computing P(\alpha) 
+        integer  :: i,k,c,s, kL, g, gn         ! dummy indices
+        real(dp) :: proL
+        real(dp) :: FEconfABL
+        real(dp) :: FEconfABL_local(ngr_node)
+        real(dp) :: FEconfABL_array(size*ngr_node)
+        real(dp) :: qABL_local(ngr_node)
+        real(dp) :: qABL_array(size*ngr_node)
+        real(dp) , dimension(:), allocatable :: fdisAone
+
+        ! .. executable statements 
+
+        ! need an continuous  array to be passed tp MPI_SEND and MPI_RECV 
+        ! fdisA(1,:) is a strided aray non-continuous to be improved, also in fcn !!!!
+        ! 
+        allocate(fdisAone(nx*ny*nz))
+        
+        fdisAone=fdisA(1,:)
+
+
+        ! .. communicate xsol,psi and fdsiA(1:) and fdisB(1,:) to other nodes 
+
+        if(rank==0) then
+            do i = 1, size-1
+                dest = i
+                call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(psi , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(fdisAone,nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+            enddo
+        else
+            source = 0 
+            call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            call MPI_RECV(psi , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
+            call MPI_RECV(fdisAone, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)          
+        endif
+            
+        do i=1,nsize
+              exppiA(i)=(xsol(i)**vpolA(1))*exp(-zpolA(1)*psi(i))/fdisAone(i) ! auxiliary variable
+        enddo
+       
+        FEconfABL=0.0_dp
+
+        do gn=1,ngr_node              ! loop over grafted points <=>  grafted area on different nodes 
+ 
+            FEconfABL_local(gn)= 0.0_dp
+
+            g=gn+rank*ngr_node
+     
+            do c=1,cuantasAB               ! loop over cuantas
+            
+                proL=1.0_dp                ! initial weight conformation 
+            
+                if(weightchainAB(gn,c)) then ! initial weight conformation 
+
+                    proL=1.0_dp
+                
+                    do s=1,nsegAB              ! loop over segments 
+                        kL=indexchainAB(s,gn,c)         
+                        proL = proL*exppiA(kL)
+                    enddo
+
+                   FEconfABL_local(gn)=FEconfABL_local(gn)+proL*log(proL)
+                  
+                endif
+            
+            enddo
+
+        enddo   
+
+        ! communicate FEconfABL and FEcopnd_ABR
+
+        if(rank==0) then
+
+            do gn=1,ngr_node
+                g = (0)*ngr_node+gn
+                FEconfABL_array(g)=FEconfABL_local(gn)
+            enddo
+
+            do i=1, size-1
+                source = i
+                call MPI_RECV(FEconfABL_local, ngr_node, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                do gn=1,ngr_node
+                    g = (i)*ngr_node+gn
+                    FEconfABL_array(g)=FEconfABL_local(gn)
+                enddo
+            enddo 
+        else     ! Export results
+            dest = 0
+            call MPI_SEND(FEconfABL_local, ngr_node , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+        endif
+
+
+        if(rank==0) then
+            ! normalize
+            FEconfABL=0.0_dp
+            do g=1,ngr 
+                FEconfABL = FEconfABL+ (FEconfABL_array(g)/qABL(g)-log(qABL(g)))    
+            enddo    
+            FEconfAB=FEconfABL
+        endif
+        
+        deallocate(fdisAone)
+
+    end subroutine FEconf_electA
 
 
     subroutine FEconf_electdouble(FEconfAB)

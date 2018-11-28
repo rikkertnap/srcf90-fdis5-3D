@@ -159,7 +159,7 @@ contains
 
 
 
-    subroutine VdWcoeff
+    subroutine MC_VdWcoeff(VdWcoeff,lseg)
 
         use mpivars
         use mathconst
@@ -167,33 +167,31 @@ contains
         use volume, only : delta
         use random 
 
-
-        real(dp) :: lseg ! largo del segmento
-        real(dp) :: l ! medio lseg, radio del segmento
-
-        real(dp) :: Xu(-2:2, -2:2, -2:2)
+        real(dp), intent(inout) :: VdWcoeff(-2:2, -2:2, -2:2)
+        real(dp), intent(in)   :: lseg ! size  segment 
+        
      
-        integer :: MCsteps ! numero de steps de MC
+        integer :: MCsteps ! number of MC steps 
         integer :: ix, iy , iz
         real(dp) :: x,y,z, radius, u, v
         real(dp) :: rn
         integer :: limit, plimit
         parameter (limit = 3)
 
-        real(dp) :: matriz(-limit:limit, -limit:limit, -limit:limit) ! matriz de kai
+        real(dp) :: matriz(-limit:limit, -limit:limit, -limit:limit) ! matrix for chi
 
         integer :: i
-        real(dp) :: suma
+        real(dp) :: sum
 
 
         if(rank.eq.0)print*,'chi calculation'
 
-        suma = 0.0
+        sum = 0.0_dp
 
         do ix = -limit, limit
             do iy = -limit, limit
                 do iz = -limit, limit
-                    matriz(ix, iy, iz) = 0.0
+                    matriz(ix, iy, iz) = 0.0_dp
                 enddo
             enddo
         enddo
@@ -203,10 +201,9 @@ contains
     !      MCsteps = 10
         MCsteps = 100000000
 
-        lseg=0.35
-        l = lseg ! OJO!!!
 
         do i = 1, MCsteps
+
             x = 3.0*(rands(seed)-0.5)*delta ! random number between -1.5 * delta and 1.5 * delta
             y = 3.0*(rands(seed)-0.5)*delta 
             z = 3.0*(rands(seed)-0.5)*delta 
@@ -217,7 +214,7 @@ contains
             radius = sqrt(x**2 + y**2 + z**2) ! real space
      
             if(radius<=(1.5*delta)) then  ! It is not inside the cut-off sphere
-                if(radius>=l) then  ! is within the sphere of the segment
+                if(radius>=lseg) then  ! is within the sphere of the segment
 
                     ! cell
 
@@ -225,7 +222,7 @@ contains
                     iy = anint(u/delta) 
                     iz = anint(z/delta) 
 
-                    matriz(ix, iy, iz) = matriz(ix, iy, iz) + (l/radius)**6
+                    matriz(ix, iy, iz) = matriz(ix, iy, iz) + (lseg/radius)**6
                 endif
             endif
                     
@@ -235,26 +232,26 @@ contains
             do iy = -2, 2
                 do iz = -2, 2
 
-                    Xu(ix, iy, iz) = matriz(ix, iy, iz)/MCsteps*((3.0*delta)**3)
-                    suma = suma +  matriz(ix, iy, iz)/MCsteps*((3.0*delta)**3)
+                    VdWcoeff(ix, iy, iz) = matriz(ix, iy, iz)/MCsteps*((3.0_dp*delta)**3)
+                    sum = sum +  matriz(ix, iy, iz)/MCsteps*((3.0_dp*delta)**3)
 
                 enddo
             enddo
         enddo
 
-        if(rank.eq.0)print*, 'Suma 5x5', suma
+        if(rank.eq.0)print*, 'Sum 5x5', sum
 
-        suma = 0.0
+        sum = 0.0_dp
 
         do ix = -limit, limit
             do iy = -limit, limit
                 do iz = -limit, limit
-                    suma = suma +  matriz(ix, iy, iz)/MCsteps*((3.0*delta)**3)
+                    sum = sum +  matriz(ix, iy, iz)/MCsteps*((3.0_dp*delta)**3)
                 enddo
             enddo
         enddo
 
-        if(rank.eq.0)print*, 'Suma Total', suma
+        if(rank.eq.0)print*, 'Sum Total', sum
      
     end
 

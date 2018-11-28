@@ -164,6 +164,8 @@ contains
                 neq = 2 * nsize + neq_bc 
             case ("elect") 
                 neq = 4 * nsize + neq_bc
+            case ("electA") 
+                neq = 3 * nsize + neq_bc
             case ("electdouble")  
                 neq = 4 * nsize 
             case ("electnopoly") 
@@ -231,7 +233,7 @@ contains
  
         pi=acos(-1.0_dp)          ! pi = arccos(-1)
         itmax=2000                ! maximum number of iterations      
-        nz=nzmax
+        !nz=nzmax
 
         !     .. charges
         
@@ -333,7 +335,6 @@ contains
         dielectW=78.54_dp           ! dielectric constant water
         
         seed  = 435672              ! seed for random number generator
-        
 
         call init_elect_constants(Tref)  
 
@@ -394,6 +395,10 @@ contains
             sigmaABL = ngr/(nsurf*delta*delta)
             sigmaABR = 0.0_dp
             sigmaAB  = sigmaABL
+        case("electA") 
+            sigmaABL = ngr/(nsurf*delta*delta)
+            sigmaABR = 0.0_dp
+            sigmaAB  = sigmaABL    
         case("electdouble")
             sigmaABL = ngr/(nsurf*delta*delta)
             sigmaABR = sigmaABL
@@ -574,7 +579,7 @@ contains
         use globals, only : sysflag
         implicit none
 
-        if(sysflag=="elect") then 
+        if(sysflag=="elect".or.sysflag=="electA") then 
             call init_expmu_elect()
         elseif(sysflag=="electdouble") then 
             call init_expmu_elect()
@@ -609,6 +614,8 @@ contains
         case ("elect")
             call init_expmu_elect() 
         !    call init_elect_constants(T%val) ! check if this call is neccesary 
+        case ("electA")
+            call init_expmu_elect() 
         case ("dipolarstrong")
             call init_expmu() 
         !    call init_elect_constants(T%val)

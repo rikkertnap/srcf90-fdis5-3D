@@ -29,7 +29,7 @@ module field
     real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
      
     real(dp), dimension(:), allocatable :: qAB      ! normalization partion fnc polymer 
-    real(dp), dimension(:), allocatable :: qC      ! normalization partion fnc polymer 
+    real(dp), dimension(:), allocatable :: qC       ! normalization partion fnc polymer 
 
     real(dp), dimension(:), allocatable :: rhopolAL ! density A monomer of polymer z=0 surface
     real(dp), dimension(:), allocatable :: rhopolBL ! density B monomer of polymer z=0 surface
@@ -121,6 +121,54 @@ contains
 
     end subroutine allocate_part_fnc
 
+    ! set all densities to zero
+    
+    subroutine init_field(Nx,Ny,Nz)
+ 
+        integer, intent(in) :: Nx,Ny,Nz
+        integer :: N, i, k
+
+        N=Nx*Ny*Nz
+
+        do i=1,N
+            xpolAB(i)=0.0_dp
+            xpolC(i)=0.0_dp
+            rhopolA(i)=0.0_dp
+            rhopolB(i)=0.0_dp
+            rhopolC(i)=0.0_dp
+            xsol(i)=0.0_dp
+            xNa(i)=0.0_dp
+            xK(i)=0.0_dp
+            xCa(i)=0.0_dp
+            xNaCl(i)=0.0_dp 
+            xKCl(i) =0.0_dp
+            xCl(i)=0.0_dp
+            xHplus(i)=0.0_dp
+            xOHmin(i)=0.0_dp
+            rhoq(i)=0.0_dp
+            rhob(N)=0.0_dp
+            qpol(N)=0.0_dp
+            rhopolAL(i)=0.0_dp
+            rhopolAR(i)=0.0_dp
+            rhopolBL(i)=0.0_dp
+            rhopolBR(i)=0.0_dp
+            do k=1,5
+                fdisA(k,i)=0.0_dp
+                fdisB(k,i)=0.0_dp
+            enddo    
+        enddo    
+        do i=1,Nz
+            xpolABz(i)=0.0_dp
+        enddo 
+
+        do i=1,N+2*Nx*Ny
+            psi(i)=0.0_dp
+            do k=1,3    
+                electPol(3,i)=0.0_dp
+            enddo
+        enddo    
+    end subroutine init_field
+
 
     !  debug routine
 
@@ -160,15 +208,13 @@ contains
         qpolA=0.0_dp
         qpolB=0.0_dp
 
-        do i=1,nz
-            qpolA=qpolA+(zpolA(1)*fdisA(1,i)*rhopolA(i)+&
-                zpolA(4)*fdisA(4,i)*rhopolA(i))*deltaG(i) 
-            qpolB=qpolB+(zpolB(1)*fdisB(1,i)*rhopolB(i)+&
-                zpolB(4)*fdisB(4,i)*rhopolB(i))*deltaG(i)
+        do i=1,nsize
+            qpolA=qpolA+(zpolA(1)*fdisA(1,i)*rhopolA(i)+zpolA(4)*fdisA(4,i)*rhopolA(i))
+            qpolB=qpolB+(zpolB(1)*fdisB(1,i)*rhopolB(i)+zpolB(4)*fdisB(4,i)*rhopolB(i))
         enddo
 
-        qpolA=qpolA*delta
-        qpolB=qpolB*delta
+        qpolA=qpolA*volcell
+        qpolB=qpolB*volcell
         qpol_tot=qpolA+qpolB
 
     end subroutine charge_polymer
@@ -198,15 +244,14 @@ contains
         enddo
         npolB=nsegAB-npolA
           
-        sigmaLR=sigmaABL+sigmaABR
 
-        if(npolA/=0 .and. sigmaLR/=0 ) then
+        if(npolA/=0) then
            do k=1,5
               avfdisA(k)=0.0_dp
-              do i=1,nz
-                 avfdisA(k)=avfdisA(k)+fdisA(k,i)*rhopolA(i)*deltaG(i) 
+              do i=1,nsize
+                 avfdisA(k)=avfdisA(k)+fdisA(k,i)*rhopolA(i)
               enddo
-              avfdisA(k)=avfdisA(k)*delta/(sigmaLR*delta*npolA)
+              avfdisA(k)=avfdisA(k)*volcell/(npolA*ngr)
            enddo
         else
            do k=1,5
@@ -214,13 +259,13 @@ contains
            enddo
         endif
 
-        if(npolB/=0 .and. sigmaLR/=0) then
+        if(npolB/=0) then
            do k=1,5
               avfdisB(k)=0.0_dp
-              do i=1,nz
-                 avfdisB(k)=avfdisB(k)+fdisB(k,i)*rhopolB(i)*deltaG(i) 
+              do i=1,nsize
+                 avfdisB(k)=avfdisB(k)+fdisB(k,i)*rhopolB(i)
               enddo
-              avfdisB(k)=avfdisB(k)*delta/(sigmaLR*delta*npolB)
+              avfdisB(k)=avfdisB(k)*volcell/(npolB*ngr)
            enddo
         else
            do k=1,5
@@ -231,37 +276,34 @@ contains
     end subroutine average_charge_polymer
   
 
-  !     .. compute average height of tethered layer 
+  !     .. compute average height of denisty provile
   !     .. first moment of density profile 
   
-    subroutine average_polymer(xpol,xpolz,meanz)
+    function average_height_z(rho) result(meanz)
 
         use volume, only : nz,nx,ny,delta,linearIndexFromCoordinate
 
-        real(dp), intent(in) :: xpol(:)
-        real(dp), intent(out) :: xpolz(:)
-        real(dp), intent(out) :: meanz    
+        real(dp), intent(in) :: rho(:)
+        real(dp) :: meanz    
 
         integer :: ix, iy, iz, id
-        real(dp) :: sumrhoz, sumxpol
+        real(dp) :: sumrhoz, sumrho
 
         sumrhoz = 0.0_dp
         meanz= 0.0_dp
 
         do iz = 1, nz
 
-            sumxpol = 0.0_dp       
+            sumrho = 0.0_dp       
             do ix=1, nx
                 do iy=1, ny
                     call linearIndexFromCoordinate(ix,iy,iz ,id)
-                    sumxpol=sumxpol+ xpol(id)
+                    sumrho=sumrho+ rho(id)
                 enddo
             enddo
 
-            xpolz(iz)=sumxpol/(1.0_dp*nx*ny)
-
-            meanz=meanz+sumxpol*(iz-0.5_dp)*delta
-            sumrhoz=sumrhoz+sumxpol
+            meanz=meanz+sumrho*(iz-0.5_dp)*delta
+            sumrhoz=sumrhoz+sumrho
         enddo
 
         if(sumrhoz>0.0_dp) then 
@@ -270,9 +312,62 @@ contains
             meanz=0.0_dp
         endif
 
-    end subroutine average_polymer
+    end function average_height_z
 
-   
+
+
+  !     .. compute average of density or volume fraction profile in z-direction
+  
+    subroutine average_density_z(xvol,xvolz,meanz)
+
+        use volume, only : nz,nx,ny,delta,linearIndexFromCoordinate
+
+        real(dp), intent(in) :: xvol(:)
+        real(dp), intent(out) :: xvolz(:)
+        real(dp), intent(out), optional :: meanz
+
+        integer :: ix, iy, iz, id
+        real(dp) :: sumrhoz, sumxvol
+
+        if(present(meanz)) then 
+
+            sumrhoz = 0.0_dp
+            do iz = 1, nz
+                sumxvol = 0.0_dp       
+                do ix=1, nx
+                    do iy=1, ny
+                        call linearIndexFromCoordinate(ix,iy,iz ,id)
+                        sumxvol=sumxvol+ xvol(id)
+                    enddo
+                enddo
+                xvolz(iz)=sumxvol/(1.0_dp*nx*ny)
+
+                meanz=meanz+sumxvol*(iz-0.5_dp)*delta
+                sumrhoz=sumrhoz+sumxvol
+            enddo
+
+            if(sumrhoz>0.0_dp) then 
+                meanz=meanz/sumrhoz
+            else
+                meanz=0.0_dp
+            endif
+        else
+
+            sumrhoz = 0.0_dp
+            do iz = 1, nz
+                sumxvol = 0.0_dp       
+                do ix=1, nx
+                    do iy=1, ny
+                        call linearIndexFromCoordinate(ix,iy,iz ,id)
+                        sumxvol=sumxvol+ xvol(id)
+                    enddo
+                enddo
+                xvolz(iz)=sumxvol/(1.0_dp*nx*ny)
+            enddo
+
+        endif
+            
+    end subroutine average_density_z
   
 end module field
 

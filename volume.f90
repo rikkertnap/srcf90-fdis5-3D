@@ -14,8 +14,6 @@ module volume
     integer :: nx                   ! nx number of lattice sites in x-direction 
     integer :: ny                   ! ny number of lattice sites in y-direction 
     integer :: nsurf                ! nsurf numer of lattice site  at z=0 ore z=nz*delta
-    real(dp) :: volcell             ! volcell=delta**3
-    real(dp) :: areasurf            ! area surfaces spanned by x and y direction
     integer :: nzmax                ! nzmax  maximum number of lattice sites in z-direction
     integer :: nzmin                ! nzmin minimumal number of lattice sites in z-direction  
     integer :: nzstep               ! nzstep number of lattice sites stepped over or reduced 
@@ -25,6 +23,9 @@ module volume
     integer :: ngrx                 ! total number of graft points along x-axis 
     integer :: ngry                 ! total number of graft points along y-axis                                                       
     logical :: isRandom_pos_graft   ! true random position, false regual pattern   
+    real(dp) :: volcell             ! volcell=delta**3
+    real(dp) :: areacell            ! areacell=delta**2
+    real(dp) :: areasurf            ! area surfaces spanned by x and y direction
     real(dp) :: gamma               ! angle between oblique basis vectors u and v: cubic = gamma=90=pi/2 hexagonl gamma=60=2pi/3                          
     real(dp) :: beta                ! related beta = (pi/2- gamma)/2, angle between basis vector u and x and v and y
     real(dp) :: cos_two_beta        ! sqrt(cos(beta)**2 - sin(beta)**2)=cos(2beta) scales u and v coordinates 
@@ -32,13 +33,13 @@ module volume
     
     real(dp), dimension(:,:), allocatable :: position_graft
 
-    real(dp), dimension(:), allocatable :: zc ! z-coordinate
-    real(dp), dimension(:), allocatable :: xc ! z-coordinate
-    real(dp), dimension(:), allocatable :: yc ! z-coordinate
+ !   real(dp), dimension(:), allocatable :: zc ! z-coordinate
+ !   real(dp), dimension(:), allocatable :: xc ! z-coordinate
+ !  real(dp), dimension(:), allocatable :: yc ! z-coordinate
    
-    real(dp), dimension(:), allocatable :: deltaG ! geometrical factor
-    real(dp), dimension(:), allocatable :: Fplus ! factor in Poisson Eq  
-    real(dp), dimension(:), allocatable :: Fmin
+ !   real(dp), dimension(:), allocatable :: deltaG ! geometrical factor
+ !   real(dp), dimension(:), allocatable :: Fplus ! factor in Poisson Eq  
+ !   real(dp), dimension(:), allocatable :: Fmin
 
     character(len=11) :: geometry
   
@@ -46,74 +47,74 @@ module volume
 
 contains
   
-    subroutine allocate_geometry(nx,ny,nz)
+!     subroutine allocate_geometry(nx,ny,nz)
     
-        implicit none
-        integer, intent(in) :: nx, ny, nz
+!         implicit none
+!         integer, intent(in) :: nx, ny, nz
         
-        integer :: ntot
+!         integer :: ntot
 
-        ntot=nx*ny*nz    
+!         ntot=nx*ny*nz    
         
-    !    print*," allocate_geometry : ntot=",ntot,"rank=",rank
+!     !    print*," allocate_geometry : ntot=",ntot,"rank=",rank
 
-        allocate(xc(nx))
-        allocate(yc(ny))
-        allocate(zc(nz))
-        allocate(deltaG(ntot))
+!         allocate(xc(nx))
+!         allocate(yc(ny))
+!         allocate(zc(nz))
+!         allocate(deltaG(ntot))
 
-!    allocate(Fplus(N))
-!    allocate(Fmin(N))
+! !    allocate(Fplus(N))
+! !    allocate(Fmin(N))
     
-    end subroutine allocate_geometry
+!     end subroutine allocate_geometry
   
-    !     computes geometical factors: deltaG
-    !     deltaG(p) = the finite volume element p(i,j,k)
-    !     subspended by volume element [i-1][j-1][k-1]
-    !     divided by volcell. For volume elemetn outside and not intersecting 
-    !     with cylinder deltaG=1
+!     !     computes geometical factors: deltaG
+!     !     deltaG(p) = the finite volume element p(i,j,k)
+!     !     subspended by volume element [i-1][j-1][k-1]
+!     !     divided by volcell. For volume elemetn outside and not intersecting 
+!     !     with cylinder deltaG=1
       
-    subroutine  volume_elements_cubic(nx,ny,nz)
+!     subroutine  volume_elements_cubic(nx,ny,nz)
 
-        implicit none
+!         implicit none
         
-        integer, intent(in) :: nx, ny, nz
+!         integer, intent(in) :: nx, ny, nz
 
-        !     .. local variables
-        real(dp) :: vtol                 ! tolerance test volume integral 
-        parameter (vtol=1.0E-10_dp)
-        integer :: ix, iy, iz, ntot, idx
-        real(dp) :: vol, vtest
+!         !     .. local variables
+!         real(dp) :: vtol                 ! tolerance test volume integral 
+!         parameter (vtol=1.0E-10_dp)
+!         integer :: ix, iy, iz, ntot, idx
+!         real(dp) :: vol, vtest
 
-        vol=0.0_dp
+!         vol=0.0_dp
     
-        do iz=1,nz
-            zc(iz)= (iz-0.5_dp) * delta  ! x-coordinate 
-        enddo
-        do iy=1,ny
-            yc(iy)= (iy-0.5_dp) * delta  ! y-coordinate 
-        enddo
-        do ix=1,nx
-            xc(ix)= (ix-0.5_dp) * delta  ! z-coordinate 
-        enddo
+!         do iz=1,nz
+!             zc(iz)= (iz-0.5_dp) * delta  ! x-coordinate 
+!         enddo
+!         do iy=1,ny
+!             yc(iy)= (iy-0.5_dp) * delta  ! y-coordinate 
+!         enddo
+!         do ix=1,nx
+!             xc(ix)= (ix-0.5_dp) * delta  ! z-coordinate 
+!         enddo
 
-        vol=0.0_dp
+!         vol=0.0_dp
         
-        ntot=nx*ny*nz
+!         ntot=nx*ny*nz
   
-        do idx=1,ntot ! nsize=nx*ny*nz 
-            deltaG(idx)=1.0_dp  
-            vol=vol+ deltaG(idx)
-        enddo
+!         do idx=1,ntot ! nsize=nx*ny*nz 
+!             deltaG(idx)=1.0_dp  
+!             vol=vol+ deltaG(idx)
+!         enddo
     
-        vtest=ntot
+!         vtest=ntot
     
-        if(abs(vtest-vol)>=vtol) then 
-            print*,"Warning vtest=",vtest," not equal to vol=",vol
-        endif
+!         if(abs(vtest-vol)>=vtol) then 
+!             print*,"Warning vtest=",vtest," not equal to vol=",vol
+!         endif
 
       
-    end subroutine
+!     end subroutine
   
 
     subroutine init_lattice
@@ -128,9 +129,10 @@ contains
         sin_two_beta=sin(2*beta)
 
         ! cubic lattice  or prism surface in x-y direction at z=0 and z=nz  
-       
+        nz=nzmax
         nsize = nx*ny*nz                ! total number of cells or layers
         volcell = delta*delta*delta*1.0_dp     ! volume of one latice volume 
+        areacell = delta*delta
         nsurf = nx*ny  
         areasurf=nsurf*delta*delta
         ngrx=int(nx/ngr_freq)
@@ -171,16 +173,8 @@ contains
         integer ::  i
         character(len=lenText) :: text, str 
 
-        call init_lattice
 
-        select case (geometry) 
-        case("cubic")
-            call volume_elements_cubic(nx,ny,nz)   
-        case default
-            print*,"Error: geometry not CUBIC"
-            print*,"stopping program"
-            stop
-        end select
+        call init_lattice
 
         write(str,'(A20)')geometry
         text="geometry="//trim(adjustl(str)) 

@@ -253,6 +253,10 @@ subroutine read_inputfile(info)
         return
     endif
 
+    !  potentially overide input values
+
+    call set_value_nzmin(runflag,nzmin,nzmax)
+
 end subroutine read_inputfile
  
 
@@ -263,7 +267,7 @@ subroutine check_value_sysflag(sysflag,info)
     character(len=15), intent(in) :: sysflag
     integer, intent(out),optional :: info
 
-    character(len=15) :: sysflagstr(8)
+    character(len=15) :: sysflagstr(9)
     integer :: i
     logical :: flag
 
@@ -277,10 +281,11 @@ subroutine check_value_sysflag(sysflag,info)
     sysflagstr(6)="electHC"
     sysflagstr(7)="dipolarweak"
     sysflagstr(8)="dipolarstrong"
+    sysflagstr(9)="electA"
 
     flag=.FALSE.
 
-    do i=1,8
+    do i=1,9
         if(sysflag==sysflagstr(i)) flag=.TRUE.
     enddo
 
@@ -479,12 +484,31 @@ subroutine check_value_method(method,info)
 end subroutine check_value_method
 
 
+! override input value nzmin
+! Sets nzmin=nzmax for which runflag that do not loop over nz 
+! ensuring that the output files are properly close once
+
+subroutine set_value_nzmin(runflag,nzmin,nzmax)
+
+    character(len=15), intent(in) :: runflag
+    integer, intent(inout) :: nzmin
+    integer, intent(in) :: nzmax
+   
+    if (runflag/="rangedist") nzmin=nzmax 
+
+end subroutine
+
+
+
 subroutine output()
 
     use globals, only : sysflag
     implicit none
 
     if(sysflag=="elect") then 
+        call output_elect
+        call output_individualcontr_fe
+    elseif(sysflag=="electA") then
         call output_elect
         call output_individualcontr_fe
     elseif(sysflag=="electdouble") then
@@ -674,7 +698,6 @@ subroutine output_elect
 
     if(sysflag/="electnopoly") then 
 
-        print*,"hello output: ngr=",ngr
         do i =1, ngr
             write(un_q,*)qABL(i),qABR(i)
         enddo 
@@ -893,6 +916,7 @@ subroutine output_elect
             close(un_fdisA)
             close(un_fdisB)
             close(un_xpolABz)
+            close(un_q)
         endif
         if(verboseflag=="yes") then 
             close(un_xNa)   
@@ -908,6 +932,7 @@ subroutine output_elect
         endif
         if(sysflag=="dipolarstrong".or.sysflag=="dipolarweak") then
             close(un_dip)    
+         !   close(un_dielec)
         endif    
 
     endif
@@ -1454,7 +1479,7 @@ subroutine output_individualcontr_fe
             fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
 
 
-        elseif(sysflag=="elect".or.sysflag=="electnopoly") then 
+        elseif(sysflag=="elect".or.sysflag=="electnopoly".or.sysflag=="electA") then 
 
 
             write(rstr,'(F5.3)')sigmaABL
@@ -1688,18 +1713,19 @@ subroutine compute_vars_and_output()
     case ("elect")
     
         call fcnenergy()       
-    !     call average_height()      
-    !     call charge_polymer()
-        call average_polymer(xpolAB,xpolABz,heightAB)  
+        call average_density_z(xpolAB,xpolABz,heightAB)  
+        call output()
+
+    case ("electA")
+    
+        call fcnenergy()       
+        call average_density_z(xpolAB,xpolABz,heightAB)  
         call output()
 
     case ("electdouble")
     
         call fcnenergy()       
-    !     call average_height()      
-    !     call charge_polymer()
-    !     call average_charge_polymer()
-        call average_polymer(xpolAB,xpolABz,heightAB)  
+        call average_density_z(xpolAB,xpolABz,heightAB)  
         call output()
     
     case ("electnopoly")
@@ -1713,11 +1739,11 @@ subroutine compute_vars_and_output()
     
     case ("dipolarweak")
 
-        call average_polymer(xpolAB,xpolABz,heightAB)  
+        call average_density_z(xpolAB,xpolABz,heightAB)  
         call output()           ! writing of output 
 
     case ("dipolarstrong")
-        call average_polymer(xpolAB,xpolABz,heightAB)  
+        call average_density_z(xpolAB,xpolABz,heightAB)  
         call output()           ! writing of output 
 
     case default   

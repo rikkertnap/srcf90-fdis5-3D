@@ -252,6 +252,8 @@ contains
         
         if(sysflag=="elect") then 
             noffset=4*nsize
+        else if(sysflag=="electA") then 
+            noffset=3*nsize
         else if(sysflag=="electdouble") then 
             noffset=4*nsize
         else if(sysflag=="electnopoly") then 

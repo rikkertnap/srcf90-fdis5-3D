@@ -78,7 +78,7 @@ program brushweakpolyelectrolyte
 
 
     call init_constants()
-    call allocate_geometry(nx,ny,nz)
+    ! call allocate_geometry(nx,ny,nz)
     call make_geometry()            ! generate volume elements lattice 
     call init_matrices()            ! init matrices for chain generation
     call allocate_chains(cuantasAB,nsegAB,cuantasC,nsegC,ngr_node)  
@@ -87,6 +87,7 @@ program brushweakpolyelectrolyte
     call make_chains(chainmethod)   ! generate polymer configurations    
     call allocate_field(nx,ny,nz) 
     call allocate_part_fnc(ngr)
+    call init_field(Nx,Ny,Nz)
     call set_size_neq()             ! number of non-linear equation neq  
     call set_fcn()   
     call init_surface(bcflag,nsurf)

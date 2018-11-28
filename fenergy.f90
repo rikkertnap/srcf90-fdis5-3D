@@ -54,42 +54,27 @@ contains
 
     subroutine fcnenergy()
  
-        use globals
+        use globals 
+        use myutils
+
         implicit none
-    
-        if(sysflag.eq."elect") then 
         
+        character(len=lenText) :: text 
+
+        if(sysflag.eq."elect".or.sysflag.eq."electdouble".or.&
+            sysflag.eq."electnopoly".or.sysflag=="electA") then 
             call fcnenergy_elect()
             call fcnenergy_elect_alternative()
-        
-        elseif(sysflag.eq."dipolarstrong") then
-            !call fcnenergy_elect()
+        elseif(sysflag.eq."dipolarstrong".or.sysflag.eq."dipolarweak") then
             print*,"Free energy: warning not yet implemented "
-        
-        elseif(sysflag.eq."dipolarweak") then
-            !call fcnenergy_elect()
-            print*,"Free energy: warning not yet implemented "
-        
-        elseif(sysflag.eq."electdouble") then 
-        !    print*,"fcnenergy sysflag=electdouble"    
-            call fcnenergy_elect()
-            call fcnenergy_elect_alternative()
-        
-        elseif(sysflag.eq."electnopoly") then 
-        
-            call fcnenergy_elect()
-            call fcnenergy_elect_alternative()
-        
         elseif(sysflag.eq."neutral") then 
-        
             call fcnenergy_neutral()
-        
-        else
-        
-            print*,"Error in fcnenergy"
-            print*,"Wrong value sysflag : ",sysflag
-        
+        else             
+            text="FEconf_entropy: wrong sysflag: "//sysflag//"stopping program"
+            call print_to_log(LogUnit,text)
+            stop
         endif 
+  
     end subroutine fcnenergy
 
    
@@ -144,12 +129,6 @@ contains
             sumphiB = sumphiB +  rhopolB(i)
             sumphiC = sumphiC +  rhopolC(i)
 
-
-!            do j=1,nz 
-!                FEVdWC = FEVdWC + deltaG(i)*rhopolC(i)* rhopolC(j)*chis(i,j)
-!                FEVdWB = FEVdWB + deltaG(i)*rhopolB(i)* rhopolB(j)*chis(i,j)       
-!            enddo   
-
         enddo
     
         FEel  = (volcell/vsol)*FEel
@@ -168,7 +147,7 @@ contains
         ! .. calcualtion of FEq
         if(sysflag=="electnopoly") then 
             FEq=0.0_dp
-        elseif(sysflag=="elect") then 
+        elseif(sysflag=="elect".or.sysflag=="electA") then 
             FEq=0.0_dp
             do g=1,ngr
                 FEq=FEq-log(qABL(g))    
@@ -189,7 +168,6 @@ contains
             stop   
         endif
             
-
         ! .. surface charge constribution 
 
         sigmaSurf(RIGHT)  = sigmaSurfR 
@@ -208,7 +186,7 @@ contains
                 sigmaq0Surf(i,s)=  sigmaqSurf(i,s)/(delta*4.0_dp*pi*lb) ! dimensional charge density  
                 FEelsurf(i) = FEelsurf(i)+sigmaq0Surf(i,s) * psiSurf(i,s) /2.0_dp 
             enddo   
-            FEelsurf(i)=FEelsurf(i)*delta*delta
+            FEelsurf(i)=FEelsurf(i)*areacell
         enddo    
 
         if(bcflag(RIGHT)=='qu') then ! quartz
@@ -217,7 +195,7 @@ contains
             do s=1, nx*ny
                 FEchemSurftmp=FEchemSurftmp+log(fdisS(2)) ! area surface integration measure 
             enddo    
-            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="cl" ) then  ! clay
         
@@ -226,15 +204,16 @@ contains
                 FEchemSurftmp=FEchemSurftmp+(log(fdisS(2))+qS(2)*psiSurfR(s)) 
             enddo    
 
-            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="ca" ) then ! calcite
         
-            FEchemSurf(RIGHT) =(log(fdisS(2))+dlog(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT) =(log(fdisS(2))+log(fdisS(5)))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) - &
+                2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
         
-            FEchemSurf(RIGHT)= (log(fdisTaR(2))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurf(RIGHT)=(log(fdisTaR(2))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="cc") then  
         
@@ -248,7 +227,7 @@ contains
 
         if(bcflag(LEFT)=="ta" ) then ! taurine 
 
-            FEchemSurf(LEFT)= log(fdisTaL(2))*sigmaSurf(LEFT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
+            FEchemSurf(LEFT)= log(fdisTaL(2))*sigmaSurf(LEFT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
         
         elseif(bcflag(LEFT)=="cc") then  
         
@@ -272,7 +251,7 @@ contains
             do s=1,nx*ny     
                 qsurf(i) = qsurf(i)+sigmaqSurf(i,s)
             enddo
-            qsurf(i)=(qsurf(i)/(4.0_dp*pi*lb*delta))*delta*delta  ! delta*delta=area size one surface element, 4*pi*lb*delta make correct dimensional full unit    
+            qsurf(i)=(qsurf(i)/(4.0_dp*pi*lb*delta))*areacell  ! areacell=area size one surface element, 4*pi*lb*delta make correct dimensional full unit    
         enddo
 
 !        print*,"qsurf(LEFT)=",qsurf(LEFT),"qsurf(RIGHT)=",qsurf(RIGHT),"qres=",qres    
@@ -324,13 +303,7 @@ contains
             psiSurf(LEFT,s)     = psiSurfL(s)
         enddo    
 
-
-        !  .. computation of free energy 
-    
-        !  .. alternative computation free energy
-
-        ! call FEconf_entropy(FEconfAB,FEconfC)
-
+        !  .. computation ofalternative computation free energy
 
         ! .. translational entropy 
 
@@ -366,7 +339,7 @@ contains
                 FEchemSurftmp=FEchemSurftmp+log(fdisS(1))+qS(1)*psiSurfR(s)
             enddo
 
-            FEchemSurfalt(RIGHT) = (FEchemSurftmp)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurfalt(RIGHT) = (FEchemSurftmp)*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
 
         elseif(bcflag(RIGHT)=="cl" ) then  ! clay        
             FEchemSurftmp=0.0_dp
@@ -374,11 +347,12 @@ contains
                 FEchemSurftmp=FEchemSurftmp+log(fdisS(1))+qS(1)*psiSurfR(s)
             enddo
 
-            FEchemSurfalt(RIGHT) = (FEchemSurftmp)*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurfalt(RIGHT) = (FEchemSurftmp)*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
 
         elseif(bcflag(RIGHT)=="ca" ) then ! calcite
         
-            FEchemSurfalt(RIGHT) =(log(fdisS(2))+log(fdisS(5)))*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurfalt(RIGHT) =(log(fdisS(2))+log(fdisS(5)))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) - &
+                2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
             FEchemSurftmp=0.0_dp
@@ -386,7 +360,7 @@ contains
                 FEchemSurftmp=FEchemSurftmp+log(fdisTaR(1))+qTA(1)*psiSurfR(s)
             enddo
 
-            FEchemSurfalt(RIGHT)= (FEchemSurftmp*sigmaSurf(RIGHT)/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
+            FEchemSurfalt(RIGHT)=(FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
         
         elseif(bcflag(RIGHT)=="cc") then  
             
@@ -403,7 +377,7 @@ contains
             do s=1,nx*ny
                 FEchemSurftmp=FEchemSurftmp+log(fdisTaL(1))+qTA(1)*psiSurfL(s)
             enddo
-            FEchemSurfalt(LEFT)= FEchemSurftmp*sigmaSurf(LEFT)/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
+            FEchemSurfalt(LEFT)=FEchemSurftmp*sigmaSurf(LEFT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
         
 
         elseif(bcflag(LEFT)=="cc") then  
@@ -416,8 +390,6 @@ contains
             print*,"Wrong value bcflag(LEFT) : ",bcflag(LEFT)
         
         endif 
-
-
 
         ! .. summing all contrubutions
         
@@ -569,16 +541,16 @@ contains
         qres = 0.0_dp
 
         do i=1,nsize
-            FEpi = FEpi  + deltaG(i)*dlog(xsol(i))
-            FErho = FErho - deltaG(i)*xsol(i) 
+            FEpi = FEpi  + log(xsol(i))
+            FErho = FErho - xsol(i) 
 
             do j=1,nz 
-                FEVdW = FEVdW + deltaG(i)*rhopolB(i)* rhopolB(j)*chis(i,j)       
+                FEVdW = FEVdW + rhopolB(i) * rhopolB(j)*chis(i,j)       
             enddo   
 
-            sumphiA = sumphiA + deltaG(i) * rhopolA(i)
-            sumphiB = sumphiB + deltaG(i) * rhopolB(i)
-            sumphiC = sumphiC + deltaG(i) * rhopolC(i)
+            sumphiA = sumphiA +  rhopolA(i)
+            sumphiB = sumphiB +  rhopolB(i)
+            sumphiC = sumphiC +  rhopolC(i)
         enddo
     
         FEpi  = (volcell/vsol)*FEpi
@@ -609,8 +581,6 @@ contains
 
         FE = FEq + FEpi + FErho - FEVdW 
         
-        print*,"FE =",FE
-    
        
         volumelat= volcell*nsize  ! nz*delta  ! volume lattice divide by area surface
         
@@ -762,7 +732,7 @@ contains
             endif
         endif
 
-    end function FEchem_pot_bulk  
+    end function FEchem_pot_bulk
 
 
     real(dp) function FEchem_react()
@@ -778,41 +748,74 @@ contains
         real(dp) :: lambdaA, lambdaB, rhopolAq, rhopolBq, xpolA, xpolB
         real(dp) :: betapi
 
-        FEchem_react = 0.0_dp
 
-        do i=1,nsize
+        if(sysflag/="electA") then 
 
-            betapi=-log(xsol(i))/vsol
+            FEchem_react = 0.0_dp
 
-            lambdaA=-log(fdisA(1,i)) -psi(i)*zpolA(1)-betapi*vpolA(1)*vsol
-            lambdaB=-log(fdisB(1,i)) -psi(i)*zpolB(1)-betapi*vpolB(1)*vsol
+            do i=1,nsize
 
-            rhopolAq = 0.0_dp
-            rhopolBq = 0.0_dp
-            xpolA=0.0_dp
-            xpolB=0.0_dp
+                betapi=-log(xsol(i))/vsol
 
-            do k=1,4
-                rhopolAq=rhopolAq+ zpolA(k)*fdisA(k,i)*rhopolA(i)
-                xpolA   =xpolA + rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol
-                rhopolBq=rhopolBq+ zpolB(k)*fdisB(k,i)*rhopolB(i)
-                xpolB   =xpolB + rhopolB(i)*fdisB(k,i)*vpolB(k)*vsol
-            enddo   
-            xpolA = xpolA +rhopolA(i)*fdisA(5,i)*vpolA(5)*vsol/2.0_dp
-            xpolB = xpolB +rhopolB(i)*fdisB(5,i)*vpolB(5)*vsol/2.0_dp
+                lambdaA=-log(fdisA(1,i)) -psi(i)*zpolA(1)-betapi*vpolA(1)*vsol
+                lambdaB=-log(fdisB(1,i)) -psi(i)*zpolB(1)-betapi*vpolB(1)*vsol
+
+                rhopolAq = 0.0_dp
+                rhopolBq = 0.0_dp
+                xpolA=0.0_dp
+                xpolB=0.0_dp
+
+                do k=1,4
+                    rhopolAq=rhopolAq+ zpolA(k)*fdisA(k,i)*rhopolA(i)
+                    xpolA   =xpolA + rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol
+                    rhopolBq=rhopolBq+ zpolB(k)*fdisB(k,i)*rhopolB(i)
+                    xpolB   =xpolB + rhopolB(i)*fdisB(k,i)*vpolB(k)*vsol
+                enddo   
+                xpolA = xpolA +rhopolA(i)*fdisA(5,i)*vpolA(5)*vsol/2.0_dp
+                xpolB = xpolB +rhopolB(i)*fdisB(5,i)*vpolB(5)*vsol/2.0_dp
+                
+                FEchem_react = FEchem_react + (- rhopolA(i)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
+                    +fdisA(5,i)*rhopolA(i)/2.0_dp)
+
+                FEchem_react = FEchem_react + (- rhopolB(i)*lambdaB -psi(i)*rhopolBq -betapi*xpolB &
+                    +fdisB(5,i)*rhopolB(i)/2.0_dp)
+
+            enddo
+
+            FEchem_react=volcell*FEChem_react    
+
+        endif
+
+        if(sysflag=="electA") then 
+
+            FEchem_react = 0.0_dp
+
+            do i=1,nsize
+
+                betapi=-log(xsol(i))/vsol
+
+                lambdaA=-log(fdisA(1,i)) -psi(i)*zpolA(1)-betapi*vpolA(1)*vsol
+
+                rhopolAq = 0.0_dp
+                xpolA=0.0_dp
+
+                do k=1,4
+                    rhopolAq=rhopolAq+ zpolA(k)*fdisA(k,i)*rhopolA(i)
+                    xpolA   =xpolA + rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol
+                enddo   
+                xpolA = xpolA +rhopolA(i)*fdisA(5,i)*vpolA(5)*vsol/2.0_dp
+                
+                FEchem_react = FEchem_react + (- rhopolA(i)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
+                    +fdisA(5,i)*rhopolA(i)/2.0_dp)
+            enddo
+
+            FEchem_react=volcell*FEChem_react 
+
+        endif    
+
             
-            FEchem_react = FEchem_react + (- rhopolA(i)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
-                +fdisA(5,i)*rhopolA(i)/2.0_dp)
-
-            FEchem_react = FEchem_react + (- rhopolB(i)*lambdaB -psi(i)*rhopolBq -betapi*xpolB &
-                +fdisB(5,i)*rhopolB(i)/2.0_dp)
-
-        enddo
-
-        FEchem_react=volcell*FEChem_react    
-        
         if(sysflag=="neutral".or.sysflag=="electnopoly") FEchem_react=0.0_dp
-    
+        
 
     end function FEchem_react
 
