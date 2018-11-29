@@ -86,8 +86,7 @@ else ifeq ($(shell hostname),quser10)
 else 
 
 
-FFLAGS= -O3 -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" 
-#-fcheck=all -fbounds-check -Warray-bounds -g -fbacktrace -Wargument-mismatch -Wpedantic #-Wall
+FFLAGS=  -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fcheck=all -fbounds-check -Warray-bounds -g -fbacktrace -Wargument-mismatch -Wpedantic #-Wall
 
 
 #LDFLAGS=-lm -L/opt/local/kinsol-2.8.2-stat/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/opt/local/kinsol-2.8.2-stat/lib

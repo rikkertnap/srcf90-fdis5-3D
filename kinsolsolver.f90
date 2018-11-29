@@ -117,14 +117,12 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
     msbpre  = 5               ! maximum number of iterations without prec. setup 
     fnormtol = error          ! Function-norm stopping tolerance
     scsteptol = error         ! Function-norm stopping tolerance
-    maxl = neq                ! maximum Krylov subspace dimension 
+    maxl = 1000               ! maximum Krylov subspace dimension 
     maxlrst = 20              ! maximum number of restarts
     globalstrat = 0           ! inexact Newton  
     maxniter =1000            ! maximum of nonlinear iterations default 200  
 
-
     allocate(pp(neq))
-
 
     do i = 1, neq             
         constr(i) = 1.0_dp      ! constraint vector  

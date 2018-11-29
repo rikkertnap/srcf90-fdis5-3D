@@ -100,7 +100,6 @@ program brushweakpolyelectrolyte
     allocate(xguess(neq))
     allocate(fvec(neq))
 
-
     if(runflag=="rangedist") then ! loop over distances
          
         nz = nzmax                    
@@ -227,6 +226,7 @@ program brushweakpolyelectrolyte
             endif
 
             call FEconf_entropy(FEconfAB,FEconfC) ! parrallel computation of conf FEconf_entropy
+            
             if(rank==0) then
             
                 if(isSolution) then 
@@ -259,7 +259,6 @@ program brushweakpolyelectrolyte
          enddo ! end while loop 
 
     endif    
-
 
     call MPI_FINALIZE(ierr)  
 
