@@ -61,7 +61,7 @@ contains
 
   ! computes conformational entropy in neutral state 
 
-    subroutine FEconf_neutral(FEconfAB,FeconfC)
+    subroutine FEconf_neutral(FEconfAB,FEconfC)
 
         !  .. variables and constant declaractions 
 
@@ -77,65 +77,10 @@ contains
         real(dp), intent(out) :: FEconfAB, FEconfC  
 
         !     .. declare local variables
+        ! still to be implemented 
 
-        ! real(dp) :: exppiA(nsize),exppiB(nsize),exppiC(nsize)    ! auxilairy variable for computing P(\alpha) 
-
-        ! integer :: i,j,k,c,s         ! dummy indices
-        ! real(dp) :: pro,tmp,expVdW 
-        ! integer :: conf              ! counts number of conformations
-        
-
-        ! real(dp), parameter :: tolconst = 1.0e-9_dp  ! tolerance for constA and constB 
-
-
-        ! !     .. executable statements 
-
-        ! do i=1,nz    
-        !     exppiA(i)=(xsol(i)**vpolA(3)) !*dexp(-zpolA(3)*psi(i))/fdisA(3,i) ! auxiliary variable
-        !     exppiB(i)=(xsol(i)**vpolB(3)) !*dexp(-zpolB(3)*psi(i))/fdisB(3,i) ! auxiliary variable   
-        !     exppiC(i)=(xsol(i)**vpolC)
-       
-        !     !     .. VdW interaction   
-        !     tmp = 0.0_dp
-        !     if((i+VdWcutoffdelta)<=nsize) then 
-        !         do j=minrange(i),i+VdWcutoffdelta
-        !             tmp = tmp + chis(i,j)*rhopolB(j)*vpolB(3)*vsol
-        !         enddo
-        !     endif
-        !     expVdW=dexp(-VdWepsB*tmp)
-        !     exppiB(i)=exppiB(i)*expVdW ! auxiliary variable
-        ! enddo
-
-        
-        ! FEconfAB=0.0_dp
-
-        ! do c=1,cuantasAB            ! loop over cuantas
-        !     pro=1.0_dp                ! initial weight conformation 
-        !     do s=1,nsegAB            ! loop over segments 
-        !         k=indexchainAB(c,s)
-        !         if(isAmonomer(s)) then ! A segment 
-        !             pro = pro*exppiA(k)
-        !         else
-        !             pro = pro*exppiB(k)
-        !         endif
-        !     enddo
-        !     FEconfAB=FEconfAB+pro*log(pro)
-        ! enddo
-
-        ! ! normalize needs to changed 
-        ! !FEconfAB=(FEconfAB/qAB-log(qAB))*(sigmaAB*delta)    
-
-        ! FEconfC = 0.0_dp                   
-        ! do c=1,cuantasC            ! loop over cuantas                                                      
-        !     pro=1.0_dp               ! initial weight conformation                                                   
-        !     do s=1,nsegC            ! loop over segments                
-        !         k=indexchainC(c,s)
-        !         pro = pro*exppiC(k)
-        !     enddo
-        !     FEconfC = FEconfC+pro*log(pro)
-        ! enddo
-        ! ! normalize
-        !FEconfC=(FEConfC/qC -log(qC))*(sigmaC*delta)    
+        FEconfAB=0.0_dp
+        FEconfC=0.0_dp
 
     end subroutine FEconf_neutral
 

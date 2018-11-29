@@ -588,7 +588,7 @@ subroutine output_elect
         if(cCaCl2>=0.001) then 
             write(rstr,'(F5.3)')cCaCl2
         elseif(cCaCl2>0.0) then  
-            write(rstr,'(ES8.2E2)')cCaCl2
+            write(rstr,'(ES9.2E2)')cCaCl2
         else 
             write(rstr,'(F3.1)')cCaCl2
         endif 
@@ -999,7 +999,7 @@ subroutine output_electdouble()
         if(cCaCl2>=0.001) then 
             write(rstr,'(F5.3)')cCaCl2
         elseif(cCaCl2>0.0) then  
-            write(rstr,'(ES8.2E2)')cCaCl2
+            write(rstr,'(ES9.2E2)')cCaCl2
         else 
             write(rstr,'(F3.1)')cCaCl2
         endif    
@@ -1470,7 +1470,7 @@ subroutine output_individualcontr_fe
             if(cCaCl2>=0.001) then 
                 write(rstr,'(F5.3)')cCaCl2
             elseif(cCaCl2>0.0) then  
-                write(rstr,'(ES8.2E2)')cCaCl2
+                write(rstr,'(ES9.2E2)')cCaCl2
             else 
                 write(rstr,'(F3.1)')cCaCl2
             endif    
@@ -1489,7 +1489,7 @@ subroutine output_individualcontr_fe
             if(cCaCl2>=0.001) then 
                 write(rstr,'(F5.3)')cCaCl2
             elseif(cCaCl2>0.0) then  
-                write(rstr,'(ES8.2E2)')cCaCl2
+                write(rstr,'(ES9.2E2)')cCaCl2
             else 
                 write(rstr,'(F3.1)')cCaCl2
             endif 

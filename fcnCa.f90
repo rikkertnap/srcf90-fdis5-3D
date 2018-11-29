@@ -693,8 +693,12 @@ contains
         real(dp), intent(out) :: f(neq)
         integer(8), intent(in) :: nn
 
-        
+        integer :: i
+
         ! still need to do
+        do i=1,nn
+             f(i)=1.0_dp
+        enddo
 
     end subroutine fcnelectA_VdW
 

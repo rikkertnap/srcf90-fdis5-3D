@@ -113,7 +113,7 @@ LDFLAGS= -lm /usr/lib64/librt.so -L/home/rna878/sundials-2.6.1-openmpi/lib -lsun
 
 LFFLAGS=$(LDFLAGS)
 
-FF= ifort
+FF= mpif90
 
 endif
 
