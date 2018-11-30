@@ -36,64 +36,68 @@ The program uses an input file called 'input.in' that contain following key word
 |		        |                                              | __copoly__: Sequence read in from sequence.in not implemented yet|
 | sysflag  `char`       | Sets the type of system		       | __elect__: weak polyacid no VdW interaction single surface tethered|
 |                       |                       		       | __electA__:  __elect__  restricted to homopolyemr A |
-| 	   		|  				               | __neutral__: AB copolyemer and C polymer neutral |
-|	   	        |   					       | __electdouble__: weak polyacid different surface coverage on opposing surface | 		       	    	     	       	       		              
-|                       | 					       | __electnoply__: nopolymers:|
-
-|																																																																																																															      					                     |                 |__electHC__: elect plus neutral polymer plus VdW interactions neutral :|
-|																																																																																																																						     		       		     	   			     	 	      	                 |                 |__dipolarstrong__: strong polyelectrolyte with explicit dipoles:|
-|																																																																																																																																			 		   		       	      		      	   	                   |                 |__dipolarweak__: weak polyelectrolyte with explicit dipoles:|
-|runflag `char`																																																																																																																																													   		     		       	    		    	 	   | Sets type of run                       |__rangepH__: scan over pH values for nz=nzmax |
-|	  																																																																																																																																																						     	       	  			    		       	       	      	  	          |                                                     |__norangepH__: noscan over pH at nz=nzmax |   
-|bcflag(RIGHT) `char`																																																																																																																																																																	  									       	       	  	                                                                                 | Sets type of boundary condition for RIGHT surface  |__qu__: quartz |
-|	              																																																																																																																																																																																							   	     		 	       	     	      	       	                                                                                   |                                           |__cl__: clay  |
-|																																																																																																																																																																																																											   					       		                                                                                                            |                           |__ca__: calcite |
-|																																																																																																																																																																																																																															    					 	                                                                                                        |                           |__ta__: taurine=AMPS  |
-|																																																																																																																																																																																																																																																					    	     		                                                                                                                  |                           |__cc__: constant charge |
-|bcflag(LEFT) `char`																																																																																																																																																																																																																																																																				  			      	       		                                                                                                                      | Sets type of boundary condition for LEFT surface |__ta__: taurine  |
-|	            																																																																																																																																																																																																																																																																																								      	     	     	      		    	 	 	  	                                                                                                                  |                                            |__cc__: constant charge |
-|sigmaABL `real`																																																																																																																																																																																																																																																																																																															  					       			 	                                                                                                                         | Surface coverage       AB copolymer on LEFT surface Unit: nm2  ||
-|sigmaABR `real`																																																																																																																																																																																																																																																																																																																																							   	   		     	       	       	       	     	                                                                                                                 | Surface coverage  AB copolymer on RIGHT surface Unit: nm2  ||
-|sigmaC `real`																																																																																																																																																																																																																																																																																																																																																														   	   	     		     	   	   	                                                                                                                   | Surface coverage       C polymer on LEFT surface Unit: nm2  ||
-|tolerance `real`																																																																																																																																																																																																																																																																																																																																																																																		     	     		      	      	      	      	    	                                                                                                              | Expectation tolerance, maximal error non-linear solver||  
-|infile `int`																																																																																																																																																																																																																																																																																																																																																																																																								      		    	       	       	     			                                                                                                                         |        Select initial guess for non-linear solver |__0__:  homogenous guess initial guess |
-|																																																																																																																																																																																																																																																																																																																																																																																																																																 	  	 	       	   	      	     	      		       	       	                                                                                                                                                  |                                    |__1__: read guess from a input file |
-|pH%val `real`																																																																																																																																																																																																																																																																																																																																																																																																																																																												  				       	       	    	       	       	                                                                                                                                                 |    pH value    ||
-|pH%min `real`																																																																																																																																																																																																																																																																																																																																																																																																																																																																																							      	 	                                                                                                                                                 |  Minimal pH value||
-|pH%max `real`																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																											    	                                                                                                                                                   |  Maximum pH value||
-|pH%stepsize `real` 																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																													      	      	                                                                                                                                      |  Stepsize pH value ||
-|pH%delta `real` 																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																															      	 	     	                                                                                                                                          |     Minimal allowed stepsize. Stopping criteria|| 
-|KionNa `real`																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																																				  				  	   	                                                                                                                                                      | dissociation constant of NaCl| __0__  complete dissociation|
-|   	                |                              | __0.60__ |
-|KionK `real`									           | dissociation constant of KCl | |
-|sigmaSurfL `real`									     		  	           | Surface charge density LEFT surface Unit: e/nm2, only for bcflag(LEFT)==cc  ||
-|sigmaSurfR `real`													     	     	    	           |       Surface charge density RIGHT surfcae Unit: e/nm2, only for bcflag(RIGHT)==cc ||
-|pKa(1) `real`																		   	   	   	  	  	               	                    |   pK of A acid monomer:   AH <=> A- + H+ ||
-|pKa(2) `real`																											    	      	     		                     |   pK of A acid monomer: ANa  <=> A- + Na+   ||
-|pKa(3) `real`																																	     	       	      	       	    	               |   pK of A acid monomer: ACa+ <=> A- + Ca2+  ||
-|pKa(4) `real`																																							       	      	   		      	       	                |   pK of A acid monomer: A2Ca <=> 2A- + Ca2+ ||
-|pKb(1) `real`																																															       	    	 	       	       	                     |   pK of B acid monomer: BH  <=> B- + H+ ||
-|pKb(2) `real`																																																						     	       	      	       	       	                       |   pK of B acid monomer: BNa  <=> B- + Na+ ||
-|pKb(3) `real`																																																													       	      	   		      	       	                 |   pK of B acid monomer: BCa+ <=> B- + Ca2+  ||
-|pKb(4) `real`																																																																					     	     	  	   	       	                       |   pK of B acid monomer:  B2Ca <=> 2B- + Ca2+ ||
-|epsAS%val `real`																																																																											       	      	   		       	       	                |  Van der Waals (VdW) interaction parameter Unit: kBT ||
-|chainperiod `int`																																																																																			       	   	       		   	     	                  |   Set length diblock or alternating polymer, works together with chaintype ||
-|nsize `int` 																																																																																												      	  	 	    			       		     	                     |   System size or number of lattice site||
-|nzmax `int`																																																																																																							     	 	     	       	  	                           |    maximum seperation opossing surfaces Unit: delta ||
-|nzmin `int`																																																																																																															   			   	    	     	   	                             |   mimimal seperation opposing surfaces Unit: delta ||
-|nzstep `int`																																																																																																																									     	 	 	    	     	      	    	                              |      unit stepsize by which distance between surface is reduce Unit: delta ||
-|delta `int`																																																																																																																																			      	     	  	      	    	     	     	     	       	     	                          |     Lattice size      Unit: nm||
-|nsegAB `int`																																																																																																																																																  			  	                                      |     Number of segments AB copolymer  ||
-|nsegC `int`																																																																																																																																																								      	    	      	       	  	                                           |        Number of segments C polymer  ||
-|cuantasAB `int` 																																																																																																																																																																	   	    	      	       	 	                                            | Number of AB copolymer conformations || 
-|cuantasC `int` 																																																																																																																																																																											      	     	   	     		                                            |  Number of C polymer conformations || 
-|chainperiod `int`																																																																																																																																																																																					       	      	   	   		                                        |  Set length diblock or alternating polymer, works together with chaintype ||
-|verboseflag `char`																																																																																																																																																																																															       	      	      	 	     	      	    	     	  	                               |   Regulates verbosity of output files |__yes__: all density outputted|
-| | |__no__: density of all ions omitted|
-||following variable are related to archaic features and not neccessary for sysflag="elect","electdouble" |
-|VdWepsC `real`	          	  |  Strenght VdW parameter C monomer 	Unit: kBT ||
-|VdWepsB `real`			      	       |    Strenght VdW parameter B monomer    Unit: kBT ||
-|VdWcutoff `real`			       	     |	       cutoff range of VdW parameter        Unit: delta||
+| 	 |  			| __neutral__: AB copolyemer and C polymer neutral |
+|	  |   		| __electdouble__: weak polyacid different surface coverage on opposing surface | 		       	    	     	           
+|   | 			 | __electnoply__: nopolymers:|
+|   |     | __dipolarstrong__: strong polyelectrolyte with explicit dipoles:|
+|	  |     | __dipolarweak__: weak polyelectrolyte with explicit dipoles:|
+|runflag `char`				  | Sets type of run     | __rangepH__: scan over pH values for nz=nzmax |
+|                    |   	                  | __rangedist__: scan overd distances for pH=pH%val  |   
+|bcflag(RIGHT) `char`	| Sets type of boundary condition for RIGHT surface  |__qu__: quartz |
+|	                    | |__cl__: clay  |
+|	                    | |__ca__: calcite |
+|			                  | |__ta__: taurine=AMPS  |		
+|                     | |__cc__: constant charge |
+|bcflag(LEFT) `char`   | Sets type of boundary condition for LEFT surface |__ta__: taurine  |
+|	                     |                                                  |__cc__: constant charge |
+|sigmaABL `real`	      | Surface coverage       AB copolymer on LEFT surface Unit: nm2  ||
+|sigmaABR `real`	      | Surface coverage  AB copolymer on RIGHT surface Unit: nm2  ||
+|sigmaC `real`	        | Surface coverage       C polymer on LEFT surface Unit: nm2  ||
+|tolerance `real`			  	| Expectation tolerance, maximal error non-linear solver||  
+|infile `int`		        |        Select initial guess for non-linear solver |__0__:  homogenous guess initial guess |
+|		                    |                                      |__1__: read guess from a input file |
+|pH%val `real`         |    pH value    ||
+|pH%min `real`			      |  Minimal pH value||
+|pH%max `real`	        |  Maximum pH value||
+|pH%stepsize `real`    |  Stepsize pH value ||
+|pH%delta `real`       |     Minimal allowed stepsize. Stopping criteria|| 
+|KionNa `real`         | dissociation constant of NaCl| __0__  complete dissociation|
+|   	                  |                              | __0.60__ : suggested value for NaCl|
+|KionK `real`									 | dissociation constant of KCl | |
+|sigmaSurfL `real`	    | Surface charge density LEFT surface Unit: e/nm2, only for bcflag(LEFT)==cc  ||
+|sigmaSurfR `real`		   |       Surface charge density RIGHT surfcae Unit: e/nm2, only for bcflag(RIGHT)==cc ||
+|pKa(1) `real`				     |   pK of A acid monomer:   AH <=> A- + H+ ||
+|pKa(2) `real`	        |   pK of A acid monomer: ANa  <=> A- + Na+   ||
+|pKa(3) `real`				     |   pK of A acid monomer: ACa+ <=> A- + Ca2+  ||
+|pKa(4) `real`				     |   pK of A acid monomer: A2Ca <=> 2A- + Ca2+ ||
+|pKb(1) `rea           |   pK of B acid monomer: BH  <=> B- + H+ ||
+|pKb(2) `real`		       | pK of B acid monomer: BNa  <=> B- + Na+ ||
+|pKb(3) `real`	        | pK of B acid monomer: BCa+ <=> B- + Ca2+  ||
+|pKb(4) `real`         | pK of B acid monomer:  B2Ca <=> 2B- + Ca2+ ||
+|epsAS%val `real`	     | Van der Waals (VdW) interaction parameter Unit: kBT ||
+|chainperiod `int`		   | set length diblock or alternating polymer, works together with chaintype ||
+|nsize `int` 		        | System size or number of lattice site nsize=nx*ny*nz ||
+|nzmax `int`		         | maximum separation surfaces Unit: delta ||
+|nzmin `int`			        | minimal separation opposing surfaces Unit: delta ||
+|nzstep `int`					     | unit stepsize by which distance between surface is reduce Unit: delta ||
+|nx `int`              | number of lattice cells in x-direction. Unit: delta ||
+|ny `int`              | number of lattice cells in y-direction. Unit: delta ||
+|ngr_freq `int`        | controls number of graft points ngr=int(nx/ngr_freq)*int(ny/ngr_freq)  ||
+|delta `int`			        | Lattice size      Unit: nm||
+|nsegAB `int`		        | Number of segments AB copolymer  ||
+|nsegC `int`		         | Number of segments C polymer  ||
+|cuantasAB `int` 						| Number of AB copolymer conformations || 
+|cuantasC `int` 		     | Number of C polymer conformations || 
+|chainperiod `int`		   | Set length diblock or alternating polymer, works together with chaintype ||
+|verboseflag `char`			 | Regulates verbosity of output files |__yes__: all density outputted|
+|                      | |__no__: density of all ions omitted|
+|geometry `char`       | set geometry or shape of lattice  | __cubic__ : Cartesian lattice |
+|                      |                                   | __prism__ : oblique lattice   |
+|gamma `read`          | angle between the none-orthogonal prism basis vectors, unit: radian | |      
+|| following variable are related to archaic features and not necessary for sysflag="elect","electdouble" |
+|VdWepsC `real`	       | Strength VdW parameter C monomer 	Unit: kBT ||
+|VdWepsB `real`			     | Strength VdW parameter B monomer    Unit: kBT ||
+|VdWcutoff `real`			   | cutoff range of VdW parameter        Unit: delta||
 
 
 
