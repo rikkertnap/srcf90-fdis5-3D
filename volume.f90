@@ -124,6 +124,12 @@ contains
 
         implicit none 
 
+        if(geometry=="cubic") then 
+            gamma = pi/2.0_dp
+        else
+            gamma = gamma * pi /180.0_dp ! convert from degree to radians
+        endif        
+
         beta = (pi/2.0_dp - gamma) / 2.0_dp       ! used by ut, vt, xt and yt functions
         cos_two_beta=cos(2*beta) ! sqrt(cos(beta)**2 - sin(beta)**2)  ! scaling of u and v coordinates
         sin_two_beta=sin(2*beta)
@@ -303,9 +309,13 @@ contains
     subroutine init_graftpoints()
 
         use random 
+        use myutils, only : newunit,lenText
+
 
         integer :: i, j, ig
         real(dp) :: rnd
+        character(len=lenText) :: fname, istr
+        integer :: ios, un_pgpt
 
         if(.not.isRandom_pos_graft) then
 
@@ -333,11 +343,22 @@ contains
         
         endif        
         
-        print*,"position graft point"
-        do ig=1,ngr          
-            print*,position_graft(ig,1),position_graft(ig,2) 
-        enddo
+        write(fname,'(A18)')'positiongraft-rank'
+        write(istr,'(I3)')rank
+        fname=trim(fname)//trim(adjustl(istr))//'.dat'
+        print*,fname
+        print*,istr
+        open(unit=newunit(un_pgpt),file=fname,iostat=ios)
+        if(ios >0 ) then
+             print*, 'Error opening postiongraftpt.dat file : iostat =', ios
+        else
 
+            do ig=1,ngr          
+                write(un_pgpt,*)position_graft(ig,1),position_graft(ig,2) 
+            enddo
+            close(un_pgpt)
+        endif
+    
     end subroutine init_graftpoints
 
 

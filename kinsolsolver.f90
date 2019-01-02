@@ -223,7 +223,11 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
 end subroutine kinsol_gmres_solver
 
 
-!     .. wrapper function 
+!  .. wrapper function 
+
+!  .. since fkun can not be placed in module, because of kinsol
+!  .. x and f need to be explicit size array's 
+
 
 subroutine fkfun(x,f,ier)
   
@@ -233,7 +237,7 @@ subroutine fkfun(x,f,ier)
 
     implicit none
 
-    real(dp), dimension(neq) :: x  ! expliciet size array   
+    real(dp), dimension(neq) :: x  ! explicit size array   
     real(dp), dimension(neq) :: f
     integer ::  ier
 

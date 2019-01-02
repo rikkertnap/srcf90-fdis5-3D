@@ -60,16 +60,19 @@ subroutine make_chains_mc()
 
     integer :: i,j,k,s,g,gn      ! dummy indices
     integer :: idx               ! index label
-    integer :: ix,iy,idxtmp
+    integer :: ix,iy,idxtmp,ntheta
     integer :: nchains           ! number of rotations
     integer :: maxnchains        ! number of rotations
+    integer :: maxntheta         ! maximum number of rotation in xy-plane
     integer :: conf              ! counts number of conformations
     integer :: allowedconfAB
     real(dp) :: chain(3,nsegAB,200) ! chain(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
+    real(dp) :: x(nsegAB), y(nsegAB), z(nsegAB) ! coordinates
     real(dp) :: xp(nsegAB), yp(nsegAB), zp(nsegAB) ! coordinates
-    real(dp) :: x(nsegAB), y(nsegAB), z(nsegAB)
+    real(dp) :: xpp(nsegAB), ypp(nsegAB), zpp(nsegAB)  
     real(dp) :: Lx,Ly,Lz         ! sizes box
     real(dp) :: xpt,ypt          ! coordinates
+    real(dp) :: theta, theta_angle
     character(len=lenText) :: text, istr
     integer  :: xc,yc,zc        
 
@@ -89,9 +92,12 @@ subroutine make_chains_mc()
     endif    
 
     conf=1                  ! counter for conformations
-    seed=435672 ! *(rank+1) ! seed for random number generator  different on each node
+    seed=435672             ! *(rank+1) ! seed for random number generator  different on each node
     maxnchains=12
+    maxntheta =6           ! maximum number of rotation in xy-plane  
 
+    theta_angle= 2.0_dp*pi/maxntheta
+    
     Lz= nz*delta            ! maximum height box 
     Lx= nx*delta            ! maximum width box 
     Ly= ny*delta            ! maximum depth box 
@@ -113,59 +119,68 @@ subroutine make_chains_mc()
             
             do j=1,nchains   
             
-                do s=1,nsegAB                      !  transforming form real- to lattice coordinates
+                do s=1,nsegAB                          !  transforming form real- to lattice coordinates
                     zp(s) = chain(1,s,j)
                     xp(s) = chain(2,s,j)
                     yp(s) = chain(3,s,j) 
                 enddo
 
-                do gn=1,ngr_node                   ! loop over grafted points per node
-               
-                    g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
-                  
-                    idxtmp = g
-                    ix = mod(idxtmp-1,ngrx)+1  ! inverse of g
-                    iy = int((idxtmp-1)/ngrx)+1
-                    
-                    xpt = x_ngr(ix)                ! position of graft point
-                    ypt = y_ngr(iy) 
-                    
-                    weightchainAB(gn,conf)=.TRUE.  ! init weight     
+                do ntheta=1,maxntheta                  ! rotation in xy-plane
 
+                    theta= ntheta * theta_angle          
                     do s=1,nsegAB
+                        xpp(s)= xp(s)*cos(theta)+yp(s)*sin(theta) 
+                        ypp(s)=-xp(s)*sin(theta)+yp(s)*cos(theta)   
+                    enddo    
 
-                        ! .. translation onto correct grafting area translation in xy plane 
-                        x(s)=xp(s)+xpt
-                        y(s)=yp(s)+ypt
+                    do gn=1,ngr_node                   ! loop over grafted points per node
+                   
+                        g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
+                      
+                        idxtmp = g
+                        ix = mod(idxtmp-1,ngrx)+1      ! inverse of g
+                        iy = int((idxtmp-1)/ngrx)+1
+                        
+                        xpt = x_ngr(ix)                ! position of graft point
+                        ypt = y_ngr(iy) 
+                        
+                        weightchainAB(gn,conf)=.TRUE.  ! init weight     
 
-                        ! .. check z coordinate 
-                        if((0>zp(s)).or.(zp(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
+                        do s=1,nsegAB
 
-                        ! .. periodic boundary conditions in x-direction and y-direction  
-                        x(s)=pbc(x(s),Lx)
-                        y(s)=pbc(y(s),Ly)
+                            ! .. translation onto correct grafting area translation in xy plane 
+                            x(s)=xpp(s)+xpt
+                            y(s)=ypp(s)+ypt
 
-                        ! .. transforming form real- to lattice coordinates                 
-                        xc=int(x(s)/delta)+1
-                        yc=int(y(s)/delta)+1
-                        zc=int(zp(s)/delta)+1
+                            ! .. check z coordinate 
+                            if((0>zp(s)).or.(zp(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
 
-                        if(weightchainAB(gn,conf).eqv..TRUE.) then
-                            call linearIndexFromCoordinate(xc,yc,zc,idx)
-                            indexchainAB_init(s,gn,conf) = idx
-                            !print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
-                            if(idx<=0) then
-                                print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
+                            ! .. periodic boundary conditions in x-direction and y-direction  
+                            x(s)=pbc(x(s),Lx)
+                            y(s)=pbc(y(s),Ly)
+
+                            ! .. transforming form real- to lattice coordinates                 
+                            xc=int(x(s)/delta)+1
+                            yc=int(y(s)/delta)+1
+                            zc=int(zp(s)/delta)+1
+
+                            if(weightchainAB(gn,conf).eqv..TRUE.) then
+                                call linearIndexFromCoordinate(xc,yc,zc,idx)
+                                indexchainAB_init(s,gn,conf) = idx
+                                if(idx<=0) then
+                                    print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
+                                endif
                             endif
-                        endif
 
-                    enddo  
-                                   
-                enddo         ! end g loop
+                        enddo  
+                                       
+                    enddo     ! end loop over graft points
 
-                conf=conf +1
+                    conf=conf +1
+
+                enddo         ! end loop over rotations
             
-            enddo             ! end j loop
+            enddo             ! end loop over nchains
 
         else if(geometry=="prism") then
             
@@ -177,48 +192,59 @@ subroutine make_chains_mc()
                     yp(s) = chain(3,s,j) 
                 enddo
 
-                do gn=1,ngr_node                   ! loop over grafted points per node
-               
-                    g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
-                     
-                    xpt = position_graft(g,1)
-                    ypt = position_graft(g,2)
-                    
-                    weightchainAB(gn,conf)=.TRUE.  ! init weight     
+                do ntheta=1,maxntheta                  ! rotation in xy-plane
 
+                    theta= ntheta * theta_angle          
                     do s=1,nsegAB
+                        xpp(s)= xp(s)*cos(theta)+yp(s)*sin(theta) 
+                        ypp(s)=-xp(s)*sin(theta)+yp(s)*cos(theta)   
+                    enddo    
 
-                        ! .. translation onto correct grafting area translation in xy plane 
-                        x(s)=ut(xp(s),yp(s))+xpt
-                        y(s)=vt(xp(s),yp(s))+ypt
 
-                        ! .. check z coordinate 
-                        if((0>zp(s)).or.(zp(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
+                    do gn=1,ngr_node                   ! loop over grafted points per node
+                   
+                        g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
+                         
+                        xpt = position_graft(g,1)
+                        ypt = position_graft(g,2)
+                        
+                        weightchainAB(gn,conf)=.TRUE.  ! init weight     
 
-                        ! .. periodic boundary conditions in x-direction and y-direction  
-                        x(s)=pbc(x(s),Lx)
-                        y(s)=pbc(y(s),Ly)
+                        do s=1,nsegAB
 
-                        ! .. transforming form real- to lattice coordinates                 
-                        xc=int(x(s)/delta)+1
-                        yc=int(y(s)/delta)+1
-                        zc=int(zp(s)/delta)+1
+                            ! .. translation onto correct grafting area translation in xy plane 
+                            x(s)=ut(xpp(s),ypp(s))+xpt
+                            y(s)=vt(xpp(s),ypp(s))+ypt
 
-                        if(weightchainAB(gn,conf).eqv..TRUE.) then
-                            call linearIndexFromCoordinate(xc,yc,zc,idx)
-                            indexchainAB_init(s,gn,conf) = idx
-                            if(idx<=0) then
-                                print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
+                            ! .. check z coordinate 
+                            if((0>zp(s)).or.(zp(s)>Lz)) weightchainAB(gn,conf)=.FALSE. 
+
+                            ! .. periodic boundary conditions in x-direction and y-direction  
+                            x(s)=pbc(x(s),Lx)
+                            y(s)=pbc(y(s),Ly)
+
+                            ! .. transforming form real- to lattice coordinates                 
+                            xc=int(x(s)/delta)+1
+                            yc=int(y(s)/delta)+1
+                            zc=int(zp(s)/delta)+1
+
+                            if(weightchainAB(gn,conf).eqv..TRUE.) then
+                                call linearIndexFromCoordinate(xc,yc,zc,idx)
+                                indexchainAB_init(s,gn,conf) = idx
+                                if(idx<=0) then
+                                    print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
+                                endif
                             endif
-                        endif
 
-                    enddo  
-                                   
-                enddo         ! end g loop
+                        enddo  
+                                       
+                    enddo         ! end loop over graft points
 
-                conf=conf +1
+                    conf=conf +1  ! end loop over rotations
+
+                enddo     
             
-            enddo             ! end j loop
+            enddo                 ! end loop over nchains
 
         else 
            print*,"Error: in make_chains_mc: geometry not cubic, prism, or square"

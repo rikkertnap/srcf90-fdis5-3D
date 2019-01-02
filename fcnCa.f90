@@ -209,7 +209,6 @@ contains
             rhopolBin(i)=x(i+3*n)
         enddo
    
-        ! This part needs to be checked 
         if(rank.eq.0) then 
             neq_bc=0
             if(bcflag(RIGHT)/="cc") then
@@ -225,8 +224,6 @@ contains
                 neq_bc=neq_bc+nx*ny
             endif    
         endif
-
-        ! end to be checked
 
         do i=1,n                     ! init volume fractions 
             rhopolAL_local(i) = 0.0_dp     ! A polymer density 
@@ -547,6 +544,8 @@ contains
             exppiA(i)=(xsol(i)**vpolA(1))*dexp(-zpolA(1)*psi(i))/fdisA(1,i) ! auxiliary variable
         enddo
 
+        if(isVdW) call VdW_contribution_exp(rhopolAin,exppiA)
+
         if(rank==0) then            ! global polymer density
             do i=1,n
                 xpolAB(i) = 0.0_dp 
@@ -656,7 +655,6 @@ contains
             text="iter = "//trim(istr)//" fnorm = "//trim(rstr)
             call print_to_log(LogUnit,text)
 
-
         else          ! Export results
 
             dest = 0
@@ -666,43 +664,7 @@ contains
 
         endif
 
-
     end subroutine fcnelectA
-
-     ! fcn for homopolymer A plus Van der Waals inteaction between segments
-
-    subroutine fcnelectA_VdW(x,f,nn)
-
-        use globals
-        use volume
-        use chains
-        use field
-        use parameters
-        use VdW
-        use surface 
-        use vectornorm
-        use myutils
-        use Poisson
-
-        implicit none
-
-        !     .. scalar arguments
-        !     .. array arguments
-
-        real(dp), intent(in) :: x(neq)
-        real(dp), intent(out) :: f(neq)
-        integer(8), intent(in) :: nn
-
-        integer :: i
-
-        ! still need to do
-        do i=1,nn
-             f(i)=1.0_dp
-        enddo
-
-    end subroutine fcnelectA_VdW
-
-
 
 
     subroutine fcnelectdouble(x,fvec,nn)
@@ -1806,7 +1768,6 @@ contains
             text="iter = "//trim(istr)//" fnorm = "//trim(rstr)
             call print_to_log(LogUnit,text)
 
-
         else          ! Export results
 
             dest = 0
@@ -1820,8 +1781,6 @@ contains
             call MPI_SEND(qABR_local, ngr_node , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
 
         endif
-
-
 
     end subroutine fcndipolarweak
 

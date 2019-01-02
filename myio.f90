@@ -14,7 +14,8 @@ module myio
     integer, parameter ::  myio_err_inputfile = 7
     integer, parameter ::  myio_err_input     = 8
     integer, parameter ::  myio_err_bcflag    = 9 
-    integer, parameter ::  myio_err_label     = 10 
+    integer, parameter ::  myio_err_label     = 10
+    integer, parameter ::  myio_err_VdWeps    = 11  
 
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
@@ -48,14 +49,12 @@ subroutine read_inputfile(info)
 
     ! .. local arguments
 
-    integer :: info_sys, info_bc, info_run, info_geo, info_meth, info_chaintype, info_combi
+    integer :: info_sys, info_bc, info_run, info_geo, info_meth, info_chaintype, info_combi, info_VdWeps
     character(len=8) :: fname
     integer :: ios,un_input  ! un = unit number    
     character(len=100) :: buffer, label
     integer :: pos
     integer :: line
-
-
 
     if (present(info)) info = 0
     
@@ -71,7 +70,7 @@ subroutine read_inputfile(info)
     ios=0 
     line = 0
 
-    ! ios<0 : if an end of record condition is encountered or if an endfile condition was detected.  
+    ! ios<0 : if an end of record condition is encountered or if an end of file condition was detected.  
     ! ios>0 : if an error occured 
     ! ios=0 : otherwise.
 
@@ -159,12 +158,16 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) nsegC
             case ('cuantasC')
                 read(buffer,*,iostat=ios) cuantasC
-            case ('VdWepsC')
-                read(buffer,*,iostat=ios) VdWepsC
-            case ('VdWepsB ')
-                read(buffer,*,iostat=ios) VdWepsB    
-            case ('VdWcutoff')                             
-                read(buffer,*,iostat=ios) VdWcutoff  
+            case ('VdWeps%val')
+                read(buffer,*,iostat=ios) VdWeps%val
+            case ('VdWeps%min')
+                read(buffer,*,iostat=ios) VdWeps%min
+            case ('VdWeps%max')
+                read(buffer,*,iostat=ios) VdWeps%max
+            case ('VdWeps%stepsize')
+                read(buffer,*,iostat=ios) VdWeps%stepsize
+            case ('VdWeps%delta')
+                read(buffer,*,iostat=ios) VdWeps%delta
             case ('nx')
                 read(buffer,*,iostat=ios) nx
             case ('ny')
@@ -253,9 +256,15 @@ subroutine read_inputfile(info)
         return
     endif
 
-    !  potentially overide input values
-
+    !  set and overide certain input values
     call set_value_nzmin(runflag,nzmin,nzmax)
+    call set_value_isVdW(runflag,VdWeps%val,isVdW)
+
+    call check_value_VdWeps(sysflag,isVdW,VdWeps%val,info_VdWeps)
+    if (info_VdWeps == myio_err_VdWeps) then
+        if (present(info)) info = info_VdWeps
+        return
+    endif
 
 end subroutine read_inputfile
  
@@ -308,18 +317,20 @@ subroutine check_value_runflag(runflag,info)
     character(len=15), intent(in) :: runflag
     integer, intent(out),optional :: info
 
-    character(len=15) :: runflagstr(2)
+    character(len=15) :: runflagstr(3)
     integer :: i
     logical :: flag
 
     ! permissible values of runflag
 
     runflagstr(1)="rangepH"
-    runflagstr(2)="rangedist"
+    runflagstr(2)="rangeVdWeps"
+    runflagstr(3)="rangedist"
+    
 
     flag=.FALSE.
 
-    do i=1,2
+    do i=1,3
         if(runflag==runflagstr(i)) flag=.TRUE.
     enddo
 
@@ -484,6 +495,48 @@ subroutine check_value_method(method,info)
 end subroutine check_value_method
 
 
+subroutine check_value_VdWeps(sysflag,isVdW,VdWeps,info)
+
+
+    implicit none
+
+    real(dp), intent(in) :: VdWeps
+    logical, intent(in) :: isVdW
+    character(len=15), intent(in) :: sysflag
+    integer, intent(out), optional :: info
+
+    character(len=15) :: sysflagstr(3)
+    integer :: i
+    logical :: flag
+
+    flag=.false.
+
+    if(isVdW) then ! check for correct combination sysflag 
+     
+        sysflagstr(1)="dipolarweak"
+        sysflagstr(2)="dipolarstrong"
+        sysflagstr(3)="electA"
+
+        do i=3,3 ! sofar only electA works with VdW 
+            if(sysflag==sysflagstr(i)) flag=.TRUE.
+        enddo
+    else  ! isVdW=.false. so oke 
+        flag=.true.
+    endif        
+
+    if (present(info)) info = 0
+
+    if (flag.eqv. .FALSE.) then
+        print*,"Error:  combination sysflag and isVdW is not permissible"
+        print*,"sysflag = ",sysflag, " isVdW =",isVdW
+        if (present(info)) info = myio_err_VdWeps
+        return
+    end if
+
+end subroutine check_value_VdWeps
+
+
+
 ! override input value nzmin
 ! Sets nzmin=nzmax for which runflag that do not loop over nz 
 ! ensuring that the output files are properly close once
@@ -498,6 +551,21 @@ subroutine set_value_nzmin(runflag,nzmin,nzmax)
 
 end subroutine
 
+
+subroutine set_value_isVdW(runflag, VdWeps, isVdW)
+
+    character(len=15), intent(in) :: runflag
+    real(dp), intent(in) :: VdWeps
+    logical, intent(inout)  :: isVdW
+   
+    if (abs(VdWeps)>1.0e-4_dp) then 
+        isVdW=.true.
+    else
+        isVdW=.false.
+    endif
+    if (runflag=="rangeVdWeps") isVdW=.true.
+
+end subroutine
 
 
 subroutine output()
@@ -594,7 +662,12 @@ subroutine output_elect
         endif 
         fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
         write(rstr,'(F7.3)')pHbulk
-        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
+        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))
+        if(isVdW) then 
+            write(rstr,'(F7.3)')VdWeps%val
+            fnamelabel=trim(fnamelabel)//"eps"//trim(adjustl(rstr))
+        endif 
+        fnamelabel=trim(fnamelabel)//".dat"
 
         sysfilename='system.'//trim(fnamelabel)
         xpolABfilename='xpolAB.'//trim(fnamelabel)

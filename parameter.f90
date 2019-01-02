@@ -51,10 +51,14 @@ module parameters
     
     integer :: period            ! peridociy of repeat of A or B block 
   
+    type (looplist), target :: VdWeps            ! strenght VdW interaction in units of kT
+    logical :: isVdW  
+
     real(dp) :: VdWepsB            ! strenght VdW interaction in units of kT
     real(dp) :: VdWepsC            ! strenght VdW interaction in units of kT
-    real(dp) :: chibulk            ! value of chibulk 
-    integer :: numlayers
+    !real(dp) :: chibulk            ! value of chibulk 
+    !integer :: numlayers
+    
     integer :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
     integer :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
     integer :: layeroffset
@@ -553,9 +557,7 @@ contains
         expmu%OHmin = xbulk%OHmin/xbulk%sol ! vsol = vOHmin 
           
         !     .. end init electrostatic part 
-            
-        VdWepsC  = VdWepsC/(vpolC*vsol) ! VdW eps scaled 
-        VdWepsB  = VdWepsB/(vpolB(3)*vsol) ! VdW eps scaled 
+        
 
         deallocate(x)
         deallocate(xguess)
