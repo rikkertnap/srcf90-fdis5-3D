@@ -14,7 +14,7 @@ Sundials/kinsol.
 
 ### Installing
 
-Modify Makefile such that in contains the appropriate linker flags to the sundails library.
+Modify Makefile such that in contains the appropriate linker flags to the sundials library.
 Linker flags can be obtained for the examples directory of the sundails installation.
 
 
@@ -34,14 +34,15 @@ The program uses an input file called 'input.in' that contain following key word
 |			                  |                                   | __altB__: alternating copolymer B-alt-A mod(s,chainperiod)=0 is A monomer |
 |		        |                                              | __copoly__: Sequence read in from sequence.in not implemented yet|
 | sysflag  `char`       | Sets the type of system		       | __elect__: weak polyacid no VdW interaction single surface tethered|
-|                       |                       		       | __electA__:  __elect__  restricted to homopolyemr A |
-| 	 |  			| __neutral__: AB copolyemer and C polymer neutral |
-|	  |   		| __electdouble__: weak polyacid different surface coverage on opposing surface | 		       	    	     	           
-|   | 			 | __electnoply__: nopolymers:|
+|                       |                       		       | __electA__:  __elect__  restricted to homopolymerA plus VdW interaction |
+| 	 |  			| __neutral__: AB copolymer and C polymer neutral |
+|	  |   		| __electdouble__: weak polyacid different surface coverage on opposing surfaces | 		       	    	     	           
+|   | 			 | __electnopoly__: nopolymers:|
 |   |     | __dipolarstrong__: strong polyelectrolyte with explicit dipoles:|
 |	  |     | __dipolarweak__: weak polyelectrolyte with explicit dipoles:|
 |runflag `char`				  | Sets type of run     | __rangepH__: scan over pH values for nz=nzmax |
-|                    |   	                  | __rangedist__: scan overd distances for pH=pH%val  |   
+|                    |   	                  | __rangedist__: scan over distances for pH=pH%val  |   
+|                    |   	                  | __rangeVdWeps__: scan over VdWeps for fixed conditions |   
 |bcflag(RIGHT) `char`	| Sets type of boundary condition for RIGHT surface  |__qu__: quartz |
 |	                    | |__cl__: clay  |
 |	                    | |__ca__: calcite |
@@ -55,28 +56,27 @@ The program uses an input file called 'input.in' that contain following key word
 |tolerance `real`			  	| Expectation tolerance, maximal error non-linear solver||  
 |infile `int`		        |        Select initial guess for non-linear solver |__0__:  homogenous guess initial guess |
 |		                    |                                      |__1__: read guess from a input file |
-|pH%val `real`         |    pH value    ||
+|pH%val `real`            |    pH value    ||
 |pH%min `real`			      |  Minimal pH value||
-|pH%max `real`	        |  Maximum pH value||
-|pH%stepsize `real`    |  Stepsize pH value ||
-|pH%delta `real`       |     Minimal allowed stepsize. Stopping criteria||
-|KionNa `real`         | dissociation constant of NaCl| __0__  complete dissociation|
-|   	                  |                              | __0.60__ : suggested value for NaCl|
-|KionK `real`									 | dissociation constant of KCl | |
-|sigmaSurfL `real`	    | Surface charge density LEFT surface Unit: e/nm2, only for bcflag(LEFT)==cc  ||
-|sigmaSurfR `real`		   |       Surface charge density RIGHT surfcae Unit: e/nm2, only for bcflag(RIGHT)==cc ||
-|pKa(1) `real`				     |   pK of A acid monomer:   AH <=> A- + H+ ||
-|pKa(2) `real`	        |   pK of A acid monomer: ANa  <=> A- + Na+   ||
-|pKa(3) `real`				     |   pK of A acid monomer: ACa+ <=> A- + Ca2+  ||
-|pKa(4) `real`				     |   pK of A acid monomer: A2Ca <=> 2A- + Ca2+ ||
-|pKb(1) `rea           |   pK of B acid monomer: BH  <=> B- + H+ ||
-|pKb(2) `real`		       | pK of B acid monomer: BNa  <=> B- + Na+ ||
-|pKb(3) `real`	        | pK of B acid monomer: BCa+ <=> B- + Ca2+  ||
-|pKb(4) `real`         | pK of B acid monomer:  B2Ca <=> 2B- + Ca2+ ||
-|epsAS%val `real`	     | Van der Waals (VdW) interaction parameter Unit: kBT ||
-|chainperiod `int`		   | set length diblock or alternating polymer, works together with chaintype ||
-|nsize `int` 		        | System size or number of lattice site nsize=nx*ny*nz ||
-|nzmax `int`		         | maximum separation surfaces Unit: delta ||
+|pH%max `real`	          |  Maximum pH value||
+|pH%stepsize `real`       |  Stepsize pH value ||
+|pH%delta `real`          |     Minimal allowed stepsize. Stopping criteria||
+|KionNa `real`            | dissociation constant of NaCl| __0__  complete dissociation|
+|   	                    |                              | __0.60__ : suggested value for NaCl|
+|KionK `real`						  | dissociation constant of KCl | |
+|sigmaSurfL `real`	      | Surface charge density LEFT surface Unit: e/nm2, only for bcflag(LEFT)==cc  ||
+|sigmaSurfR `real`		    |       Surface charge density RIGHT surfcae Unit: e/nm2, only for bcflag(RIGHT)==cc ||
+|pKa(1) `real`				    |   pK of A acid monomer:   AH <=> A- + H+ ||
+|pKa(2) `real`	          |   pK of A acid monomer: ANa  <=> A- + Na+   ||
+|pKa(3) `real`				    |   pK of A acid monomer: ACa+ <=> A- + Ca2+  ||
+|pKa(4) `real`				    |   pK of A acid monomer: A2Ca <=> 2A- + Ca2+ ||
+|pKb(1) `rea              |   pK of B acid monomer: BH  <=> B- + H+ ||
+|pKb(2) `real`		        | pK of B acid monomer: BNa  <=> B- + Na+ ||
+|pKb(3) `real`	          | pK of B acid monomer: BCa+ <=> B- + Ca2+  ||
+|pKb(4) `real`            | pK of B acid monomer:  B2Ca <=> 2B- + Ca2+ ||
+|chainperiod `int`		    | set length diblock or alternating polymer, works together with chaintype ||
+|nsize `int` 		          | System size or number of lattice site nsize=nx ny nz ||
+|nzmax `int`		          | maximum separation surfaces Unit: delta ||
 |nzmin `int`			        | minimal separation opposing surfaces Unit: delta ||
 |nzstep `int`					    | unit stepsize by which distance between surface is reduce Unit: delta ||
 |nx `int`                 | number of lattice cells in x-direction. Unit: delta ||
@@ -92,13 +92,16 @@ The program uses an input file called 'input.in' that contain following key word
 |                         |                                     | __no__: density of all ions omitted|
 |geometry `char`          | set geometry or shape of lattice  | __cubic__ : Cartesian lattice |
 |                         |                                   | __prism__ : oblique lattice   |
-|gamma `real`             | angle between the none-orthogonal prism basis vectors, unit: radian | |      
-|                         | following variable are related to archaic features and not necessary for sysflag="elect","electdouble" | |
-|VdWepsC `real`	          | Strength VdW parameter C monomer 	Unit: kBT    | - |
-|VdWepsB `real`			      | Strength VdW parameter B monomer  Unit: kBT    | - |
-|VdWcutoff `real`			    | cutoff range of VdW parameter     Unit: delta  | - |
-
-
+|gamma `real`             | angle between the none-orthogonal prism basis vectors, unit: radian | |
+| isRandom_pos_graft `logical`  | Displaces  grafting position by a randdom distance | .false. : regular |
+|                               |                         | .true. : irregular|
+|  | following variables are describe VdW interaction and use only for sysflag="electA"| |
+|VdWeps%val `real`	          | Strength VdW parameter 	Unit: kBT    |  |
+|VdWeps%min `real`			      | Minimum strength VdW parameter  Unit: kBT    |  |
+|VdWeps%max `real`			      | Maximum strength VdW parameter  Unit: kBT    | - |
+|VdWeps%stepsize `real`			    | Stepsize strength VdW parameter     Unit: delta  | - |
+|VdWeps%delta `real`			      | Minimal allowed stepsize. Stopping criteria  Unit: kBT    | - |
+|
 
 ## Built With
 
@@ -107,9 +110,10 @@ The program uses an input file called 'input.in' that contain following key word
 
 ## Versioning
 
+version 2.2.1 03-01-2019
 
 ## Authors
 
 * **Rikkert J Nap**
 
-See also the list of other who participated in this project.
+
