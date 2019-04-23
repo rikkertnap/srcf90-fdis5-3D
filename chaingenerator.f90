@@ -94,7 +94,7 @@ subroutine make_chains_mc()
     conf=1                  ! counter for conformations
     seed=435672             ! *(rank+1) ! seed for random number generator  different on each node
     maxnchains=12
-    maxntheta =6           ! maximum number of rotation in xy-plane  
+    maxntheta =6            ! maximum number of rotation in xy-plane  
 
     theta_angle= 2.0_dp*pi/maxntheta
     
@@ -470,7 +470,7 @@ subroutine chain_filter()
 
     cuantasAB=allowed_confAB-1    ! the number of allowed conformations 
 
-    do gn=1,ngr_node        ! loop over grafted points per node
+    do gn=1,ngr_node                ! loop over grafted points per node
         allowed_confC=1             ! counts allowed conformations 
         do conf=1,max_conforC       ! loop of all polymer conformations to filter out allowed ones 
             count_seg=0

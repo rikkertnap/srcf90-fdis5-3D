@@ -48,17 +48,17 @@ module parameters
     real(dp) :: lsegPAA   
     real(dp) :: lsegPEG  
     real(dp) :: lsegPAMPS
+    real(dp) :: lsegPS  
     
     integer :: period            ! peridociy of repeat of A or B block 
   
     type (looplist), target :: VdWeps            ! strenght VdW interaction in units of kT
+    type (looplist), target :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
     logical :: isVdW  
 
     real(dp) :: VdWepsB            ! strenght VdW interaction in units of kT
     real(dp) :: VdWepsC            ! strenght VdW interaction in units of kT
-    !real(dp) :: chibulk            ! value of chibulk 
-    !integer :: numlayers
-    
+   
     integer :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
     integer :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
     integer :: layeroffset
@@ -174,6 +174,8 @@ contains
                 neq = 4 * nsize 
             case ("electnopoly") 
                 neq = 2 * nsize + neq_bc
+            case ("dipolarnopoly") 
+                neq = 2 * nsize + neq_bc
             case ("neutral") 
                 neq = nsize
             case ("bulk water") 
@@ -213,7 +215,7 @@ contains
 
         real(dp) :: unit_Debye_to_enm=0.020819434_dp  ! 1D= 0.020819434 e·nm 
 
-        dipolemoment%sol=1.8546_dp*unit_Debye_to_enm !
+        dipolemoment%sol=4.8_dp*unit_Debye_to_enm ! 1.8546_dp*unit_Debye_to_enm !
         dipolemoment%pol=1.7_dp*unit_Debye_to_enm !
          
     end subroutine
@@ -374,7 +376,8 @@ contains
         lb=lb/1.0e-9_dp                           ! bjerrum length in water in nm
         constqW = delta*delta*(4.0_dp*pi*lb)/vsol ! multiplicative constant Poisson Eq. 
 
-        if(sysflag.eq."dipolarweak".or.sysflag.eq."dipolarstrong") then 
+        if(sysflag.eq."dipolarweak".or.sysflag.eq."dipolarstrong".or.&
+            sysflag.eq."dipolarweakA".or.sysflag.eq."dipolarpoly") then 
 
             lb=(elemcharge**2)/(4.0_dp*pi*dielect0*kBoltzmann*Temp)  ! bjerrum length in vacum in m
             lb= lb/1.0e-9_dp                                         ! bjerrum length in vacum in nm
@@ -411,6 +414,10 @@ contains
             sigmaABL = 0.0_dp
             sigmaABR = 0.0_dp
             sigmaAB  = 0.0_dp
+        case('dipolarnopoly')    
+            sigmaABL = 0.0_dp
+            sigmaABR = 0.0_dp
+            sigmaAB  = 0.0_dp    
         case("dipolarstrong") 
             sigmaABL = ngr/(nsurf*delta*delta)
             sigmaABR = sigmaABL
@@ -419,6 +426,10 @@ contains
             sigmaABL = ngr/(nsurf*delta*delta)
             sigmaABR = sigmaABL
             sigmaAB  = sigmaABL
+        case("dipolarweakA") 
+            sigmaABL = ngr/(nsurf*delta*delta)
+            sigmaABR = 0.0_dp
+            sigmaAB  = sigmaABL   
         case("neutral") 
             sigmaABL = ngr/(nsurf*delta*delta)
             sigmaABR = 0.0_dp
@@ -602,7 +613,8 @@ contains
     end subroutine init_expmu
 
 
-    ! inits chem potential and calls chainfilter 
+    ! inits chem potential 
+
     subroutine init_vars_input()
 
         use globals, only : sysflag
@@ -615,23 +627,25 @@ contains
         select case (sysflag)
         case ("elect")
             call init_expmu_elect() 
-        !    call init_elect_constants(T%val) ! check if this call is neccesary 
+        !    call init_elect_constants(T%val) 
+        !    this call is not neccesary subroutine allready called in init_constants
         case ("electA")
             call init_expmu_elect() 
         case ("dipolarstrong")
             call init_expmu() 
-        !    call init_elect_constants(T%val)
             call init_dipolesmoment(dipole)
         case ("dipolarweak")
             call init_expmu() 
-        !    call init_elect_constants(T%val)
             call init_dipolesmoment(dipole)
+         case ("dipolarweaA")
+            call init_expmu() 
+            call init_dipolesmoment(dipole)    
         case ("electdouble") 
             call init_expmu_elect() 
-        !    call init_elect_constants(T%val)
         case ("electnopoly")
             call init_expmu_elect()
-        !    call init_elect_constants(T%val)
+        case ("dipolarnopoly")
+            call init_expmu_elect()
         case ("neutral")
             call init_expmu_neutral()   
         case default   

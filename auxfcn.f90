@@ -52,7 +52,7 @@ contains
         
         frac=0.0_dp
 
-        do k = Nlevel, -1, 2          ! backward recusion  from k=N to k=2
+        do k = Nlevel, -1, 2          ! backward recursion  from k=N to k=2
             bk = 2.0_dp * k + 1.0_dp 
             frac = xsqr/ ( bk + frac ) 
         enddo
@@ -64,7 +64,7 @@ contains
 
 
     ! langevin function L(x) =coth(x) -1/x=1/tanh(x) -1/x
-    ! fval=x/3.0_dp-(x**3)/45.0_dp  +2.0_dp*(x**5)/945.0_dp-(x**7)/4725.0_dp +2.0_dp*(x**9)/(93555.0_dp) ! Taylor truncation error x^11
+   
     function Langevin(x) result(fval)
 
         real(dp), intent(in) :: x

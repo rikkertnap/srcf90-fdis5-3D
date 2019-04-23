@@ -71,6 +71,8 @@ subroutine init_guess(x, xguess)
         call init_guess_electdouble(x,xguess)  
     else if(sysflag=="electnopoly") then 
         call init_guess_electnopoly(x,xguess)
+    else if(sysflag=="dipolarnopoly") then 
+        call init_guess_electnopoly(x,xguess)    
     else if(sysflag=="neutral") then 
         call init_guess_neutral(x,xguess)
     else if(sysflag=="electA") then 
@@ -98,9 +100,9 @@ subroutine init_guess_dipolar(x, xguess)
     real(dp) :: xguess(:)  ! guess fraction  solvent 
   
     !     ..local variables 
-    integer :: n, i
-    character(len=8) :: fname(4)
-    integer :: ios,un_file(4)
+    integer :: n, i, neq_bc
+    character(len=8) :: fname(2)
+    integer :: ios,un_file(2)
   
     ! .. init guess all xbulk     
     do i=1,nsize
@@ -124,12 +126,16 @@ subroutine init_guess_dipolar(x, xguess)
             endif
         enddo
      
-        if(bcflag(LEFT)/="cc") then 
-            do i=1,nsurf 
-                read(un_file(2),*)psisurfL(i)     ! surface potetial 
-            enddo
-        endif       
+        neq_bc=0
 
+        if(bcflag(RIGHT)/="cc") then 
+            neq_bc=nsurf
+            do i=1,nsurf
+                read(un_file(2),*)psisurfR(i)     ! degree of complexation A 
+                x(i+2*nsize)   = psisurfR(i) 
+            enddo
+        endif    
+        
         do i=1,nsize
             read(un_file(1),*)xsol(i)       ! solvent
             read(un_file(2),*)psi(i)        ! potential
@@ -137,12 +143,16 @@ subroutine init_guess_dipolar(x, xguess)
             x(i+nsize)   = psi(i)        ! placing xsol  in vector x
         enddo
 
-        if(bcflag(RIGHT)/="cc") then 
-            do i=1,nsurf
-                read(un_file(2),*)psisurfR(i)     ! degree of complexation A 
+
+        if(bcflag(LEFT)/="cc") then 
+            do i=1,nsurf 
+                read(un_file(2),*)psisurfL(i)     ! surface potetial 
+                x(i+2*nsize+neq_bc)   = psisurfL(i) 
             enddo
-        endif    
+        endif 
         
+
+
         do i=1,2
             close(un_file(i))
         enddo
@@ -585,7 +595,8 @@ subroutine make_guess_from_xstored(xguess,xstored)
             xguess(4*nsize+i)=xstored(4*(nsize+nsurf*nzstep)+i) 
         enddo
 
-    elseif (sysflag=="electnopoly".or.sysflag=="dipolarstrong".or.sysflag=="dipolarweak") then 
+    elseif (sysflag=="electnopoly".or.sysflag=="dipolarstrong".or.sysflag=="dipolarweak".or.&
+        sysflag=="dipolarweakA".or.sysflag=="dipolarnopoly") then 
         do i=1,nsize/2
             xguess(i)=xstored(i)                    ! volume fraction solvent 
             xguess(i+nsize)=xstored(i+nsize+nsurf*nzstep)       ! potential

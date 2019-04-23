@@ -18,7 +18,7 @@ module myio
     integer, parameter ::  myio_err_VdWeps    = 11  
 
     ! unit number 
-    integer :: un_sys,un_xpolAB,un_xpolC,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
+    integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl, un_xpolC
     integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q
     integer :: un_dip ,un_dielec,un_xpolABz  
    
@@ -190,6 +190,8 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) gamma  
             case ('isRandom_pos_graft')
                 read(buffer,*,iostat=ios) isRandom_pos_graft  
+            case ('seed_graft')
+                read(buffer,*,iostat=ios) seed_graft   
             case default
                 if(pos>1) then 
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -276,7 +278,7 @@ subroutine check_value_sysflag(sysflag,info)
     character(len=15), intent(in) :: sysflag
     integer, intent(out),optional :: info
 
-    character(len=15) :: sysflagstr(9)
+    character(len=15) :: sysflagstr(11)
     integer :: i
     logical :: flag
 
@@ -287,14 +289,17 @@ subroutine check_value_sysflag(sysflag,info)
     sysflagstr(3)="neutral"
     sysflagstr(4)="electdouble"
     sysflagstr(5)="electnopoly"
-    sysflagstr(6)="electHC"
-    sysflagstr(7)="dipolarweak"
-    sysflagstr(8)="dipolarstrong"
-    sysflagstr(9)="electA"
+    sysflagstr(6)="dipolarweak"
+    sysflagstr(7)="dipolarstrong"
+    sysflagstr(8)="electA"
+    sysflagstr(9)="dipolarweakA"
+    sysflagstr(10)="dipolarnopoly"
+    sysflagstr(11)="electVdWAB"
+
 
     flag=.FALSE.
 
-    do i=1,9
+    do i=1,11
         if(sysflag==sysflagstr(i)) flag=.TRUE.
     enddo
 
@@ -505,7 +510,7 @@ subroutine check_value_VdWeps(sysflag,isVdW,VdWeps,info)
     character(len=15), intent(in) :: sysflag
     integer, intent(out), optional :: info
 
-    character(len=15) :: sysflagstr(3)
+    character(len=15) :: sysflagstr(2)
     integer :: i
     logical :: flag
 
@@ -513,11 +518,10 @@ subroutine check_value_VdWeps(sysflag,isVdW,VdWeps,info)
 
     if(isVdW) then ! check for correct combination sysflag 
      
-        sysflagstr(1)="dipolarweak"
-        sysflagstr(2)="dipolarstrong"
-        sysflagstr(3)="electA"
+        sysflagstr(1)="dipolarweakA"
+        sysflagstr(2)="electA"
 
-        do i=3,3 ! sofar only electA works with VdW 
+        do i=1,2 ! sofar only electA works with VdW 
             if(sysflag==sysflagstr(i)) flag=.TRUE.
         enddo
     else  ! isVdW=.false. so oke 
@@ -573,28 +577,31 @@ subroutine output()
     use globals, only : sysflag
     implicit none
 
-    if(sysflag=="elect") then 
+    select case (sysflag)
+    case ("elect")
         call output_elect
         call output_individualcontr_fe
-    elseif(sysflag=="electA") then
+    case ("electA")
         call output_elect
         call output_individualcontr_fe
-    elseif(sysflag=="electdouble") then
+    case("electdouble") 
         call output_electdouble
         call output_individualcontr_fe
-    elseif(sysflag=="neutral") then
+    case("neutral") 
         call output_neutral
-    elseif(sysflag=="electnopoly") then
+    case("electnopoly") 
         call output_elect
         call output_individualcontr_fe
-    elseif(sysflag=="dipolarstrong") then
+    case("dipolarstrong") 
         call output_elect
-    elseif(sysflag=="dipolarweak") then
+    case("dipolarweak") 
         call output_elect
-    else
+    case("dipolarnopoly") 
+        call output_elect    
+    case default
         print*,"Error in output subroutine"
         print*,"Wrong value sysflag : ", sysflag
-    endif     
+    end select     
 
 end subroutine output
 
@@ -621,7 +628,7 @@ subroutine output_elect
     character(len=90) :: xsolfilename 
     character(len=90) :: xpolABfilename 
     character(len=90) :: xpolABzfilename 
-    character(len=90) :: xpolCfilename 
+!    character(len=90) :: xpolCfilename 
     character(len=90) :: xpolendfilename 
     character(len=90) :: xNafilename
     character(len=90) :: xKfilename
@@ -671,7 +678,7 @@ subroutine output_elect
 
         sysfilename='system.'//trim(fnamelabel)
         xpolABfilename='xpolAB.'//trim(fnamelabel)
-        xpolCfilename='xpolC.'//trim(fnamelabel)
+!        xpolCfilename='xpolC.'//trim(fnamelabel)
         xpolABzfilename='xpolABz.'//trim(fnamelabel)
         xsolfilename='xsol.'//trim(fnamelabel)
         xNafilename='xNaions.'//trim(fnamelabel)
@@ -699,7 +706,7 @@ subroutine output_elect
 
         if(sysflag/="electnopoly") then          
             open(unit=newunit(un_xpolAB),file=xpolABfilename)
-            open(unit=newunit(un_xpolC),file=xpolCfilename)
+!            open(unit=newunit(un_xpolC),file=xpolCfilename)
             open(unit=newunit(un_fdisA),file=densfracAfilename) 
             open(unit=newunit(un_fdisB),file=densfracBfilename) 
             open(unit=newunit(un_q),file=qfilename)
@@ -725,7 +732,7 @@ subroutine output_elect
     else ! check that files are open
         inquire(unit=un_sys, opened=isopen)
         inquire(unit=un_xpolAB, opened=isopen)
-        inquire(unit=un_xpolC, opened=isopen)
+!        inquire(unit=un_xpolC, opened=isopen)
         inquire(unit=un_xsol, opened=isopen)
 
         if(.not.isopen) write(*,*)"un_xsol is not open"
@@ -739,7 +746,7 @@ subroutine output_elect
     write(un_psi,*)'#D    = ',nz*delta
     if(sysflag/="electnopoly") then         
         write(un_xpolAB,*)'#D    = ',nz*delta 
-        write(un_xpolC,*)'#D    = ',nz*delta 
+!        write(un_xpolC,*)'#D    = ',nz*delta 
         write(un_fdisA,*)'#D    = ',nz*delta
         write(un_fdisB,*)'#D    = ',nz*delta
     endif      
@@ -777,7 +784,7 @@ subroutine output_elect
 
         do i=1,nsize
             write(un_xpolAB,fmt3reals)xpolAB(i),rhopolA(i),rhopolB(i)
-            write(un_xpolC,fmt1reals)xpolC(i)
+!            write(un_xpolC,fmt1reals)xpolC(i)
             write(un_fdisA,fmt5reals)fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
             write(un_fdisB,fmt5reals)fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)
         enddo
@@ -985,7 +992,7 @@ subroutine output_elect
         close(un_psi)
         if(sysflag/="electnopoly") then
             close(un_xpolAB)   
-            close(un_xpolC)
+!            close(un_xpolC)
             close(un_fdisA)
             close(un_fdisB)
             close(un_xpolABz)
@@ -1364,7 +1371,7 @@ subroutine output_neutral
     character(len=90) :: sysfilename     
     character(len=90) :: xsolfilename 
     character(len=90) :: xpolABfilename 
-    character(len=90) :: xpolCfilename 
+!    character(len=90) :: xpolCfilename 
     character(len=90) :: xpolendfilename 
     
     character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals   
@@ -1393,14 +1400,14 @@ subroutine output_neutral
         !     .. make filenames 
         sysfilename='system.'//trim(fnamelabel)
         xpolABfilename='xpolAB.'//trim(fnamelabel)   
-        xpolCfilename='xpolC.'//trim(fnamelabel)   
+!        xpolCfilename='xpolC.'//trim(fnamelabel)   
         xsolfilename='xsol.'//trim(fnamelabel)   
         xpolendfilename='xpolend.'//trim(fnamelabel)   
         
         !      .. opening files
         open(unit=newunit(un_sys),file=sysfilename)   
         open(unit=newunit(un_xpolAB),file=xpolABfilename)
-        open(unit=newunit(un_xpolC),file=xpolCfilename)
+!        open(unit=newunit(un_xpolC),file=xpolCfilename)
         open(unit=newunit(un_xsol),file=xsolfilename)
         
     else ! check that files are open
@@ -1417,7 +1424,7 @@ subroutine output_neutral
 
     do i=1,nsize    
        write(un_xpolAB,fmt3reals)xpolAB(i),rhopolA(i),rhopolB(i)
-       write(un_xpolC,fmt1reals)xpolC(i)
+!       write(un_xpolC,fmt1reals)xpolC(i)
        write(un_xsol,fmt1reals)xsol(i)
     !     write(40,*)zc(i),endpol(i)
     enddo
@@ -1505,7 +1512,7 @@ subroutine output_neutral
     if(nz.eq.nzmin) then 
         close(un_xsol)
         close(un_xpolAB)
-        close(un_xpolC)
+!        close(un_xpolC)
         close(un_sys)
     endif
   
@@ -1764,7 +1771,7 @@ subroutine copy_solution(x)
 
     case default   
 
-        print*,"Error: sysflag incorrect at copy_solution"
+        print*,"Error: sysflag incorrect in copy_solution"
         print*,"stopping program"
         stop
     
@@ -1812,15 +1819,23 @@ subroutine compute_vars_and_output()
     
     case ("dipolarweak")
 
+        call fcnenergy()    
         call average_density_z(xpolAB,xpolABz,heightAB)  
         call output()           ! writing of output 
 
     case ("dipolarstrong")
+        
+        call fcnenergy()    
         call average_density_z(xpolAB,xpolABz,heightAB)  
         call output()           ! writing of output 
 
+    case ("dipolarnopoly")
+        
+        call fcnenergy()      
+        call output()           ! writing of output 
+
     case default   
-        print*,"Error: sysflag incorrect at compute_vars_and_output"
+        print*,"Error: sysflag incorrect in compute_vars_and_output"
         print*,"stopping program"
         stop
     end select

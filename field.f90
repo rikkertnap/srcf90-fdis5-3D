@@ -7,10 +7,10 @@ module field
     
     real(dp), dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer 
     real(dp), dimension(:), allocatable :: xpolABz ! total volume fraction of polymer in z-direction
-    real(dp), dimension(:), allocatable :: xpolC   ! total volume fraction of polymer 
+!    real(dp), dimension(:), allocatable :: xpolC   ! total volume fraction of polymer 
     real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer 
     real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer 
-    real(dp), dimension(:), allocatable :: rhopolC ! density C monomer of polymer
+!    real(dp), dimension(:), allocatable :: rhopolC ! density C monomer of polymer
     real(dp), dimension(:), allocatable :: xsol    ! volume fraction solvent
     real(dp), dimension(:), allocatable :: psi     ! electrostatic potential 
     real(dp), dimension(:), allocatable :: xNa     ! volume fraction of positive Na+ ion
@@ -50,10 +50,10 @@ contains
 
         allocate(xpolAB(N))
         allocate(xpolABz(Nz))
-        allocate(xpolC(N))
+ !       allocate(xpolC(N))
         allocate(rhopolA(N))
         allocate(rhopolB(N))
-        allocate(rhopolC(N))
+ !       allocate(rhopolC(N))
         allocate(xsol(N))
         allocate(psi(N+2*Nx*Ny))
         allocate(electPol(3,N+2*Nx*Ny))
@@ -82,10 +82,10 @@ contains
         
         deallocate(xpolAB)
         deallocate(xpolABz)
-        deallocate(xpolC)
+!        deallocate(xpolC)
         deallocate(rhopolA)
         deallocate(rhopolB)
-        deallocate(rhopolC)
+!        deallocate(rhopolC)
         deallocate(xsol)
         deallocate(psi)
         deallocate(electPol)
@@ -117,7 +117,7 @@ contains
         allocate(qAB(N))
         allocate(qABL(N))
         allocate(qABR(N))
-        allocate(qC(N))
+!        allocate(qC(N))
 
     end subroutine allocate_part_fnc
 
@@ -132,10 +132,10 @@ contains
 
         do i=1,N
             xpolAB(i)=0.0_dp
-            xpolC(i)=0.0_dp
+!            xpolC(i)=0.0_dp
             rhopolA(i)=0.0_dp
             rhopolB(i)=0.0_dp
-            rhopolC(i)=0.0_dp
+!            rhopolC(i)=0.0_dp
             xsol(i)=0.0_dp
             xNa(i)=0.0_dp
             xK(i)=0.0_dp

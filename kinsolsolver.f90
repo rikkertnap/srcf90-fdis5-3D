@@ -72,7 +72,7 @@ end subroutine fkpsol
 subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
   
     use mpivars
-    use ieee_arithmetic, only : ieee_is_nan
+    use ieee_arithmetic, only : ieee_is_nan    ! alternative for function isNaN in myutils
     use globals, only : nsize, neq, sysflag
     use kinsolvars
     use parameters, only : iter
@@ -91,8 +91,8 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
 
     !  .. scalar arguments
     real(dp), intent(out) :: fnorm 
-    real(dp), intent(in) :: error
-    logical, intent(out) :: isSolution
+    real(dp), intent(in)  :: error
+    logical,  intent(out) :: isSolution
    
     !  .. local arguments 
 
@@ -206,14 +206,41 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
         call print_to_log(LogUnit,text)
     
     else
-    
         write(istr,'(I5)')ier
         text='SUNDIALS_ERROR: FKINSOL returned IER = '//trim(istr)
-        call print_to_log(LogUnit,text)  
-        write(rstr,'(E25.16)')fnorm
-        text="No solution: fnorm = "//trim(rstr)
-        call print_to_log(LogUnit,text)
+        call print_to_log(LogUnit,text) 
+
+        if(ier==1) then 
+
+            write(rstr,'(E25.16)')fnorm
+            text='Input allready a solution: fnorm = '//trim(rstr)
+            call print_to_log(LogUnit,text)  
+            write(istr,'(I8)')iter
+            text="number of iterations  = "//trim(istr)
+            call print_to_log(LogUnit,text)
+
+            isSolution=.true.             ! overrule and accept
+        
+        elseif(ier==2) then
+        
+            write(rstr,'(E25.16)')fnorm
+            text='Kinsol stalling : fnorm = '//trim(rstr)
+            call print_to_log(LogUnit,text) 
+            write(istr,'(I8)')iter
+            text="number of iterations  = "//trim(istr)
+            call print_to_log(LogUnit,text)
+        
+        else     
+        
+            write(rstr,'(E25.16)')fnorm
+            text="No solution: fnorm = "//trim(rstr)
+            call print_to_log(LogUnit,text)
+            write(istr,'(I8)')iter
+            text="number of iterations  = "//trim(istr)
+            call print_to_log(LogUnit,text)
     
+        endif
+        
     endif    
     
     call fkinfree             ! free memory

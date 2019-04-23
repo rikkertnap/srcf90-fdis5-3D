@@ -30,16 +30,9 @@ module volume
     real(dp) :: beta                ! related beta = (pi/2- gamma)/2, angle between basis vector u and x and v and y
     real(dp) :: cos_two_beta        ! sqrt(cos(beta)**2 - sin(beta)**2)=cos(2beta) scales u and v coordinates 
     real(dp) :: sin_two_beta        ! sin(2beta)  
+    integer  :: seed_graft          ! seed for graft points 
     
     real(dp), dimension(:,:), allocatable :: position_graft
-
- !   real(dp), dimension(:), allocatable :: zc ! z-coordinate
- !   real(dp), dimension(:), allocatable :: xc ! z-coordinate
- !  real(dp), dimension(:), allocatable :: yc ! z-coordinate
-   
- !   real(dp), dimension(:), allocatable :: deltaG ! geometrical factor
- !   real(dp), dimension(:), allocatable :: Fplus ! factor in Poisson Eq  
- !   real(dp), dimension(:), allocatable :: Fmin
 
     character(len=11) :: geometry
   
@@ -47,76 +40,8 @@ module volume
 
 contains
   
-!     subroutine allocate_geometry(nx,ny,nz)
-    
-!         implicit none
-!         integer, intent(in) :: nx, ny, nz
-        
-!         integer :: ntot
 
-!         ntot=nx*ny*nz    
-        
-!     !    print*," allocate_geometry : ntot=",ntot,"rank=",rank
-
-!         allocate(xc(nx))
-!         allocate(yc(ny))
-!         allocate(zc(nz))
-!         allocate(deltaG(ntot))
-
-! !    allocate(Fplus(N))
-! !    allocate(Fmin(N))
-    
-!     end subroutine allocate_geometry
   
-!     !     computes geometical factors: deltaG
-!     !     deltaG(p) = the finite volume element p(i,j,k)
-!     !     subspended by volume element [i-1][j-1][k-1]
-!     !     divided by volcell. For volume elemetn outside and not intersecting 
-!     !     with cylinder deltaG=1
-      
-!     subroutine  volume_elements_cubic(nx,ny,nz)
-
-!         implicit none
-        
-!         integer, intent(in) :: nx, ny, nz
-
-!         !     .. local variables
-!         real(dp) :: vtol                 ! tolerance test volume integral 
-!         parameter (vtol=1.0E-10_dp)
-!         integer :: ix, iy, iz, ntot, idx
-!         real(dp) :: vol, vtest
-
-!         vol=0.0_dp
-    
-!         do iz=1,nz
-!             zc(iz)= (iz-0.5_dp) * delta  ! x-coordinate 
-!         enddo
-!         do iy=1,ny
-!             yc(iy)= (iy-0.5_dp) * delta  ! y-coordinate 
-!         enddo
-!         do ix=1,nx
-!             xc(ix)= (ix-0.5_dp) * delta  ! z-coordinate 
-!         enddo
-
-!         vol=0.0_dp
-        
-!         ntot=nx*ny*nz
-  
-!         do idx=1,ntot ! nsize=nx*ny*nz 
-!             deltaG(idx)=1.0_dp  
-!             vol=vol+ deltaG(idx)
-!         enddo
-    
-!         vtest=ntot
-    
-!         if(abs(vtest-vol)>=vtol) then 
-!             print*,"Warning vtest=",vtest," not equal to vol=",vol
-!         endif
-
-      
-!     end subroutine
-  
-
     subroutine init_lattice
 
         use globals, only : nsize, DEBUG
@@ -332,7 +257,7 @@ contains
         
         else 
 
-            seed=435672 
+            seed=seed_graft
 
             do ig=1,ngr          
                 rnd = (rands(seed)-0.5_dp)*1.5_dp

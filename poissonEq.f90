@@ -162,9 +162,9 @@ contains
 
                     
                     fvec(noffset+id)= -0.5_dp*(                                             &
-                        (psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) +   &
-                        2.0_dp*sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) + &
-                        psi(idxymin) ))/cos_two_beta+psi(idzpls)-2.0_dp*psi(id)+ psi(idzmin)  +rhoq(id)*constqW)
+                        (psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id)     &
+                        -sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) +psi(idxymin))/2.0_dp) & 
+                        /cos_two_beta+psi(idzpls)-2.0_dp*psi(id)+ psi(idzmin)  +rhoq(id)*constqW)
                 enddo
             enddo
         enddo    
@@ -187,10 +187,10 @@ contains
                 call linearIndexFromCoordinate(ipbc(ix-1,nx),ipbc(iy+1,ny),iz ,idxminypls)
 
             
-                fvec(noffset+id)= -0.5_dp*(                                                     &
-                        (psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) +       &
-                        2.0_dp*sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) +    &
-                        psi(idxymin) ))/cos_two_beta+ psi(idzpls)-psi(id)+sigmaqSurfL(id)+rhoq(id)*constqW)
+                fvec(noffset+id)= -0.5_dp*(                                                   &
+                        (psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id)       &
+                        -sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls)+psi(idxymin) )/2.0_dp &
+                        )/cos_two_beta+ psi(idzpls)-psi(id)+sigmaqSurfL(id)+rhoq(id)*constqW)
             
             enddo
         enddo    
@@ -214,9 +214,9 @@ contains
                 id2D=id-(nsize-nx*ny)
                 
                 fvec(noffset+id)= -0.5_dp*(                                                 &
-                    (psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) +       &
-                    2.0_dp*sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) +    &
-                    psi(idxymin) ))/cos_two_beta+ sigmaqSurfR(id2D)-psi(id)+ psi(idzmin)+rhoq(id)*constqW)
+                    (psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id)         &
+                    -sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls)+psi(idxymin) )/2.0_dp &
+                    )/cos_two_beta+ sigmaqSurfR(id2D)-psi(id)+ psi(idzmin)+rhoq(id)*constqW)
             enddo
         enddo    
         
@@ -261,6 +261,8 @@ contains
         else if(sysflag=="dipolarstrong") then 
             noffset=2*nsize
         else if(sysflag=="dipolarweak") then 
+            noffset=2*nsize
+        else if(sysflag=="dipolarnopoly") then 
             noffset=2*nsize
         else 
             print*,"error: sysflag wrong value for Poisson_equation_surface "    
@@ -532,9 +534,14 @@ contains
                     Dpsi(3,id)=(psi(idzpls)-psi(idzmin))/(2.0_dp*delta)
     
                     ! nabla
-                    D2psi(id)=( psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) + &
-                        2.0_dp*sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) +     &
-                        psi(idxymin) ))/cos_two_beta+psi(idzpls)-2.0_dp*psi(id)+ psi(idzmin)
+                    !D2psi(id)=( psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) + &
+                    !   2.0_dp*sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) +     &
+                    !    psi(idxymin) ))/cos_two_beta+psi(idzpls)-2.0_dp*psi(id)+ psi(idzmin)
+                    
+                    D2psi(id)=(psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) &
+                        -sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) + psi(idxymin))/2.0_dp &
+                        )/cos_two_beta+psi(idzpls)-2.0_dp*psi(id)+ psi(idzmin)
+
                 enddo
             enddo
         enddo    
@@ -563,9 +570,12 @@ contains
                 Dpsi(3,id)=(psi(idzpls)-(psi(id)+sigmaqSurfL(id)))/(2.0_dp*delta)
 
                 ! nabla
-                D2psi(id)=( psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) + &
-                        2.0_dp*sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) + &
-                        psi(idxymin) ))/cos_two_beta+psi(idzpls)-psi(id)+sigmaqSurfL(id)
+                !D2psi(id)=( psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) + &
+                !        2.0_dp*sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) + &
+                !        psi(idxymin) ))/cos_two_beta+psi(idzpls)-psi(id)+sigmaqSurfL(id)
+                D2psi(id)=( psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) &
+                    -sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls)+psi(idxymin))/2.0_dp &
+                    )/cos_two_beta+psi(idzpls)-psi(id)+sigmaqSurfL(id)
             enddo
         enddo    
 
@@ -594,15 +604,19 @@ contains
                 Dpsi(3,id)=((sigmaqSurfR(id2D)+psi(id))-psi(idzmin))/(2.0_dp*delta)
             
                 ! nabla
-                D2psi(id)=( psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id) +&
-                    2.0_dp*sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls) +&
-                    psi(idxymin) ))/cos_two_beta+sigmaqSurfR(id2D)-psi(id)+ psi(idzmin)
+                D2psi(id)=( psi(idxpls)+psi(idxmin)+psi(idypls)+psi(idymin)-4.0_dp*psi(id)            &
+                    -sin_two_beta*(psi(idxypls)-psi(idxplsymin)-psi(idxminypls)+psi(idxymin))/2.0_dp &
+                    )/cos_two_beta+sigmaqSurfR(id2D)-psi(id)+ psi(idzmin)
             enddo
         enddo    
 
         do id=1,nsize
             ! absolute value gradient
             absDpsi(id)=sqrt(Dpsi(1,id)**2+Dpsi(2,id)**2+Dpsi(3,id)**2) 
+            
+            ! this must be 
+
+
             if(absDpsi(id)>epsabsDpsi) then   
                 ! unit vector grad
                 unitdirDpsi(1,id)=Dpsi(1,id)/absDpsi(id)
@@ -620,7 +634,7 @@ contains
 
 
     ! .. This routine computes the bound charge density
-    ! .. rhob= -div.Fis the divergence of the polarization density vector
+    ! .. rhob= -div.P is the divergence of the polarization density vector
 
 
     subroutine charge_density_bound(electPol,rhob)

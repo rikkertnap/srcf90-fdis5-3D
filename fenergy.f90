@@ -19,7 +19,9 @@ module energy
     real(dp) :: FEq                 ! partition function poly A and B 
     real(dp) :: FEpi                ! sum over pi
     real(dp) :: FErho               ! sum over densities
-    real(dp) :: FEel                ! electrostatics energ
+    real(dp) :: FEel                ! electrostatics energy
+    real(dp) :: FEelb               ! contrubution of bound charges to electrostatic energy
+
     real(dp) :: FEelsurf(2)         ! electrostatics energy from  surface
     real(dp) :: FEchemsurf(2)       ! chemical free energy surface
     real(dp) :: FEchem
@@ -61,16 +63,18 @@ contains
         
         character(len=lenText) :: text 
 
-        if(sysflag.eq."elect".or.sysflag.eq."electdouble".or.&
-            sysflag.eq."electnopoly".or.sysflag=="electA") then 
+        if(sysflag=="elect".or.sysflag=="electdouble".or.&
+            sysflag=="electnopoly".or.sysflag=="electA") then 
             call fcnenergy_elect()
             call fcnenergy_elect_alternative()
-        elseif(sysflag.eq."dipolarstrong".or.sysflag.eq."dipolarweak") then
+        elseif(sysflag=="dipolarstrong".or.sysflag=="dipolarweak".or.sysflag=="dipolarweakA".or.&
+            sysflag=="dipolarnopoly") then
             print*,"Free energy: warning not yet implemented "
-        elseif(sysflag.eq."neutral") then 
+            call fcnenergy_elect()
+        elseif(sysflag=="neutral") then 
             call fcnenergy_neutral()
         else             
-            text="FEconf_entropy: wrong sysflag: "//sysflag//"stopping program"
+            text="fcnenergy: wrong sysflag: "//sysflag//"stopping program"
             call print_to_log(LogUnit,text)
             stop
         endif 
@@ -121,15 +125,26 @@ contains
             FEpi = FEpi  + log(xsol(i))
             FErho = FErho - (xsol(i) + xHplus(i) + xOHmin(i)+ xNa(i)/vNa + xCa(i)/vCa + xCl(i)/vCl+xK(i)/vK +&
                 xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
-            FEel = FEel  - rhoq(i) * psi(i)/2.0_dp    
+            FEel  = FEel  - rhoq(i) * psi(i)/2.0_dp    
+            FEelb = FEelb - rhob(i) * psi(i)/2.0_dp   
             FEbind = FEbind + fdisA(5,i)*rhopolA(i)+fdisB(5,i)*rhopolB(i)
 
             qres = qres + rhoq(i)
             sumphiA = sumphiA +  rhopolA(i)
             sumphiB = sumphiB +  rhopolB(i)
-            sumphiC = sumphiC +  rhopolC(i)
-
+!           sumphiC = sumphiC +  rhopolC(i)
         enddo
+         ! .. calcualtion of FEVdW
+        if(sysflag=="electA".or.sysflag=="dipolarweakA") then
+            FEVdW=-VdW_energy(rhopolA)
+
+        else
+            FEVdW=0.0_dp
+        endif
+        ! add bound charge contribution to elect free energy 
+        if(sysflag=="dipolarweak".or.sysflag=="dipolarweakA".or.sysflag=="dipolarstrong") FEel=FEel +FEelb
+        
+
     
         FEel  = (volcell/vsol)*FEel
         FEpi  = (volcell/vsol)*FEpi
@@ -140,12 +155,12 @@ contains
         qres = (volcell/vsol)*qres
         sumphiA = volcell*sumphiA
         sumphiB = volcell*sumphiB
-        sumphiC = volcell*sumphiC
+!        sumphiC = volcell*sumphiC
 
         if(sysflag=="nopoly") FEbind=0.0_dp
             
         ! .. calcualtion of FEq
-        if(sysflag=="electnopoly") then 
+        if(sysflag=="electnopoly".or.sysflag=="dipolarnopoly") then 
             FEq=0.0_dp
         elseif(sysflag=="elect".or.sysflag=="electA") then 
             FEq=0.0_dp
@@ -545,12 +560,12 @@ contains
             FErho = FErho - xsol(i) 
 
             do j=1,nz 
-                FEVdW = FEVdW + rhopolB(i) * rhopolB(j)*chis(i,j)       
+                FEVdW = FEVdW + rhopolB(i) * rhopolB(j)!*chis(i,j)       
             enddo   
 
             sumphiA = sumphiA +  rhopolA(i)
             sumphiB = sumphiB +  rhopolB(i)
-            sumphiC = sumphiC +  rhopolC(i)
+!           sumphiC = sumphiC +  rhopolC(i)
         enddo
     
         FEpi  = (volcell/vsol)*FEpi
@@ -558,7 +573,7 @@ contains
     
         sumphiA = volcell*sumphiA
         sumphiB = volcell*sumphiB
-        sumphiC = volcell*sumphiC
+!        sumphiC = volcell*sumphiC
 
         FEVdW  = volcell*FEVdW*(VdWepsB*vpolB(3)*vsol)/2.0_dp   
 

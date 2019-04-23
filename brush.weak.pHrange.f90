@@ -93,19 +93,26 @@ program brushweakpolyelectrolyte
     call init_surface(bcflag,nsurf)
     call init_sigma()
 
-    print*,"gamma=",gamma
-    print*,"isVdW=",isVdW
-
-    if(isVdW) call MC_VdWcoeff(lsegA)
        
-
+    if(isVdW) then 
+        call make_VdWcoeff(info)
+        if(info/=0) then
+            write(istr,'(I3)')info
+            text="Error in make_VdWcoeff: info = "//trim(adjustl(istr))//" : end program."
+            call print_to_log(LogUnit,text)
+            print*,text
+            stop
+        endif
+    endif   
+    
     !  .. computation starts
 
     allocate(xstored(neq))
     allocate(x(neq))
     allocate(xguess(neq))
     allocate(fvec(neq))
-
+ 
+    
     if(runflag=="rangedist") then ! loop over distances
 
         nz = nzmax
@@ -186,6 +193,7 @@ program brushweakpolyelectrolyte
 
     else  ! loop over pH  or VdWeps values
  
+        print*,"->5"
         if(runflag=="rangepH") then 
             loop => pH
         else if (runflag=="rangeVdWeps") then
@@ -213,12 +221,16 @@ program brushweakpolyelectrolyte
             call init_vars_input()  ! sets up chem potenitals
             call chain_filter()
             call set_fcn()
+            
+            print*,"->5"
 
             flag_solver = 0
 
             if(rank==0) then     ! node rank=0
-                call make_guess(x, xguess, isfirstguess)
+
+                call make_guess(x, xguess, isfirstguess) 
                 call solver(x, xguess, error, fnorm, issolution)
+                !call fcnptr(x, fvec, neq)
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
                     dest =i
