@@ -226,7 +226,7 @@ contains
     
     subroutine Poisson_Equation_Surface(fvec,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)
 
-        use globals, only : nsize, neq, LEFT, RIGHT, sysflag
+        use globals, only : nsize, neq, LEFT, RIGHT, systype
         use parameters, only : constqW
         use volume, only : nx,ny,nz, linearIndexFromCoordinate
 
@@ -250,22 +250,22 @@ contains
 
         ! .. electrostatics: self consistent boundary conditions
         
-        if(sysflag=="elect") then 
+        if(systype=="elect") then 
             noffset=4*nsize
-        else if(sysflag=="electA") then 
+        else if(systype=="electA") then 
             noffset=3*nsize
-        else if(sysflag=="electdouble") then 
+        else if(systype=="electdouble") then 
             noffset=4*nsize
-        else if(sysflag=="electnopoly") then 
+        else if(systype=="electnopoly") then 
             noffset=2*nsize
-        else if(sysflag=="dipolarstrong") then 
+        else if(systype=="dipolarstrong") then 
             noffset=2*nsize
-        else if(sysflag=="dipolarweak") then 
+        else if(systype=="dipolarweak") then 
             noffset=2*nsize
-        else if(sysflag=="dipolarnopoly") then 
+        else if(systype=="dipolarnopoly") then 
             noffset=2*nsize
         else 
-            print*,"error: sysflag wrong value for Poisson_equation_surface "    
+            print*,"error: systype wrong value for Poisson_equation_surface "    
         endif     
 
         neq_bc=0

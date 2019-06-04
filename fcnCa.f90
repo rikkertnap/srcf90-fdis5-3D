@@ -2446,12 +2446,12 @@ contains
 
     end subroutine fcndipolarNoPoly
 
-    !     set constrains on vector x  depending on sysflag value
+    !     set constrains on vector x  depending on systype value
 
     subroutine set_contraints(constr)
     
         use precision_definition
-        use globals, only : sysflag, neq , nsize,  LEFT, RIGHT, bcflag
+        use globals, only : systype, neq , nsize,  LEFT, RIGHT, bcflag
         use volume, only : nx,ny 
 
 
@@ -2467,7 +2467,7 @@ contains
         if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nx*ny
         if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nx*ny
     
-        select case (sysflag)
+        select case (systype)
             case ("elect")                     ! AB copolymer: weak acid A weak acid B
 
                 do i=1,nsize                    
@@ -2588,7 +2588,7 @@ contains
         
         implicit none   
 
-        select case (sysflag)
+        select case (systype)
         case ("dipolarstrong")          ! copolymer: strong polyacid no VdW i
             fcnptr => fcndipolarstrong
         case ("dipolarweak")            ! copolymer weak polyacid, no VdW, dipoles
@@ -2613,7 +2613,7 @@ contains
              fcnptr => fcnbulk
         case default
             print*,"Error in call to set_fcn subroutine"    
-            print*,"Wrong value sysflag : ", sysflag
+            print*,"Wrong value systype : ", systype
             stop
         end select  
         

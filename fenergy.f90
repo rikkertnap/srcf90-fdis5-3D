@@ -25,12 +25,9 @@ module energy
     real(dp) :: FEelsurf(2)         ! electrostatics energy from  surface
     real(dp) :: FEchemsurf(2)       ! chemical free energy surface
     real(dp) :: FEchem
-    real(dp) :: FEbind              ! complexation contribution
-    real(dp) :: FEVdW               ! Van der Waals contribution
-    real(dp) :: FEVdWB
-    real(dp) :: FEVdWC 
-    real(dp) :: FEconfAB
-    real(dp) :: FEConfC
+    real(dp) :: FEbind,FEbindA,FEbindB    ! complexation contribution
+    real(dp) :: FEVdW,FEVdWB,FEVdWC       ! Van der Waals contribution
+    real(dp) :: FEconfAB,FEConfC
 
     real(dp) :: FEalt               ! free energy
     real(dp) :: FEbulkalt           ! free energybulk
@@ -63,20 +60,28 @@ contains
         
         character(len=lenText) :: text 
 
-        if(sysflag=="elect".or.sysflag=="electdouble".or.&
-            sysflag=="electnopoly".or.sysflag=="electA") then 
+        if(systype=="elect".or.systype=="electdouble".or.&
+            systype=="electnopoly".or.systype=="electA") then 
+
             call fcnenergy_elect()
             call fcnenergy_elect_alternative()
-        elseif(sysflag=="dipolarstrong".or.sysflag=="dipolarweak".or.sysflag=="dipolarweakA".or.&
-            sysflag=="dipolarnopoly") then
-            print*,"Free energy: warning not yet implemented "
+        
+        elseif(systype=="dipolarstrong".or.systype=="dipolarweak".or.systype=="dipolarweakA".or.&
+            systype=="dipolarnopoly") then
+        
+            print*,"Warning: Free energy: warning not yet tested"
             call fcnenergy_elect()
-        elseif(sysflag=="neutral") then 
+       
+        elseif(systype=="neutral") then 
+       
             call fcnenergy_neutral()
+       
         else             
-            text="fcnenergy: wrong sysflag: "//sysflag//"stopping program"
+       
+            text="fcnenergy: wrong systype: "//systype//"stopping program"
             call print_to_log(LogUnit,text)
             stop
+       
         endif 
   
     end subroutine fcnenergy
@@ -115,7 +120,8 @@ contains
         sumphiC = 0.0_dp
 
         FEq = 0.0_dp
-        FEbind = 0.0_dp
+        FEbindA = 0.0_dp
+        FEbindB = 0.0_dp
         FEchem = 0.0_dp
         FEVdWC = 0.0_dp
         FEVdWB = 0.0_dp     
@@ -127,59 +133,65 @@ contains
                 xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
             FEel  = FEel  - rhoq(i) * psi(i)/2.0_dp    
             FEelb = FEelb - rhob(i) * psi(i)/2.0_dp   
-            FEbind = FEbind + fdisA(5,i)*rhopolA(i)+fdisB(5,i)*rhopolB(i)
+            FEbindA = FEbindA + fdisA(5,i)*rhopolA(i)
+            FEbindB = FEbindB + fdisB(5,i)*rhopolB(i)
 
             qres = qres + rhoq(i)
             sumphiA = sumphiA +  rhopolA(i)
             sumphiB = sumphiB +  rhopolB(i)
-!           sumphiC = sumphiC +  rhopolC(i)
         enddo
-         ! .. calcualtion of FEVdW
-        if(sysflag=="electA".or.sysflag=="dipolarweakA") then
-            FEVdW=-VdW_energy(rhopolA)
 
-        else
+        ! .. calcualtion of FEVdW
+        if(systype=="electA".or.systype=="dipolarweakA") then
+            FEVdW=-VdW_energy(rhopolA)
+        else if(systype=="electVdWAB") then
+            FEVdW =-VdW_energy_diblock(rhopolA,rhopolB)
+        else    
             FEVdW=0.0_dp
         endif
         ! add bound charge contribution to elect free energy 
-        if(sysflag=="dipolarweak".or.sysflag=="dipolarweakA".or.sysflag=="dipolarstrong") FEel=FEel +FEelb
+        if(systype=="dipolarweak".or.systype=="dipolarweakA".or.systype=="dipolarstrong") FEel=FEel +FEelb
         
 
-    
         FEel  = (volcell/vsol)*FEel
         FEpi  = (volcell/vsol)*FEpi
         FErho = (volcell/vsol)*FErho
-        
-        FEbind = volcell*FEbind/2.0_dp !  
-
+        FEbindA = volcell*FEbindA/2.0_dp !  
+        FEbindB = volcell*FEbindB/2.0_dp !
         qres = (volcell/vsol)*qres
         sumphiA = volcell*sumphiA
         sumphiB = volcell*sumphiB
-!        sumphiC = volcell*sumphiC
 
-        if(sysflag=="nopoly") FEbind=0.0_dp
-            
+
+        if(systype=="nopoly".or.systype=="neutral") then 
+            FEbind = 0.0_dp 
+        else if(systype=="electVdWpos") then 
+            FEbind = FEbindA
+        else 
+            FEbind = FEbindA+FEbindB
+        endif     
+        
         ! .. calcualtion of FEq
-        if(sysflag=="electnopoly".or.sysflag=="dipolarnopoly") then 
+        if(systype=="electnopoly".or.systype=="dipolarnopoly") then 
             FEq=0.0_dp
-        elseif(sysflag=="elect".or.sysflag=="electA") then 
+        elseif(systype=="elect".or.systype=="electA".or.systype=="electVdWAB") then 
             FEq=0.0_dp
             do g=1,ngr
                 FEq=FEq-log(qABL(g))    
             enddo
-        elseif(sysflag=="electdouble".or.sysflag=="dipolarweak".or.sysflag=="dipolarstrong") then
+        elseif(systype=="electdouble".or.systype=="dipolarweak".or.systype=="dipolarstrong") then
             FEq=0.0_dp
             do g=1,ngr
                 FEq=FEq-log(qABL(g)) -log(qABR(g))   
             enddo
-        elseif(sysflag=="neutral") then
+        elseif(systype=="neutral") then
             FEq=0.0_dp
             do g=1,ngr
                 FEq=FEq-log(qAB(g))  
             enddo
         else
             print*,"Error in fcnenergy"
-            print*,"Calculation FEq failed, wrong sysflag : ",sysflag 
+            print*,"Calculation FEq failed, wrong systype : ",systype 
             stop   
         endif
             
@@ -558,14 +570,8 @@ contains
         do i=1,nsize
             FEpi = FEpi  + log(xsol(i))
             FErho = FErho - xsol(i) 
-
-            do j=1,nz 
-                FEVdW = FEVdW + rhopolB(i) * rhopolB(j)!*chis(i,j)       
-            enddo   
-
             sumphiA = sumphiA +  rhopolA(i)
             sumphiB = sumphiB +  rhopolB(i)
-!           sumphiC = sumphiC +  rhopolC(i)
         enddo
     
         FEpi  = (volcell/vsol)*FEpi
@@ -573,10 +579,10 @@ contains
     
         sumphiA = volcell*sumphiA
         sumphiB = volcell*sumphiB
-!        sumphiC = volcell*sumphiC
 
-        FEVdW  = volcell*FEVdW*(VdWepsB*vpolB(3)*vsol)/2.0_dp   
+        FEVdW=-VdW_energy(rhopolB)
 
+    
 !        FEq = -delta*(sigmaAB*dlog(qAB)+sigmaC*dlog(qC) )
     
         if(sigmaAB <= sigmaTOL) then 
@@ -752,7 +758,7 @@ contains
 
     real(dp) function FEchem_react()
 
-        use globals, only : sysflag, nsize
+        use globals, only : systype, nsize
         use field
         use volume
         use parameters, only : vpolA,vsol,zpolA,vpolB,zpolB
@@ -764,7 +770,7 @@ contains
         real(dp) :: betapi
 
 
-        if(sysflag/="electA") then 
+        if(systype/="electA") then 
 
             FEchem_react = 0.0_dp
 
@@ -801,7 +807,7 @@ contains
 
         endif
 
-        if(sysflag=="electA") then 
+        if(systype=="electA") then 
 
             FEchem_react = 0.0_dp
 
@@ -829,7 +835,7 @@ contains
         endif    
 
             
-        if(sysflag=="neutral".or.sysflag=="electnopoly") FEchem_react=0.0_dp
+        if(systype=="neutral".or.systype=="electnopoly") FEchem_react=0.0_dp
         
 
     end function FEchem_react

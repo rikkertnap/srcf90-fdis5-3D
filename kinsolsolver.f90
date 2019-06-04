@@ -73,7 +73,7 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
   
     use mpivars
     use ieee_arithmetic, only : ieee_is_nan    ! alternative for function isNaN in myutils
-    use globals, only : nsize, neq, sysflag
+    use globals, only : nsize, neq, systype
     use kinsolvars
     use parameters, only : iter
     use myutils
@@ -111,7 +111,7 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
   
     !     .. executable statements 
 
-    ! print*,"inside kinsol_grmers_solver: rank",rank," sysflag=",sysflag
+    ! print*,"inside kinsol_grmers_solver: rank",rank," systype=",systype
     !     .. init of kinsol variables 
                             
     msbpre  = 5               ! maximum number of iterations without prec. setup 

@@ -161,15 +161,19 @@ contains
         if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nx*ny
         if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nx*ny
 
-        select case (sysflag)
+        select case (systype)
             case ("dipolarweak") 
                 neq = 2 * nsize + neq_bc
             case ("dipolarstrong")  
                 neq = 2 * nsize + neq_bc 
+            case ("dipolarweakA") 
+                neq = 2 * nsize + neq_bc
             case ("elect") 
                 neq = 4 * nsize + neq_bc
             case ("electA") 
                 neq = 3 * nsize + neq_bc
+            case("electVdWAB")             ! copolymer weak polyacid, VdW
+                neq = 4 * nsize + neq_bc
             case ("electdouble")  
                 neq = 4 * nsize 
             case ("electnopoly") 
@@ -181,7 +185,7 @@ contains
             case ("bulk water") 
                 neq = 5 
             case default
-                print*,"Wrong value sysflag:  ",sysflag
+                print*,"Wrong value systype:  ",systype
                 stop
         end select  
 
@@ -271,9 +275,9 @@ contains
         RKCl = 0.26_dp             ! radius of ion pair
         
         !     .. volume
-        if(sysflag/="neutral") then 
+        if(systype/="neutral") then 
             vsol = 0.030_dp              ! volume water solvent molecule in (nm)^3
-        elseif(sysflag=="neutral") then 
+        elseif(systype=="neutral") then 
             vsol  = 0.030_dp
            ! vsol = 0.218_dp             ! volume hexane Mw=86.18 g/mol and rho=0.6548 g/ml  
         else 
@@ -376,8 +380,8 @@ contains
         lb=lb/1.0e-9_dp                           ! bjerrum length in water in nm
         constqW = delta*delta*(4.0_dp*pi*lb)/vsol ! multiplicative constant Poisson Eq. 
 
-        if(sysflag.eq."dipolarweak".or.sysflag.eq."dipolarstrong".or.&
-            sysflag.eq."dipolarweakA".or.sysflag.eq."dipolarpoly") then 
+        if(systype.eq."dipolarweak".or.systype.eq."dipolarstrong".or.&
+            systype.eq."dipolarweakA".or.systype.eq."dipolarpoly") then 
 
             lb=(elemcharge**2)/(4.0_dp*pi*dielect0*kBoltzmann*Temp)  ! bjerrum length in vacum in m
             lb= lb/1.0e-9_dp                                         ! bjerrum length in vacum in nm
@@ -394,10 +398,10 @@ contains
     ! compute surface coverge based on number of grafted point (ngr) 
     subroutine init_sigma()
 
-        use globals, only : sysflag
+        use globals, only : systype
         use volume, only : ngr, nsurf, delta
 
-        select case (sysflag) 
+        select case (systype) 
         case("elect") 
             sigmaABL = ngr/(nsurf*delta*delta)
             sigmaABR = 0.0_dp
@@ -435,7 +439,7 @@ contains
             sigmaABR = 0.0_dp
             sigmaAB  = sigmaABL    
         case default
-            print*,"Error: init_sigma: sysflag wrong value"
+            print*,"Error: init_sigma: systype wrong value"
             print*,"stopping program"
             stop
         end select
@@ -458,7 +462,7 @@ contains
         real(dp),  dimension(:), allocatable :: x         ! volume fraction solvent iteration vector 
         real(dp),  dimension(:), allocatable :: xguess  
         integer :: i
-        character(len=15) :: sysflag_old
+        character(len=15) :: systype_old
         logical :: issolution
         
         allocate(x(5))
@@ -507,8 +511,8 @@ contains
         K0ionNa = KionNa/(vsol*Na/1.0e24_dp) ! intrinstic equilibruim constant 
         
         if((KionNa.ne.0.0_dp).or.(KionK.ne.0.0_dp)) then  
-            sysflag_old=sysflag 
-            sysflag="bulk water"        ! set solver to fcnbulk
+            systype_old=systype 
+            systype="bulk water"        ! set solver to fcnbulk
             call set_size_neq()         ! number of nonlinear equations
             
             x(1)=xbulk%Na
@@ -535,7 +539,7 @@ contains
 
             ! reset of flags
             iter=0
-            sysflag=sysflag_old         ! switch solver back
+            systype=systype_old         ! switch solver back
             call set_size_neq()         ! set number of non-linear equation  
             !call set_fcn()              ! set fcnptr to correct fcn        
             
@@ -589,24 +593,24 @@ contains
 
     subroutine init_expmu
 
-        use globals, only : sysflag
+        use globals, only : systype
         implicit none
 
-        if(sysflag=="elect".or.sysflag=="electA") then 
+        if(systype=="elect".or.systype=="electA") then 
             call init_expmu_elect()
-        elseif(sysflag=="electdouble") then 
+        elseif(systype=="electdouble") then 
             call init_expmu_elect()
-        elseif(sysflag=="electnopoly") then 
+        elseif(systype=="electnopoly") then 
             call init_expmu_elect()
-        elseif(sysflag=="neutral") then
+        elseif(systype=="neutral") then
             call init_expmu_neutral()
-        elseif(sysflag=="dipolarstrong") then 
+        elseif(systype=="dipolarstrong") then 
             call init_expmu_elect()
-        elseif(sysflag=="dipolarweak") then 
+        elseif(systype=="dipolarweak") then 
             call init_expmu_elect()
         else
             print*,"Error in call to init_expmu subroutine"    
-            print*,"Wrong value sysflag : ", sysflag
+            print*,"Wrong value systype : ", systype
             stop        
         endif   
 
@@ -617,14 +621,14 @@ contains
 
     subroutine init_vars_input()
 
-        use globals, only : sysflag
+        use globals, only : systype
      
         implicit none
         
         ! local variable
         integer :: i
 
-        select case (sysflag)
+        select case (systype)
         case ("elect")
             call init_expmu_elect() 
         !    call init_elect_constants(T%val) 
@@ -649,8 +653,8 @@ contains
         case ("neutral")
             call init_expmu_neutral()   
         case default   
-            print*,"Error: sysflag incorrect at init_vars_input" 
-            print*,"Wrong value sysflag : ", sysflag
+            print*,"Error: systype incorrect at init_vars_input" 
+            print*,"Wrong value systype : ", systype
             print*,"stopping program"
             stop
          end select

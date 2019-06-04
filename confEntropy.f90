@@ -29,7 +29,7 @@ contains
         character(len=lenText) :: text 
 
 
-        select case (sysflag) 
+        select case (systype) 
         case ("elect")
             call FEconf_elect(FEconfAB)
             FEconfC=0.0_dp
@@ -42,15 +42,15 @@ contains
         case ("neutral")
             call FEconf_neutral(FEconfAB,FeconfC)
         case ("dipolarstrong")     
-            text="fcenergy: sysflag: "//sysflag//" not implemented yet"
+            text="fcenergy: systype: "//systype//" not implemented yet"
             call print_to_log(LogUnit,text)
             print*,text
         case ("dipolarweak")     
-            text="fcenergy: sysflag: "//sysflag//" not implemented yet"
+            text="fcenergy: systype: "//systype//" not implemented yet"
             call print_to_log(LogUnit,text)
             print*,text
         case ("dipolarweakA")     
-            text="fcenergy: sysflag: "//sysflag//" not implemented yet"
+            text="fcenergy: systype: "//systype//" not implemented yet"
             call print_to_log(LogUnit,text)
             print*,text    
         case ("electnopoly")
@@ -60,7 +60,7 @@ contains
             FEconfAB=0.0_dp
             FEconfC=0.0_dp        
         case default
-            text="FEconf_entropy: wrong sysflag: "//sysflag//"stopping program"
+            text="FEconf_entropy: wrong systype: "//systype//"stopping program"
             call print_to_log(LogUnit,text)
             stop
         end select   

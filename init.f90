@@ -11,10 +11,8 @@ contains
 
 subroutine make_guess(x, xguess, isfirstguess, flagstored, xstored)
   
-    use globals, only : neq,neqmax,sysflag,bcflag,LEFT,RIGHT
+    use globals, only : neq,neqmax,systype,bcflag,LEFT,RIGHT
     use volume, only : nsurf 
-
-    implicit none
 
     real(dp), intent(in) :: x(:)          ! iteration vector 
     real(dp), intent(out) :: xguess(:)    ! guess volume fraction solvent and potential 
@@ -54,32 +52,33 @@ end subroutine make_guess
 
 subroutine init_guess(x, xguess)
     
-    use globals, only : sysflag
-    
-    implicit none
+    use globals, only : systype
 
     real(dp), intent(in) :: x(:)          ! iteration vector 
     real(dp), intent(out) :: xguess(:)    ! guess volume fraction solvent and potential 
         
-    if(sysflag=="elect") then 
-        call init_guess_elect(x,xguess)    
-    else if(sysflag=="dipolarstrong") then 
-        call init_guess_dipolar(x,xguess)
-    else if(sysflag=="dipolarweak") then 
-        call init_guess_dipolar(x,xguess)    
-    else if(sysflag=="electdouble") then 
-        call init_guess_electdouble(x,xguess)  
-    else if(sysflag=="electnopoly") then 
-        call init_guess_electnopoly(x,xguess)
-    else if(sysflag=="dipolarnopoly") then 
-        call init_guess_electnopoly(x,xguess)    
-    else if(sysflag=="neutral") then 
-        call init_guess_neutral(x,xguess)
-    else if(sysflag=="electA") then 
-        call init_guess_electA(x,xguess)
-    else     
-        print*,"Wrong value sysflag : ", sysflag
-    endif
+    select case (systype)
+        case ("elect")     
+            call init_guess_elect(x,xguess)    
+        case ("dipolarstrong")  
+            call init_guess_dipolar(x,xguess)
+        case ("dipolarweak")  
+            call init_guess_dipolar(x,xguess)    
+        case ("electdouble")
+            call init_guess_electdouble(x,xguess)  
+        case ("electnopoly") 
+            call init_guess_electnopoly(x,xguess)
+        case ("dipolarnopoly")  
+            call init_guess_electnopoly(x,xguess)    
+        case ("neutral")  
+            call init_guess_neutral(x,xguess)
+        case ("electA")  
+            call init_guess_electA(x,xguess)
+        case ("electVdWAB")  
+            call init_guess_elect(x,xguess)
+        case default   
+            print*,"Wrong value systype : ", systype
+    end select 
 
 end subroutine init_guess
 
@@ -93,8 +92,6 @@ subroutine init_guess_dipolar(x, xguess)
     use surface, only : psisurfL, psisurfR 
     use parameters, only : xbulk, infile
     use myutils, only : newunit
-
-    implicit none
   
     real(dp) :: x(:)       ! volume fraction solvent iteration vector 
     real(dp) :: xguess(:)  ! guess fraction  solvent 
@@ -173,8 +170,6 @@ subroutine init_guess_electdouble(x, xguess)
     use surface, only : psisurfL, psisurfR 
     use parameters, only : xbulk, infile
     use myutils, only : newunit
-
-    implicit none
   
     real(dp) :: x(:)       ! volume fraction solvent iteration vector 
     real(dp) :: xguess(:)  ! guess fraction  solvent 
@@ -250,8 +245,6 @@ subroutine init_guess_electnopoly(x, xguess)
     use surface, only : psisurfL, psisurfR   
     use parameters, only : xbulk ,infile
     use myutils, only : newunit
-
-    implicit none
   
     real(dp) :: x(:)       ! volume fraction solvent iteration vector 
     real(dp) :: xguess(:)  ! guess fraction  solvent 
@@ -337,8 +330,6 @@ subroutine init_guess_elect(x, xguess)
     use surface, only : psisurfL, psisurfR 
     use parameters, only : xbulk, infile
     use myutils, only : newunit
-
-    implicit none
   
     real(dp) :: x(neq)       ! volume fraction solvent iteration vector 
     real(dp) :: xguess(neq)  ! guess fraction  solvent 
@@ -416,8 +407,6 @@ subroutine init_guess_electA(x, xguess)
     use surface, only : psisurfL, psisurfR 
     use parameters, only : xbulk, infile
     use myutils, only : newunit
-
-    implicit none
   
     real(dp) :: x(neq)       ! volume fraction solvent iteration vector 
     real(dp) :: xguess(neq)  ! guess fraction  solvent 
@@ -490,8 +479,6 @@ subroutine init_guess_neutral(x, xguess)
     use field, only : xsol,rhopolB 
     use parameters, only : xbulk, infile
     use myutils, only : newunit
-
-    implicit none
   
     real(dp) :: x(:)       ! volume fraction solvent iteration vector 
     real(dp) :: xguess(:)  ! guess fraction  solvent 
@@ -547,10 +534,8 @@ end subroutine init_guess_neutral
 
 subroutine make_guess_from_xstored(xguess,xstored)
 
-    use globals, only : neq, neqmax, sysflag, bcflag, LEFT, RIGHT, nsize
+    use globals, only : neq, neqmax, systype, bcflag, LEFT, RIGHT, nsize
     use volume, only : nz, nzstep, nsurf
-
-    implicit none
 
     real(dp), intent(out) :: xguess(:)    ! guess volume fraction solvent and potentia
     real(dp), intent(in) :: xstored(:)
@@ -563,7 +548,7 @@ subroutine make_guess_from_xstored(xguess,xstored)
     if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nsurf
     if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nsurf 
 
-    if(sysflag=="elect") then 
+    if(systype=="elect") then 
         
         do i=1,nsize
             xguess(i)=xstored(i)                                ! volume fraction solvent 
@@ -576,7 +561,7 @@ subroutine make_guess_from_xstored(xguess,xstored)
             xguess(4*nsize+i)=xstored(4*(nsize+nsurf*nzstep)+i) 
         enddo
 
-    elseif(sysflag=="electdouble") then 
+    elseif(systype=="electdouble") then 
         ! assume xstored xsol,psi symetric xsol(1)=xsol(nsize) etc     
         do i=1,nsize/2
             xguess(i)=xstored(i)                                ! volume fraction solvent 
@@ -595,8 +580,8 @@ subroutine make_guess_from_xstored(xguess,xstored)
             xguess(4*nsize+i)=xstored(4*(nsize+nsurf*nzstep)+i) 
         enddo
 
-    elseif (sysflag=="electnopoly".or.sysflag=="dipolarstrong".or.sysflag=="dipolarweak".or.&
-        sysflag=="dipolarweakA".or.sysflag=="dipolarnopoly") then 
+    elseif (systype=="electnopoly".or.systype=="dipolarstrong".or.systype=="dipolarweak".or.&
+        systype=="dipolarweakA".or.systype=="dipolarnopoly") then 
         do i=1,nsize/2
             xguess(i)=xstored(i)                    ! volume fraction solvent 
             xguess(i+nsize)=xstored(i+nsize+nsurf*nzstep)       ! potential
@@ -610,8 +595,8 @@ subroutine make_guess_from_xstored(xguess,xstored)
             xguess(2*nsize+i)=xstored(2*(nsize+nsurf*nzstep)+i) 
         enddo   
     else
-        print*,"Error : make_guess_from_xstored wrong sysflag"
-        print*,"sysflag",sysflag
+        print*,"Error : make_guess_from_xstored wrong systype"
+        print*,"systype",systype
         stop
     endif    
 

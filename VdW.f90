@@ -27,10 +27,11 @@ module VdW
     
     integer, parameter :: VdW_err_allocation = 1
     integer, parameter :: VdW_err_vdwcoeff   = 2
-    integer, parameter :: Vdw_err_sysflag    = 3
+    integer, parameter :: Vdw_err_systype    = 3
 
     private
-    public :: make_VdWcoeff, VdW_contribution_exp,VdW_contribution_exp_diblock,VdW_energy 
+    public :: make_VdWcoeff, VdW_contribution_exp,VdW_contribution_exp_diblock
+    public :: VdW_energy_diblock,VdW_energy
 
 contains
 
@@ -38,7 +39,7 @@ contains
   
 subroutine allocate_VdWcoeff(info)
     
-    use globals, only : sysflag
+    use globals, only : systype
 
     integer :: ier
     logical :: alloc_fail
@@ -47,7 +48,7 @@ subroutine allocate_VdWcoeff(info)
     
     alloc_fail=.FALSE.    
 
-    if(sysflag=="electVdWAB") then 
+    if(systype=="electVdWAB") then 
     
         if (.not. allocated(VdWcoeffAA))  then 
             allocate(VdWcoeffAA(-range:range, -range:range, -range:range),stat=ier)
@@ -59,15 +60,15 @@ subroutine allocate_VdWcoeff(info)
             if( ier/=0) alloc_fail=.true.
         endif
     
-    else if(sysflag=="electA".or.sysflag=="dipolarweakA") then 
+    else if(systype=="electA".or.systype=="dipolarweakA") then 
         
         if (.not. allocated(VdWcoeff))  then 
             allocate(VdWcoeff(-range:range, -range:range, -range:range),stat=ier)
             if( ier/=0) alloc_fail=.true.
         endif 
     else 
-        print*, 'Allocate_VdWcoeff: wrong sysflag =', sysflag
-        if(present(info)) info= VdW_err_sysflag
+        print*, 'Allocate_VdWcoeff: wrong systype =', systype
+        if(present(info)) info= VdW_err_systype
     endif      
 
 
@@ -82,14 +83,14 @@ end subroutine allocate_VdWcoeff
   
 subroutine allocate_auxdensity(info)
 
-    use globals, only : sysflag
+    use globals, only : systype
     use volume, only : nx, ny, nz 
    
     integer,  intent(out), optional :: info
 
     integer :: ier
     
-    if(sysflag=="electVdWAB") then 
+    if(systype=="electVdWAB") then 
 
         if (.not. allocated(rhopoltmp))  then 
            allocate(rhopoltmp(nx,ny,nz),stat=ier)
@@ -102,7 +103,7 @@ subroutine allocate_auxdensity(info)
         else
            print*,'Allocation warning: auxilary polymer density already allocated'
         endif
-    else if(sysflag=="electA".or.sysflag=="dipolarweakA") then 
+    else if(systype=="electA".or.systype=="dipolarweakA") then 
 
         if (.not. allocated(rhopolAtmp))  then 
            allocate(rhopolAtmp(nx,ny,nz),stat=ier)
@@ -129,8 +130,8 @@ subroutine allocate_auxdensity(info)
         endif
 
     else 
-        print*, 'Allocate_auxdensity: wrong sysflag =', sysflag
-        if(present(info)) info= VdW_err_sysflag
+        print*, 'Allocate_auxdensity: wrong systype =', systype
+        if(present(info)) info= VdW_err_systype
     endif    
 
 end subroutine allocate_auxdensity
@@ -139,7 +140,7 @@ end subroutine allocate_auxdensity
 
 subroutine make_VdWcoeff(info)
 
-    use globals, only : sysflag
+    use globals, only : systype
     use volume, only : geometry
     use parameters, only : lsegPAA,lsegPS
     use myutils
@@ -164,7 +165,7 @@ subroutine make_VdWcoeff(info)
         
     else   
 
-        if(sysflag=="electVdWAB") then
+        if(systype=="electVdWAB") then
       
              lsegAB=(lsegPAA+lsegPS)/2.0_dp
 
@@ -172,15 +173,15 @@ subroutine make_VdWcoeff(info)
             call MC_VdWcoeff(lsegPS , VdWcoeffBB)
             call MC_VdWcoeff(lsegAB , VdWcoeffAB)
         
-        else if (sysflag=="electA") then 
+        else if (systype=="electA") then 
 
             call MC_VdWcoeff(lsegPAA , VdWcoeff)
 
         else
 
-            text="make_VdWcoeff called with wrong sysflag"
+            text="make_VdWcoeff called with wrong systype"
             call print_to_log(LogUnit,text)
-            if(present(info)) info= VdW_err_sysflag
+            if(present(info)) info= VdW_err_systype
         
         endif      
 

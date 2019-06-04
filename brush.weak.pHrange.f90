@@ -113,7 +113,7 @@ program brushweakpolyelectrolyte
     allocate(fvec(neq))
  
     
-    if(runflag=="rangedist") then ! loop over distances
+    if(runtype=="rangedist") then ! loop over distances
 
         nz = nzmax
         neqmax = neq
@@ -194,9 +194,9 @@ program brushweakpolyelectrolyte
     else  ! loop over pH  or VdWeps values
  
         print*,"->5"
-        if(runflag=="rangepH") then 
+        if(runtype=="rangepH") then 
             loop => pH
-        else if (runflag=="rangeVdWeps") then
+        else if (runtype=="rangeVdWeps") then
             loop => VdWeps
         else
             if(associated(loop)) nullify(loop) ! make explict that no association is made

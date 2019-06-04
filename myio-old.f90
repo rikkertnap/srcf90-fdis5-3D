@@ -6,8 +6,8 @@ module myio
 
     ! return error values
 
-    integer, parameter ::  myio_err_sysflag   = 1
- !   integer, parameter ::  myio_err_runflag   = 2
+    integer, parameter ::  myio_err_systype   = 1
+ !   integer, parameter ::  myio_err_runtype   = 2
  !   integer, parameter ::  myio_err_geometry  = 3
     integer, parameter ::  myio_err_method    = 4
     integer, parameter ::  myio_err_chaintype = 5
@@ -49,7 +49,7 @@ subroutine read_inputfile(info)
     endif
 
     read(un_input,*)method
-    read(un_input,*)sysflag
+    read(un_input,*)systype
     read(un_input,*)bcflag(LEFT)
     read(un_input,*)bcflag(RIGHT)
     read(un_input,*)chainmethod
@@ -96,11 +96,11 @@ subroutine read_inputfile(info)
     
     ! override input bcflags 
     
-    if(sysflag=="electdouble") then
+    if(systype=="electdouble") then
         bcflag(LEFT)="cc"
         bcflag(RIGHT)="cc"  
     endif
-    if(sysflag=="elect") then
+    if(systype=="elect") then
         sigmaAB=sigmaABL
         sigmaABR=0.0_dp  
     endif
@@ -108,8 +108,8 @@ subroutine read_inputfile(info)
     
     ! .. check error flag
 
-    call check_value_sysflag(sysflag,info_sys) 
-    if (info_sys == myio_err_sysflag) then
+    call check_value_systype(systype,info_sys) 
+    if (info_sys == myio_err_systype) then
         if (present(info)) info = info_sys
         return
     endif
@@ -135,42 +135,42 @@ subroutine read_inputfile(info)
 end subroutine read_inputfile
  
 
-subroutine check_value_sysflag(sysflag,info)
+subroutine check_value_systype(systype,info)
 
     implicit none
 
-    character(len=15), intent(in) :: sysflag
+    character(len=15), intent(in) :: systype
     integer, intent(out),optional :: info
 
-    character(len=15) :: sysflagstr(6)
+    character(len=15) :: systypestr(6)
     integer :: i
     logical :: flag
 
-    ! permissible values of sysflag
+    ! permissible values of systype
 
-    sysflagstr(1)="elect"
-    sysflagstr(2)="bulk water"
-    sysflagstr(3)="neutral"
-    sysflagstr(4)="electdouble"
-    sysflagstr(5)="electnopoly"
-    sysflagstr(6)="electHC"
+    systypestr(1)="elect"
+    systypestr(2)="bulk water"
+    systypestr(3)="neutral"
+    systypestr(4)="electdouble"
+    systypestr(5)="electnopoly"
+    systypestr(6)="electHC"
 
     flag=.FALSE.
 
     do i=1,6
-        if(sysflag==sysflagstr(i)) flag=.TRUE.
+        if(systype==systypestr(i)) flag=.TRUE.
     enddo
 
     if (present(info)) info = 0
 
     if (flag.eqv. .FALSE.) then
-        print*,"Error: value of sysflag is not permissible"
-        print*,"sysflag = ",sysflag
-        if (present(info)) info = myio_err_sysflag
+        print*,"Error: value of systype is not permissible"
+        print*,"systype = ",systype
+        if (present(info)) info = myio_err_systype
         return
     end if
 
-end subroutine check_value_sysflag
+end subroutine check_value_systype
 
 
 subroutine check_value_bcflag(bcflag,info)
@@ -204,7 +204,7 @@ subroutine check_value_bcflag(bcflag,info)
     if (flag.eqv. .FALSE.) then
         print*,"Error value of bcflag is not permissible"
         print*,"bcflag(RIGHT) = ",bcflag(RIGHT)
-        if (present(info)) info = myio_err_sysflag
+        if (present(info)) info = myio_err_systype
         !if (present(fcnname)) print*,"Error in ",fcnname
         stop
     endif
@@ -271,7 +271,7 @@ subroutine check_value_chaintype(chaintype,info)
         integer :: i
         logical :: flag
 
-        ! permissible values of runflag
+        ! permissible values of runtype
 
         methodstr="kinsol"
 
@@ -389,7 +389,7 @@ subroutine check_value_chaintype(chaintype,info)
     open(unit=newunit(un_xsol),file=xsolfilename)
     open(unit=newunit(un_psi),file=potentialfilename)
 
-    if(sysflag/="electnopoly") then          
+    if(systype/="electnopoly") then          
         open(unit=newunit(un_xpol),file=xpolABfilename)
         open(unit=newunit(un_xpolC),file=xpolCfilename)
         open(unit=newunit(un_fdisA),file=densfracAfilename) 
@@ -418,7 +418,7 @@ subroutine check_value_chaintype(chaintype,info)
     enddo    
     write(un_psi,*)nz*delta,psiSurfR 
 
-    if(sysflag/="electnopoly") then 
+    if(systype/="electnopoly") then 
         do i=1,nz
             write(un_xpol,fmt4reals)zc(i),xpolAB(i),rhopolA(i),rhopolB(i)
             write(un_xpolC,fmt2reals)zc(i),xpolC(i)
@@ -451,7 +451,7 @@ subroutine check_value_chaintype(chaintype,info)
     if(chainmethod.eq."FILE") then
        write(un_sys,*)'readinchains = ',readinchains
     endif
-    write(un_sys,*)'sysflag     = ',sysflag
+    write(un_sys,*)'systype     = ',systype
     write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
     write(un_sys,*)'bcflag(RIGHT) = ',bcflag(RIGHT)
     write(un_sys,*)'free energy = ',FE
@@ -600,7 +600,7 @@ subroutine check_value_chaintype(chaintype,info)
     close(un_xsol)
     close(un_psi)
 
-    if(sysflag/="electnopoly") then
+    if(systype/="electnopoly") then
         close(un_xpol)   
         close(un_xpolC)
         close(un_fdisA)
@@ -773,7 +773,7 @@ subroutine output_electdouble(countfile)
     if(chainmethod.eq."FILE") then
         write(un_xsol,*)'readinchains = ',readinchains
     endif
-    write(un_xsol,*)'sysflag     = ',sysflag
+    write(un_xsol,*)'systype     = ',systype
 
 
     write(un_xsol,*)'free energy = ',FE
@@ -1046,7 +1046,7 @@ subroutine output_neutral(countfile)
     if(chainmethod.eq."FILE") then
        write(un_xsol,*)'readinchains = ',readinchains
         endif
-    write(un_xsol,*)'sysflag     = ',sysflag
+    write(un_xsol,*)'systype     = ',systype
 
 
     close(un_xsol)
@@ -1058,23 +1058,23 @@ end subroutine output_neutral
 
 subroutine output(countfile)
 
-    use globals, only : sysflag
+    use globals, only : systype
     implicit none
 
     integer :: countfile 
 
-    if(sysflag=="elect") then 
+    if(systype=="elect") then 
         call output_elect(countfile)
-    elseif(sysflag=="electdouble") then
+    elseif(systype=="electdouble") then
         call output_electdouble(countfile)
-    elseif(sysflag=="neutral") then
+    elseif(systype=="neutral") then
         call output_neutral(countfile)
-    elseif(sysflag=="electnopoly") then
+    elseif(systype=="electnopoly") then
         call output_elect(countfile)
         call output_individualcontr_fe(countfile)
     else
         print*,"Error in output subroutine"
-        print*,"Wrong value sysflag : ", sysflag
+        print*,"Wrong value systype : ", systype
     endif     
 
 end subroutine output
@@ -1082,7 +1082,7 @@ end subroutine output
 
 subroutine output_individualcontr_fe(countfile)
 
-    use globals, only : LEFT,RIGHT, sysflag
+    use globals, only : LEFT,RIGHT, systype
     use energy
     use myutils, only : newunit
     use parameters, only : sigmaAB,cNaCl,cCaCl2,pHbulk,VdWepsB
@@ -1101,7 +1101,7 @@ subroutine output_individualcontr_fe(countfile)
 
     !     .. make label filename
     
-    if(sysflag=="elect".or.sysflag=="electdouble".or.sysflag=="electnopoly") then 
+    if(systype=="elect".or.systype=="electdouble".or.systype=="electnopoly") then 
         write(rstr,'(F5.3)')sigmaAB*delta 
         fnamelabel="sg"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')cNaCl
@@ -1112,7 +1112,7 @@ subroutine output_individualcontr_fe(countfile)
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))
         write(rstr,'(I5.5)')countfile
         fnamelabel=trim(fnamelabel)//"."//trim(adjustl(rstr))//".dat"
-    elseif(sysflag=="neutral") then 
+    elseif(systype=="neutral") then 
         write(rstr,'(F5.3)')sigmaAB*delta 
         fnamelabel="sg"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')VdWepsB
@@ -1121,7 +1121,7 @@ subroutine output_individualcontr_fe(countfile)
         fnamelabel=trim(fnamelabel)//"."//trim(adjustl(rstr))//".dat"
     else
         print*,"Error in output_individualcontr_fe subroutine"
-        print*,"Wrong value sysflag : ", sysflag
+        print*,"Wrong value systype : ", systype
     endif    
 
     fenergyfilename='energy.'//trim(fnamelabel)   

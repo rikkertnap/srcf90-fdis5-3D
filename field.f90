@@ -175,7 +175,7 @@ contains
     subroutine check_integral_rholpolAB(sumrhopolAB, checkintegralAB)
 
         use volume, only : volcell, ngr
-        use globals, only : nsize, nsegAB, sysflag
+        use globals, only : nsize, nsegAB, systype
 
         real(dp), intent(inout) :: sumrhopolAB,checkintegralAB 
         integer :: i
@@ -188,7 +188,7 @@ contains
         sumrhopolAB=sumrhopolAB*volcell
 
         intrhopolAB=nsegAB*ngr
-        if(sysflag=="electdouble") intrhopolAB=intrhopolAB*2.0_dp  
+        if(systype=="electdouble") intrhopolAB=intrhopolAB*2.0_dp  
 
         checkintegralAB=sumrhopolAB-intrhopolAB
 

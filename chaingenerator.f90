@@ -390,21 +390,22 @@ subroutine make_chains_file()
 end subroutine make_chains_file
 
 
+
 subroutine make_sequence_chain(freq,chaintype)
   
     use globals
     use chains
 
-    implicit none
-
-    integer :: freq
-    character(len=8)  :: chaintype
+    integer, intent(in) :: freq
+    character(len=8),intent(in)  :: chaintype
 
     !     .. local variables
-
+    integer :: info
     integer :: s
 
-    if(chaintype.eq.'altA') then
+
+    select case (chaintype ) 
+    case ('altA')
         do s=1,nsegAB
             if(mod(s,freq).ne.0) then ! A segment
                 isAmonomer(s)=.TRUE.
@@ -412,7 +413,7 @@ subroutine make_sequence_chain(freq,chaintype)
                 isAmonomer(s)=.FALSE.
             endif
         enddo
-    else if(chaintype.eq.'altB') then
+    case('altB') 
         do s=1,nsegAB
             if(mod(s,freq).eq.0) then ! A segment
                 isAmonomer(s)=.TRUE.
@@ -420,21 +421,79 @@ subroutine make_sequence_chain(freq,chaintype)
                 isAmonomer(s)=.FALSE.
             endif
         enddo
-    else if(chaintype.eq.'diblock') then
+    case('diblockA')
         do s=1,nsegAB
-            if(s.le.freq) then   ! A segment
+            if(s<=freq) then   ! A segment
                 isAmonomer(s)=.TRUE.
             else
                 isAmonomer(s)=.FALSE.
             endif
         enddo
-    else
+    case('diblockB') 
+        do s=1,nsegAB
+            if(s>=freq) then   ! A segment
+                isAmonomer(s)=.TRUE.
+            else
+                isAmonomer(s)=.FALSE.
+            endif
+        enddo  
+    case('copolyAB')
+
+        call read_sequence_chain_from_file(info)
+
+    case default
         print*,"Wrong chaintype: aborting program"
         stop
-    endif
-  
+    end select
+
 end subroutine make_sequence_chain
 
+
+
+subroutine read_sequence_chain_from_file (info)
+
+    use globals, only : nsegAB
+    use chains, only : isAmonomer
+    use myutils, only : newunit
+
+    integer, intent(out),optional :: info
+
+    character(len=11) :: fname
+    integer :: ios, un_seq, s
+    character :: char
+
+    if (present(info)) info = 0
+
+    write(fname,'(A11)')'sequence.in'
+    open(unit=newunit(un_seq),file=fname,iostat=ios,status='old')
+    if(ios >0 ) then
+        print*, 'Error opening file sequence.in : iostat =', ios
+        stop
+    endif
+        
+    s=0
+    ios=0
+
+    do while (s<nsegAB.and.ios==0)
+
+        read(un_seq,*,iostat=ios)char
+
+        if (ios==0) then
+            s=s+1 
+            if(char=="A") then   ! A segment
+                isAmonomer(s)=.TRUE.
+            else
+                isAmonomer(s)=.FALSE.
+            endif
+        endif    
+    enddo 
+    if(s/=nsegAB) then 
+        print*,"reached end of file before all elements read"
+        info = 1
+        stop "read sequence file failed"
+    endif
+
+end subroutine
 
 
 subroutine chain_filter()
@@ -497,11 +556,8 @@ end subroutine  chain_filter
 subroutine set_properties_chain(freq,chaintype)
 
     use globals
-    use parameters, only : lsegAB, lsegPAA, lsegPAMPS
+    use parameters, only : lsegAB, lsegPAA, lsegPAMPS, lsegPS
     use chains
-
-
-    implicit none
 
     integer, intent(in) :: freq
     character(len=8), intent(in)   :: chaintype
@@ -516,13 +572,17 @@ subroutine set_properties_chain(freq,chaintype)
         endif      
     endif    
 
-    if(isHomopolymer) then 
+     if(isHomopolymer) then 
         if (isAmonomer(1)) then ! it is a homopolymer so all segments the same 
             lsegAB=lsegPAA
         else
-            lsegAB=lsegPAMPS
+            if(systype/="electVdWpos") then 
+                lsegAB=lsegPAMPS
+            else
+                lsegAB=lsegPS
+            endif  
         endif   
-    endif    
+    endif  
 
 end subroutine set_properties_chain
 

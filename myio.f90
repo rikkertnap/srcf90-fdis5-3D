@@ -5,8 +5,8 @@ module myio
 
     ! return error values
 
-    integer, parameter ::  myio_err_sysflag   = 1
-    integer, parameter ::  myio_err_runflag   = 2
+    integer, parameter ::  myio_err_systype   = 1
+    integer, parameter ::  myio_err_runtype   = 2
     integer, parameter ::  myio_err_geometry  = 3
     integer, parameter ::  myio_err_method    = 4
     integer, parameter ::  myio_err_chaintype = 5
@@ -90,10 +90,10 @@ subroutine read_inputfile(info)
             select case (label) !list-directed The CHARACTER variable is treated as an 'internal file'
             case ('method')
                 read(buffer, *,iostat=ios) method
-            case ('sysflag')
-                read(buffer, *,iostat=ios) sysflag
-            case ('runflag')
-                read(buffer, *,iostat=ios) runflag
+            case ('systype')
+                read(buffer, *,iostat=ios) systype
+            case ('runtype')
+                read(buffer, *,iostat=ios) runtype
             case ('bcflag(LEFT)')
                 read(buffer,*,iostat=ios) bcflag(LEFT)
             case ('bcflag(RIGHT)')
@@ -211,25 +211,25 @@ subroutine read_inputfile(info)
     
     ! override input bcflags 
     
-    if(sysflag=="electdouble") then
+    if(systype=="electdouble") then
         bcflag(LEFT)="cc"
         bcflag(RIGHT)="cc"  
     endif
-    if(sysflag=="elect") then
+    if(systype=="elect") then
         sigmaAB=sigmaABL
         sigmaABR=0.0_dp  
     endif
     
     ! .. check error flag
 
-    call check_value_sysflag(sysflag,info_sys) 
-    if (info_sys == myio_err_sysflag) then
+    call check_value_systype(systype,info_sys) 
+    if (info_sys == myio_err_systype) then
         if (present(info)) info = info_sys
         return
     endif
 
-    call check_value_runflag(runflag,info_run) 
-    if (info_sys == myio_err_runflag) then
+    call check_value_runtype(runtype,info_run) 
+    if (info_sys == myio_err_runtype) then
         if (present(info)) info = info_run
         return
     endif
@@ -259,10 +259,10 @@ subroutine read_inputfile(info)
     endif
 
     !  set and overide certain input values
-    call set_value_nzmin(runflag,nzmin,nzmax)
-    call set_value_isVdW(runflag,VdWeps%val,isVdW)
+    call set_value_nzmin(runtype,nzmin,nzmax)
+    call set_value_isVdW(runtype,VdWeps%val,isVdW)
 
-    call check_value_VdWeps(sysflag,isVdW,VdWeps%val,info_VdWeps)
+    call check_value_VdWeps(systype,isVdW,VdWeps%val,info_VdWeps)
     if (info_VdWeps == myio_err_VdWeps) then
         if (present(info)) info = info_VdWeps
         return
@@ -271,84 +271,84 @@ subroutine read_inputfile(info)
 end subroutine read_inputfile
  
 
-subroutine check_value_sysflag(sysflag,info)
+subroutine check_value_systype(systype,info)
 
     implicit none
 
-    character(len=15), intent(in) :: sysflag
+    character(len=15), intent(in) :: systype
     integer, intent(out),optional :: info
 
-    character(len=15) :: sysflagstr(11)
+    character(len=15) :: systypestr(11)
     integer :: i
     logical :: flag
 
-    ! permissible values of sysflag
+    ! permissible values of systype
 
-    sysflagstr(1)="elect"
-    sysflagstr(2)="bulk water"
-    sysflagstr(3)="neutral"
-    sysflagstr(4)="electdouble"
-    sysflagstr(5)="electnopoly"
-    sysflagstr(6)="dipolarweak"
-    sysflagstr(7)="dipolarstrong"
-    sysflagstr(8)="electA"
-    sysflagstr(9)="dipolarweakA"
-    sysflagstr(10)="dipolarnopoly"
-    sysflagstr(11)="electVdWAB"
+    systypestr(1)="elect"
+    systypestr(2)="bulk water"
+    systypestr(3)="neutral"
+    systypestr(4)="electdouble"
+    systypestr(5)="electnopoly"
+    systypestr(6)="dipolarweak"
+    systypestr(7)="dipolarstrong"
+    systypestr(8)="electA"
+    systypestr(9)="dipolarweakA"
+    systypestr(10)="dipolarnopoly"
+    systypestr(11)="electVdWAB"
 
 
     flag=.FALSE.
 
     do i=1,11
-        if(sysflag==sysflagstr(i)) flag=.TRUE.
+        if(systype==systypestr(i)) flag=.TRUE.
     enddo
 
     if (present(info)) info = 0
 
     if (flag.eqv. .FALSE.) then
-        print*,"Error: value of sysflag is not permissible"
-        print*,"sysflag = ",sysflag
-        if (present(info)) info = myio_err_sysflag
+        print*,"Error: value of systype is not permissible"
+        print*,"systype = ",systype
+        if (present(info)) info = myio_err_systype
         return
     end if
 
-end subroutine check_value_sysflag
+end subroutine check_value_systype
 
 
-subroutine check_value_runflag(runflag,info)
+subroutine check_value_runtype(runtype,info)
 
     implicit none
 
-    character(len=15), intent(in) :: runflag
+    character(len=15), intent(in) :: runtype
     integer, intent(out),optional :: info
 
-    character(len=15) :: runflagstr(3)
+    character(len=15) :: runtypestr(3)
     integer :: i
     logical :: flag
 
-    ! permissible values of runflag
+    ! permissible values of runtype
 
-    runflagstr(1)="rangepH"
-    runflagstr(2)="rangeVdWeps"
-    runflagstr(3)="rangedist"
+    runtypestr(1)="rangepH"
+    runtypestr(2)="rangeVdWeps"
+    runtypestr(3)="rangedist"
     
 
     flag=.FALSE.
 
     do i=1,3
-        if(runflag==runflagstr(i)) flag=.TRUE.
+        if(runtype==runtypestr(i)) flag=.TRUE.
     enddo
 
     if (present(info)) info = 0
 
     if (flag.eqv. .FALSE.) then
-        print*,"Error: value of runflag is not permissible"
-        print*,"runflag = ",runflag
-        if (present(info)) info = myio_err_runflag
+        print*,"Error: value of runtype is not permissible"
+        print*,"runtype = ",runtype
+        if (present(info)) info = myio_err_runtype
         return
     end if
 
-end subroutine check_value_runflag
+end subroutine check_value_runtype
 
 subroutine check_value_bcflag(bcflag,info)
 
@@ -381,7 +381,7 @@ subroutine check_value_bcflag(bcflag,info)
     if (flag.eqv. .FALSE.) then
         print*,"Error value of bcflag is not permissible"
         print*,"bcflag(RIGHT) = ",bcflag(RIGHT)
-        if (present(info)) info = myio_err_sysflag
+        if (present(info)) info = myio_err_systype
         !if (present(fcnname)) print*,"Error in ",fcnname
         stop
     endif
@@ -442,18 +442,21 @@ subroutine check_value_chaintype(chaintype,info)
     integer, intent(out),optional :: info
 
     logical :: flag
-    character(len=8) :: chaintypestr(3)
+    character(len=8) :: chaintypestr(5)
     integer :: i
 
     ! permissible values of chaintype
 
-    chaintypestr(1)="diblock"
-    chaintypestr(2)="altA"
-    chaintypestr(3)="altB"
+    chaintypestr(1)="diblockA"
+    chaintypestr(2)="diblockB"
+    chaintypestr(3)="altA"
+    chaintypestr(4)="altB"
+    chaintypestr(5)="copolyAB"
+    
 
     flag=.FALSE.
 
-    do i=1,3
+    do i=1,5
         if(chaintype==chaintypestr(i)) flag=.TRUE.
     enddo
 
@@ -480,7 +483,7 @@ subroutine check_value_method(method,info)
     integer :: i
     logical :: flag
 
-    ! permissible values of runflag
+    ! permissible values of runtype
 
     methodstr="kinsol"
 
@@ -500,29 +503,29 @@ subroutine check_value_method(method,info)
 end subroutine check_value_method
 
 
-subroutine check_value_VdWeps(sysflag,isVdW,VdWeps,info)
+subroutine check_value_VdWeps(systype,isVdW,VdWeps,info)
 
 
     implicit none
 
     real(dp), intent(in) :: VdWeps
     logical, intent(in) :: isVdW
-    character(len=15), intent(in) :: sysflag
+    character(len=15), intent(in) :: systype
     integer, intent(out), optional :: info
 
-    character(len=15) :: sysflagstr(2)
+    character(len=15) :: systypestr(2)
     integer :: i
     logical :: flag
 
     flag=.false.
 
-    if(isVdW) then ! check for correct combination sysflag 
+    if(isVdW) then ! check for correct combination systype 
      
-        sysflagstr(1)="dipolarweakA"
-        sysflagstr(2)="electA"
+        systypestr(1)="dipolarweakA"
+        systypestr(2)="electA"
 
         do i=1,2 ! sofar only electA works with VdW 
-            if(sysflag==sysflagstr(i)) flag=.TRUE.
+            if(systype==systypestr(i)) flag=.TRUE.
         enddo
     else  ! isVdW=.false. so oke 
         flag=.true.
@@ -531,8 +534,8 @@ subroutine check_value_VdWeps(sysflag,isVdW,VdWeps,info)
     if (present(info)) info = 0
 
     if (flag.eqv. .FALSE.) then
-        print*,"Error:  combination sysflag and isVdW is not permissible"
-        print*,"sysflag = ",sysflag, " isVdW =",isVdW
+        print*,"Error:  combination systype and isVdW is not permissible"
+        print*,"systype = ",systype, " isVdW =",isVdW
         if (present(info)) info = myio_err_VdWeps
         return
     end if
@@ -542,23 +545,23 @@ end subroutine check_value_VdWeps
 
 
 ! override input value nzmin
-! Sets nzmin=nzmax for which runflag that do not loop over nz 
+! Sets nzmin=nzmax for which runtype that do not loop over nz 
 ! ensuring that the output files are properly close once
 
-subroutine set_value_nzmin(runflag,nzmin,nzmax)
+subroutine set_value_nzmin(runtype,nzmin,nzmax)
 
-    character(len=15), intent(in) :: runflag
+    character(len=15), intent(in) :: runtype
     integer, intent(inout) :: nzmin
     integer, intent(in) :: nzmax
    
-    if (runflag/="rangedist") nzmin=nzmax 
+    if (runtype/="rangedist") nzmin=nzmax 
 
 end subroutine
 
 
-subroutine set_value_isVdW(runflag, VdWeps, isVdW)
+subroutine set_value_isVdW(runtype, VdWeps, isVdW)
 
-    character(len=15), intent(in) :: runflag
+    character(len=15), intent(in) :: runtype
     real(dp), intent(in) :: VdWeps
     logical, intent(inout)  :: isVdW
    
@@ -567,17 +570,17 @@ subroutine set_value_isVdW(runflag, VdWeps, isVdW)
     else
         isVdW=.false.
     endif
-    if (runflag=="rangeVdWeps") isVdW=.true.
+    if (runtype=="rangeVdWeps") isVdW=.true.
 
 end subroutine
 
 
 subroutine output()
 
-    use globals, only : sysflag
+    use globals, only : systype
     implicit none
 
-    select case (sysflag)
+    select case (systype)
     case ("elect")
         call output_elect
         call output_individualcontr_fe
@@ -600,7 +603,7 @@ subroutine output()
         call output_elect    
     case default
         print*,"Error in output subroutine"
-        print*,"Wrong value sysflag : ", sysflag
+        print*,"Wrong value systype : ", systype
     end select     
 
 end subroutine output
@@ -704,7 +707,7 @@ subroutine output_elect
         open(unit=newunit(un_xsol),file=xsolfilename)
         open(unit=newunit(un_psi),file=potentialfilename)
 
-        if(sysflag/="electnopoly") then          
+        if(systype/="electnopoly") then          
             open(unit=newunit(un_xpolAB),file=xpolABfilename)
 !            open(unit=newunit(un_xpolC),file=xpolCfilename)
             open(unit=newunit(un_fdisA),file=densfracAfilename) 
@@ -712,7 +715,7 @@ subroutine output_elect
             open(unit=newunit(un_q),file=qfilename)
             open(unit=newunit(un_xpolABz),file=xpolABzfilename)
         endif     
-        if(sysflag=="dipolarweak".or.sysflag=="dipolarstrong") then          
+        if(systype=="dipolarweak".or.systype=="dipolarstrong") then          
             open(unit=newunit(un_dielec),file=dielecfilename)
             open(unit=newunit(un_dip),file=dipolefilename)
         endif
@@ -744,7 +747,7 @@ subroutine output_elect
       
     write(un_xsol,*)'#D    = ',nz*delta 
     write(un_psi,*)'#D    = ',nz*delta
-    if(sysflag/="electnopoly") then         
+    if(systype/="electnopoly") then         
         write(un_xpolAB,*)'#D    = ',nz*delta 
 !        write(un_xpolC,*)'#D    = ',nz*delta 
         write(un_fdisA,*)'#D    = ',nz*delta
@@ -776,7 +779,7 @@ subroutine output_elect
         write(un_psi,*)psiSurfR(i)
     enddo         
 
-    if(sysflag/="electnopoly") then 
+    if(systype/="electnopoly") then 
 
         do i =1, ngr
             write(un_q,*)qABL(i),qABR(i)
@@ -808,7 +811,7 @@ subroutine output_elect
         enddo    
     endif
 
-    if(sysflag=="dipolarweak".or.sysflag=="dipolarstrong") then          
+    if(systype=="dipolarweak".or.systype=="dipolarstrong") then          
         do i = 1, nsize
             write(un_dip,*)rhob(i),electPol(1,i),electPol(2,i),electPol(3,i)
         !    write(un_dielec,*)dielectrel(i)
@@ -837,7 +840,7 @@ subroutine output_elect
         write(un_sys,*)'sigmaC      = ',sigmaC
 
         ! system description
-        write(un_sys,*)'sysflag     = ',sysflag
+        write(un_sys,*)'systype     = ',systype
         write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
         write(un_sys,*)'bcflag(RIGHT) = ',bcflag(RIGHT)
         write(un_sys,*)'delta       = ',delta
@@ -875,7 +878,7 @@ subroutine output_elect
         write(un_sys,*)'K0ionNa     = ',K0ionNa
         write(un_sys,*)'K0ionK      = ',K0ionK
         ! other physcial parameters
-        if(sysflag=="dipolarweak".or.sysflag=="dipolarstrong") then 
+        if(systype=="dipolarweak".or.systype=="dipolarstrong") then 
             write(un_sys,*)'dipole pol  = ',dipole%pol
             write(un_sys,*)'dipole sol  = ',dipole%sol
         endif    
@@ -990,7 +993,7 @@ subroutine output_elect
         close(un_sys)
         close(un_xsol)
         close(un_psi)
-        if(sysflag/="electnopoly") then
+        if(systype/="electnopoly") then
             close(un_xpolAB)   
 !            close(un_xpolC)
             close(un_fdisA)
@@ -1010,7 +1013,7 @@ subroutine output_elect
             close(un_xHplus)
             close(un_xOHmin)
         endif
-        if(sysflag=="dipolarstrong".or.sysflag=="dipolarweak") then
+        if(systype=="dipolarstrong".or.systype=="dipolarweak") then
             close(un_dip)    
          !   close(un_dielec)
         endif    
@@ -1207,7 +1210,7 @@ subroutine output_electdouble()
         
         
         ! system description
-        write(un_sys,*)'sysflag     = ',sysflag
+        write(un_sys,*)'systype     = ',systype
         write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
         write(un_sys,*)'bcflag(RIGHT) = ',bcflag(RIGHT)
         write(un_sys,*)'delta       = ',delta  
@@ -1450,7 +1453,7 @@ subroutine output_neutral
         write(un_sys,*)'cuantasAB   = ',cuantasAB
         write(un_sys,*)'cuantasC    = ',cuantasC
         ! system description 
-        write(un_sys,*)'sysflag     = ',sysflag
+        write(un_sys,*)'systype     = ',systype
         write(un_sys,*)'delta       = ',delta  
         write(un_sys,*)'nx          = ',nx
         write(un_sys,*)'ny          = ',ny
@@ -1521,7 +1524,7 @@ end subroutine output_neutral
 
 subroutine output_individualcontr_fe
 
-    use globals, only : LEFT,RIGHT, sysflag
+    use globals, only : LEFT,RIGHT, systype
     use energy
     use myutils, only : newunit
     use parameters, only : sigmaAB,sigmaABL,sigmaABR,cNaCl,cCaCl2,pHbulk,VdWepsB
@@ -1539,7 +1542,7 @@ subroutine output_individualcontr_fe
 
         !     .. make label filename
 
-        if(sysflag=="electdouble") then 
+        if(systype=="electdouble") then 
 
             write(rstr,'(F5.3)')sigmaABL
             fnamelabel="sgL"//trim(adjustl(rstr))
@@ -1559,7 +1562,7 @@ subroutine output_individualcontr_fe
             fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
 
 
-        elseif(sysflag=="elect".or.sysflag=="electnopoly".or.sysflag=="electA") then 
+        elseif(systype=="elect".or.systype=="electnopoly".or.systype=="electA") then 
 
 
             write(rstr,'(F5.3)')sigmaABL
@@ -1577,7 +1580,7 @@ subroutine output_individualcontr_fe
             write(rstr,'(F7.3)')pHbulk
             fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
 
-        elseif(sysflag=="neutral") then 
+        elseif(systype=="neutral") then 
             
             write(rstr,'(F5.3)')sigmaAB*delta 
             fnamelabel="sg"//trim(adjustl(rstr)) 
@@ -1586,7 +1589,7 @@ subroutine output_individualcontr_fe
         else
             
             print*,"Error in output_individualcontr_fe subroutine"
-            print*,"Wrong value sysflag : ", sysflag
+            print*,"Wrong value systype : ", systype
         endif    
 
         fenergyfilename='energy.'//trim(fnamelabel)   
@@ -1651,7 +1654,7 @@ end subroutine output_individualcontr_fe
      
 subroutine copy_solution(x)
 
-    use globals, only : sysflag, neq, nsize, bcflag, LEFT, RIGHT
+    use globals, only : systype, neq, nsize, bcflag, LEFT, RIGHT
     use volume, only  : nx,ny
     use surface, only : psiSurfL, psiSurfR
     use field
@@ -1663,7 +1666,7 @@ subroutine copy_solution(x)
     ! local variable
     integer :: i, neq_bc
 
-    select case (sysflag)
+    select case (systype)
     case ("elect")   
 
         do i=1,nsize                   
@@ -1771,7 +1774,7 @@ subroutine copy_solution(x)
 
     case default   
 
-        print*,"Error: sysflag incorrect in copy_solution"
+        print*,"Error: systype incorrect in copy_solution"
         print*,"stopping program"
         stop
     
@@ -1783,13 +1786,13 @@ end subroutine copy_solution
 
 subroutine compute_vars_and_output()
 
-    use globals, only : sysflag
+    use globals, only : systype
     use energy
     use field
     use parameters, only : heightAB
     implicit none
 
-    select case (sysflag)
+    select case (systype)
     case ("elect")
     
         call fcnenergy()       
@@ -1835,7 +1838,7 @@ subroutine compute_vars_and_output()
         call output()           ! writing of output 
 
     case default   
-        print*,"Error: sysflag incorrect in compute_vars_and_output"
+        print*,"Error: systype incorrect in compute_vars_and_output"
         print*,"stopping program"
         stop
     end select
