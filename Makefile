@@ -23,11 +23,12 @@ FF= gfortran
 
 else ifeq ($(shell hostname),master)
 
+
 FFLAGS= -O3 -cpp -DVERSION=\"$(GIT_VERSION)\"
 LDFLAGS=-L/shared/software/sundials-2.5.0-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial -lm -L/usr/lib/gcc/x86_64-linux-gnu/4.6 -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/4.6/../../.. -lgfortran -lm -lgcc_s -lquadmath
 
 LFFLAGS=$(LDFLAGS)
-FF= gfortran
+FF= /shared/software/openmpi-1.6.1/bin/mpif90
 
 else ifeq ($(shell hostname),chiquita)
 

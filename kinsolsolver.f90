@@ -72,7 +72,7 @@ end subroutine fkpsol
 subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
   
     use mpivars
-    use ieee_arithmetic, only : ieee_is_nan    ! alternative for function isNaN in myutils
+    !use ieee_arithmetic, only : ieee_is_nan    ! alternative for function isNaN in myutils
     use globals, only : nsize, neq, systype
     use kinsolvars
     use parameters, only : iter
@@ -191,7 +191,8 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
   
     ! determine quality of solution
     
-    isSolution=(ier==0).and.(.not.ieee_is_nan(fnorm))
+    !isSolution=(ier==0).and.(.not.ieee_is_nan(fnorm))
+    isSolution=(ier==0).and.(.not.isNaN(fnorm))
 
     if(isSolution) then  
     
