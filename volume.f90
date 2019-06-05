@@ -101,9 +101,7 @@ contains
 
         implicit none
     
-        integer ::  i
         character(len=lenText) :: text, str 
-
 
         call init_lattice
 

@@ -56,8 +56,8 @@ module parameters
     type (looplist), target :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
     logical :: isVdW  
 
-    real(dp) :: VdWepsB            ! strenght VdW interaction in units of kT
-    real(dp) :: VdWepsC            ! strenght VdW interaction in units of kT
+    !real(dp) :: VdWepsB            ! strenght VdW interaction in units of kT
+    !real(dp) :: VdWepsC            ! strenght VdW interaction in units of kT
    
     integer :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
     integer :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
@@ -586,8 +586,8 @@ contains
           
         xbulk%sol=1.0_dp ! only solvent 
 
-        VdWepsC  = VdWepsC/(vpolC*vsol) ! VdW eps scaled 
-        VdWepsB  = VdWepsB/(vpolB(3)*vsol) ! VdW eps scaled
+        !VdWepsC  = VdWepsC/(vpolC*vsol) ! VdW eps scaled 
+        !VdWepsB  = VdWepsB/(vpolB(3)*vsol) ! VdW eps scaled
 
     end subroutine init_expmu_neutral
 

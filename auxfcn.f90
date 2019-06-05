@@ -134,7 +134,7 @@ contains
 
         use myutils, only : newunit
 
-        real(dp):: fval,xval,deltax
+        real(dp):: xval,deltax
         integer :: i
         character(len=12) :: fname        
         integer :: ios, un

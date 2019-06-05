@@ -886,8 +886,13 @@ subroutine output_elect
         write(un_sys,*)'dielectW    = ',dielectW
         write(un_sys,*)'lb          = ',lb
         write(un_sys,*)'T           = ',Tref
-        write(un_sys,*)'VdWepsC     = ',VdWepsC*vpolC*vsol 
-        write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
+        if(isVdW) then 
+            write(un_sys,*)'VdWeps%val  = ',VdWeps%val
+            write(un_sys,*)'VdWepsAA%val = ',VdWepsAA%val 
+            write(un_sys,*)'VdWepsBB%val = ',VdWepsBB%val
+            write(un_sys,*)'VdWepsAA%val = ',VdWepsAA%val 
+            write(un_sys,*)'VdWepsAB%val = ',VdWepsAB%val
+        endif    
         ! charge components
         write(un_sys,*)'zpolA(1)    = ',zpolA(1)
         write(un_sys,*)'zpolA(2)    = ',zpolA(2)
@@ -1252,7 +1257,7 @@ subroutine output_electdouble()
         write(un_sys,*)'dielectW    = ',dielectW
         write(un_sys,*)'lb          = ',lb
         write(un_sys,*)'T           = ',Tref 
-        write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
+        write(un_sys,*)'VdWeps%val  = ',VdWeps%val
         ! charge
         write(un_sys,*)'zpolA(1)    = ',zpolA(1)
         write(un_sys,*)'zpolA(2)    = ',zpolA(2)
@@ -1397,7 +1402,7 @@ subroutine output_neutral
         !     .. make label filenames 
         write(rstr,'(F5.3)')sigmaAB*delta 
         fnamelabel="sg"//trim(adjustl(rstr)) 
-        write(rstr,'(F5.3)')VdWepsB
+        write(rstr,'(F5.3)')VdWepsBB%val
         fnamelabel=trim(fnamelabel)//"VdWepsB"//trim(adjustl(rstr))//".dat"
 
         !     .. make filenames 
@@ -1463,8 +1468,8 @@ subroutine output_neutral
         write(un_sys,*)'tol_conf    = ',error
         ! other physcial parameters
         write(un_sys,*)'T           = ',Tref
-        write(un_sys,*)'VdWepsC     = ',VdWepsC*vpolC*vsol
-        write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
+        !write(un_sys,*)'VdWepsC     = ',VdWepsC*vpolC*vsol
+        !write(un_sys,*)'VdWepsB     = ',VdWepsB*vpolB(3)*vsol
         ! volume 
         write(un_sys,*)'vsol        = ',vsol
         write(un_sys,*)'vpolA(1)    = ',vpolA(1)*vsol
@@ -1527,7 +1532,7 @@ subroutine output_individualcontr_fe
     use globals, only : LEFT,RIGHT, systype
     use energy
     use myutils, only : newunit
-    use parameters, only : sigmaAB,sigmaABL,sigmaABR,cNaCl,cCaCl2,pHbulk,VdWepsB
+    use parameters, only : sigmaAB,sigmaABL,sigmaABR,cNaCl,cCaCl2,pHbulk,VdWepsBB
     use volume, only : delta,nz,nzmax,nzmin
 
     implicit none 
@@ -1584,7 +1589,7 @@ subroutine output_individualcontr_fe
             
             write(rstr,'(F5.3)')sigmaAB*delta 
             fnamelabel="sg"//trim(adjustl(rstr)) 
-            write(rstr,'(F5.3)')VdWepsB
+            write(rstr,'(F5.3)')VdWepsBB%val
             fnamelabel=trim(fnamelabel)//"VdWepsB"//trim(adjustl(rstr))//".dat"
         else
             

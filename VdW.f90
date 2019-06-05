@@ -46,6 +46,8 @@ subroutine allocate_VdWcoeff(info)
 
     integer,  intent(out), optional :: info
     
+    if (present(info)) info = 0
+
     alloc_fail=.FALSE.    
 
     if(systype=="electVdWAB") then 
@@ -90,6 +92,8 @@ subroutine allocate_auxdensity(info)
 
     integer :: ier
     
+    if (present(info)) info = 0
+
     if(systype=="electA".or.systype=="dipolarweakA") then 
 
         if (.not. allocated(rhopoltmp))  then 
@@ -149,15 +153,15 @@ subroutine make_VdWcoeff(info)
     
     real(dp) :: lsegAB
     character(len=lenText) :: text
-    integer :: info_allocate
+    integer :: info_allocate_VdW,info_allocate_dens
 
 
     if (present(info)) info = 0
 
-    call allocate_VdWcoeff(info_allocate)
-    call allocate_auxdensity(info_allocate)
+    call allocate_VdWcoeff(info_allocate_VdW)
+    call allocate_auxdensity(info_allocate_dens)
 
-    if (info_allocate/=0) then 
+    if ((info_allocate_VdW/=0).or.(info_allocate_dens/=0)) then 
 
          text="make_VdWcoeff allocation failure"
          call print_to_log(LogUnit,text)

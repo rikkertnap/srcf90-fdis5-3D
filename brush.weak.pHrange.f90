@@ -3,6 +3,12 @@
 ! coated onto a planar surface,                                  |
 ! input/output: see myio.f90                                     |
 ! ---------------------------------------------------------------|
+! todo 5 june 2019                                               | 
+! 1 remove C monomer                                             |
+! 2 add VdW fcnneutral                                           |
+! 3 added VdWepsAA and VdWepsBB to input and output              |
+! ---------------------------------------------------------------|
+
 
 program brushweakpolyelectrolyte
 
@@ -193,7 +199,7 @@ program brushweakpolyelectrolyte
 
     else  ! loop over pH  or VdWeps values
  
-        print*,"->5"
+
         if(runtype=="rangepH") then 
             loop => pH
         else if (runtype=="rangeVdWeps") then
@@ -221,8 +227,6 @@ program brushweakpolyelectrolyte
             call init_vars_input()  ! sets up chem potenitals
             call chain_filter()
             call set_fcn()
-            
-            print*,"-->5"
 
             flag_solver = 0
 
