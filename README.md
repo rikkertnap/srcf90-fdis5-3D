@@ -10,12 +10,12 @@ Formation of Ca-bridges between polyelectrolyte monomer is taken into account. S
 ### Prerequisites
 
 The program uses the kinsol solver form the library package sundials.
-Sundials/kinsol.
+Sundials/kinsol, version 2.
 
 ### Installing
 
 Modify Makefile such that in contains the appropriate linker flags to the sundials library.
-Linker flags can be obtained for the examples directory of the sundails installation.
+Linker flags can be obtained for the examples directory of the sundials installation.
 
 
 
@@ -31,22 +31,22 @@ The program uses an input file called 'input.in' that contain following key word
 |    	            	    |                                   | __FILE__: conformations form file                    |
 | chaintype `char`      | Sets sequence of A and B monomers in  chain. | __diblock__: diblock copolymer A-block-B chain length A block set by Keyword `chainperiod` |     
 | 	                    | 	                                           | __altA__: alternating copolymer A-alt-B mod(s,chainperiod)!=0 is A monomer|
-|			                  |                                   | __altB__: alternating copolymer B-alt-A mod(s,chainperiod)=0 is A monomer |
-|		        |                                              | __copoly__: Sequence read in from sequence.in not implemented yet|
-| sysflag  `char`       | Sets the type of system		       | __elect__: weak polyacid no VdW interaction single surface tethered|
+|			                  |                                              | __altB__: alternating copolymer B-alt-A mod(s,chainperiod)=0 is A monomer |
+|		                    |                                              | __copoly__: Sequence read in from sequence.in not implemented yet|
+| systype  `char`       | Sets the type of system		       | __elect__: weak polyacid no VdW interaction single surface tethered|
 |                       |                       		       | __electA__:  __elect__  restricted to homopolymerA plus VdW interaction |
-| 	 |  			| __neutral__: AB copolymer and C polymer neutral |
+| 	|  			| __neutral__: AB copolymer and C polymer neutral |
 |	  |   		| __electdouble__: weak polyacid different surface coverage on opposing surfaces | 		       	    	     	           
-|   | 			 | __electnopoly__: nopolymers:|
-|   |     | __dipolarstrong__: strong polyelectrolyte with explicit dipoles:|
-|	  |     | __dipolarweak__: weak polyelectrolyte with explicit dipoles:|
-|runflag `char`				  | Sets type of run     | __rangepH__: scan over pH values for nz=nzmax |
-|                    |   	                  | __rangedist__: scan over distances for pH=pH%val  |   
-|                    |   	                  | __rangeVdWeps__: scan over VdWeps for fixed conditions |   
+|   | 			| __electnopoly__: nopolymers:|
+|   |       | __dipolarstrong__: strong polyelectrolyte with explicit dipoles:|
+|	  |       | __dipolarweak__: weak polyelectrolyte with explicit dipoles:|
+|runtype `char`				  | Sets type of run     | __rangepH__: scan over pH values for nz=nzmax |
+|                       |   	                  | __rangedist__: scan over distances for pH=pH%val  |   
+|                       |   	                  | __rangeVdWeps__: scan over VdWeps for fixed conditions |   
 |bcflag(RIGHT) `char`	| Sets type of boundary condition for RIGHT surface  |__qu__: quartz |
 |	                    | |__cl__: clay  |
 |	                    | |__ca__: calcite |
-|			                  | |__ta__: taurine=AMPS  |		
+|			                | |__ta__: taurine=AMPS  |		
 |                     | |__cc__: constant charge |
 |bcflag(LEFT) `char`   | Sets type of boundary condition for LEFT surface |__ta__: taurine  |
 |	                     |                                                  |__cc__: constant charge |
@@ -70,7 +70,7 @@ The program uses an input file called 'input.in' that contain following key word
 |pKa(2) `real`	          |   pK of A acid monomer: ANa  <=> A- + Na+   ||
 |pKa(3) `real`				    |   pK of A acid monomer: ACa+ <=> A- + Ca2+  ||
 |pKa(4) `real`				    |   pK of A acid monomer: A2Ca <=> 2A- + Ca2+ ||
-|pKb(1) `rea              |   pK of B acid monomer: BH  <=> B- + H+ ||
+|pKb(1) `rea`              |   pK of B acid monomer: BH  <=> B- + H+ ||
 |pKb(2) `real`		        | pK of B acid monomer: BNa  <=> B- + Na+ ||
 |pKb(3) `real`	          | pK of B acid monomer: BCa+ <=> B- + Ca2+  ||
 |pKb(4) `real`            | pK of B acid monomer:  B2Ca <=> 2B- + Ca2+ ||
@@ -93,15 +93,16 @@ The program uses an input file called 'input.in' that contain following key word
 |geometry `char`          | set geometry or shape of lattice  | __cubic__ : Cartesian lattice |
 |                         |                                   | __prism__ : oblique lattice   |
 |gamma `real`             | angle between the none-orthogonal prism basis vectors, unit: radian | |
-| isRandom_pos_graft `logical`  | Displaces  grafting position by a randdom distance | .false. : regular |
+| isRandom_pos_graft `logical`  | Displaces  grafting position by a random distance | .false. : regular |
 |                               |                         | .true. : irregular|
-|  | following variables are describe VdW interaction and use only for sysflag="electA"| |
+|  | following variables are describe VdW interaction and use only for systype="electA"| |
 |VdWeps%val `real`	          | Strength VdW parameter 	Unit: kBT    |  |
 |VdWeps%min `real`			      | Minimum strength VdW parameter  Unit: kBT    |  |
 |VdWeps%max `real`			      | Maximum strength VdW parameter  Unit: kBT    | - |
 |VdWeps%stepsize `real`			    | Stepsize strength VdW parameter     Unit: delta  | - |
 |VdWeps%delta `real`			      | Minimal allowed stepsize. Stopping criteria  Unit: kBT    | - |
-|
+|seed_graft 'int'              | Seed for graft point. use in combination with isRandom_pos_graft | |
+|                              | Different values produce different random patterns|  | 
 
 ## Built With
 
@@ -115,5 +116,3 @@ version 2.2.1 03-01-2019
 ## Authors
 
 * **Rikkert J Nap**
-
-

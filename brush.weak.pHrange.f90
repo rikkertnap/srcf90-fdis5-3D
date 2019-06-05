@@ -222,7 +222,7 @@ program brushweakpolyelectrolyte
             call chain_filter()
             call set_fcn()
             
-            print*,"->5"
+            print*,"-->5"
 
             flag_solver = 0
 

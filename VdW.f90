@@ -90,7 +90,7 @@ subroutine allocate_auxdensity(info)
 
     integer :: ier
     
-    if(systype=="electVdWAB") then 
+    if(systype=="electA".or.systype=="dipolarweakA") then 
 
         if (.not. allocated(rhopoltmp))  then 
            allocate(rhopoltmp(nx,ny,nz),stat=ier)
@@ -103,7 +103,7 @@ subroutine allocate_auxdensity(info)
         else
            print*,'Allocation warning: auxilary polymer density already allocated'
         endif
-    else if(systype=="electA".or.systype=="dipolarweakA") then 
+    else if(systype=="electVdWAB") then 
 
         if (.not. allocated(rhopolAtmp))  then 
            allocate(rhopolAtmp(nx,ny,nz),stat=ier)
@@ -117,7 +117,7 @@ subroutine allocate_auxdensity(info)
            print*,'Allocation warning: auxilary polymer density already allocated'
         endif
 
-        if (.not. allocated(rhopolAtmp))  then 
+        if (.not. allocated(rhopolBtmp))  then 
            allocate(rhopolBtmp(nx,ny,nz),stat=ier)
            
            if( ier.ne.0 ) then
@@ -167,7 +167,7 @@ subroutine make_VdWcoeff(info)
 
         if(systype=="electVdWAB") then
       
-             lsegAB=(lsegPAA+lsegPS)/2.0_dp
+            lsegAB=(lsegPAA+lsegPS)/2.0_dp
 
             call MC_VdWcoeff(lsegPAA, VdWcoeffAA)
             call MC_VdWcoeff(lsegPS , VdWcoeffBB)
@@ -225,8 +225,8 @@ subroutine MC_VdWcoeff(lseg,VdWcoeff)
         call print_to_log(LogUnit,text)
     endif    
 
-    call allocate_VdWcoeff()
-    call allocate_auxdensity()
+    !call allocate_VdWcoeff()
+    !call allocate_auxdensity()
 
     sum = 0.0_dp
 

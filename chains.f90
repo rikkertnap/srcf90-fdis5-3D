@@ -8,8 +8,8 @@ module chains
     integer, dimension(:,:,:), allocatable :: indexchainC 
     integer, dimension(:,:,:), allocatable :: indexchainAB_init 
     integer, dimension(:,:,:), allocatable :: indexchainC_init 
-    logical, dimension(:), allocatable :: isAmonomer
-    logical, dimension(:,:), allocatable :: weightchainAB
+    logical, dimension(:),     allocatable :: isAmonomer
+    logical, dimension(:,:),   allocatable :: weightchainAB
 
     logical :: isHomopolymer
     double precision, dimension(:),allocatable :: lsegseq  ! only needed for copolymer
