@@ -1,4 +1,4 @@
-module parameters
+ module parameters
 
     use physconst
     use mathconst
@@ -556,8 +556,8 @@ contains
         enddo
         !     .. rescale for i=4 2A- Ca <=> A2Ca
           
-        K0a(4) = (Ka(4)*vsol)*(Na/1.0e24_dp)
-        K0b(4) = (Kb(4)*vsol)*(Na/1.0e24_dp)
+        K0a(4) = (K0a(4)*vsol)*(Na/1.0e24_dp)
+        K0b(4) = (K0b(4)*vsol)*(Na/1.0e24_dp)
          
 
         pibulk = -log(xbulk%sol)  ! pressure (pi) of bulk
