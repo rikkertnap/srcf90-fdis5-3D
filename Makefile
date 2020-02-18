@@ -1,6 +1,6 @@
 #Unix makefile for fortran-file	
 
-# put the name of the target program here
+# Put the name of the target program here
 TARGET = brush.weak.mixture.3D.pH # the list of source files
 SRC =  mpivars.f90  precision.f90  mathconst.f90 physconst.f90 globals.f90 myutils.f90 auxfcn.f90 molecule.f90 loop.f90 chains.f90 rands.f90 volume.f90 L2norm.f90 parameter.f90  poissonEq.f90 field.f90 VdW.f90 surface.f90 confEntropy.f90 fenergy.f90 initcha.f90  myio.f90 rota.f90 cadenas.f90 cadenas-sequence.f90 fcnCa.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  brush.weak.pHrange.f90
 
@@ -84,6 +84,32 @@ else ifeq ($(shell hostname),quser10)
 
 	is_quest = yes
 
+
+else ifeq ($(shell hostname),thetalogin1)
+
+        is_theta = yes
+
+else ifeq ($(shell hostname),thetalogin2)
+
+        is_theta = yes
+
+else ifeq ($(shell hostname),thetalogin3)
+
+        is_theta = yes
+
+else ifeq ($(shell hostname),thetalogin4)
+
+        is_theta = yes
+
+else ifeq ($(shell hostname),thetalogin5)
+
+        is_theta = yes
+
+else ifeq ($(shell hostname),thetalogin6)
+
+        is_theta = yes
+
+
 else 
 
 
@@ -100,8 +126,21 @@ LFFLAGS=$(LDFLAGS)
 FF= mpif90
 
 
-
 endif
+
+
+ifdef is_theta
+
+FFLAGS=  -cpp -DVERSION=\"$(GIT_VERSION)\" -O3
+
+LDFLAGS= -lm /usr/lib64/librt.a -L/home/rikkertjan/sundials-2.6.1-mpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial    -Wl,-rpath,/home/rikkertjan/sundials-2.6.1-mpi/lib
+
+LFFLAGS=$(LDFLAGS)
+
+FF= ftn
+
+endif 
+
 
 
 
