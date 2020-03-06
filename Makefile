@@ -18,7 +18,7 @@ LDFLAGS=-L/opt/local/sundials-2.5.0-openmpi/lib -lsundials_fkinsol -lsundials_ki
 
 LFFLAGS=$(LDFLAGS)
 
-FF= gfortran
+FF= mpif90
 
 
 else ifeq ($(shell hostname),master)

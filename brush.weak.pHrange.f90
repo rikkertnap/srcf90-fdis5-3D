@@ -61,10 +61,19 @@ program brushweakpolyelectrolyte
     call MPI_COMM_SIZE(MPI_COMM_WORLD, size, ierr)
 
     ! .. logfile
-    write(istr,'(I2)')rank
+    
+    write(istr,'(I3)')rank
+    if( size>1000) then 
+        text="Error: size to large for status file number"
+        call print_to_log(LogUnit,text)
+        print*,text
+        call MPI_FINALIZE(ierr)
+        stop
+    endif
     fname='status.'//trim(adjustl(istr))//'.log'
     call open_logfile(logUnit,fname)
-    write(istr,'(I4)')rank
+    write(istr,'(I3)')rank
+    
     text='program begins : rank '//istr
     call print_to_log(LogUnit,text)
     write(istr,'(A40)')VERSION
