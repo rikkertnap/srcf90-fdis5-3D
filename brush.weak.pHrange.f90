@@ -72,7 +72,7 @@ program brushweakpolyelectrolyte
     endif
     fname='status.'//trim(adjustl(istr))//'.log'
     call open_logfile(logUnit,fname)
-    write(istr,'(I3)')rank
+    write(istr,'(I4)')rank
     
     text='program begins : rank '//istr
     call print_to_log(LogUnit,text)

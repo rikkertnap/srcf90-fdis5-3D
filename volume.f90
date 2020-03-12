@@ -267,7 +267,7 @@ contains
         endif        
         
         write(fname,'(A18)')'positiongraft-rank'
-        write(istr,'(I3)')rank
+        write(istr,'(I4)')rank
         fname=trim(fname)//trim(adjustl(istr))//'.dat'
         print*,fname
         print*,istr
