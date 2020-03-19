@@ -62,7 +62,7 @@ program brushweakpolyelectrolyte
 
     ! .. logfile
     
-    write(istr,'(I3)')rank
+    write(istr,'(I4)')rank
     if( size>9999) then 
         text="Error: size to large for status file number"
         call print_to_log(LogUnit,text)

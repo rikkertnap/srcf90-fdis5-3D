@@ -246,7 +246,6 @@ contains
 
             do i=1,ngrx            ! location graft points 
                 do j=1,ngry
-                
                     position_graft(ig,1) = (i-0.5_dp)*delta*ngr_freq
                     position_graft(ig,2) = (j-0.5_dp)*delta*ngr_freq
                     ig = ig + 1
@@ -254,8 +253,20 @@ contains
             enddo
         
         else 
+            ! regulat lattice
 
-            seed=seed_graft
+            ig = 1   
+
+            do i=1,ngrx            ! location regular graft points 
+                do j=1,ngry
+                    position_graft(ig,1) = (i-0.5_dp)*delta*ngr_freq
+                    position_graft(ig,2) = (j-0.5_dp)*delta*ngr_freq
+                    ig = ig + 1
+                enddo
+            enddo
+
+            
+            seed=seed_graft         ! randomize
 
             do ig=1,ngr          
                 rnd = (rands(seed)-0.5_dp)*1.5_dp
