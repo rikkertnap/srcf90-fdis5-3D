@@ -79,17 +79,17 @@ subroutine make_chains_mc()
     !     .. executable statements
     !     .. initializations of variables     
     
-    if(geometry=="cubic") then
-        allocate(x_ngr(ngrx))
-        allocate(y_ngr(ngry))
+    !if(geometry=="cubic") then
+    !    allocate(x_ngr(ngrx))
+    !    allocate(y_ngr(ngry))
 
-        do i=1,ngrx            ! location graft points 
-            x_ngr(i)=(i-0.5_dp)*delta*ngr_freq
-        enddo
-        do i=1,ngry
-            y_ngr(i)=(i-0.5_dp)*delta*ngr_freq
-        enddo
-    endif    
+    !    do i=1,ngrx            ! location graft points 
+    !        x_ngr(i)= (i-0.5_dp)*delta*ngr_freq
+    !   enddo
+    !    do i=1,ngry
+    !        y_ngr(i)=(i-0.5_dp)*delta*ngr_freq
+    !    enddo
+    !endif    
 
     conf=1                  ! counter for conformations
     seed=435672             ! *(rank+1) ! seed for random number generator  different on each node
@@ -141,8 +141,8 @@ subroutine make_chains_mc()
                         ix = mod(idxtmp-1,ngrx)+1      ! inverse of g
                         iy = int((idxtmp-1)/ngrx)+1
                         
-                        xpt = x_ngr(ix)                ! position of graft point
-                        ypt = y_ngr(iy) 
+                        xpt =  position_graft(g,1)  !x_ngr(ix)                ! position of graft point
+                        ypt =  position_graft(g,2)  !y_ngr(iy) 
                         
                         weightchainAB(gn,conf)=.TRUE.  ! init weight     
 
