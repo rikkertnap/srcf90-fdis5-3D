@@ -272,10 +272,10 @@ subroutine make_chains_mc()
         if(allowedconfAB/=cuantasAB) print*,"make_chains_mc: Not all conformations were allowed"    
     enddo
       
-    if(geometry=="cubic") then 
-        deallocate(x_ngr)
-        deallocate(y_ngr)
-    endif 
+    !if(geometry=="cubic") then 
+    !    deallocate(x_ngr)
+    !    deallocate(y_ngr)
+    !endif 
         
     if(isHomopolymer.eqv..FALSE.) deallocate(lsegseq)
 
