@@ -60,16 +60,10 @@ subroutine init_guess(x, xguess)
     select case (systype)
         case ("elect")     
             call init_guess_elect(x,xguess)    
-        case ("dipolarstrong")  
-            call init_guess_dipolar(x,xguess)
-        case ("dipolarweak")  
-            call init_guess_dipolar(x,xguess)    
         case ("electdouble")
             call init_guess_electdouble(x,xguess)  
         case ("electnopoly") 
-            call init_guess_electnopoly(x,xguess)
-        case ("dipolarnopoly")  
-            call init_guess_electnopoly(x,xguess)    
+            call init_guess_electnopoly(x,xguess)  
         case ("neutral")  
             call init_guess_neutral(x,xguess)
         case ("electA")  
@@ -84,83 +78,6 @@ end subroutine init_guess
 
          
 
-subroutine init_guess_dipolar(x, xguess)
-      
-    use globals, only : neq,bcflag,LEFT,RIGHT,nsize
-    use volume, only : nsurf
-    use field, only : xsol,psi,fdisA,rhopolA,rhopolB
-    use surface, only : psisurfL, psisurfR 
-    use parameters, only : xbulk, infile
-    use myutils, only : newunit
-  
-    real(dp) :: x(:)       ! volume fraction solvent iteration vector 
-    real(dp) :: xguess(:)  ! guess fraction  solvent 
-  
-    !     ..local variables 
-    integer :: n, i, neq_bc
-    character(len=8) :: fname(2)
-    integer :: ios,un_file(2)
-  
-    ! .. init guess all xbulk     
-    do i=1,nsize
-        x(i)=xbulk%sol
-        x(i+nsize)=0.0_dp
-    enddo
-  
-    if (infile.eq.1) then   ! infile is read in from file/stdio  
-    
-        write(fname(1),'(A7)')'xsol.in'
-        write(fname(2),'(A6)')'psi.in'
-    
-        
-        do i=1,2 ! loop files
-        
-            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
-            if(ios >0 ) then    
-                print*, 'file number =',un_file(i),' file name =',fname(i)
-                print*, 'Error opening file : iostat =', ios
-                stop
-            endif
-        enddo
-     
-        neq_bc=0
-
-        if(bcflag(RIGHT)/="cc") then 
-            neq_bc=nsurf
-            do i=1,nsurf
-                read(un_file(2),*)psisurfR(i)     ! degree of complexation A 
-                x(i+2*nsize)   = psisurfR(i) 
-            enddo
-        endif    
-        
-        do i=1,nsize
-            read(un_file(1),*)xsol(i)       ! solvent
-            read(un_file(2),*)psi(i)        ! potential
-            x(i)         = xsol(i)       ! placing xsol  in vector x
-            x(i+nsize)   = psi(i)        ! placing xsol  in vector x
-        enddo
-
-
-        if(bcflag(LEFT)/="cc") then 
-            do i=1,nsurf 
-                read(un_file(2),*)psisurfL(i)     ! surface potetial 
-                x(i+2*nsize+neq_bc)   = psisurfL(i) 
-            enddo
-        endif 
-        
-
-
-        do i=1,2
-            close(un_file(i))
-        enddo
-
-    endif  !     .. end init from file 
-  
-    do i=1,neq
-        xguess(i)=x(i)
-    enddo
-
-end subroutine init_guess_dipolar
 
 subroutine init_guess_electdouble(x, xguess)
       
@@ -485,39 +402,29 @@ subroutine init_guess_neutral(x, xguess)
   
     !     ..local variables 
     integer :: n, i
-    character(len=8) :: fname(2)
-    integer :: ios,un_file(2)
+    character(len=8) :: fname
+    integer :: ios,un_file
   
     !     .. init guess all xbulk      
 
     do i=1,nsize
         x(i)=xbulk%sol
-        x(i+nsize)=0.000_dp
     enddo
   
-  
     if (infile.eq.1) then   ! infile is read in from file/stdio  
-        write(fname(1),'(A7)')'xsol.in'
-        write(fname(2),'(A6)')'rhopolB.in'
-     
-        do i=1,2
-            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
-            if(ios >0 ) then
-                print*, 'file number =',un_file(i),' file name =',fname(i)
-                print*, 'Error opening file : iostat =', ios
-                stop
-            endif
-        enddo
+        write(fname,'(A7)')'xsol.in'
+        open(unit=newunit(un_file),file=fname,iostat=ios,status='old')
+        if(ios >0 ) then
+            print*, 'file number =',un_file,' file name =',fname
+            print*, 'Error opening file : iostat =', ios                
+            stop
+        endif
      
         do i=1,nsize
-            read(un_file(1),*)xsol(i)       ! solvent
-            read(un_file(2),*)rhopolB(i)    ! density polymer B
+            read(un_file,*)xsol(i)       ! solvent
             x(i)      = xsol(i)       ! placing xsol  in vector x
-            x(i+nz)   = rhopolB(i)    ! placing rhopolB  in vector x
-        enddo
-        
-        close(un_file(1))
-        close(un_file(2))
+        enddo     
+        close(un_file)
     endif
     !     .. end init from file 
   

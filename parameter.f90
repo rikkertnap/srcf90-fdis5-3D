@@ -19,15 +19,16 @@
     real(dp) :: vsol               ! volume of solvent  in nm^3       
     real(dp) :: vpolB(5)           ! volume of one polymer segment, vpol  in units of vsol
     real(dp) :: vpolA(5)           ! volume of one polymer segment, vpol  in units of vsol
-    real(dp) :: vpolC              ! volume of one polymer segment hydrocarbon, vpol  in units of vsol
-  
     real(dp) :: deltavA(4)
     real(dp) :: deltavB(4)
-  
+    real(dp), dimension(:), allocatable :: vpol  ! volume of polymer segment of given type, vpol in units of vsol
+    
     real(dp) :: vNa                ! volume positive ion in units of vsol
     real(dp) :: vK                 ! volume positive ion in units of vsol
+    real(dp) :: vRb                 ! volume positive ion in units of vsol
     real(dp) :: vCl                ! volume negative ion in units of vsol   
     real(dp) :: vCa                ! volume positive divalent ion in units of vsol
+    real(dp) :: vMg                ! volume positive divalent ion in units of vsol
     real(dp) :: vNaCl
     real(dp) :: vKCl
   
@@ -35,11 +36,65 @@
   
     real(dp) :: RNa
     real(dp) :: RK
+    real(dp) :: RRb
     real(dp) :: RCl
     real(dp) :: RCa
+    real(dp) :: RMg
     real(dp) :: RNaCl
     real(dp) :: RKCl
     
+   
+  
+    type (looplist), target :: VdWeps            ! strenght VdW interaction in units of kT
+    type (looplist), target :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
+    logical :: isVdW  
+
+    integer :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
+    integer :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
+    integer :: layeroffset
+    
+    !    .. charges 
+
+    integer, dimension(:,:), allocatable :: zpol          ! valence charge polymer
+    integer :: zpolA(5)          ! valence charge polymer
+    integer :: zpolB(5)          ! valence charge polymer
+    integer :: zNa               ! valence charge positive ion 
+    integer :: zK                ! valence charge positive ion 
+    integer :: zRb               ! valence charge positive ion 
+    integer :: zCa               ! valence charge divalent positive ion 
+    integer :: zMg               ! valence charge divalent positive ion 
+    integer :: zCl               ! valence charge negative ion 
+    integer :: zsurf             ! valence surface charge 
+  
+    ! .. other physical quanties
+  
+    real(dp) :: Tref             ! temperature in K
+    real(dp) :: dielectW         ! dielectric constant of water 
+    real(dp) :: lb               ! Bjerrum length	   
+    real(dp) :: constqW          ! constant in Poisson eq dielectric constant of water 
+    real(dp) :: lb0              ! Bjerrum length in vacuum       
+    real(dp) :: constq0          ! constant in Poisson eq dielectric constant of vacuum 
+
+    real(dp) :: sigmaAB          ! sigma AB polymer coated on planar surface
+    real(dp) :: sigmaABL         ! sigma AB polymer coated on planar surface
+    real(dp) :: sigmaABR         ! sigma AB polymer coated on planar surface
+    
+    real(dp) :: sigma            ! sigma  polymer coated on planar surface
+  
+     !  .. solver variables
+
+    integer  :: itmax            ! maximum number of iterations
+    real(dp) :: error            ! error imposed accuaracy
+    real(dp) :: fnorm            ! L2 norm of residual vector function fcn  
+    integer  :: infile           ! infile=1 read input files infile!=1 no input files 
+    integer  :: iter             ! counts number of iterations
+    character(len=8) :: method   ! method="kinsol"  
+    logical ::  precondition     ! controls use of precondtioner 
+
+    !  .. output control
+    character(len=3) ::  verboseflag    ! select input falg 
+
+    ! .. chain variables 
     real(dp) :: lsegAB
     real(dp) :: lsegA              ! segment length of A polymer in nm
     real(dp) :: lsegB              ! segment length of B polymer in nm
@@ -49,57 +104,14 @@
     real(dp) :: lsegPEG  
     real(dp) :: lsegPAMPS
     real(dp) :: lsegPS  
-    
-    integer :: period            ! peridociy of repeat of A or B block 
-  
-    type (looplist), target :: VdWeps            ! strenght VdW interaction in units of kT
-    type (looplist), target :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
-    logical :: isVdW  
-
-    !real(dp) :: VdWepsB            ! strenght VdW interaction in units of kT
-    !real(dp) :: VdWepsC            ! strenght VdW interaction in units of kT
-   
-    integer :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
-    integer :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
-    integer :: layeroffset
-  
-
-    integer :: zpolA(5)          ! valence charge polymer
-    integer :: zpolB(5)          ! valence charge polymer
-    integer :: zNa               ! valence charge positive ion 
-    integer :: zK                ! valence charge positive ion 
-    integer :: zCa               ! valence charge divalent positive ion 
-    integer :: zCl               ! valence charge negative ion 
-    integer :: zsurf             ! valence surface charge 
-  
-    real(dp) :: Tref             ! temperature in K
-    real(dp) :: dielectW         ! dielectric constant of water 
-    real(dp) :: lb               ! Bjerrum length	   
-    real(dp) :: constqW          ! constant in Poisson eq dielectric constant of water 
-    real(dp) :: lb0              ! Bjerrum length in vacuum       
-    real(dp) :: constq0          ! constant in Poisson eq dielectric constant of vacuum 
-
-
-    real(dp) :: sigmaAB            ! sigma AB polymer coated on planar surface
-    real(dp) :: sigmaABL           ! sigma AB polymer coated on planar surface
-    real(dp) :: sigmaABR           ! sigma AB polymer coated on planar surface
-    
-    real(dp) :: sigmaC             ! sigma C polymer coated on planar surface
-  
-    integer :: itmax             ! maximum number of iterations
-    real(dp) :: error              ! error imposed accuaracy
-    real(dp) :: fnorm              ! L2 norm of residual vector function fcn  
-    integer :: infile            ! infile=1 read input files infile!=1 no input files 
-    integer :: iter              ! counts number of iterations
-  
-    character(len=8) :: method           ! method="kinsol" or "zspow"  
-    character(len=8) :: chainmethod      ! method of generating chains ="MC" or "FILE" 
-    character(len=8) :: chaintype        ! type of chain: diblock,alt
+    character(len=15) :: chainmethod     ! method of generating chains ="MC" or "FILE" 
+    character(len=8)  :: chaintype        ! type of chain: diblock,alt
     integer :: readinchains              ! nunmber of used/readin chains
-    character(len=3) ::  verboseflag       ! select input falg 
+    integer :: period            ! peridociy of repeat of A or B block 
+    integer :: maxnchainsrotations    ! number of rotations read in from input.in, assigned to maxnchain in chaingenerator default 12  
 
     real(dp) :: heightAB           ! average height of layer
-    real(dp) :: heightC            ! average height of layer 
+    real(dp) :: height             ! average height of layer 
     real(dp) :: qpolA              ! charge poly A of layer 
     real(dp) :: qpolB              ! charge poly B of layer 
     real(dp) :: qpol_tot           ! charge poly A+B of layer 
@@ -162,12 +174,6 @@ contains
         if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nx*ny
 
         select case (systype)
-            case ("dipolarweak") 
-                neq = 2 * nsize + neq_bc
-            case ("dipolarstrong")  
-                neq = 2 * nsize + neq_bc 
-            case ("dipolarweakA") 
-                neq = 2 * nsize + neq_bc
             case ("elect") 
                 neq = 4 * nsize + neq_bc
             case ("electA") 
@@ -177,8 +183,6 @@ contains
             case ("electdouble")  
                 neq = 4 * nsize 
             case ("electnopoly") 
-                neq = 2 * nsize + neq_bc
-            case ("dipolarnopoly") 
                 neq = 2 * nsize + neq_bc
             case ("neutral") 
                 neq = nsize
@@ -250,9 +254,12 @@ contains
         zsurf =-1                 ! valence surface charge 
         zNa   = 1                 ! valence positive charged ion
         zK    = 1                 ! valence positive charged ion
+        zRb   = 1                 ! valence positive charged ion
         zCa   = 2                 ! valence divalent positive charged ion
+        zMg   = 2                 ! valence divalent positive charged ion
         zCl   =-1                 ! valence negative charged ion
         
+
         zpolA(1)=-1 ! A-
         zpolA(2)= 0 ! AH
         zpolA(3)= 0 ! ANa
@@ -265,12 +272,17 @@ contains
         zpolB(4)= 1 ! BCa+
         zpolB(5)= 0 ! B2Ca
         
-        !     .. radii
-        
+        !  .. radii
+        !  .. ionic radii
+        !  .. https://www.chemguide.co.uk/atoms/properties/atradius.html and http://abulafia.mt.ic.ac.uk/shannon/ptable.php
+
         RNa = 0.102_dp             ! radius of Na+ in nm
         RK  = 0.138_dp             ! radius of K+ in nm
         RCl = 0.181_dp             ! radius of Cl- in nm
         RCa = 0.106_dp             ! radius of Ca2+ in nm
+        RRb = 0.152_dp             ! radius of Rb+ in nm 
+        RMg = 0.072_dp             ! radius of Mg2+ in nm 
+
         RNaCl = 0.26_dp            ! radius of ion pair: this value is strange  and not used !!
         RKCl = 0.26_dp             ! radius of ion pair
         
@@ -325,7 +337,7 @@ contains
         deltavB(3) = vpolB(1)+vCa-vpolB(4)    ! vB- +vCa2+ -vBCa+
         deltavB(4) = 2.0_dp*vpolB(1)+vCa-vpolB(5) ! 2vB- + vCa2+ -vB2Ca+
         
-        vpolC = vPEG  ! volume PEG   !0.0270_dp/vsol     ! volume CH2
+        !vpolC = vPEG  ! volume PEG   !0.0270_dp/vsol     ! volume CH2
        
         !     .. other physical varaibles
         lsegPAA  = 0.36287_dp       ! segment length in nm
@@ -336,7 +348,7 @@ contains
         lsegAB=lsegPAMPS          
         lsegA=lsegPAA            
         lsegB=lsegPAMPS          
-        lsegC=lsegPEG               
+       ! lsegC=lsegPEG               
 
         ! see also subroutine set_chain_properties 
 
@@ -349,7 +361,7 @@ contains
         call init_elect_constants(Tref)  
 
         max_conforAB=cuantasAB
-        max_conforC=cuantasC
+       ! max_conforC=cuantasC
 
 
     end subroutine init_constants

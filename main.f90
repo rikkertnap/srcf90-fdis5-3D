@@ -92,6 +92,8 @@ program main
         stop
     endif
 
+    nseg=nsegAB               ! temporary assigned 
+    cuantas=cuantasAB
 
     call init_constants()
     call make_geometry()            ! generate volume elements lattice

@@ -10,17 +10,19 @@ module globals
   
     !     .. variables
 
+
+
     integer  :: nsize         ! size lattice, numer of layers
+    integer  :: nseg          ! length of polymer 
+    integer  :: nsegtypes     ! number of segment types 
+    integer  :: cuantas       ! number of polymer configurations
+    integer  :: nsegAB        ! length of AB polymer 
+    integer  :: cuantasAB     ! number of polymer configurations
+    integer  :: max_conforAB  ! maximum number of polymer configurations
+   
     integer(8)  :: neq        ! number of non-linear equations
     integer(8)  :: neqmax     ! maximum number of non-linear equations
     integer  :: neqint        ! number of non-linear equations, for mpi fnc bindings
-
-    integer  :: nsegAB        ! length of AB polymer 
-    integer  :: nsegC         ! length of C polymer 
-    integer  :: cuantasAB     ! number of polymer configurations
-    integer  :: cuantasC      ! number of polymer configurations
-    integer  :: max_conforAB  ! maximum number of polymer configurations
-    integer  :: max_conforC   ! maximum number of polymer configurations
     
     character(len=15) :: systype   ! systype selects fcn    
     character(len=15) :: runtype   ! runtype

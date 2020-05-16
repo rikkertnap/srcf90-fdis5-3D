@@ -31,6 +31,28 @@ contains
     end subroutine print_to_log
 
 
+     ! printing to a log file 
+
+    subroutine print_to_log_new(UnitNum,text)
+
+        implicit none
+
+        !Formal argument
+        character (len=*), intent(in) :: text
+        integer, intent (in) :: UnitNum
+        !Local variables
+        character (len=8)  :: date
+        character (len=10) :: time
+        character (len=26) :: date_time
+
+        !Executable part
+        call date_and_time(date,time)
+        date_time='['//date(7:8)//'-'//date(5:6)//'-'//date(1:4)//' '//time(1:2)//':'//time(3:4)//':'//time(5:10)//'] '
+        write(UnitNum,*) date_time//trim(text)
+
+    end subroutine print_to_log_new
+
+
     subroutine open_logfile(UnitNum,FileName)  
 
         implicit none

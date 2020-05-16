@@ -53,36 +53,27 @@ contains
 
     subroutine fcnenergy()
  
-        use globals 
+        use globals, only : systype 
         use myutils
 
         implicit none
         
         character(len=lenText) :: text 
 
-        if(systype=="elect".or.systype=="electdouble".or.&
-            systype=="electnopoly".or.systype=="electA") then 
+        select case (systype) 
+        case ("brush_mul")
+            print*,"Warning: Free energy: for brush_mul not implemented"
 
+        case("elect","electdouble","electnopoly","electA")  
             call fcnenergy_elect()
             call fcnenergy_elect_alternative()
-        
-        elseif(systype=="dipolarstrong".or.systype=="dipolarweak".or.systype=="dipolarweakA".or.&
-            systype=="dipolarnopoly") then
-        
-            print*,"Warning: Free energy: warning not yet tested"
-            call fcnenergy_elect()
-       
-        elseif(systype=="neutral") then 
-       
+        case("neutral")
             call fcnenergy_neutral()
-       
-        else             
-       
+        case default     
             text="fcnenergy: wrong systype: "//systype//"stopping program"
             call print_to_log(LogUnit,text)
             stop
-       
-        endif 
+        end select 
   
     end subroutine fcnenergy
 
@@ -117,15 +108,15 @@ contains
 !        FEelsurf = 0.0_dp
         sumphiA = 0.0_dp
         sumphiB = 0.0_dp
-        sumphiC = 0.0_dp
+!        sumphiC = 0.0_dp
 
-        FEq = 0.0_dp
+        FEq     = 0.0_dp
         FEbindA = 0.0_dp
         FEbindB = 0.0_dp
         FEchem = 0.0_dp
         FEVdWC = 0.0_dp
         FEVdWB = 0.0_dp     
-        qres = 0.0_dp
+        qres   = 0.0_dp
 
         do i=1,nsize
             FEpi = FEpi  + log(xsol(i))
@@ -133,8 +124,8 @@ contains
                 xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
             FEel  = FEel  - rhoq(i) * psi(i)/2.0_dp    
             FEelb = FEelb - rhob(i) * psi(i)/2.0_dp   
-            FEbindA = FEbindA + fdisA(5,i)*rhopolA(i)
-            FEbindB = FEbindB + fdisB(5,i)*rhopolB(i)
+            FEbindA = FEbindA + fdisA(i,5)*rhopolA(i)
+            FEbindB = FEbindB + fdisB(i,5)*rhopolB(i)
 
             qres = qres + rhoq(i)
             sumphiA = sumphiA +  rhopolA(i)
@@ -150,7 +141,7 @@ contains
             FEVdW=0.0_dp
         endif
         ! add bound charge contribution to elect free energy 
-        if(systype=="dipolarweak".or.systype=="dipolarweakA".or.systype=="dipolarstrong") FEel=FEel +FEelb
+        !if(systype=="dipolarweak".or.systype=="dipolarweakA".or.systype=="dipolarstrong") FEel=FEel +FEelb
         
 
         FEel  = (volcell/vsol)*FEel
@@ -547,7 +538,7 @@ contains
         real(dp) :: sigmaq0,psi0
         real(dp) :: qsurf              ! total charge on surface 
         real(dp) :: qsurfg             ! total charge on grafting surface 
-        integer :: i,j               ! dummy variables 
+        integer  :: i,j,g               ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
     !    integer :: nzadius
 
@@ -585,12 +576,17 @@ contains
     
 !        FEq = -delta*(sigmaAB*dlog(qAB)+sigmaC*dlog(qC) )
     
-        if(sigmaAB <= sigmaTOL) then 
+!        if(sigmaAB <= sigmaTOL) then 
 !            FEq = -delta*sigmaC*dlog(qC)
-        elseif (sigmaC <= sigmaTOL) then 
+!        elseif (sigmaC <= sigmaTOL) then 
 !            FEq = -delta*sigmaAB*dlog(qAB) 
-        endif
-    
+!        endif
+        
+        FEq=0.0_dp
+        do g=1,ngr
+            FEq=FEq-log(qAB(g))  
+        enddo
+
         FEel = 0.0_dp    
         FEelsurf =0.0_dp
         FEchem =0.0_dp
@@ -778,8 +774,8 @@ contains
 
                 betapi=-log(xsol(i))/vsol
 
-                lambdaA=-log(fdisA(1,i)) -psi(i)*zpolA(1)-betapi*vpolA(1)*vsol
-                lambdaB=-log(fdisB(1,i)) -psi(i)*zpolB(1)-betapi*vpolB(1)*vsol
+                lambdaA=-log(fdisA(i,1)) -psi(i)*zpolA(1)-betapi*vpolA(1)*vsol
+                lambdaB=-log(fdisB(i,1)) -psi(i)*zpolB(1)-betapi*vpolB(1)*vsol
 
                 rhopolAq = 0.0_dp
                 rhopolBq = 0.0_dp
@@ -787,19 +783,19 @@ contains
                 xpolB=0.0_dp
 
                 do k=1,4
-                    rhopolAq=rhopolAq+ zpolA(k)*fdisA(k,i)*rhopolA(i)
-                    xpolA   =xpolA + rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol
-                    rhopolBq=rhopolBq+ zpolB(k)*fdisB(k,i)*rhopolB(i)
-                    xpolB   =xpolB + rhopolB(i)*fdisB(k,i)*vpolB(k)*vsol
+                    rhopolAq=rhopolAq+ zpolA(k)*fdisA(i,k)*rhopolA(i)
+                    xpolA   =xpolA + rhopolA(i)*fdisA(i,k)*vpolA(k)*vsol
+                    rhopolBq=rhopolBq+ zpolB(k)*fdisB(i,k)*rhopolB(i)
+                    xpolB   =xpolB + rhopolB(i)*fdisB(i,k)*vpolB(k)*vsol
                 enddo   
-                xpolA = xpolA +rhopolA(i)*fdisA(5,i)*vpolA(5)*vsol/2.0_dp
-                xpolB = xpolB +rhopolB(i)*fdisB(5,i)*vpolB(5)*vsol/2.0_dp
+                xpolA = xpolA +rhopolA(i)*fdisA(i,5)*vpolA(5)*vsol/2.0_dp
+                xpolB = xpolB +rhopolB(i)*fdisB(i,5)*vpolB(5)*vsol/2.0_dp
                 
                 FEchem_react = FEchem_react + (- rhopolA(i)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
-                    +fdisA(5,i)*rhopolA(i)/2.0_dp)
+                    +fdisA(i,5)*rhopolA(i)/2.0_dp)
 
                 FEchem_react = FEchem_react + (- rhopolB(i)*lambdaB -psi(i)*rhopolBq -betapi*xpolB &
-                    +fdisB(5,i)*rhopolB(i)/2.0_dp)
+                    +fdisB(i,5)*rhopolB(i)/2.0_dp)
 
             enddo
 
@@ -821,13 +817,13 @@ contains
                 xpolA=0.0_dp
 
                 do k=1,4
-                    rhopolAq=rhopolAq+ zpolA(k)*fdisA(k,i)*rhopolA(i)
-                    xpolA   =xpolA + rhopolA(i)*fdisA(k,i)*vpolA(k)*vsol
+                    rhopolAq=rhopolAq+ zpolA(k)*fdisA(i,k)*rhopolA(i)
+                    xpolA   =xpolA + rhopolA(i)*fdisA(i,k)*vpolA(k)*vsol
                 enddo   
-                xpolA = xpolA +rhopolA(i)*fdisA(5,i)*vpolA(5)*vsol/2.0_dp
+                xpolA = xpolA +rhopolA(i)*fdisA(i,5)*vpolA(5)*vsol/2.0_dp
                 
                 FEchem_react = FEchem_react + (- rhopolA(i)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
-                    +fdisA(5,i)*rhopolA(i)/2.0_dp)
+                    +fdisA(i,5)*rhopolA(i)/2.0_dp)
             enddo
 
             FEchem_react=volcell*FEChem_react 

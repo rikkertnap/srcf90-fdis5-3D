@@ -118,41 +118,30 @@ contains
         real(dp) :: FEconfABL_array(size*ngr_node),FEconfABR_array(size*ngr_node)
         real(dp) :: qABL_local(ngr_node),qABR_local(ngr_node)
         real(dp) :: qABL_array(size*ngr_node),qABR_array(size*ngr_node)
-        real(dp) , dimension(:), allocatable :: fdisAone, fdisBone 
-
+       
         ! .. executable statements 
 
-        ! need an continuous  array to be passed tp MPI_SEND and MPI_RECV 
-        ! fdisA(1,:) is a strided aray non-continuous to be improved, also in fcn !!!!
-        ! 
-        allocate(fdisAone(nx*ny*nz))
-        allocate(fdisBone(nx*ny*nz))
-        
-        fdisAone=fdisA(1,:)
-        fdisBone=fdisB(1,:)
-
-
-        ! .. communicate xsol,psi and fdsiA(1:) and fdisB(1,:) to other nodes 
+        ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
         if(rank==0) then
             do i = 1, size-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(psi , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-                call MPI_SEND(fdisAone,nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-                call MPI_SEND(fdisBone,nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(fdisA(:,1),nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(fdisB(:,1),nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
             enddo
         else
             source = 0 
             call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
             call MPI_RECV(psi , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
-            call MPI_RECV(fdisAone, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)    
-            call MPI_RECV(fdisBone, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
+            call MPI_RECV(fdisA(:,1), nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)    
+            call MPI_RECV(fdisB(:,1), nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
         endif
             
         do i=1,nsize
-              exppiA(i)=(xsol(i)**vpolA(1))*exp(-zpolA(1)*psi(i))/fdisAone(i) ! auxiliary variable
-              exppiB(i)=(xsol(i)**vpolB(1))*exp(-zpolB(1)*psi(i))/fdisBone(i) ! auxiliary variable
+              exppiA(i)=(xsol(i)**vpolA(1))*exp(-zpolA(1)*psi(i))/fdisA(i,1) ! auxiliary variable
+              exppiB(i)=(xsol(i)**vpolB(1))*exp(-zpolB(1)*psi(i))/fdisB(i,1) ! auxiliary variable
         enddo
        
         FEconfABL=0.0_dp
@@ -220,10 +209,6 @@ contains
             enddo    
             FEconfAB=FEconfABL
         endif
-        
-        deallocate(fdisAone)
-        deallocate(fdisBone)
-
 
     end subroutine FEconf_elect
 
@@ -253,36 +238,26 @@ contains
         real(dp) :: FEconfABL_array(size*ngr_node)
         real(dp) :: qABL_local(ngr_node)
         real(dp) :: qABL_array(size*ngr_node)
-        real(dp) , dimension(:), allocatable :: fdisAone
-
-        ! .. executable statements 
-
-        ! need an continuous  array to be passed tp MPI_SEND and MPI_RECV 
-        ! fdisA(1,:) is a strided aray non-continuous to be improved, also in fcn !!!!
-        ! 
-        allocate(fdisAone(nx*ny*nz))
         
-        fdisAone=fdisA(1,:)
-
-
-        ! .. communicate xsol,psi and fdsiA(1:) and fdisB(1,:) to other nodes 
+        ! .. executable statements 
+        ! .. communicate xsol,psi and fdsiA(:,2) and fdisB(:,1) to other nodes 
 
         if(rank==0) then
             do i = 1, size-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(psi , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-                call MPI_SEND(fdisAone,nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(fdisA(:,1),nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
             enddo
         else
             source = 0 
             call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
             call MPI_RECV(psi , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
-            call MPI_RECV(fdisAone, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)          
+            call MPI_RECV(fdisA(:,1), nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)          
         endif
             
         do i=1,nsize
-              exppiA(i)=(xsol(i)**vpolA(1))*exp(-zpolA(1)*psi(i))/fdisAone(i) ! auxiliary variable
+              exppiA(i)=(xsol(i)**vpolA(1))*exp(-zpolA(1)*psi(i))/fdisA(i,1) ! auxiliary variable
         enddo
        
         FEconfABL=0.0_dp
@@ -345,8 +320,6 @@ contains
             enddo    
             FEconfAB=FEconfABL
         endif
-        
-        deallocate(fdisAone)
 
     end subroutine FEconf_electA
 
@@ -385,20 +358,20 @@ contains
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(psi , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-                call MPI_SEND(fdisA(1,:),nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-                call MPI_SEND(fdisB(1,:),nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(fdisA(:,1),nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(fdisB(:,1),nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
             enddo
         else
             source = 0 
             call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
             call MPI_RECV(psi , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
-            call MPI_RECV(fdisA(1,:), nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)    
-            call MPI_RECV(fdisB(1,:), nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
+            call MPI_RECV(fdisA(:,1), nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)    
+            call MPI_RECV(fdisB(:,1), nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
         endif
             
         do i=1,nz
-              exppiA(i)=(xsol(i)**vpolA(1))*exp(-zpolA(1)*psi(i))/fdisA(1,i) ! auxiliary variable
-              exppiB(i)=(xsol(i)**vpolB(1))*exp(-zpolB(1)*psi(i))/fdisB(1,i) ! auxiliary variable
+              exppiA(i)=(xsol(i)**vpolA(1))*exp(-zpolA(1)*psi(i))/fdisA(i,1) ! auxiliary variable
+              exppiB(i)=(xsol(i)**vpolB(1))*exp(-zpolB(1)*psi(i))/fdisB(i,1) ! auxiliary variable
         enddo
        
         FEconfABL=0.0_dp

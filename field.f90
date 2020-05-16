@@ -5,19 +5,26 @@ module field
 
     implicit none
     
+    real(dp), dimension(:), allocatable :: xpol     ! volume fraction of polymer     
+    real(dp), dimension(:,:), allocatable :: rhopol ! density  monomer of polymer in layer i of type t
+    real(dp), dimension(:,:), allocatable :: rhopolin 
+    real(dp), dimension(:), allocatable :: rhoqpol  ! charge density  monomer of polymer in layer i 
+
     real(dp), dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer 
     real(dp), dimension(:), allocatable :: xpolABz ! total volume fraction of polymer in z-direction
-!    real(dp), dimension(:), allocatable :: xpolC   ! total volume fraction of polymer 
     real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer 
     real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer 
-!    real(dp), dimension(:), allocatable :: rhopolC ! density C monomer of polymer
     real(dp), dimension(:), allocatable :: xsol    ! volume fraction solvent
     real(dp), dimension(:), allocatable :: psi     ! electrostatic potential 
     real(dp), dimension(:), allocatable :: xNa     ! volume fraction of positive Na+ ion
     real(dp), dimension(:), allocatable :: xK      ! volume fraction of positive K+ ion
+    real(dp), dimension(:), allocatable :: xRb      ! volume fraction of positive Rb+ ion
     real(dp), dimension(:), allocatable :: xCa     ! volume fraction of positive Ca2+ ion
+    real(dp), dimension(:), allocatable :: xMg     ! volume fraction of positive Mg2+ ion
+    
     real(dp), dimension(:), allocatable :: xNaCl   ! volume fraction of NaCl ion pair
     real(dp), dimension(:), allocatable :: xKCl    ! volume fraction of KCl  ion pair
+    
     real(dp), dimension(:), allocatable :: xCl     ! volume fraction of negative ion
     real(dp), dimension(:), allocatable :: xHplus  ! volume fraction of Hplus
     real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
@@ -25,67 +32,88 @@ module field
     real(dp), dimension(:), allocatable :: rhob    ! total bond charge density in units of vsol
     real(dp), dimension(:,:), allocatable :: electPol ! elect polarization in 3d-direction 
     real(dp), dimension(:), allocatable :: qpol    ! charge density of polymer
+    real(dp),dimension(:), allocatable :: epsfcn    ! dielectric constant 
+    real(dp),dimension(:), allocatable :: Depsfcn   ! derivative dielectric constant
+
+    real(dp), dimension(:,:), allocatable :: fdis   ! degree of dissociation of acid monomer
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
     real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
      
+    real(dp), dimension(:), allocatable :: q      ! normalization partion fnc polymer 
+    
     real(dp), dimension(:), allocatable :: qAB      ! normalization partion fnc polymer 
-    real(dp), dimension(:), allocatable :: qC       ! normalization partion fnc polymer 
-
+    real(dp), dimension(:), allocatable :: qABL,qABR
     real(dp), dimension(:), allocatable :: rhopolAL ! density A monomer of polymer z=0 surface
     real(dp), dimension(:), allocatable :: rhopolBL ! density B monomer of polymer z=0 surface
     real(dp), dimension(:), allocatable :: rhopolAR ! density A monomer of polymer z=nz delta surface 
     real(dp), dimension(:), allocatable :: rhopolBR ! density B monomer of polymer z=nz delta surface
 
-    real(dp), dimension(:), allocatable :: qABL,qABR
-
   
 contains
 
-    subroutine allocate_field(Nx,Ny,Nz)
+    subroutine allocate_field(Nx,Ny,Nz,nsegtypes)
  
-        integer, intent(in) :: Nx,Ny,Nz
+        integer, intent(in) :: Nx,Ny,Nz,nsegtypes
+        
         integer :: N
+        integer :: ier
 
         N=Nx*Ny*Nz
 
-        allocate(xpolAB(N))
-        allocate(xpolABz(Nz))
- !       allocate(xpolC(N))
-        allocate(rhopolA(N))
-        allocate(rhopolB(N))
- !       allocate(rhopolC(N))
-        allocate(xsol(N))
+        allocate(xpol(N),stat=ier)
+        allocate(rhopol(N,nsegtypes),stat=ier) 
+        allocate(rhopolin(N,nsegtypes),stat=ier) 
+        
+        allocate(rhoqpol(N),stat=ier) 
+        allocate(xpolAB(N),stat=ier)
+        allocate(xpolABz(Nz),stat=ier)
+        allocate(rhopolA(N),stat=ier)
+        allocate(rhopolB(N),stat=ier)
+        allocate(xsol(N),stat=ier)
         allocate(psi(N+2*Nx*Ny))
         allocate(electPol(3,N+2*Nx*Ny))
-        allocate(xNa(N))
-        allocate(xK(N))
-        allocate(xCa(N))
-        allocate(xNaCl(N)) 
-        allocate(xKCl(N)) 
-        allocate(xCl(N)) 
-        allocate(xHplus(N))
-        allocate(xOHmin(N))
-        allocate(rhoq(N))
-        allocate(rhob(N))
-        allocate(qpol(N))
-        allocate(fdisA(5,N))
-        allocate(fdisB(5,N))
-        allocate(rhopolAL(N))
-        allocate(rhopolAR(N))
-        allocate(rhopolBL(N))
-        allocate(rhopolBR(N))
+        allocate(xNa(N),stat=ier)
+        allocate(xK(N),stat=ier)
+        allocate(xRb(N),stat=ier)
+        allocate(xCa(N),stat=ier)
+        allocate(xMg(N),stat=ier)
+        allocate(xNaCl(N),stat=ier) 
+        allocate(xKCl(N),stat=ier) 
+        allocate(xCl(N),stat=ier) 
+        allocate(xHplus(N),stat=ier)
+        allocate(xOHmin(N),stat=ier)
+        allocate(rhoq(N),stat=ier)
+        allocate(rhob(N),stat=ier)
+        allocate(qpol(N),stat=ier)
+
+        allocate(fdis(N,nsegtypes),stat=ier)
+        allocate(fdisA(N,7),stat=ier)
+        allocate(fdisB(N,5),stat=ier)
+        allocate(rhopolAL(N),stat=ier)
+        allocate(rhopolAR(N),stat=ier)
+        allocate(rhopolBL(N),stat=ier)
+        allocate(rhopolBR(N),stat=ier)
+        allocate(epsfcn(N),stat=ier)    ! relative dielectric constant
+        allocate(Depsfcn(N),stat=ier)   ! derivate relative dielectric constant
+
+
+        if( ier/=0 ) then
+            print*, 'Allocation error : stat =', ier
+            stop
+        endif
         
     end subroutine allocate_field
 
 
     subroutine deallocate_field()
         
+        deallocate(xpol)
+        deallocate(rhopol)
+        deallocate(rhoqpol)
         deallocate(xpolAB)
         deallocate(xpolABz)
-!        deallocate(xpolC)
         deallocate(rhopolA)
         deallocate(rhopolB)
-!        deallocate(rhopolC)
         deallocate(xsol)
         deallocate(psi)
         deallocate(electPol)
@@ -106,6 +134,8 @@ contains
         deallocate(rhopolAR)
         deallocate(rhopolBL)
         deallocate(rhopolBR)
+        deallocate(epsfcn)
+        deallocate(Depsfcn)
         
     end subroutine deallocate_field
 
@@ -117,56 +147,42 @@ contains
         allocate(qAB(N))
         allocate(qABL(N))
         allocate(qABR(N))
-!        allocate(qC(N))
+        allocate(q(N))
 
     end subroutine allocate_part_fnc
 
     ! set all densities to zero
     
-    subroutine init_field(Nx,Ny,Nz)
- 
-        integer, intent(in) :: Nx,Ny,Nz
-        integer :: N, i, k
+    subroutine init_field()
 
-        N=Nx*Ny*Nz
-
-        do i=1,N
-            xpolAB(i)=0.0_dp
-!            xpolC(i)=0.0_dp
-            rhopolA(i)=0.0_dp
-            rhopolB(i)=0.0_dp
-!            rhopolC(i)=0.0_dp
-            xsol(i)=0.0_dp
-            xNa(i)=0.0_dp
-            xK(i)=0.0_dp
-            xCa(i)=0.0_dp
-            xNaCl(i)=0.0_dp 
-            xKCl(i) =0.0_dp
-            xCl(i)=0.0_dp
-            xHplus(i)=0.0_dp
-            xOHmin(i)=0.0_dp
-            rhoq(i)=0.0_dp
-            rhob(N)=0.0_dp
-            qpol(N)=0.0_dp
-            rhopolAL(i)=0.0_dp
-            rhopolAR(i)=0.0_dp
-            rhopolBL(i)=0.0_dp
-            rhopolBR(i)=0.0_dp
-            do k=1,5
-                fdisA(k,i)=0.0_dp
-                fdisB(k,i)=0.0_dp
-            enddo    
-        enddo    
-        do i=1,Nz
-            xpolABz(i)=0.0_dp
-        enddo 
-
-        do i=1,N+2*Nx*Ny
-            psi(i)=0.0_dp
-            do k=1,3    
-                electPol(3,i)=0.0_dp
-            enddo
-        enddo    
+        xpol=0.0_dp
+        xpolAB=0.0_dp
+        rhopol=0.0_dp
+        rhoqpol=0.0_dp
+        rhopolA=0.0_dp
+        rhopolB=0.0_dp
+        xsol=0.0_dp
+        xNa=0.0_dp
+        xK=0.0_dp
+        xCa=0.0_dp
+        xNaCl=0.0_dp 
+        xKCl =0.0_dp
+        xCl=0.0_dp
+        xHplus=0.0_dp
+        xOHmin=0.0_dp
+        rhoq=0.0_dp
+        rhob=0.0_dp
+        qpol=0.0_dp
+        rhopolAL=0.0_dp
+        rhopolAR=0.0_dp
+        rhopolBL=0.0_dp
+        rhopolBR=0.0_dp
+        fdisA=0.0_dp
+        fdisB=0.0_dp
+        xpolABz=0.0_dp
+        psi=0.0_dp
+        electPol=0.0_dp
+           
     end subroutine init_field
 
 
@@ -249,7 +265,7 @@ contains
            do k=1,5
               avfdisA(k)=0.0_dp
               do i=1,nsize
-                 avfdisA(k)=avfdisA(k)+fdisA(k,i)*rhopolA(i)
+                 avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopolA(i)
               enddo
               avfdisA(k)=avfdisA(k)*volcell/(npolA*ngr)
            enddo
@@ -263,7 +279,7 @@ contains
            do k=1,5
               avfdisB(k)=0.0_dp
               do i=1,nsize
-                 avfdisB(k)=avfdisB(k)+fdisB(k,i)*rhopolB(i)
+                 avfdisB(k)=avfdisB(k)+fdisB(i,k)*rhopolB(i)
               enddo
               avfdisB(k)=avfdisB(k)*volcell/(npolB*ngr)
            enddo

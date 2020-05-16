@@ -15,7 +15,11 @@ module myio
     integer, parameter ::  myio_err_input     = 8
     integer, parameter ::  myio_err_bcflag    = 9 
     integer, parameter ::  myio_err_label     = 10
-    integer, parameter ::  myio_err_VdWeps    = 11  
+    integer, parameter ::  myio_err_VdWeps    = 11 
+    integer, parameter ::  myio_err_nsegtypes  = 12
+    integer, parameter ::  myio_err_chainmethod = 13  
+    integer, parameter ::  myio_err_chainsfile = 14 
+    integer, parameter ::  myio_err_energyfile = 15
 
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl, un_xpolC
@@ -33,6 +37,8 @@ module myio
     
     private
     public :: read_inputfile, output_individualcontr_fe, output, compute_vars_and_output
+    public :: myio_err_chainsfile, myio_err_energyfile
+
     
 contains
 
@@ -50,11 +56,13 @@ subroutine read_inputfile(info)
     ! .. local arguments
 
     integer :: info_sys, info_bc, info_run, info_geo, info_meth, info_chaintype, info_combi, info_VdWeps
+    integer :: info_chainmethod
     character(len=8) :: fname
     integer :: ios,un_input  ! un = unit number    
     character(len=100) :: buffer, label
     integer :: pos
     integer :: line
+    logical :: isSet_maxnchains, isSet_precondition, isSet_savePalpha
 
     if (present(info)) info = 0
     
@@ -66,6 +74,10 @@ subroutine read_inputfile(info)
         if (present(info)) info = myio_err_inputfile
         return
     endif
+
+    isSet_maxnchains  =.false.
+    isSet_precondition=.false.
+    isSet_savePalpha  =.false.  
 
     ios=0 
     line = 0
@@ -152,12 +164,13 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) nsize
             case ('nsegAB')
                 read(buffer,*,iostat=ios) nsegAB
+            case ('nsegtypes')    
+                read(buffer,*,iostat=ios) nsegtypes         ! carefully need to be overwriiten depending on value systype and or chainmethod    
+            case ('maxnchains')    
+                    read(buffer,*,iostat=ios) maxnchainsrotations  
+                    isSet_maxnchains=.true.      
             case ('cuantasAB')
                 read(buffer,*,iostat=ios) cuantasAB
-            case ('nsegC')
-                read(buffer,*,iostat=ios) nsegC
-            case ('cuantasC')
-                read(buffer,*,iostat=ios) cuantasC
             case ('VdWeps%val')
                 read(buffer,*,iostat=ios) VdWeps%val
             case ('VdWeps%min')
@@ -192,6 +205,9 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) isRandom_pos_graft  
             case ('seed_graft')
                 read(buffer,*,iostat=ios) seed_graft   
+            case ('precondition')    
+                    read(buffer,*,iostat=ios) precondition
+                    isSet_precondition=.true.   
             case default
                 if(pos>1) then 
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -258,6 +274,14 @@ subroutine read_inputfile(info)
         return
     endif
 
+    call check_value_chainmethod(chainmethod,info_chainmethod)
+    if (info_chainmethod == myio_err_chainmethod) then            
+        if (present(info)) info = info_chainmethod
+        return
+    endif
+
+
+
     !  set and overide certain input values
     call set_value_nzmin(runtype,nzmin,nzmax)
     call set_value_isVdW(runtype,VdWeps%val,isVdW)
@@ -285,21 +309,17 @@ subroutine check_value_systype(systype,info)
     ! permissible values of systype
 
     systypestr(1)="elect"
-    systypestr(2)="bulk water"
+    systypestr(2)="bulk_water"
     systypestr(3)="neutral"
     systypestr(4)="electdouble"
     systypestr(5)="electnopoly"
-    systypestr(6)="dipolarweak"
-    systypestr(7)="dipolarstrong"
-    systypestr(8)="electA"
-    systypestr(9)="dipolarweakA"
-    systypestr(10)="dipolarnopoly"
-    systypestr(11)="electVdWAB"
-
-
+    systypestr(6)="electA"
+    systypestr(7)="electVdWAB"
+    systypestr(8)="brush_mul"
+   
     flag=.FALSE.
 
-    do i=1,11
+    do i=1,8
         if(systype==systypestr(i)) flag=.TRUE.
     enddo
 
@@ -442,7 +462,7 @@ subroutine check_value_chaintype(chaintype,info)
     integer, intent(out),optional :: info
 
     logical :: flag
-    character(len=8) :: chaintypestr(5)
+    character(len=8) :: chaintypestr(6)
     integer :: i
 
     ! permissible values of chaintype
@@ -452,11 +472,11 @@ subroutine check_value_chaintype(chaintype,info)
     chaintypestr(3)="altA"
     chaintypestr(4)="altB"
     chaintypestr(5)="copolyAB"
-    
+    chaintypestr(6)="multi"
 
     flag=.FALSE.
 
-    do i=1,5
+    do i=1,6
         if(chaintype==chaintypestr(i)) flag=.TRUE.
     enddo
 
@@ -470,6 +490,38 @@ subroutine check_value_chaintype(chaintype,info)
     endif
 
 end subroutine check_value_chaintype
+
+subroutine check_value_chainmethod(chainmethod,info)
+      
+    character(len=15), intent(in) :: chainmethod
+    integer, intent(out),optional :: info
+
+    logical :: flag
+    character(len=15) :: chainmethodstr(4) 
+    integer :: i
+
+    ! permissible values of chainmethod
+
+    chainmethodstr(1)="MC"
+    chainmethodstr(2)="FILE_lammps_XYZ"
+    chainmethodstr(3)="FILE_TXT"
+ 
+    flag=.FALSE.
+
+    do i=1,3
+        if(chainmethod==chainmethodstr(i)) flag=.TRUE.
+    enddo
+        
+    if (present(info)) info = 0
+
+    if (flag.eqv. .FALSE.) then 
+        print*,"Error: value of chainmethod is not permissible"
+        print*,"chaintype = ",chainmethod
+        if (present(info)) info = myio_err_chainmethod
+        return
+    endif
+
+end subroutine check_value_chainmethod
 
 
 subroutine check_value_method(method,info)
@@ -501,6 +553,8 @@ subroutine check_value_method(method,info)
     endif
 
 end subroutine check_value_method
+
+
 
 
 subroutine check_value_VdWeps(systype,isVdW,VdWeps,info)
@@ -575,6 +629,72 @@ subroutine set_value_isVdW(runtype, VdWeps, isVdW)
 end subroutine
 
 
+subroutine set_value_nsegtypes(nsegtypes,chaintype,systype,info)
+            
+
+    integer, intent(inout) :: nsegtypes
+    integer, intent(out),optional :: info
+    character(len=8), intent(in) :: chaintype
+    character(len=15), intent(in) :: systype
+
+    logical :: flag
+    character(len=8) :: chaintypestr(5) 
+    integer :: i
+
+    ! permissible values of chaintype
+
+    chaintypestr(1)="diblockA"
+    chaintypestr(2)="diblockB"
+    chaintypestr(3)="altA"
+    chaintypestr(4)="altB"
+    chaintypestr(5)="copolyAB"
+    
+
+    ! two components
+    flag=.FALSE.
+
+    do i=1,5
+        if(chaintype==chaintypestr(i)) flag=.TRUE.
+    enddo
+
+    if(flag) nsegtypes=2    
+    if(chaintype=="multi") flag=.true.    
+    if (present(info)) info = 0
+
+    if (flag.eqv. .FALSE.) then 
+        print*,"Error: value of nsegtype could not be set for given "
+        print*,"chaintype = ",chaintype
+        if (present(info)) info = myio_err_nsegtypes
+        return
+    endif
+    
+end subroutine set_value_nsegtypes
+
+    
+    subroutine set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
+
+        integer, intent(inout) :: maxnchainsrotations
+        logical, intent(in)  :: isSet_maxnchains
+
+        if(.not.isSet_maxnchains) then 
+            maxnchainsrotations=12 ! default value
+        else
+            maxnchainsrotations=abs(maxnchainsrotations) !  make positive   
+        endif
+            
+    end subroutine set_value_maxnchains
+
+
+    subroutine set_value_precondition(precondition,isSet_precondition)
+
+        logical, intent(inout) :: precondition
+        logical, intent(in)  :: isSet_precondition
+
+        if(.not.isSet_precondition) precondition=.false. ! default value
+
+            
+    end subroutine set_value_precondition
+
 subroutine output()
 
     use globals, only : systype
@@ -631,7 +751,6 @@ subroutine output_elect
     character(len=90) :: xsolfilename 
     character(len=90) :: xpolABfilename 
     character(len=90) :: xpolABzfilename 
-!    character(len=90) :: xpolCfilename 
     character(len=90) :: xpolendfilename 
     character(len=90) :: xNafilename
     character(len=90) :: xKfilename
@@ -787,9 +906,8 @@ subroutine output_elect
 
         do i=1,nsize
             write(un_xpolAB,fmt3reals)xpolAB(i),rhopolA(i),rhopolB(i)
-!            write(un_xpolC,fmt1reals)xpolC(i)
-            write(un_fdisA,fmt5reals)fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
-            write(un_fdisB,fmt5reals)fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)
+            write(un_fdisA,fmt5reals)(fdisA(i,k),k=1,5)        
+            write(un_fdisB,fmt5reals)(fdisB(i,k),k=1,5)
         enddo
         do i=1,nz
             write(un_xpolABz,fmt1reals)xpolABz(i)
@@ -832,13 +950,10 @@ subroutine output_elect
         endif
         write(un_sys,*)'nsegAB      = ',nsegAB
         write(un_sys,*)'lsegAB      = ',lsegAB
-        write(un_sys,*)'nsegC       = ',nsegC
-        write(un_sys,*)'lsegC       = ',lsegC
         write(un_sys,*)'period      = ',period
         write(un_sys,*)'cuantasAB   = ',cuantasAB
         write(un_sys,*)'sigmaAB     = ',sigmaAB
-        write(un_sys,*)'sigmaC      = ',sigmaC
-
+       
         ! system description
         write(un_sys,*)'systype     = ',systype
         write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
@@ -919,7 +1034,6 @@ subroutine output_elect
         write(un_sys,*)'vpolB(3)    = ',vpolB(3)*vsol
         write(un_sys,*)'vpolB(4)    = ',vpolB(4)*vsol
         write(un_sys,*)'vpolB(5)    = ',vpolB(5)*vsol
-        write(un_sys,*)'vpolC       = ',vpolC*vsol
         write(un_sys,*)'vNa         = ',vNa*vsol
         write(un_sys,*)'vCl         = ',vCl*vsol
         write(un_sys,*)'vCa         = ',vCa*vsol
@@ -941,7 +1055,6 @@ subroutine output_elect
     write(un_sys,*)'sigmaAB     = ',sigmaAB
     write(un_sys,*)'sumphiA     = ',sumphiA
     write(un_sys,*)'sumphiB     = ',sumphiB
-    write(un_sys,*)'sumphiC     = ',sumphiC
     write(un_sys,*)'check phi   = ',checkphi 
     write(un_sys,*)'FEq         = ',FEq 
     write(un_sys,*)'FEpi        = ',FEpi
@@ -953,7 +1066,7 @@ subroutine output_elect
     write(un_sys,*)'FEVdW       = ',FEVdW 
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'heightAB    = ',heightAB
-    write(un_sys,*)'heightC     = ',heightC
+   ! write(un_sys,*)'heightC     = ',heightC
     write(un_sys,*)'qpolA       = ',qpolA
     write(un_sys,*)'qpolB       = ',qpolB
     write(un_sys,*)'qpoltot     = ',qpol_tot
@@ -989,7 +1102,6 @@ subroutine output_elect
     endif
     write(un_sys,*)'nsize       = ',nsize  
     write(un_sys,*)'cuantasAB   = ',cuantasAB
-    write(un_sys,*)'cuantasC    = ',cuantasC
     write(un_sys,*)'iterations  = ',iter
    
     ! .. closing files
@@ -1168,8 +1280,8 @@ subroutine output_electdouble()
     do i=1,nsize
         write(un_xpolAB,fmt3reals) xpolAB(i),rhopolA(i),rhopolB(i)
         write(un_xsol,fmt1reals) xsol(i)
-        write(un_fdisA,fmt5reals) fdisA(1,i),fdisA(2,i),fdisA(3,i),fdisA(4,i),fdisA(5,i)        
-        write(un_fdisB,fmt5reals) fdisB(1,i),fdisB(2,i),fdisB(3,i),fdisB(4,i),fdisB(5,i)   
+        write(un_fdisA,fmt5reals) (fdisA(i,k),k=1,5)       
+        write(un_fdisB,fmt5reals) (fdisB(i,k),k=1,5)  
         write(un_psi,fmt1reals) psi(i)
         write(un_rhopolAB,fmt4reals) rhopolAL(i),rhopolBL(i),rhopolAR(i),rhopolBR(i)
     enddo
@@ -1226,7 +1338,7 @@ subroutine output_electdouble()
         write(un_sys,*)'nzstep      = ',nzstep
         write(un_sys,*)'tol_conf    = ',error
         ! concentration 
-         write(un_sys,*)'cNaCl       = ',cNaCl
+        write(un_sys,*)'cNaCl       = ',cNaCl
         write(un_sys,*)'cKCl        = ',cKCl
         write(un_sys,*)'cCaCl2      = ',cCaCl2
         write(un_sys,*)'pHbulk      = ',pHbulk
@@ -1379,7 +1491,6 @@ subroutine output_neutral
     character(len=90) :: sysfilename     
     character(len=90) :: xsolfilename 
     character(len=90) :: xpolABfilename 
-!    character(len=90) :: xpolCfilename 
     character(len=90) :: xpolendfilename 
     
     character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals   
@@ -1400,22 +1511,20 @@ subroutine output_neutral
     if(nz==nzmax) then 
 
         !     .. make label filenames 
-        write(rstr,'(F5.3)')sigmaAB*delta 
+        write(rstr,'(F5.3)')sigmaAB
         fnamelabel="sg"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')VdWepsBB%val
         fnamelabel=trim(fnamelabel)//"VdWepsB"//trim(adjustl(rstr))//".dat"
 
         !     .. make filenames 
         sysfilename='system.'//trim(fnamelabel)
-        xpolABfilename='xpolAB.'//trim(fnamelabel)   
-!        xpolCfilename='xpolC.'//trim(fnamelabel)   
+        xpolABfilename='xpolAB.'//trim(fnamelabel) 
         xsolfilename='xsol.'//trim(fnamelabel)   
         xpolendfilename='xpolend.'//trim(fnamelabel)   
         
         !      .. opening files
         open(unit=newunit(un_sys),file=sysfilename)   
         open(unit=newunit(un_xpolAB),file=xpolABfilename)
-!        open(unit=newunit(un_xpolC),file=xpolCfilename)
         open(unit=newunit(un_xsol),file=xsolfilename)
         
     else ! check that files are open
@@ -1432,9 +1541,7 @@ subroutine output_neutral
 
     do i=1,nsize    
        write(un_xpolAB,fmt3reals)xpolAB(i),rhopolA(i),rhopolB(i)
-!       write(un_xpolC,fmt1reals)xpolC(i)
        write(un_xsol,fmt1reals)xsol(i)
-    !     write(40,*)zc(i),endpol(i)
     enddo
         
     !     .. system information 
@@ -1452,11 +1559,8 @@ subroutine output_neutral
         endif
         write(un_sys,*)'nsegAB      = ',nsegAB
         write(un_sys,*)'lsegAB      = ',lsegAB
-        write(un_sys,*)'nsegC       = ',nsegC
-        write(un_sys,*)'lsegC       = ',lsegC
         write(un_sys,*)'period      = ',period
         write(un_sys,*)'cuantasAB   = ',cuantasAB
-        write(un_sys,*)'cuantasC    = ',cuantasC
         ! system description 
         write(un_sys,*)'systype     = ',systype
         write(un_sys,*)'delta       = ',delta  
@@ -1482,7 +1586,6 @@ subroutine output_neutral
         write(un_sys,*)'vpolB(3)    = ',vpolB(3)*vsol
         write(un_sys,*)'vpolB(4)    = ',vpolB(4)*vsol
         write(un_sys,*)'vpolB(5)    = ',vpolB(5)*vsol
-        write(un_sys,*)'vpolC       = ',vpolC*vsol
         write(un_sys,*)'===end distance independent settings=='
     endif
     
@@ -1493,27 +1596,21 @@ subroutine output_neutral
     write(un_sys,*)'energy bulk = ',FEbulk 
     write(un_sys,*)'deltafenergy = ',deltaFE
     write(un_sys,*)'FEalt       = ',FEalt
-    write(un_sys,*)'FEconfC     = ',FEconfC
     write(un_sys,*)'FEconfAB    = ',FEconfAB
     write(un_sys,*)'FEtrans%sol = ',FEtrans%sol  
     write(un_sys,*)'fnorm       = ',fnorm
     write(un_sys,*)'sumphiA     = ',sumphiA
     write(un_sys,*)'sumphiB     = ',sumphiB
-    write(un_sys,*)'sumphiC     = ',sumphiC
     write(un_sys,*)'check phi   = ',checkphi 
     write(un_sys,*)'FEq         = ',FEq 
     write(un_sys,*)'FEpi        = ',FEpi
     write(un_sys,*)'FErho       = ',FErho
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'qAB         = ',qAB
-    write(un_sys,*)'qC          = ',qC
     write(un_sys,*)'muAB        = ',-log(qAB)
-    write(un_sys,*)'muC         = ',-log(qC)
     write(un_sys,*)'heightAB    = ',heightAB
-    write(un_sys,*)'heightC     = ',heightC
     write(un_sys,*)'nsize       = ',nsize  
     write(un_sys,*)'cuantasAB   = ',cuantasAB
-    write(un_sys,*)'cuantasC    = ',cuantasC
     write(un_sys,*)'iterations  = ',iter
     
     ! .. closing files
