@@ -12,13 +12,13 @@ module VdW
     use precision_definition
     implicit none
 
-    real(dp), dimension(:,:,:), allocatable :: VdWcoeff
-
+    real(dp), dimension(:,:,:,:,:), allocatable :: VdWcoeff
+    
     real(dp), dimension(:,:,:), allocatable :: VdWcoeffAA
     real(dp), dimension(:,:,:), allocatable :: VdWcoeffAB
     real(dp), dimension(:,:,:), allocatable :: VdWcoeffBB
 
-    real(dp), dimension(:,:,:), allocatable :: rhopoltmp  
+    real(dp), dimension(:,:,:,:), allocatable :: rhopoltmp
     real(dp), dimension(:,:,:), allocatable :: rhopolAtmp  
     real(dp), dimension(:,:,:), allocatable :: rhopolBtmp
     
@@ -28,18 +28,53 @@ module VdW
     integer, parameter :: VdW_err_allocation = 1
     integer, parameter :: VdW_err_vdwcoeff   = 2
     integer, parameter :: Vdw_err_systype    = 3
+    integer, parameter :: VdW_err_inputfile  = 4
 
     private
-    public :: make_VdWcoeff, VdW_contribution_exp,VdW_contribution_exp_diblock
-    public :: VdW_energy_diblock,VdW_energy
+    public :: make_VdWcoeff,VdW_contribution_exp_diblock,VdW_contribution_exp_homo,VdW_contribution_exp
+    public :: VdW_energy_homo,VdW_energy_diblock,VdW_energy
 
 contains
 
+ 
+
+! function determines range VdW coeffcients 
+! range = maxlayer=int(VdWcutoff*lseg/delta)+1
+! +1 not neccsarry, for savety 
+
+function set_range(lsegAA,VdWcutoff)result(range)
+
+    use globals, only : nsegtypes
+    use volume, only : delta
+ 
+        
+    real(dp) , intent(in)  :: lsegAA(:)
+    real(dp) , intent(in)  :: VdWcutoff
+    integer :: range
   
+
+    real(dp) :: lseg
+    logical :: flag
+    integer :: rangetmp, t 
+
+    flag=.true.
+
+    lseg=lsegAA(1)
+    range=int(VdWcutoff*lseg/delta)+1
+    ! maxlayer = range 
+
+    do t=2,nsegtypes
+        lseg=lsegAA(t)
+        rangetmp=int(VdWcutoff*lseg/delta)+1
+        if(range<rangetmp) range=rangetmp
+    enddo
+        
+end function
+
   
 subroutine allocate_VdWcoeff(info)
     
-    use globals, only : systype
+    use globals, only : systype, nsegtypes
 
     integer :: ier
     logical :: alloc_fail
@@ -50,22 +85,35 @@ subroutine allocate_VdWcoeff(info)
 
     alloc_fail=.FALSE.    
 
-    if(systype=="electVdWAB") then 
-    
-        if (.not. allocated(VdWcoeffAA))  then 
-            allocate(VdWcoeffAA(-range:range, -range:range, -range:range),stat=ier)
-            if( ier/=0) alloc_fail=.true.
-        endif
-    
-        if (.not. allocated(VdWcoeffAA))  then 
-            allocate(VdWcoeffAA(-range:range, -range:range, -range:range),stat=ier)
-            if( ier/=0) alloc_fail=.true.
-        endif
-    
-    else if(systype=="electA".or.systype=="dipolarweakA") then 
-        
+    if(systype=="brush_mul") then 
+
         if (.not. allocated(VdWcoeff))  then 
-            allocate(VdWcoeff(-range:range, -range:range, -range:range),stat=ier)
+            allocate(VdWcoeff(-range:range, -range:range, -range:range,nsegtypes,nsegtypes),stat=ier)
+            if( ier/=0 ) alloc_fail=.true.
+        endif
+
+    else if(systype=="electVdWAB") then 
+    
+        if (.not. allocated(VdWcoeffAA))  then 
+            allocate(VdWcoeffAA(-range:range, -range:range, -range:range),stat=ier)
+            if( ier/=0) alloc_fail=.true.
+        endif
+    
+        if (.not. allocated(VdWcoeffAB))  then 
+            allocate(VdWcoeffAA(-range:range, -range:range, -range:range),stat=ier)
+            if( ier/=0) alloc_fail=.true.
+        endif
+    
+
+        if (.not. allocated(VdWcoeffBB))  then 
+            allocate(VdWcoeffBB(-range:range, -range:range, -range:range),stat=ier)
+            if( ier/=0) alloc_fail=.true.
+        endif
+
+    else if(systype=="electA") then 
+        
+        if (.not. allocated(VdWcoeffAA))  then 
+            allocate(VdWcoeffAA(-range:range, -range:range, -range:range),stat=ier)
             if( ier/=0) alloc_fail=.true.
         endif 
     else 
@@ -85,7 +133,7 @@ end subroutine allocate_VdWcoeff
   
 subroutine allocate_auxdensity(info)
 
-    use globals, only : systype
+    use globals, only : systype,nsegtypes
     use volume, only : nx, ny, nz 
    
     integer,  intent(out), optional :: info
@@ -94,20 +142,22 @@ subroutine allocate_auxdensity(info)
     
     if (present(info)) info = 0
 
-    if(systype=="electA".or.systype=="dipolarweakA") then 
-
+    
+    if(systype=="brush_mul") then 
         if (.not. allocated(rhopoltmp))  then 
-           allocate(rhopoltmp(nx,ny,nz),stat=ier)
-           
+            allocate(rhopoltmp(nx,ny,nz,nsegtypes),stat=ier)
+               
             if( ier.ne.0 ) then
                 print*, 'Allocation error in auxilary polymer density: stat =', ier
                 if(present(info)) info= VdW_err_allocation
                 return
-           endif
+            endif
         else
            print*,'Allocation warning: auxilary polymer density already allocated'
         endif
-    else if(systype=="electVdWAB") then 
+        
+
+    else if(systype=="electVdWAB".or.systype=="electA") then 
 
         if (.not. allocated(rhopolAtmp))  then 
            allocate(rhopolAtmp(nx,ny,nz),stat=ier)
@@ -138,23 +188,41 @@ subroutine allocate_auxdensity(info)
         if(present(info)) info= VdW_err_systype
     endif    
 
+
 end subroutine allocate_auxdensity
  
+subroutine allocate_VdWeps
+    
+    use globals, only : nsegtypes
+    use parameters, only : VdWeps
+
+    integer :: ier
+   
+    if (.not. allocated(VdWeps))  then 
+        allocate(VdWeps(nsegtypes,nsegtypes),stat=ier)
+    endif        
+
+    if(ier/=0) then 
+        print*,'Allocation error: allocate_VdWeps failed'
+        stop
+    endif    
+       
+end subroutine allocate_VdWeps
 
 
 subroutine make_VdWcoeff(info)
 
-    use globals, only : systype
+    use globals, only : systype, nsegtypes
     use volume, only : geometry
-    use parameters, only : lsegPAA,lsegPS
+    use parameters, only : lsegPAA,lsegPAMPS, lsegAA
     use myutils
 
     integer,  intent(out), optional :: info
     
-    real(dp) :: lsegAB
+    real(dp) :: lsegAB, lseg
     character(len=lenText) :: text
-    integer :: info_allocate_VdW,info_allocate_dens
-
+    integer :: info_allocate_VdW,info_allocate_dens,info_VdWeps
+    integer :: s,t
 
     if (present(info)) info = 0
 
@@ -163,33 +231,46 @@ subroutine make_VdWcoeff(info)
 
     if ((info_allocate_VdW/=0).or.(info_allocate_dens/=0)) then 
 
-         text="make_VdWcoeff allocation failure"
-         call print_to_log(LogUnit,text)
-         if(present(info)) info= VdW_err_allocation
+        text="make_VdWcoeff allocation failure"
+        call print_to_log(LogUnit,text)
+        if(present(info)) info= VdW_err_allocation
         
-    else   
-
-        if(systype=="electVdWAB") then
+    else if(systype=="electVdWAB") then
       
-            lsegAB=(lsegPAA+lsegPS)/2.0_dp
+        lsegAB=(lsegPAA+lsegPAMPS)/2.0_dp
 
-            call MC_VdWcoeff(lsegPAA, VdWcoeffAA)
-            call MC_VdWcoeff(lsegPS , VdWcoeffBB)
-            call MC_VdWcoeff(lsegAB , VdWcoeffAB)
+        call MC_VdWcoeff(lsegPAA, VdWcoeffAA)
+        call MC_VdWcoeff(lsegPAMPS, VdWcoeffBB)
+        call MC_VdWcoeff(lsegAB , VdWcoeffAB)
         
-        else if (systype=="electA") then 
+    else if (systype=="electA") then 
 
-            call MC_VdWcoeff(lsegPAA , VdWcoeff)
+        call MC_VdWcoeff(lsegPAA , VdWcoeffAA)
 
-        else
+    else if (systype=="brush_mul") then    
 
-            text="make_VdWcoeff called with wrong systype"
-            call print_to_log(LogUnit,text)
-            if(present(info)) info= VdW_err_systype
-        
-        endif      
+        do t=1,nsegtypes
+            do s=1,nsegtypes
+                lseg=(lsegAA(t)+lsegAA(s))/2.0_dp
+                call MC_VdWcoeff(lseg, VdWcoeff(:,:,:,t,s))
+            enddo
+        enddo    
 
-    endif    
+    else
+
+        text="make_VdWcoeff called with wrong systype"
+        call print_to_log(LogUnit,text)
+        if(present(info)) info= VdW_err_systype
+        return
+    endif   
+
+    call make_VdWeps(info_VdWeps)   
+    if (info_VdWeps == VdW_err_inputfile) then
+        text="make_VdWcoeff: make_VdWeps failed"
+        call print_to_log(LogUnit,text)
+        if (present(info)) info = VdW_err_inputfile
+        return
+    endif
 
 end subroutine
 
@@ -228,9 +309,6 @@ subroutine MC_VdWcoeff(lseg,VdWcoeff)
         text="VdWcoefficient calculation"
         call print_to_log(LogUnit,text)
     endif    
-
-    !call allocate_VdWcoeff()
-    !call allocate_auxdensity()
 
     sum = 0.0_dp
 
@@ -308,11 +386,11 @@ end subroutine
 
 ! this compute contribution to Palpha
 
-subroutine VdW_contribution_exp(rhopol,exppi)
+subroutine VdW_contribution_exp_homo(rhopol,exppi)
 
     use globals, only : nsize
     use volume, only : nx,ny,nz,coordinateFromLinearIndex,linearIndexFromCoordinate
-    use parameters, only : VdWeps
+    use parameters, only : VdWepsAA
 
 !    real(dp), intent(in) :: VdWcoeff(:,:,:)
     real(dp), intent(in) :: rhopol(:)
@@ -324,7 +402,7 @@ subroutine VdW_contribution_exp(rhopol,exppi)
     !  allocate rhopol tmp 
     do id=1,nsize
         call coordinateFromLinearIndex(id, ix, iy, iz)
-        rhopoltmp(ix,iy,iz) = rhopol(id)   
+        rhopolAtmp(ix,iy,iz) = rhopol(id)   
     enddo
     
     !VdWstr = VdWeps
@@ -346,14 +424,14 @@ subroutine VdW_contribution_exp(rhopol,exppi)
                         do az = -2,2
                             jz = iz+az
                             if(1<=jz.and.jz<=nz) then 
-                                protemp=protemp + VdWcoeff(ax,ay,az)*rhopoltmp(jx, jy, jz)
+                                protemp=protemp + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)
                             endif    
                         enddo
                     enddo
                 enddo
                 
                 call linearIndexFromCoordinate(ix,iy,iz,id)
-                exppi(id) = exppi(id)*exp(VdWeps%val*protemp)
+                exppi(id) = exppi(id)*exp(VdWepsAA*protemp)
 
             enddo
         enddo
@@ -419,8 +497,8 @@ subroutine VdW_contribution_exp_diblock(rhopolA,rhopolB,exppiA,exppiB)
                 
                 call linearIndexFromCoordinate(ix,iy,iz,id)
 
-                exppiA(id) = exppiA(id)*exp(VdWepsAA%val*protempAA+VdWepsAB%val*protempAB)
-                exppiB(id) = exppiB(id)*exp(VdWepsAB%val*protempBA+VdWepsBB%val*protempAB)
+                exppiA(id) = exppiA(id)*exp(VdWepsAA*protempAA+VdWepsAB*protempAB)
+                exppiB(id) = exppiB(id)*exp(VdWepsAB*protempBA+VdWepsBB*protempAB)
             enddo
         enddo
     enddo
@@ -428,13 +506,68 @@ subroutine VdW_contribution_exp_diblock(rhopolA,rhopolB,exppiA,exppiB)
 end subroutine
 
 
+
 ! this compute contribution to Palpha
 
-function VdW_energy(rhopol)result(EVdW)
+subroutine VdW_contribution_exp(rhopol,exppi,segtype)
+
+    use globals, only : nsize, nsegtypes
+    use volume, only : nx,ny,nz,coordinateFromLinearIndex,linearIndexFromCoordinate
+    use parameters, only : VdWeps
+
+    real(dp), intent(in) :: rhopol(:,:)
+    real(dp), intent(inout) :: exppi(:)
+    integer,  intent(in) :: segtype
+
+    integer :: id,ix,iy,iz, jx,jy,jz, ax,ay,az
+    real(dp) :: protemp
+    integer :: t
+    
+    !  assign rhopoltmp 
+    
+    do t=1, nsegtypes
+        do id=1,nsize
+            call coordinateFromLinearIndex(id, ix, iy, iz)
+            rhopoltmp(ix,iy,iz,t) = rhopol(id,t)     
+        enddo
+    enddo
+
+    do ix=1,nx
+        do iy=1,ny
+            do iz=1,nz
+                protemp= 0.0_dp
+                do ax = -range,range 
+                    jx = ix+ax
+                    jx = ipbc(jx,nx) ! mod(jx-1+5*dimx, dimx) + 1
+                    do ay = -range,range
+                        jy = iy+ay
+                        jy = ipbc(jy,ny) 
+                        do az = -range,range
+                            jz = iz+az
+                            if(1<=jz.and.jz<=nz) then 
+                                do t=1,nsegtypes
+                                    protemp = protemp + VdWeps(segtype,t) * VdWcoeff(ax,ay,az,segtype,t) &
+                                        * rhopoltmp(jx,jy,jz,t)
+                                enddo
+                            endif    
+                        enddo
+                    enddo
+                enddo
+                call linearIndexFromCoordinate(ix,iy,iz,id)
+                exppi(id) = exppi(id)*exp(protemp)
+            enddo
+        enddo
+    enddo
+
+end subroutine VdW_contribution_exp
+
+
+
+function VdW_energy_homo(rhopol)result(EVdW)
 
     use globals, only : nsize
     use volume, only : nx,ny,nz,coordinateFromLinearIndex,linearIndexFromCoordinate,volcell
-    use parameters, only : VdWeps
+    use parameters, only : VdWepsAA
 
 
     real(dp), intent(in) :: rhopol(:)
@@ -447,7 +580,8 @@ function VdW_energy(rhopol)result(EVdW)
     !  allocate rhopol tmp 
     do id=1,nsize
         call coordinateFromLinearIndex(id, ix, iy, iz)
-        rhopoltmp(ix,iy,iz) = rhopol(id)   
+        print*,id,ix,iy,iz 
+        rhopolAtmp(ix,iy,iz) = rhopol(id) 
     enddo
     
     Etemp =0.0_dp
@@ -468,7 +602,7 @@ function VdW_energy(rhopol)result(EVdW)
                         do az = -2,2
                             jz = iz+az
                             if(1<=jz.and.jz<=nz) then 
-                                Etemp=Etemp + VdWcoeff(ax,ay,az)*rhopoltmp(jx, jy, jz)*rhopoltmp(ix, iy, iz)
+                                Etemp=Etemp + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolAtmp(ix, iy, iz)
                             endif    
                         enddo
                     enddo
@@ -478,7 +612,7 @@ function VdW_energy(rhopol)result(EVdW)
         enddo
     enddo
 
-    EVdW = VdWeps%val*Etemp*volcell/2.0_dp
+    EVdW = VdWepsAA*Etemp*volcell/2.0_dp
 
 end function
 
@@ -537,10 +671,161 @@ function VdW_energy_diblock(rhopolA,rhopolB)result(EVdW)
         enddo
     enddo
 
-    EVdW = (VdWepsAA%val*EtempAA+2.0_dp*VdWepsAB%val*EtempAB+VdWepsBB%val*EtempBB)*volcell/2.0_dp
+    EVdW = (VdWepsAA*EtempAA+2.0_dp*VdWepsAB*EtempAB+VdWepsBB*EtempBB)*volcell/2.0_dp
 
 end function
 
+
+
+function VdW_energy(rhopol)result(EVdW)
+
+    use globals, only : nsize, nsegtypes
+    use volume, only : nx,ny,nz,coordinateFromLinearIndex,linearIndexFromCoordinate,volcell
+    use parameters, only : VdWeps
+
+    real(dp), intent(in) :: rhopol(:,:)
+
+    real(dp) :: EVdW
+    integer :: id,ix,iy,iz, jx,jy,jz, ax,ay,az
+    real(dp) :: Etemp
+    integer :: s, t
+    
+    !  assign rhopoltmp
+
+    do t=1, nsegtypes
+        do id=1,nsize
+            call coordinateFromLinearIndex(id, ix, iy, iz)
+            rhopoltmp(ix,iy,iz,t) = rhopol(id,t)     
+        enddo
+    enddo
+
+    EVdW =0.0_dp
+
+    do s=1,nsegtypes
+        do t=1,nsegtypes
+    
+            Etemp =0.0_dp
+   
+            do ix=1,nx
+                do iy=1,ny
+                    do iz=1,nz
+                        do ax = -range,range 
+                
+                            jx = ix+ax
+                            jx = ipbc(jx,nx) ! mod(jx-1+5*dimx, dimx) + 1
+                        
+                            do ay = -range,range
+                                jy = iy+ay
+                                jy = ipbc(jy,ny) ! mod(jy-1+5*dimy, dimy) + 1
+                        
+                                do az = -range,range 
+                                    jz = iz+az
+                                    if(1<=jz.and.jz<=nz) then
+                                        Etemp=Etemp + VdWcoeff(ax,ay,az,s,t)*rhopoltmp(jx, jy, jz,s)*rhopoltmp(ix, iy, iz,t)
+                                    endif    
+                                enddo
+                            enddo
+                        enddo
+                    enddo
+                enddo
+            enddo
+
+            EVdW = VdWeps(s,t)*Etemp*volcell/2.0_dp
+        enddo
+    enddo            
+
+end function
+
+
+subroutine read_VdWeps(info)
+    
+    use mpivars
+    use globals, only : nsegtypes 
+    use parameters, only : VdWeps 
+    use myutils, only : newunit
+
+    integer,  intent(out), optional :: info
+     !     .. local variables 
+    character(len=9) :: fname
+    integer :: ios, un_input  ! un = unit number
+    character(80) :: str
+    integer :: s,t, line
+   
+
+    ! .. reading in of variables from file 
+
+    fname="VdWeps.in"
+   
+    open(unit=newunit(un_input),file=fname,iostat=ios,status='old')
+    if(ios >0 ) then
+        print*, 'Error opening input file VdWeps.in : iostat =', ios
+        if (present(info)) info = VdW_err_inputfile
+        return
+    endif    
+    
+    
+    ios=0
+    line=0
+    do while (line<(nsegtypes**2).and.ios==0)
+        line=line+1
+        read(un_input,*,iostat=ios)t,s,VdWeps(t,s)
+    enddo
+
+    
+    if(line/=(nsegtypes)**2) then 
+        str="reached end of VdWeps.in before all elements read"
+        print*,str
+        str="read file "//trim(adjustl(fname))//" failed"
+        print*,str
+        call MPI_FINALIZE(ierr)
+        stop
+    endif
+
+    if(ios >0 ) then
+        print*, 'Error parsing VdWeps.in : iostat =', ios
+        if (present(info)) info = VdW_err_inputfile
+        return
+    endif
+    
+    close(un_input)    
+    
+end subroutine read_VdWeps
+
+
+subroutine make_VdWeps(info)
+
+    integer,  intent(out), optional :: info
+    
+    call allocate_VdWeps()
+    call read_VdWeps(info)
+    call set_VdWepsAAandBB
+end subroutine
+
+
+! special assignment for certain systype values
+! use VdWeps to assigns specific values VdWepsAA etc
+
+subroutine set_VdWepsAAandBB
+
+    use globals, only : systype
+    use parameters, only : VdWeps, VdWepsAA, VdWepsBB, VdWepsAB 
+
+        
+    select case (systype)
+    case ("elect","electVdWAB","electdouble") ! diblock copolymer lseg determined in cadenas_sequence      
+        VdWepsAA = VdWeps(1,1) 
+        VdWepsAB = VdWeps(1,2) 
+        VdWepsBB = VdWeps(2,1) 
+    case ("electA","neutral")  ! homopolymer weak polyacid VdW  orhomopolymer neutral
+        VdWepsAA = VdWeps(1,1)
+    case ("brush_mul","brush","brush_neq","brushvarelec","brushborn","brushssdna")
+    case default
+        print*,"Error: in VdWepsAA, systype=",systype
+        print*,"stopping program"
+        stop
+    end select  
+
+end subroutine set_VdWepsAAandBB
 
 
 function ipbc(ival,imax) result(intpbc)

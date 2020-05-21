@@ -10,35 +10,31 @@ module chains
     character(len=2), dimension(:), allocatable :: type_of_monomer_char    ! type of monomer represented as two letters
     logical, dimension(:,:), allocatable    :: ismonomer_of_type           ! ismomomer_of_type(s,t)= true if segment number "s" is of type "t" otherwise false 
     logical, dimension(:), allocatable      :: ismonomer_chargeable        ! ismonomer_chargeabl(s)=true if segment number type "t" is acid or base  
-    real(dp), dimension(:), allocatable     :: exp_energychain             ! energy chain 
-    integer, dimension(:,:,:), allocatable  :: indexchainAB 
-    integer, dimension(:,:,:), allocatable  :: indexchainAB_init 
-    logical, dimension(:,:),   allocatable  :: weightchainAB
+    real(dp), dimension(:), allocatable     :: exp_energychain             ! energy chain  
+    integer, dimension(:,:,:), allocatable  :: indexchain_init 
+    logical, dimension(:,:),   allocatable  :: weightchain
 
     logical :: isHomopolymer
     double precision, dimension(:),allocatable :: lsegseq  ! only needed for copolymer
 
 contains
   
-    subroutine allocate_chains(cuantas,nseg,nsegtypes,cuantasAB,nsegAB,ngr_node)
+    subroutine allocate_chains(cuantas,nseg,nsegtypes,ngr_node)
 
         implicit none
     
-        integer, intent(in) :: cuantas,nseg,nsegtypes
-        integer, intent(in) :: cuantasAB,nsegAB,ngr_node
+        integer, intent(in) :: cuantas,nseg,nsegtypes,ngr_node
     
         !     .. extra 100 in index because of  nchain rotations
         allocate(indexchain(nseg,ngr_node,cuantas+100))
-        allocate(isAmonomer(nsegAB)) 
+        allocate(isAmonomer(nseg)) 
         allocate(type_of_monomer(nseg)) 
         allocate(type_of_monomer_char(nseg))
         allocate(ismonomer_of_type(nseg,nsegtypes)) 
         allocate(ismonomer_chargeable(nsegtypes))
         allocate(exp_energychain(cuantas+100))
-
-        allocate(indexchainAB(nsegAB,ngr_node,cuantasAB+100))
-        allocate(indexchainAB_init(nsegAB,ngr_node,cuantasAB+100))
-        allocate(weightchainAB(ngr_node,cuantasAB+100))
+        allocate(indexchain_init(nseg,ngr_node,cuantas+100))
+        allocate(weightchain(ngr_node,cuantas+100))
 
     
     end subroutine allocate_chains

@@ -16,7 +16,7 @@ module conform_entropy
 
 contains
 
-    subroutine FEconf_entropy(FEconfAB,FEconfC)
+    subroutine FEconf_entropy(FEconf)
 
  
         use globals
@@ -24,41 +24,24 @@ contains
         
         implicit none
     
-        real(dp), intent(out) :: FEconfAB, FEconfC  
+        real(dp), intent(out) :: FEconf
 
         character(len=lenText) :: text 
 
 
         select case (systype) 
         case ("elect")
-            call FEconf_elect(FEconfAB)
-            FEconfC=0.0_dp
+            call FEconf_elect(FEconf)
         case ("electA")
-            call FEconf_electA(FEconfAB)
-            FEconfC=0.0_dp    
+            call FEconf_electA(FEconf)
         case ("electdouble")
-            call FEconf_electdouble(FEconfAB)
-            FEconfC=0.0_dp
+            call FEconf_electdouble(FEconf)
         case ("neutral")
-            call FEconf_neutral(FEconfAB,FeconfC)
-        case ("dipolarstrong")     
-            text="fcenergy: systype: "//systype//" not implemented yet"
-            call print_to_log(LogUnit,text)
-            print*,text
-        case ("dipolarweak")     
-            text="fcenergy: systype: "//systype//" not implemented yet"
-            call print_to_log(LogUnit,text)
-            print*,text
-        case ("dipolarweakA")     
-            text="fcenergy: systype: "//systype//" not implemented yet"
-            call print_to_log(LogUnit,text)
-            print*,text    
+            call FEconf_neutral(FEconf)
         case ("electnopoly")
-            FEconfAB=0.0_dp
-            FEconfC=0.0_dp  
-        case ("dipolarnopoly")
-            FEconfAB=0.0_dp
-            FEconfC=0.0_dp        
+            FEconf=0.0_dp
+        case ("brush_mul")
+            call FEconf_brush_mul(FEconf)
         case default
             text="FEconf_entropy: wrong systype: "//systype//"stopping program"
             call print_to_log(LogUnit,text)
@@ -69,7 +52,7 @@ contains
 
   ! computes conformational entropy in neutral state 
 
-    subroutine FEconf_neutral(FEconfAB,FEconfC)
+    subroutine FEconf_neutral(FEconf)
 
         !  .. variables and constant declaractions 
 
@@ -82,19 +65,133 @@ contains
 
         implicit none
         
-        real(dp), intent(out) :: FEconfAB, FEconfC  
+        real(dp), intent(out) :: FEconf  
 
         !     .. declare local variables
         ! still to be implemented 
 
-        FEconfAB=0.0_dp
-        FEconfC=0.0_dp
+        FEconf=0.0_dp
 
     end subroutine FEconf_neutral
 
 
+    subroutine FEconf_brush_mul(FEconf)
 
-    subroutine FEconf_elect(FEconfAB)
+        !  .. variables and constant declaractions 
+
+        use globals, only : nseg, nsegtypes, nsize, cuantas
+        use volume, only : ngr, ngr_node
+        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable 
+        use field, only : xsol,psi, fdis,rhopol,q
+        use parameters
+        use VdW, only : VdW_contribution_exp
+
+        implicit none
+
+        real(dp), intent(out) :: FEconf
+        
+        ! .. declare local variables
+        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro
+        integer  :: i,t,g,gn,c,s,k       ! dummy indices
+        real(dp) :: FEconf_local(ngr_node)
+        real(dp) :: FEconf_array(size*ngr_node)
+
+
+        ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
+
+        if(rank==0) then
+            do i = 1, size-1
+                dest = i
+                call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(psi , nsize+1 , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                do t=1,nsegtypes
+                    call MPI_SEND(fdis(:,t) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                    call MPI_SEND(rhopol(:,t) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                enddo
+            enddo
+        else
+            source = 0 
+            call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            call MPI_RECV(psi , nsize+1, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
+            do t=1,nsegtypes
+                call MPI_RECV(fdis(:,t) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
+                call MPI_RECV(rhopol(:,t) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            enddo
+        endif    
+
+        !     .. executable statements 
+
+        do t=1,nsegtypes
+            if(ismonomer_chargeable(t)) then
+                do i=1,nsize                                              
+                    exppi(i,t) = (xsol(i)**vpol(t))*exp(-zpol(t,2)*psi(i) )/fdis(i,t)   ! auxilary variable palpha
+                enddo  
+            else
+                do i=1,nsize
+                     exppi(i,t) = xsol(i)**vpol(t)
+                enddo  
+            endif   
+        enddo      
+       
+        if(isVdW) then 
+            do t=1,nsegtypes  
+                call VdW_contribution_exp(rhopol,exppi(:,t),t)
+            enddo
+        endif 
+
+        !  .. computation polymer volume fraction      
+       
+        FEconf=0.0_dp
+
+        do gn=1,ngr_node              ! loop over grafted points <=>  grafted area on different nodes 
+            FEconf_local(gn)= 0.0_dp
+            g=gn+rank*ngr_node
+            do c=1,cuantas         ! loop over cuantas
+                pro=1.0_dp         
+                do s=1,nseg        ! loop over segments 
+                    k=indexchain(s,gn,c)
+                    t=type_of_monomer(s)                
+                    pro = pro*exppi(k,t)
+                enddo    
+                FEconf_local(gn)=FEconf_local(gn)+pro*log(pro)
+            enddo
+        enddo   
+
+        ! communicate FEconf
+
+        if(rank==0) then
+
+            do gn=1,ngr_node
+                g = (0)*ngr_node+gn
+                FEconf_array(g)=FEconf_local(gn)
+            enddo
+
+            do i=1, size-1
+                source = i
+                call MPI_RECV(FEconf_local, ngr_node, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                do gn=1,ngr_node
+                    g = (i)*ngr_node+gn
+                    FEconf_array(g)=FEconf_local(gn)
+                enddo
+            enddo 
+        else     ! Export results
+            dest = 0
+            call MPI_SEND(FEconf_local, ngr_node , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+        endif
+
+
+        if(rank==0) then
+            ! normalize
+            FEconf=0.0_dp
+            do g=1,ngr 
+                FEconf = FEconf+ (FEconf_array(g)/q(g)-log(q(g)))    
+            enddo    
+        endif
+
+    end subroutine FEconf_brush_mul
+
+    subroutine FEconf_elect(FEconf)
 
         !  .. variables and constant declaractions 
 
@@ -106,7 +203,7 @@ contains
 
         implicit none
 
-        real(dp), intent(out) :: FEconfAB
+        real(dp), intent(out) :: FEconf
         
         !     .. declare local variables
 
@@ -152,17 +249,17 @@ contains
 
             g=gn+rank*ngr_node
      
-            do c=1,cuantasAB               ! loop over cuantas
+            do c=1,cuantas             ! loop over cuantas
             
                 proL=1.0_dp                ! initial weight conformation 
                 proR=1.0_dp
             
-                if(weightchainAB(gn,c)) then ! initial weight conformation 
+                if(weightchain(gn,c)) then ! initial weight conformation 
 
                     proL=1.0_dp
                 
-                    do s=1,nsegAB              ! loop over segments 
-                        kL=indexchainAB(s,gn,c)         
+                    do s=1,nseg              ! loop over segments 
+                        kL=indexchain(s,gn,c)         
                         if(isAmonomer(s)) then ! A segment 
                             proL = proL*exppiA(kL)
                         else
@@ -207,7 +304,7 @@ contains
             do g=1,ngr 
                 FEconfABL = FEconfABL+ (FEconfABL_array(g)/qABL(g)-log(qABL(g)))    
             enddo    
-            FEconfAB=FEconfABL
+            FEconf=FEconfABL
         endif
 
     end subroutine FEconf_elect
@@ -268,16 +365,16 @@ contains
 
             g=gn+rank*ngr_node
      
-            do c=1,cuantasAB               ! loop over cuantas
+            do c=1,cuantas               ! loop over cuantas
             
                 proL=1.0_dp                ! initial weight conformation 
             
-                if(weightchainAB(gn,c)) then ! initial weight conformation 
+                if(weightchain(gn,c)) then ! initial weight conformation 
 
                     proL=1.0_dp
                 
-                    do s=1,nsegAB              ! loop over segments 
-                        kL=indexchainAB(s,gn,c)         
+                    do s=1,nseg             ! loop over segments 
+                        kL=indexchain(s,gn,c)         
                         proL = proL*exppiA(kL)
                     enddo
 
@@ -384,18 +481,18 @@ contains
 
             g=gn+rank*ngr_node
      
-            do c=1,cuantasAB               ! loop over cuantas
+            do c=1,cuantas               ! loop over cuantas
             
                 proL=1.0_dp                ! initial weight conformation 
                 proR=1.0_dp
             
-                if(weightchainAB(gn,c)) then ! initial weight conformation 
+                if(weightchain(gn,c)) then ! initial weight conformation 
 
                     proL=1.0_dp
                     proR=1.0_dp
 
-                    do s=1,nsegAB              ! loop over segments 
-                        kL=indexchainAB(s,gn,c)      
+                    do s=1,nseg             ! loop over segments 
+                        kL=indexchain(s,gn,c)      
                         kR=mirror_index(kL,nz)    
                         if(isAmonomer(s)) then ! A segment 
                             proL = proL*exppiA(kL)

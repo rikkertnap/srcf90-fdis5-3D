@@ -71,8 +71,6 @@ contains
         real(dp) :: norm
         real(dp) :: rhopol0 !integra_q
         integer  :: noffset
-        
-
 
         !     .. executable statements 
 
@@ -88,17 +86,14 @@ contains
         endif
 
         n=nsize
-        
         ! read out x 
-        k=(nsegtypes+1)*n
-       
+        k=n
         do i=1,n                     
             xsol(i) = x(i)        ! volume fraction solvent
             psi(i)  = x(i+k)      ! potential
         enddo           
-        
         do t=1,nsegtypes
-            k=t*n
+            k=(t+1)*n
             do i=1,n 
                 rhopolin(i,t) = x(i+k) ! density 
             enddo    
@@ -110,6 +105,7 @@ contains
             do i=1,n
                 rhopol(i,t)=0.0_dp 
                 local_rhopol(i,t)=0.0_dp
+                rhopol_tmp(i,t) =0.0_dp
             enddo    
         enddo    
        
@@ -123,6 +119,7 @@ contains
             xRb(i)     = expmu%Rb*(xsol(i)**vRb)*exp(-psi(i)*zRb) ! Rb+ volume fraction
             xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
             xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
+            xNaCl(i)   = expmu%NaCl*(xsol(i)**vNaCl)
         enddo
 
         !  fdis(i,t) is assocaited with fraction of monomer of type t at i in state 2 
@@ -143,17 +140,18 @@ contains
             endif   
         enddo      
        
+
         ! Van der Waals   
         if(isVdW) then 
-            call VdW_contribution_exp_diblock(rhopolin(:,1),rhopolin(:,2),exppi(:,1),exppi(:,2))
-            !do t=1,nsegtypes  
-            !    call VdW_contribution_exp_multi(rhopolin,exppi(:,t),t)
-            !enddo
+            !call VdW_contribution_exp_diblock(rhopolin(:,1),rhopolin(:,2),exppi(:,1),exppi(:,2))
+            do t=1,nsegtypes  
+                call VdW_contribution_exp(rhopolin,exppi(:,t),t)
+            enddo
         endif 
 
-        !  .. computation polymer volume fraction 
+        !  .. computation polymer volume fraction      
 
-         do gn=1,ngr_node              ! loop over grafted points <=>  grafted area on different nodes 
+        do gn=1,ngr_node              ! loop over grafted points <=>  grafted area on different nodes 
  
             g=gn+rank*ngr_node    
             local_q(gn) = 0.0_dp    ! init q
@@ -178,10 +176,8 @@ contains
                     local_rhopol(i,t)=local_rhopol(i,t)+rhopol_tmp(i,t)/local_q(gn)
                 enddo
             enddo
-                
         enddo    
-              
-        
+         
         !   .. import results 
 
         if (rank==0) then 
@@ -189,7 +185,6 @@ contains
             do t=1,nsegtypes
                 call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
             enddo
-            
              
             do gn=1,ngr_node
                 g = gn+ rank*ngr_node
@@ -211,18 +206,18 @@ contains
             do t=1, nsegtypes
                 do i=1,n
                     rhopol(i,t) = rhopol0 * rhopol(i,t)       ! density polymer of type t  
+
                     xpol(i)     = xpol(i) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
                     if(ismonomer_chargeable(t)) then 
                         rhoqpol(i)  = rhoqpol(i) + (zpol(t,2)*fdis(i,t)+zpol(t,1)*(1.0_dp-fdis(i,t)))*rhopol(i,t)*vsol ! charge density polymer
                     endif    
                     ! ... scf eq for density
-                    f(i+t*n)    = rhopol(i,t) - rhopolin(i,t) 
+                    f(i+(t+1)*n)    = rhopol(i,t) - rhopolin(i,t) 
                 enddo
             enddo        
 
-
             do i=1,n
-                f(i)    = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)-1.0_dp
+                f(i)    = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                     zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
             !   print*,i,rhoq(i)
@@ -230,22 +225,16 @@ contains
           
             !     .. end computation polymer density and charge density  
 
-          
             ! .. electrostatics 
 
             ! .. surface charge  
             sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
             sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
 
-            ! noffset=nsegtypes*n
-
-            call Poisson_Equation(f,psi,rhoq,sigmaqSurfR,sigmaqSurfL) ! work on noffset 
- 
+            call Poisson_Equation(f,psi,rhoq,sigmaqSurfR,sigmaqSurfL)  
+          
             ! .. selfconsistent boundary conditions
             call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)
-
-            ! k=(nsegtypes+1)*n            
-             ! f(k+1)=-0.5_dp*(gplus(1)*(psi(2)-psi(1))+ rhoq(1)*constqW)     
 
             !  .. end electrostatics   
          
@@ -253,13 +242,15 @@ contains
             iter=iter+1
 
             print*,'iter=', iter ,'norm=',norm
-         
+
         else                      ! Export results 
-         
+            
             dest = 0 
            
             do t=1,nsegtypes
-                call MPI_SEND(local_rhopol(:,t), nsize,MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
+                    MPI_COMM_WORLD, ierr)
+                !call MPI_SEND(local_rhopol(:,t), nsize,MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
             enddo
 
             call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
@@ -480,12 +471,12 @@ contains
             xHplus(i) = expmu%Hplus*(xsol(i))*exp(-psi(i))      ! H+  volume fraction
             xOHmin(i) = expmu%OHmin*(xsol(i))*exp(+psi(i))      ! OH-  volume fraction
        
-            xA(1)= xHplus(i)/(K0a(1)*(xsol(i)**deltavA(1)))      ! AH/A-
-            xA(2)= (xNa(i)/vNa)/(K0a(2)*(xsol(i)**deltavA(2)))   ! ANa/A-
-            xA(3)= (xCa(i)/vCa)/(K0a(3)*(xsol(i)**deltavA(3)))   ! ACa+/A-
+            xA(1)= xHplus(i)/(K0aA(1)*(xsol(i)**deltavA(1)))      ! AH/A-
+            xA(2)= (xNa(i)/vNa)/(K0aA(2)*(xsol(i)**deltavA(2)))   ! ANa/A-
+            xA(3)= (xCa(i)/vCa)/(K0aA(3)*(xsol(i)**deltavA(3)))   ! ACa+/A-
        
             sgxA=1.0_dp+xA(1)+xA(2)+xA(3)                                                         
-            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) 
+            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0aA(4)*(xsol(i)**deltavA(4))) 
             qAD = (sgxA+sqrt(sgxA*sgxA+4.0_dp*constA))/2.0_dp  ! remove minus
 
             fdisA(i,1)  = 1.0_dp/qAD   ! removed double minus sign 
@@ -494,12 +485,12 @@ contains
             fdisA(i,3)  = fdisA(i,1)*xA(2)                       ! ANa 
             fdisA(i,4)  = fdisA(i,1)*xA(3)                       ! ACa+ 
        
-            xB(1)= xHplus(i)/(K0b(1)*(xsol(i) **deltavB(1)))     ! BH/B-
-            xB(2)= (xNa(i)/vNa)/(K0b(2)*(xsol(i)**deltavB(2)))   ! BNa/B-
-            xB(3)= (xCa(i)/vCa)/(K0b(3)*(xsol(i)**deltavB(3)))   ! BCa+/B-
+            xB(1)= xHplus(i)/(K0aB(1)*(xsol(i) **deltavB(1)))     ! BH/B-
+            xB(2)= (xNa(i)/vNa)/(K0aB(2)*(xsol(i)**deltavB(2)))   ! BNa/B-
+            xB(3)= (xCa(i)/vCa)/(K0aB(3)*(xsol(i)**deltavB(3)))   ! BCa+/B-
        
             sgxB=xB(1)+xB(2)+xB(3)
-            constB=(2.0_dp*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0b(4)*(xsol(i)**deltavB(4)))
+            constB=(2.0_dp*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0aB(4)*(xsol(i)**deltavB(4)))
             qBD = (sgxB+sqrt(sgxB*sgxB+4.0_dp*constB))/2.0_dp  ! remove minus
 
             fdisB(i,1)  = 1.0_dp/qBD
@@ -536,12 +527,12 @@ contains
  
             g=gn+rank*ngr_node
      
-            do c=1,cuantasAB               ! loop over cuantas
+            do c=1,cuantas               ! loop over cuantas
             
                 proL=1.0_dp
 
-                do s=1,nsegAB              ! loop over segments 
-                    kL=indexchainAB(s,gn,c)           
+                do s=1,nseg              ! loop over segments 
+                    kL=indexchain(s,gn,c)           
                 
                     if(isAmonomer(s)) then ! A segment 
                         proL = proL*exppiA(kL)
@@ -552,8 +543,8 @@ contains
 
                 qABL_local(gn) = qABL_local(gn)+proL
 
-                do s=1,nsegAB
-                    kL=indexchainAB(s,gn,c)
+                do s=1,nseg
+                    kL=indexchain(s,gn,c)
         
                     if(isAmonomer(s)) then ! A segment 
                         rhopolAL_tmp(kL)=rhopolAL_tmp(kL)+proL
@@ -768,12 +759,12 @@ contains
             xOHmin(i) = expmu%OHmin*(xsol(i))*exp(+psi(i))      ! OH-  volume fraction
 
 
-            xA(1)= xHplus(i)/(K0a(1)*(xsol(i)**deltavA(1)))      ! AH/A-
-            xA(2)= (xNa(i)/vNa)/(K0a(2)*(xsol(i)**deltavA(2)))   ! ANa/A-
-            xA(3)= (xCa(i)/vCa)/(K0a(3)*(xsol(i)**deltavA(3)))   ! ACa+/A-
+            xA(1)= xHplus(i)/(K0aA(1)*(xsol(i)**deltavA(1)))      ! AH/A-
+            xA(2)= (xNa(i)/vNa)/(K0aA(2)*(xsol(i)**deltavA(2)))   ! ANa/A-
+            xA(3)= (xCa(i)/vCa)/(K0aA(3)*(xsol(i)**deltavA(3)))   ! ACa+/A-
        
             sgxA=1.0_dp+xA(1)+xA(2)+xA(3)                                                         
-            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) 
+            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0aA(4)*(xsol(i)**deltavA(4))) 
             qAD = (sgxA+sqrt(sgxA*sgxA+4.0_dp*constA))/2.0_dp  ! remove minus
 
             fdisA(i,1)  = 1.0_dp/qAD   ! removed double minus sign 
@@ -788,7 +779,7 @@ contains
 
         enddo
 
-        if(isVdW) call VdW_contribution_exp(rhopolAin,exppiA)
+        if(isVdW) call VdW_contribution_exp_homo(rhopolAin,exppiA)
 
         if(rank==0) then            ! global polymer density
             do i=1,n
@@ -809,19 +800,19 @@ contains
  
             g=gn+rank*ngr_node
      
-            do c=1,cuantasAB               ! loop over cuantas
+            do c=1,cuantas               ! loop over cuantas
             
                 proL=1.0_dp
 
-                do s=1,nsegAB              ! loop over segments 
-                    kL=indexchainAB(s,gn,c)           
+                do s=1,nseg             ! loop over segments 
+                    kL=indexchain(s,gn,c)           
                     proL = proL*exppiA(kL)
                 enddo
 
                 qABL_local(gn) = qABL_local(gn)+proL
 
-                do s=1,nsegAB
-                    kL=indexchainAB(s,gn,c)
+                do s=1,nseg
+                    kL=indexchain(s,gn,c)
                     ! A segment 
                     rhopolAL_tmp(kL)=rhopolAL_tmp(kL)+proL
                 enddo
@@ -1056,12 +1047,12 @@ contains
  
             g=gn+rank*ngr_node
      
-            do c=1,cuantasAB               ! loop over cuantas
+            do c=1,cuantas              ! loop over cuantas
             
                 proL=1.0_dp
 
-                do s=1,nsegAB              ! loop over segments 
-                    kL=indexchainAB(s,gn,c)           
+                do s=1,nseg             ! loop over segments 
+                    kL=indexchain(s,gn,c)           
                 
                     if(isAmonomer(s)) then ! A segment 
                         proL = proL*exppiA(kL)
@@ -1072,8 +1063,8 @@ contains
 
                 qABL_local(gn) = qABL_local(gn)+proL
 
-                do s=1,nsegAB
-                    kL=indexchainAB(s,gn,c)
+                do s=1,nseg
+                    kL=indexchain(s,gn,c)
         
                     if(isAmonomer(s)) then ! A segment 
                         rhopolAL_tmp(kL)=rhopolAL_tmp(kL)+proL
@@ -1267,12 +1258,12 @@ contains
             xHplus(i) = expmu%Hplus*(xsol(i))*exp(-psi(i))      ! H+  volume fraction
             xOHmin(i) = expmu%OHmin*(xsol(i))*exp(+psi(i))      ! OH-  volume fraction
        
-            xA(1)= xHplus(i)/(K0a(1)*(xsol(i)**deltavA(1)))      ! AH/A-
-            xA(2)= (xNa(i)/vNa)/(K0a(2)*(xsol(i)**deltavA(2)))   ! ANa/A-
-            xA(3)= (xCa(i)/vCa)/(K0a(3)*(xsol(i)**deltavA(3)))   ! ACa+/A-
+            xA(1)= xHplus(i)/(K0aA(1)*(xsol(i)**deltavA(1)))      ! AH/A-
+            xA(2)= (xNa(i)/vNa)/(K0aA(2)*(xsol(i)**deltavA(2)))   ! ANa/A-
+            xA(3)= (xCa(i)/vCa)/(K0aA(3)*(xsol(i)**deltavA(3)))   ! ACa+/A-
        
             sgxA=1.0_dp+xA(1)+xA(2)+xA(3)                                                         
-            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0a(4)*(xsol(i)**deltavA(4))) 
+            constA=(2.0_dp*(rhopolAin(i)*vsol)*(xCa(i)/vCa))/(K0aA(4)*(xsol(i)**deltavA(4))) 
             qAD = (sgxA+sqrt(sgxA*sgxA+4.0_dp*constA))/2.0_dp  ! remove minus
 
             fdisA(1,i)  = 1.0_dp/qAD   ! removed double minus sign 
@@ -1281,12 +1272,12 @@ contains
             fdisA(3,i)  = fdisA(1,i)*xA(2)                       ! ANa 
             fdisA(4,i)  = fdisA(1,i)*xA(3)                       ! ACa+ 
        
-            xB(1)= xHplus(i)/(K0b(1)*(xsol(i) **deltavB(1)))     ! BH/B-
-            xB(2)= (xNa(i)/vNa)/(K0b(2)*(xsol(i)**deltavB(2)))   ! BNa/B-
-            xB(3)= (xCa(i)/vCa)/(K0b(3)*(xsol(i)**deltavB(3)))   ! BCa+/B-
+            xB(1)= xHplus(i)/(K0aB(1)*(xsol(i) **deltavB(1)))     ! BH/B-
+            xB(2)= (xNa(i)/vNa)/(K0aB(2)*(xsol(i)**deltavB(2)))   ! BNa/B-
+            xB(3)= (xCa(i)/vCa)/(K0aB(3)*(xsol(i)**deltavB(3)))   ! BCa+/B-
        
             sgxB=xB(1)+xB(2)+xB(3)
-            constB=(2.0_dp*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0b(4)*(xsol(i)**deltavB(4)))
+            constB=(2.0_dp*(rhopolBin(i)*vsol)*(xCa(i)/vCa))/(K0aB(4)*(xsol(i)**deltavB(4)))
             qBD = (sgxB+sqrt(sgxB*sgxB+4.0_dp*constB))/2.0_dp  ! remove minus
 
             fdisB(i,1)  = 1.0_dp/qBD
@@ -1326,18 +1317,18 @@ contains
  
             g=gn+rank*ngr_node
      
-            do c=1,cuantasAB               ! loop over cuantas
+            do c=1,cuantas               ! loop over cuantas
             
                 proL=0.0_dp                ! initial weight conformation 
                 proR=0.0_dp
             
-                if(weightchainAB(gn,c)) then ! initial weight conformation 
+                if(weightchain(gn,c)) then ! initial weight conformation 
 
                     proL=1.0_dp
                     proR=1.0_dp
 
-                    do s=1,nsegAB              ! loop over segments 
-                        kL=indexchainAB(s,gn,c)           
+                    do s=1,nseg             ! loop over segments 
+                        kL=indexchain(s,gn,c)           
                         kR=mirror_index(kL,nz)   
 
                         if(isAmonomer(s)) then ! A segment 
@@ -1352,8 +1343,8 @@ contains
                     qABL_local(gn) = qABL_local(gn)+proL
                     qABR_local(gn) = qABR_local(gn)+proR
 
-                    do s=1,nsegAB
-                        kL=indexchainAB(s,gn,c)
+                    do s=1,nseg
+                        kL=indexchain(s,gn,c)
                         kR=mirror_index(kL,nz)
                         if(isAmonomer(s)) then ! A segment 
                             rhopolAL_tmp(kL)=rhopolAL_tmp(kL)+proL
@@ -1561,19 +1552,19 @@ contains
  
             g=gn+rank*ngr_node
      
-            do c=1,cuantasAB               ! loop over cuantas
+            do c=1,cuantas               ! loop over cuantas
             
                 pro=1.0_dp
 
-                do s=1,nsegAB              ! loop over segments 
-                    k=indexchainAB(s,gn,c)           
+                do s=1,nseg             ! loop over segments 
+                    k=indexchain(s,gn,c)           
                     pro = pro*exppiA(k)
                 enddo
 
                 qAB_local(gn) = qAB_local(gn)+pro
 
-                do s=1,nsegAB
-                    k=indexchainAB(s,gn,c)
+                do s=1,nseg
+                    k=indexchain(s,gn,c)
                     rhopolA_tmp(k)=rhopolA_tmp(k)+pro
                 enddo
             enddo   ! end cuantas loop 

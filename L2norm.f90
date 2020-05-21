@@ -25,4 +25,5 @@ contains
         
     end function l2norm
 
-end module vectornorm      
+end module vectornorm
+      

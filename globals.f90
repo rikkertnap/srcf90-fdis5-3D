@@ -16,9 +16,7 @@ module globals
     integer  :: nseg          ! length of polymer 
     integer  :: nsegtypes     ! number of segment types 
     integer  :: cuantas       ! number of polymer configurations
-    integer  :: nsegAB        ! length of AB polymer 
-    integer  :: cuantasAB     ! number of polymer configurations
-    integer  :: max_conforAB  ! maximum number of polymer configurations
+    integer  :: max_confor    ! maximum number of polymer configurations
    
     integer(8)  :: neq        ! number of non-linear equations
     integer(8)  :: neqmax     ! maximum number of non-linear equations

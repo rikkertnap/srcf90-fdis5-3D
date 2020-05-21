@@ -70,6 +70,8 @@ subroutine init_guess(x, xguess)
             call init_guess_electA(x,xguess)
         case ("electVdWAB")  
             call init_guess_elect(x,xguess)
+        case ("brush_mul")  
+            call init_guess_multi(x,xguess)
         case default   
             print*,"Wrong value systype : ", systype
     end select 
@@ -433,6 +435,86 @@ subroutine init_guess_neutral(x, xguess)
     enddo
     
 end subroutine init_guess_neutral
+
+
+subroutine init_guess_multi(x, xguess)
+
+    use globals, only : neq,bcflag,LEFT,RIGHT,nsize,neqint,nsegtypes
+    use volume, only : nsurf
+    use field, only : xsol,psi,rhopol
+    use surface, only : psisurfL, psisurfR 
+    use parameters, only : xbulk, infile
+    use myutils, only : newunit
+  
+    real(dp) :: x(:)       ! volume fraction solvent iteration vector 
+    real(dp) :: xguess(:)  ! guess fraction  solvent 
+  
+    !     ..local variables 
+    integer :: n, i, t
+    character(len=8) :: fname(4)
+    integer :: ios,un_file(4)
+  
+    ! .. init guess all xbulk     
+
+
+    do i=1,neqint
+        x(i)=0.0_dp    
+    enddo
+
+    do i=1,nsize
+        x(i)=xbulk%sol
+    enddo
+
+    if (infile.eq.1) then   ! infile is read in from file/stdio  
+    
+        write(fname(1),'(A7)')'xsol.in'
+        write(fname(2),'(A6)')'psi.in'
+        write(fname(3),'(A6)')'rhi.in'
+     
+        do i=1,3 ! loop files
+            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
+            if(ios >0 ) then    
+                print*, 'file num ber =',un_file(i),' file name =',fname(i)
+                print*, 'Error opening file : iostat =', ios
+                stop
+            endif
+        enddo
+        if(bcflag(LEFT)/="cc") then 
+            do i=1,nsurf
+                read(un_file(2),*)psisurfL(i)
+            enddo
+        endif            
+        do i=1,nsize
+            read(un_file(1),*)xsol(i)    ! solvent
+            read(un_file(2),*)psi(i)     ! potential
+            read(un_file(3),*)(rhopol(i,t),t=1,nsegtypes)
+
+            x(i)         = xsol(i)    ! placing xsol  in vector x
+            x(i+nsize)   = psi(i)     ! placing xsol  in vector x
+            do t=1,nsegtypes   
+                x(i+(t+1)*nsize)=rhopol(i,t)
+            enddo        
+        enddo
+    
+        if(bcflag(RIGHT)/="cc") then
+            do i=1,nsurf 
+                read(un_file(2),*)psisurfR(i)
+            enddo
+        endif            
+       
+         do i=1,3
+            close(un_file(i))
+        enddo
+
+    endif
+    !     .. end init from file 
+  
+    do i=1,neq
+        xguess(i)=x(i)
+    enddo
+
+end subroutine init_guess_multi
+
 
 
 ! .. copy solution of previous solution ( distance ) to create new guess

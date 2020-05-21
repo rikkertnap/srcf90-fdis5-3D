@@ -92,15 +92,15 @@ program main
         stop
     endif
 
-    nseg=nsegAB               ! temporary assigned 
-    cuantas=cuantasAB
-
     call init_constants()
     call make_geometry()            ! generate volume elements lattice
+    call allocate_chain_parameters()  
     call init_matrices()            ! init matrices for chain generation
-    call allocate_chains(cuantas,nseg,nsegtypes,cuantasAB,nsegAB,ngr_node)
-    call make_sequence_chain(period,chaintype)
-    call set_properties_chain(period,chaintype)
+    call allocate_chains(cuantas,nseg,nsegtypes,ngr_node)
+    call init_chain_parameters      ! chain volume, charges, pKa etc
+    call make_sequence_chain(chainperiod,chaintype)
+    call make_charge_table(ismonomer_chargeable,zpol,nsegtypes)
+    call set_properties_chain(chainperiod,chaintype) 
     call make_chains(chainmethod)   ! generate polymer configurations
     call allocate_field(nx,ny,nz,nsegtypes)
     call allocate_part_fnc(ngr)
@@ -110,7 +110,16 @@ program main
     call init_surface(bcflag,nsurf)
     call init_sigma()
 
-       
+    print*,"#nsegtypes   lsegAA    vpol"
+    do i=1,nsegtypes
+        print*,i,lsegAA(i),vpol(i)
+    enddo
+    print*,"#segment type_num  type_char  isAmonomer"
+    do i=1,nseg
+        print*,i,type_of_monomer(i),type_of_monomer_char(i),isAmonomer(i)
+    enddo 
+    print*,"######"
+   
     if(isVdW) then 
         call make_VdWcoeff(info)
         if(info/=0) then
@@ -137,11 +146,11 @@ program main
 
         isfirstguess = .true.
         use_xstored = .false.         ! with both flags set false make_guess will set xguess equal to x
-
+        
         pH%val=pH%min
         call init_expmu()             ! set chemical potenitals
         iter = 0
-
+        
         do while (nz>=nzmin)        ! loop distances
 
             call set_size_neq()
@@ -152,13 +161,13 @@ program main
 
             call init_vars_input()  ! sets up chem potenitals
             call chain_filter()
-            call set_fcn()! why
+            call set_fcn()          ! why
 
             flag_solver = 0
 
             if(rank.eq.0) then     ! node rank=0
                 call make_guess(x, xguess, isfirstguess, use_xstored, xstored)
-                call solver(x, xguess, error, fnorm, issolution)
+                call solver(x, xguess, tol_conv, fnorm, issolution)
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
                     dest =i
@@ -177,7 +186,7 @@ program main
                 enddo
             endif
 
-            call FEconf_entropy(FEconfAB,FEconfC) ! parrallel computation of conf entropy
+            call FEconf_entropy(FEconf) ! parrallel computation of conf entropy
 
             if(rank==0) then
 
@@ -208,13 +217,13 @@ program main
         enddo ! end while loop
 
 
-    else  ! loop over pH  or VdWeps values
+    else  ! loop over pH  values
  
 
         if(runtype=="rangepH") then 
             loop => pH
-        else if (runtype=="rangeVdWeps") then
-            loop => VdWeps
+        !else if (runtype=="rangeVdWeps") then
+        !    loop => VdWeps
         else
             if(associated(loop)) nullify(loop) ! make explict that no association is made
         endif  
@@ -238,13 +247,12 @@ program main
             call init_vars_input()  ! sets up chem potenitals
             call chain_filter()
             call set_fcn()
-
             flag_solver = 0
 
             if(rank==0) then     ! node rank=0
 
-                call make_guess(x, xguess, isfirstguess) 
-                call solver(x, xguess, error, fnorm, issolution)
+                call make_guess(x, xguess, isfirstguess)
+                call solver(x, xguess, tol_conv, fnorm, issolution)
                 !call fcnptr(x, fvec, neq)
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
@@ -264,7 +272,7 @@ program main
                 enddo
             endif
 
-            call FEconf_entropy(FEconfAB,FEconfC) ! parrallel computation of conf FEconf_entropy
+            call FEconf_entropy(FEconf) ! parrallel computation of conf FEconf_entropy
 
             if(rank==0) then
 

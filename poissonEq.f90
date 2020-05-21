@@ -226,7 +226,7 @@ contains
     
     subroutine Poisson_Equation_Surface(fvec,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)
 
-        use globals, only : nsize, neq, LEFT, RIGHT, systype
+        use globals, only : nsize, neq, LEFT, RIGHT, systype, nsegtypes
         use parameters, only : constqW
         use volume, only : nx,ny,nz, linearIndexFromCoordinate
 
@@ -258,12 +258,8 @@ contains
             noffset=4*nsize
         else if(systype=="electnopoly") then 
             noffset=2*nsize
-        else if(systype=="dipolarstrong") then 
-            noffset=2*nsize
-        else if(systype=="dipolarweak") then 
-            noffset=2*nsize
-        else if(systype=="dipolarnopoly") then 
-            noffset=2*nsize
+         else if(systype=="brush_mul") then 
+            noffset=(2+nsegtypes)*nsize    
         else 
             print*,"error: systype wrong value for Poisson_equation_surface "    
         endif     

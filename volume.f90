@@ -29,19 +29,17 @@ module volume
     real(dp) :: gamma               ! angle between oblique basis vectors u and v: cubic = gamma=90=pi/2 hexagonl gamma=60=2pi/3                          
     real(dp) :: beta                ! related beta = (pi/2- gamma)/2, angle between basis vector u and x and v and y
     real(dp) :: cos_two_beta        ! sqrt(cos(beta)**2 - sin(beta)**2)=cos(2beta) scales u and v coordinates 
-    real(dp) :: sin_two_beta        ! sin(2beta)  
+    real(dp) :: sin_two_beta        ! sin(2beta)      
     integer  :: seed_graft          ! seed for graft points 
     
     real(dp), dimension(:,:), allocatable :: position_graft
 
     character(len=11) :: geometry
   
-    private :: beta           
+    private :: beta
 
 contains
-  
-
-  
+    
     subroutine init_lattice
 
         use globals, only : nsize, DEBUG

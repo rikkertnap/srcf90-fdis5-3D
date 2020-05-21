@@ -14,23 +14,21 @@ module field
     real(dp), dimension(:), allocatable :: xpolABz ! total volume fraction of polymer in z-direction
     real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer 
     real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer 
+
     real(dp), dimension(:), allocatable :: xsol    ! volume fraction solvent
     real(dp), dimension(:), allocatable :: psi     ! electrostatic potential 
     real(dp), dimension(:), allocatable :: xNa     ! volume fraction of positive Na+ ion
     real(dp), dimension(:), allocatable :: xK      ! volume fraction of positive K+ ion
     real(dp), dimension(:), allocatable :: xRb      ! volume fraction of positive Rb+ ion
     real(dp), dimension(:), allocatable :: xCa     ! volume fraction of positive Ca2+ ion
-    real(dp), dimension(:), allocatable :: xMg     ! volume fraction of positive Mg2+ ion
-    
+    real(dp), dimension(:), allocatable :: xMg     ! volume fraction of positive Mg2+ ion    
     real(dp), dimension(:), allocatable :: xNaCl   ! volume fraction of NaCl ion pair
     real(dp), dimension(:), allocatable :: xKCl    ! volume fraction of KCl  ion pair
-    
     real(dp), dimension(:), allocatable :: xCl     ! volume fraction of negative ion
     real(dp), dimension(:), allocatable :: xHplus  ! volume fraction of Hplus
     real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
+
     real(dp), dimension(:), allocatable :: rhoq    ! total free charge density in units of vsol  
-    real(dp), dimension(:), allocatable :: rhob    ! total bond charge density in units of vsol
-    real(dp), dimension(:,:), allocatable :: electPol ! elect polarization in 3d-direction 
     real(dp), dimension(:), allocatable :: qpol    ! charge density of polymer
     real(dp),dimension(:), allocatable :: epsfcn    ! dielectric constant 
     real(dp),dimension(:), allocatable :: Depsfcn   ! derivative dielectric constant
@@ -71,7 +69,6 @@ contains
         allocate(rhopolB(N),stat=ier)
         allocate(xsol(N),stat=ier)
         allocate(psi(N+2*Nx*Ny))
-        allocate(electPol(3,N+2*Nx*Ny))
         allocate(xNa(N),stat=ier)
         allocate(xK(N),stat=ier)
         allocate(xRb(N),stat=ier)
@@ -83,7 +80,6 @@ contains
         allocate(xHplus(N),stat=ier)
         allocate(xOHmin(N),stat=ier)
         allocate(rhoq(N),stat=ier)
-        allocate(rhob(N),stat=ier)
         allocate(qpol(N),stat=ier)
 
         allocate(fdis(N,nsegtypes),stat=ier)
@@ -116,7 +112,6 @@ contains
         deallocate(rhopolB)
         deallocate(xsol)
         deallocate(psi)
-        deallocate(electPol)
         deallocate(xNa)
         deallocate(xK)
         deallocate(xCa)
@@ -126,7 +121,6 @@ contains
         deallocate(xHplus)
         deallocate(xOHmin)
         deallocate(rhoq)
-        deallocate(rhob)
         deallocate(qpol)
         deallocate(fdisA)
         deallocate(fdisB)
@@ -171,7 +165,6 @@ contains
         xHplus=0.0_dp
         xOHmin=0.0_dp
         rhoq=0.0_dp
-        rhob=0.0_dp
         qpol=0.0_dp
         rhopolAL=0.0_dp
         rhopolAR=0.0_dp
@@ -181,32 +174,55 @@ contains
         fdisB=0.0_dp
         xpolABz=0.0_dp
         psi=0.0_dp
-        electPol=0.0_dp
            
     end subroutine init_field
 
 
     !  debug routine
 
-    subroutine check_integral_rholpolAB(sumrhopolAB, checkintegralAB)
+    subroutine check_integral_rholpol_multi(sumrhopol, checkintegral)
 
         use volume, only : volcell, ngr
-        use globals, only : nsize, nsegAB, systype
+        use globals, only : nsize, systype, nseg, nsegtypes
 
-        real(dp), intent(inout) :: sumrhopolAB,checkintegralAB 
+        real(dp), intent(inout) :: sumrhopol,checkintegral 
+        integer :: t,i
+        real(dp) :: intrhopol
+
+        sumrhopol=0.0_dp
+        do t=1,nsegtypes
+            do i=1,nsize
+                sumrhopol=sumrhopol+rhopol(i,t)
+            enddo  
+        enddo      
+        sumrhopol=sumrhopol*volcell
+
+        intrhopol=nseg*ngr
+        if(systype=="electdouble") intrhopol=intrhopol*2.0_dp  
+
+        checkintegral=sumrhopol-intrhopol
+
+    end subroutine
+
+    subroutine check_integral_rholpolAB(sumrhopol, checkintegral)
+
+        use volume, only : volcell, ngr
+        use globals, only : nsize, systype, nseg
+
+        real(dp), intent(inout) :: sumrhopol,checkintegral 
         integer :: i
-        real(dp) :: intrhopolAB
+        real(dp) :: intrhopol
 
-        sumrhopolAB=0.0_dp
+        sumrhopol=0.0_dp
         do i=1,nsize
-            sumrhopolAB=sumrhopolAB+(rhopolA(i)+rhopolB(i))
+            sumrhopol=sumrhopol+(rhopolA(i)+rhopolB(i))
         enddo    
-        sumrhopolAB=sumrhopolAB*volcell
+        sumrhopol=sumrhopol*volcell
 
-        intrhopolAB=nsegAB*ngr
-        if(systype=="electdouble") intrhopolAB=intrhopolAB*2.0_dp  
+        intrhopol=nseg*ngr
+        if(systype=="electdouble") intrhopol=intrhopol*2.0_dp  
 
-        checkintegralAB=sumrhopolAB-intrhopolAB
+        checkintegral=sumrhopol-intrhopol
 
     end subroutine
         
@@ -253,12 +269,12 @@ contains
 
         ! .. number of A and B monomors 
         npolA=0
-        do s=1,nsegAB
+        do s=1,nseg
            if(isAmonomer(s).eqv..true.) then
               npolA=npolA+1
            endif
         enddo
-        npolB=nsegAB-npolA
+        npolB=nseg-npolA
           
 
         if(npolA/=0) then

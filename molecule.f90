@@ -18,10 +18,25 @@ module molecules
     end type moleclist
 
 
-    type dipolelist
-        real(dp) :: sol
+    type bornmoleclist
         real(dp) :: pol
-    end type dipolelist
+        real(dp) :: polCa
+        real(dp) :: polMg
+        real(dp) :: Na
+        real(dp) :: Cl
+        real(dp) :: K
+        real(dp) :: Ca
+        real(dp) :: Mg
+        real(dp) :: Hplus
+        real(dp) :: OHmin
+        real(dp) :: Rb 
+    end type bornmoleclist 
+
+
+    !type dipolelist
+    !    real(dp) :: sol
+    !    real(dp) :: pol
+    !end type dipolelist
 
   
 end module molecules
