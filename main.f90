@@ -110,6 +110,7 @@ program main
     call init_surface(bcflag,nsurf)
     call init_sigma()
 
+    print*,"lseg=",lseg
     print*,"#nsegtypes   lsegAA    vpol"
     do i=1,nsegtypes
         print*,i,lsegAA(i),vpol(i)
@@ -119,7 +120,8 @@ program main
         print*,i,type_of_monomer(i),type_of_monomer_char(i),isAmonomer(i)
     enddo 
     print*,"######"
-   
+        
+
     if(isVdW) then 
         call make_VdWcoeff(info)
         if(info/=0) then
@@ -253,7 +255,7 @@ program main
 
                 call make_guess(x, xguess, isfirstguess)
                 call solver(x, xguess, tol_conv, fnorm, issolution)
-                !call fcnptr(x, fvec, neq)
+                call fcnptr(x, fvec, neq)
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
                     dest =i

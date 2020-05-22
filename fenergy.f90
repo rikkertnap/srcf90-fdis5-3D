@@ -39,7 +39,7 @@ module energy
     type(moleclist) :: FEtrans,FEchempot,FEtransbulk,FEchempotbulk
     type(moleclist) :: deltaFEtrans,deltaFEchempot
 
-    real(dp) :: sumphi              ! check integral over phiA 
+    real(dp), dimension(:), allocatable :: sumphi  ! check integral over phiA 
     real(dp) :: sumphiA             ! check integral over phiA
     real(dp) :: sumphiB             ! check integral over phiB
     real(dp) :: qres                ! charge charge
@@ -147,6 +147,7 @@ contains
         qres = (volcell/vsol)*qres
         sumphiA = volcell*sumphiA
         sumphiB = volcell*sumphiB
+        checkphi= nseg*ngr-sumphiA-sumphiB
 
 
         if(systype=="nopoly".or.systype=="neutral") then 
@@ -522,21 +523,26 @@ contains
         use VdW
         use surface
 
-        implicit none
-
         !  .. local arguments 
     
         real(dp) :: sigmaq0,psi0
         real(dp) :: qsurf(2)           ! total charge on surface 
         real(dp) :: qsurfg             ! total charge on grafting surface  
-        integer  :: i,j,s,g               ! dummy variables 
+        integer  :: i,j,s,g,t          ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
         integer  :: nzadius
         real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
         real(dp) :: FEchemSurftmp
+        integer  :: ier
+        logical  :: alloc_fail
+        
+        if (.not. allocated(sumphi))  then 
+            allocate(sumphi(nsegtypes),stat=ier)
+            if( ier/=0 ) alloc_fail=.true.
+        endif
 
-        !  .. computation of free energy 
-    
+        !  .. computation of free energy
+
         FEpi  = 0.0_dp
         FErho = 0.0_dp
         FEel  = 0.0_dp
@@ -557,12 +563,22 @@ contains
             qres = qres + rhoq(i)
         enddo
 
+        checkphi=nseg*ngr
+        do t=1,nsegtypes
+            sumphi(t)=0.0_dp
+            do i=1,nsize    
+                sumphi(t) = sumphi(t) + rhopol(i,t)
+            enddo
+            sumphi(t) = volcell*sumphi(t)
+            checkphi = checkphi-sumphi(t)
+            print*,"fcnenergy brush mul rank=",rank,"t=",t,"sum= ",sumphi(t),"check=",checkphi
+        enddo
+
         FEel  = (volcell/vsol)*FEel/2.0_dp  ! carefully check this
         FEpi  = (volcell/vsol)*FEpi
         FErho = (volcell/vsol)*FErho
-        qres = (volcell/vsol)*qres
-        sumphiA = volcell*sumphiA
-        sumphiB = volcell*sumphiB
+        qres  = (volcell/vsol)*qres
+
 
         ! .. calcualtion of FEVdW
         if(isVdW) then 

@@ -566,7 +566,9 @@ contains
         case('brush_mul')    
             sigmaABL = ngr/(nsurf*delta*delta)
             sigmaABR = 0.0_dp
-            sigmaAB  = 0.0_dp    
+            sigmaAB  = sigmaABL 
+            sigma    = sigmaABL    
+
         case default
             print*,"Error: init_sigma: systype wrong value"
             print*,"stopping program"

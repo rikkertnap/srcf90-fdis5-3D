@@ -980,6 +980,7 @@ subroutine output_brush_mul
     write(un_sys,*)'q residual  = ',qres
     write(un_sys,*)'tol_conv    = ',tol_conv
     write(un_sys,*)'sigma       = ',sigma
+    write(un_sys,*)'sumphi      = ',(sumphi(t),t=1,nsegtypes)
     write(un_sys,*)'check phi   = ',checkphi 
     write(un_sys,*)'FEq         = ',FEq 
     write(un_sys,*)'FEpi        = ',FEpi
@@ -1958,14 +1959,14 @@ subroutine output_individualcontr_fe
 
         elseif(systype=="neutral") then 
             
-            write(rstr,'(F5.3)')sigmaAB*delta 
+            write(rstr,'(F5.3)')sigmaAB
             fnamelabel="sg"//trim(adjustl(rstr)) 
             write(rstr,'(F5.3)')VdWepsBB
             fnamelabel=trim(fnamelabel)//"VdWepsB"//trim(adjustl(rstr))//".dat"
 
         elseif(systype=="brush_mul") then 
             
-            write(rstr,'(F5.3)')sigmaAB*delta 
+            write(rstr,'(F5.3)')sigmaAB
             fnamelabel="sg"//trim(adjustl(rstr)) 
             write(rstr,'(F5.3)')cNaCl
             fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
@@ -2137,7 +2138,7 @@ subroutine compute_vars_and_output()
     use globals, only : systype
     use energy
     use field
-    use parameters, only : heightAB
+    use parameters, only : heightAB,height
 
     select case (systype)
     case ("elect","electA","electdouble")
@@ -2157,7 +2158,8 @@ subroutine compute_vars_and_output()
     
     case ("brush_mul")
 
-        call fcnenergy()        
+        call fcnenergy()    
+        call average_density_z(xpol,xpolABz,height)    
         call output()           ! writing of output
 
     case default   

@@ -161,7 +161,7 @@ contains
                 do s=1,nseg        ! loop over segments 
                     k=indexchain(s,gn,c)
                     t=type_of_monomer(s)                
-                    pro = pro*exppi(k,t)
+                    pro = pro *exppi(k,t)
                 enddo    
                 local_q(gn) = local_q(gn)+pro
                 do s=1,nseg
@@ -172,8 +172,9 @@ contains
             enddo
 
             do t=1,nsegtypes
-                do i=1,n                   ! normalization with local_qi(g) 
-                    local_rhopol(i,t)=local_rhopol(i,t)+rhopol_tmp(i,t)/local_q(gn)
+                do i=1,nsize                   ! normalization with local_qi(g) 
+                    local_rhopol(i,t)=local_rhopol(i,t)+rhopol_tmp(i,t)/local_q(gn) 
+                    rhopol_tmp(i,t)=0.0_dp     ! reset of rhopol_tmp 
                 enddo
             enddo
         enddo    
@@ -182,15 +183,17 @@ contains
 
         if (rank==0) then 
           
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-            enddo
-             
+
             do gn=1,ngr_node
                 g = gn+ rank*ngr_node
                 q(g)=local_q(gn)
             enddo
 
+
+            do t=1,nsegtypes
+                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+            enddo
+             
             do i=1, size-1
                 source = i
                 call MPI_RECV(local_q, ngr_node, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
@@ -250,10 +253,10 @@ contains
             do t=1,nsegtypes
                 call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
                     MPI_COMM_WORLD, ierr)
-                !call MPI_SEND(local_rhopol(:,t), nsize,MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
             enddo
 
-            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+
+            call MPI_SEND(local_q, ngr_node , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
          
         endif
 
