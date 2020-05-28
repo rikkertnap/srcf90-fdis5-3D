@@ -5,13 +5,14 @@ module field
 
     implicit none
     
-    real(dp), dimension(:), allocatable :: xpol     ! volume fraction of polymer     
+    real(dp), dimension(:), allocatable :: xpol     ! volume fraction of polymer   
+    real(dp), dimension(:), allocatable :: xpolz ! total volume fraction of polymer in z-direction  
     real(dp), dimension(:,:), allocatable :: rhopol ! density  monomer of polymer in layer i of type t
     real(dp), dimension(:,:), allocatable :: rhopolin 
     real(dp), dimension(:), allocatable :: rhoqpol  ! charge density  monomer of polymer in layer i 
 
     real(dp), dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer 
-    real(dp), dimension(:), allocatable :: xpolABz ! total volume fraction of polymer in z-direction
+    !real(dp), dimension(:), allocatable :: xpolABz ! total volume fraction of polymer in z-direction
     real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer 
     real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer 
 
@@ -29,7 +30,7 @@ module field
     real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
 
     real(dp), dimension(:), allocatable :: rhoq    ! total free charge density in units of vsol  
-    real(dp), dimension(:), allocatable :: qpol    ! charge density of polymer
+    !real(dp), dimension(:), allocatable :: qpol    ! charge density of polymer
     real(dp),dimension(:), allocatable :: epsfcn    ! dielectric constant 
     real(dp),dimension(:), allocatable :: Depsfcn   ! derivative dielectric constant
 
@@ -41,6 +42,7 @@ module field
     
     real(dp), dimension(:), allocatable :: qAB      ! normalization partion fnc polymer 
     real(dp), dimension(:), allocatable :: qABL,qABR
+
     real(dp), dimension(:), allocatable :: rhopolAL ! density A monomer of polymer z=0 surface
     real(dp), dimension(:), allocatable :: rhopolBL ! density B monomer of polymer z=0 surface
     real(dp), dimension(:), allocatable :: rhopolAR ! density A monomer of polymer z=nz delta surface 
@@ -59,12 +61,11 @@ contains
         N=Nx*Ny*Nz
 
         allocate(xpol(N),stat=ier)
+        allocate(xpolz(Nz),stat=ier)
         allocate(rhopol(N,nsegtypes),stat=ier) 
         allocate(rhopolin(N,nsegtypes),stat=ier) 
-        
         allocate(rhoqpol(N),stat=ier) 
         allocate(xpolAB(N),stat=ier)
-        allocate(xpolABz(Nz),stat=ier)
         allocate(rhopolA(N),stat=ier)
         allocate(rhopolB(N),stat=ier)
         allocate(xsol(N),stat=ier)
@@ -80,8 +81,6 @@ contains
         allocate(xHplus(N),stat=ier)
         allocate(xOHmin(N),stat=ier)
         allocate(rhoq(N),stat=ier)
-        allocate(qpol(N),stat=ier)
-
         allocate(fdis(N,nsegtypes),stat=ier)
         allocate(fdisA(N,7),stat=ier)
         allocate(fdisB(N,5),stat=ier)
@@ -104,10 +103,10 @@ contains
     subroutine deallocate_field()
         
         deallocate(xpol)
+        deallocate(xpolz)
         deallocate(rhopol)
         deallocate(rhoqpol)
         deallocate(xpolAB)
-        deallocate(xpolABz)
         deallocate(rhopolA)
         deallocate(rhopolB)
         deallocate(xsol)
@@ -121,7 +120,6 @@ contains
         deallocate(xHplus)
         deallocate(xOHmin)
         deallocate(rhoq)
-        deallocate(qpol)
         deallocate(fdisA)
         deallocate(fdisB)
         deallocate(rhopolAL)
@@ -165,14 +163,13 @@ contains
         xHplus=0.0_dp
         xOHmin=0.0_dp
         rhoq=0.0_dp
-        qpol=0.0_dp
         rhopolAL=0.0_dp
         rhopolAR=0.0_dp
         rhopolBL=0.0_dp
         rhopolBR=0.0_dp
         fdisA=0.0_dp
         fdisB=0.0_dp
-        xpolABz=0.0_dp
+        xpolz=0.0_dp
         psi=0.0_dp
            
     end subroutine init_field
@@ -225,15 +222,53 @@ contains
         checkintegral=sumrhopol-intrhopol
 
     end subroutine
-        
+       
 
     subroutine charge_polymer()
 
-        use globals
-        use volume
-        use parameters
+        use globals, only : systype
+        
+        select case (systype) 
+        case ("brush_mul")
+            call charge_polymer_multi()
+        case ("brushssdna")
+            print*,"warning not yet implemented yet."
+        case ("elect","electA","electVdWAB","electdouble")   
+            call charge_polymer_binary()
+        case default
+            print*,"Error in average_charge_polymer subroutine"    
+            print*,"Wrong value systype : ", systype
+            stop
+        end select  
+       
 
-        implicit none
+    end subroutine charge_polymer
+
+    subroutine charge_polymer_multi()
+
+        use globals, only : nsize, nsegtypes
+        use volume, only : volcell
+        use parameters, only : zpol, qpol, qpol_tot
+
+        integer :: i, t
+
+        qpol_tot=0.0_dp
+        do t=1,nsegtypes
+            qpol(t)=0.0_dp
+            do i=1,nsize
+                qpol(t)=qpol(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
+            enddo
+            qpol(t)=qpol(t)*volcell
+            qpol_tot=qpol_tot+qpol(t)
+        enddo
+
+    end subroutine charge_polymer_multi
+
+    subroutine charge_polymer_binary()
+
+        use globals, only : nsize
+        use volume, only : volcell
+        use parameters, only : zpolA, zpolB, qpolA,qpolB, qpol_tot
 
         integer :: i
 
@@ -241,31 +276,83 @@ contains
         qpolB=0.0_dp
 
         do i=1,nsize
-            qpolA=qpolA+(zpolA(1)*fdisA(1,i)*rhopolA(i)+zpolA(4)*fdisA(4,i)*rhopolA(i))
-            qpolB=qpolB+(zpolB(1)*fdisB(1,i)*rhopolB(i)+zpolB(4)*fdisB(4,i)*rhopolB(i))
+            qpolA=qpolA+(zpolA(1)*fdisA(i,1)*rhopol(i,1)+zpolA(4)*fdisA(i,4)*rhopol(i,1))
+            qpolB=qpolB+(zpolB(1)*fdisB(i,1)*rhopol(i,2)+zpolB(4)*fdisB(i,4)*rhopol(i,2))
         enddo
 
         qpolA=qpolA*volcell
         qpolB=qpolB*volcell
         qpol_tot=qpolA+qpolB
 
-    end subroutine charge_polymer
+    end subroutine charge_polymer_binary
 
-    ! .. post : return average charge of state of 
-    !   of polymers
+    ! .. post : return average charge of state of polymer
 
     subroutine average_charge_polymer()
-        
-        use globals
-        use volume
-        use parameters
-        use chains
 
-        implicit none 
+        use globals, only : systype
+        
+        select case (systype) 
+        case ("brush_mul")
+            call average_charge_polymer_multi()
+        case ("brushssdna")
+            print*,"warning not yet implemented yet."
+        case ("elect","electA","electVdWAB","electdouble")   
+            call average_charge_polymer_binary()
+        case default
+            print*,"Error in average_charge_polymer subroutine"    
+            print*,"Wrong value systype : ", systype
+            stop
+        end select  
+
+    end subroutine average_charge_polymer
+        
+
+    subroutine average_charge_polymer_multi()
+
+        use globals, only : nseg,nsize,nsegtypes
+        use volume, only : volcell,ngr
+        use parameters, only : zpol, avfdis
+        use chains, only: type_of_monomer
+
+        integer, dimension(:), allocatable   :: npol
+        integer :: i,s,t
+
+        allocate(npol(nsegtypes))
+        npol=0.0_dp
+
+        do s=1,nseg
+            t=type_of_monomer(s)
+            npol(t)=npol(t)+1
+        enddo   
+
+        do t=1,nsegtypes
+            if(npol(t)/=0) then
+                avfdis(t)=0.0_dp
+                do i=1,nsize
+                    avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
+                enddo
+                avfdis(t)=avfdis(t)*volcell/(npol(t)*ngr)        
+            else
+                 avfdis(t)=0.0_dp
+            endif
+        enddo         
+
+        deallocate(npol)    
+
+    end subroutine average_charge_polymer_multi
+        
+
+    subroutine average_charge_polymer_binary()
+        
+        use globals, only : nseg,nsize
+        use volume, only : volcell
+        use parameters
+        use chains, only : isAmonomer
 
         integer :: i,s,k
         integer   :: npolA,npolB
-        real(dp)  :: sigmaLR  
+        integer, parameter :: A=1, B=2
 
         ! .. number of A and B monomors 
         npolA=0
@@ -281,21 +368,19 @@ contains
            do k=1,5
               avfdisA(k)=0.0_dp
               do i=1,nsize
-                 avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopolA(i)
+                 avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopol(i,A)
               enddo
               avfdisA(k)=avfdisA(k)*volcell/(npolA*ngr)
            enddo
         else
-           do k=1,5
-              avfdisA(k)=0.0_dp
-           enddo
+           avfdisA=0.0_dp
         endif
 
         if(npolB/=0) then
            do k=1,5
               avfdisB(k)=0.0_dp
               do i=1,nsize
-                 avfdisB(k)=avfdisB(k)+fdisB(i,k)*rhopolB(i)
+                 avfdisB(k)=avfdisB(k)+fdisB(i,k)*rhopol(i,B)
               enddo
               avfdisB(k)=avfdisB(k)*volcell/(npolB*ngr)
            enddo
@@ -305,11 +390,10 @@ contains
            enddo
         endif
 
-    end subroutine average_charge_polymer
-  
+    end subroutine average_charge_polymer_binary
 
-  !     .. compute average height of denisty provile
-  !     .. first moment of density profile 
+    !     .. compute average height of denisty provile
+    !     .. first moment of density profile 
   
     function average_height_z(rho) result(meanz)
 
@@ -346,9 +430,7 @@ contains
 
     end function average_height_z
 
-
-
-  !     .. compute average of density or volume fraction profile in z-direction
+    !     .. compute average of density or volume fraction profile in z-direction
   
     subroutine average_density_z(xvol,xvolz,meanz)
 

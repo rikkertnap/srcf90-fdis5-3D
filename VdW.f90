@@ -29,6 +29,8 @@ module VdW
     integer, parameter :: VdW_err_vdwcoeff   = 2
     integer, parameter :: Vdw_err_systype    = 3
     integer, parameter :: VdW_err_inputfile  = 4
+    integer, parameter :: Vdw_err_vdwcoeff_exist = 5 
+    integer, parameter :: Vdw_err_vdwcoeff_not_exist = 6
 
     private
     public :: make_VdWcoeff,VdW_contribution_exp_diblock,VdW_contribution_exp_homo,VdW_contribution_exp
@@ -212,6 +214,7 @@ end subroutine allocate_VdWeps
 
 subroutine make_VdWcoeff(info)
 
+    use mpivars, only : rank
     use globals, only : systype, nsegtypes
     use volume, only : geometry
     use parameters, only : lsegPAA,lsegPAMPS, lsegAA
@@ -252,12 +255,18 @@ subroutine make_VdWcoeff(info)
         do t=1,nsegtypes
             do s=1,nsegtypes
                 lseg=(lsegAA(t)+lsegAA(s))/2.0_dp
+       
+                !call read_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
+                !print*,"rank=",rank,"info=",info
+                !if(info==VdW_err_vdwcoeff_not_exist) then 
                 call MC_VdWcoeff(lseg, VdWcoeff(:,:,:,t,s))
+                !    info=0 ! reset
+                !    if(rank==0) call write_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
+                !endif    
             enddo
         enddo    
 
     else
-
         text="make_VdWcoeff called with wrong systype"
         call print_to_log(LogUnit,text)
         if(present(info)) info= VdW_err_systype
@@ -612,7 +621,7 @@ function VdW_energy_homo(rhopol)result(EVdW)
         enddo
     enddo
 
-    EVdW = VdWepsAA*Etemp*volcell/2.0_dp
+    EVdW = -VdWepsAA*Etemp*volcell/2.0_dp
 
 end function
 
@@ -671,7 +680,7 @@ function VdW_energy_diblock(rhopolA,rhopolB)result(EVdW)
         enddo
     enddo
 
-    EVdW = (VdWepsAA*EtempAA+2.0_dp*VdWepsAB*EtempAB+VdWepsBB*EtempBB)*volcell/2.0_dp
+    EVdW = -(VdWepsAA*EtempAA+2.0_dp*VdWepsAB*EtempAB+VdWepsBB*EtempBB)*volcell/2.0_dp
 
 end function
 
@@ -730,7 +739,7 @@ function VdW_energy(rhopol)result(EVdW)
                 enddo
             enddo
 
-            EVdW = VdWeps(s,t)*Etemp*volcell/2.0_dp
+            EVdW = EVdW-VdWeps(s,t)*Etemp*volcell/2.0_dp
         enddo
     enddo            
 
@@ -842,8 +851,226 @@ function ipbc(ival,imax) result(intpbc)
 
 end function
 
+!  return values 
+!  info = 0                      : write succesfull 
+!  info = VdW_err_vdwcoeff       : error opening file to write 
+!  info = VdW_err_vdwcoeff_exist : write file existes
+!  info otherwise                : write error 
 
-  
+subroutine write_VdWcoeff(lseg,VdWcoeff,info)
+    
+    use globals, only : nsize 
+    use parameters, only : VdWcutoff
+    use volume, only : delta, geometry 
+    use myutils, only : newunit
+
+    real(dp), intent(in)    :: lseg ! size  segment 
+    real(dp), intent(inout) :: VdWcoeff(-range:range, -range:range, -range:range)
+    integer,  intent(out), optional :: info
+
+    character(len=40) :: fname
+    integer :: ios, ier, un_VdW  ! un = unit number
+    character(len=10)  :: rstr
+    logical :: exist
+    integer :: ix,iy,iz
+
+
+    if (present(info)) info = 0
+
+    ! open new file 
+    write(rstr,'(F5.3)')lseg
+    fname="vdwcoeff_lseg"//trim(adjustl(rstr))
+    fname=trim(fname)//"_"//trim(adjustl(geometry))//".dat"
+    fname=trim(fname)
+    
+    inquire(file=fname,exist=exist)
+
+    print*,"Exist=",exist
+    if(.not.exist) then
+        open(unit=newunit(un_VdW),file=fname,iostat=ios,status='new')
+        if(ios >0 ) then
+            print*, 'Error opening file : iostat =', ios
+            if (present(info)) info = VdW_err_vdwcoeff
+            return
+        endif
+    else
+        print*,'VdWcoeff file allready exit'
+        if (present(info)) info = VdW_err_vdwcoeff_exist
+        return
+    endif
+
+
+    ! write preamble 
+    write(un_VdW,*,iostat=ios)"range     ",range
+    write(un_VdW,*,iostat=ios)"geometry      ",geometry
+    write(un_VdW,*,iostat=ios)"lseg        ",lseg
+    write(un_VdW,*,iostat=ios)"delta       ",delta
+    write(un_VdW,*,iostat=ios)"cutoff      ",VdWcutoff
+    write(un_VdW,*,iostat=ios)"###" ! end of preamble
+
+    ! write value VdWcoefficient
+    do ix = -range, range
+        do iy = -range, range
+            do iz = -range, range
+                 write(un_VdW,*,iostat=ios)VdWcoeff(ix, iy, iz) 
+                 print*,ix,iy,iz,VdWcoeff(ix, iy, iz) 
+            enddo
+        enddo
+    enddo
+
+    ! close file
+    close(un_VdW)
+
+    ! succesfull write 
+    if(ios==0 ) then 
+        if (present(info)) info = 0
+    endif    
+
+end subroutine write_VdWcoeff
+
+
+!  return values 
+!  info = 0                          : read succesfull 
+!  info = VdW_err_vdwcoeff           : error opening file to read 
+!  info = VdW_err_vdwcoeff_not_exist : read file does not existes
+!  info otherwise                    : read error 
+
+subroutine read_VdWcoeff(lseg,VdWcoeff,info)
+    
+    use globals, only : nsize 
+    use parameters, only : VdWcutoff
+    use volume, only : delta, geometry 
+    use myutils, only : newunit
+
+
+    real(dp), intent(in)    :: lseg ! size  segment 
+    real(dp), intent(inout) :: VdWcoeff(-range:range, -range:range, -range:range)
+    integer,  intent(out), optional :: info
+    
+    character(len=40) :: fname
+    integer :: ios, ier, un_input  ! un = unit number
+    character(len=10)  :: rstr
+    
+    !     .. local variables 
+    integer  :: range_file
+    real(dp) :: lseg_file
+    real(dp) :: delta_file
+    real(dp) :: VdWcutoff_file
+    character(len=15) :: geometry_file
+    integer  :: ix,iy,iz
+    character(len=100) :: buffer, label
+    integer :: pos, line
+    logical :: not_end_preamble, exist
+    real(dp) :: val
+   
+    if (present(info)) info = 0
+
+    ! .. reading in of variables from file 
+    write(rstr,'(F5.3)')lseg
+    fname="vdwcoeff_lseg"//trim(adjustl(rstr))
+    fname=trim(fname)//"_"//trim(adjustl(geometry))//".dat"
+    fname=trim(fname)
+   
+    inquire(file=fname,exist=exist)
+
+    if(exist) then 
+        open(unit=newunit(un_input),file=fname,iostat=ios,status='old')
+        if(ios >0 ) then
+            print*, 'Error opening input file ',fname,': iostat =', ios
+            if (present(info)) info = VdW_err_inputfile
+            return
+        endif
+    else
+        if (present(info)) info = VdW_err_vdwcoeff_not_exist
+        return
+    endif        
+    
+    ios=0 
+    line = 0
+    not_end_preamble=.true.
+
+    ! ios<0 : if an end of record condition is encountered or if an end of file condition was detected.  
+    ! ios>0 : if an error occured 
+    ! ios=0 : otherwise.
+
+    do while (ios == 0 .and. not_end_preamble) ! scans preamble 
+
+        read(un_input, '(A)', iostat=ios) buffer
+
+        if (ios == 0) then
+        
+            line = line + 1
+
+            !  Split label and data based on first occurence of a whitespace
+            pos = scan(buffer,'     ')
+            label = buffer(1:pos)
+            buffer = buffer(pos+1:)
+
+            select case (label) !list-directed The  charackter variable is treated as an 'internal file'
+            case ('range')
+                read(buffer,*,iostat=ios) range_file
+            case ('geometry')
+                read(buffer,*,iostat=ios) geometry_file
+            case ('lseg')
+                read(buffer,*,iostat=ios) lseg_file
+            case ('delta')
+                read(buffer,*,iostat=ios) delta_file
+            case ('cutoff')
+                read(buffer,*,iostat=ios) VdWcutoff_file
+            case ('###') ! end of preamble
+                not_end_preamble=.false. 
+            case default
+            end select
+        endif
+
+    enddo     
+    
+    if(ios >0 ) then
+        print*, 'Error parsing file : iostat =', ios
+        if (present(info)) info = VdW_err_vdwcoeff
+        return
+    endif
+
+    if(delta_file /= delta) then 
+       print*,'delta in VdWcoeff file not equal delta' 
+       print*,'delta_file = ',delta_file, ' delta = ',delta
+       stop
+    endif
+
+    if(VdWcutoff_file /= VdWcutoff) then 
+       print*,'cuttoff in VdWcoeff file not equal imposed cutoff'
+       print*,'cutoff_file = ',VdWcutoff_file, ' cutoff = ',VdWcutoff
+       stop
+    endif
+    
+    if(range_file /= range) then
+       print*,'range in VdWcoeff file not large enough'
+       print*,'range_file=',range_file,'range =',range
+       stop
+    endif
+    
+    if(geometry_file /= geometry) then 
+       print*,'geometry in VdWcoeff file not equal delta'
+       stop
+    endif        
+    
+    ! read file
+
+    do ix=-range,range
+        do iy=-range,range
+            do iz=-range,range
+                read(un_input,*)VdWcoeff(ix,iy,iz)
+                print*,ix,iy,iz,VdWcoeff(ix, iy, iz) 
+            enddo
+        enddo
+    enddo    
+
+    close(un_input)
+    
+    
+end subroutine read_VdWcoeff
+
+
 end module VdW
 
       

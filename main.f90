@@ -35,6 +35,7 @@ program main
     use myio
     use myutils
 
+
     implicit none
 
     real(dp),  dimension(:), allocatable :: x         ! iteration vector
@@ -42,7 +43,7 @@ program main
     real(dp),  dimension(:), allocatable :: xstored   ! stored iteration vector
     real(dp),  dimension(:), allocatable :: fvec
 
-    integer :: i             ! dummy indices
+    integer :: i
     logical :: use_xstored
     logical :: isfirstguess
     logical :: issolution
@@ -119,8 +120,7 @@ program main
     do i=1,nseg
         print*,i,type_of_monomer(i),type_of_monomer_char(i),isAmonomer(i)
     enddo 
-    print*,"######"
-        
+    print*,"######"   
 
     if(isVdW) then 
         call make_VdWcoeff(info)
@@ -131,7 +131,7 @@ program main
             print*,text
             stop
         endif
-    endif   
+    endif  
     
     !  .. computation starts
 
@@ -188,7 +188,7 @@ program main
                 enddo
             endif
 
-            call FEconf_entropy(FEconf) ! parrallel computation of conf entropy
+            call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf entropy
 
             if(rank==0) then
 
@@ -224,8 +224,6 @@ program main
 
         if(runtype=="rangepH") then 
             loop => pH
-        !else if (runtype=="rangeVdWeps") then
-        !    loop => VdWeps
         else
             if(associated(loop)) nullify(loop) ! make explict that no association is made
         endif  
@@ -245,7 +243,8 @@ program main
 
         do while (loop%min<=loop%val.and.loop%val<=loop%max.and.&
                 (abs(loop%stepsize)>=loop%delta))
-
+            
+            
             call init_vars_input()  ! sets up chem potenitals
             call chain_filter()
             call set_fcn()
@@ -255,6 +254,7 @@ program main
 
                 call make_guess(x, xguess, isfirstguess)
                 call solver(x, xguess, tol_conv, fnorm, issolution)
+
                 call fcnptr(x, fvec, neq)
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
@@ -274,7 +274,7 @@ program main
                 enddo
             endif
 
-            call FEconf_entropy(FEconf) ! parrallel computation of conf FEconf_entropy
+            call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf FEconf_entropy
 
             if(rank==0) then
 
@@ -312,6 +312,10 @@ program main
     call MPI_FINALIZE(ierr)
 
     deallocate(xstored)
+    deallocate(x)
+    deallocate(xguess)
+    deallocate(fvec)
+      
     call deallocate_field()
 
     text="program end"

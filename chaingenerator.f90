@@ -89,17 +89,14 @@ subroutine make_chains_mc()
     !     .. executable statements
     !     .. initializations of variables     
        
-
-    conf=1                  ! counter for conformations
-    seed=435672             ! *(rank+1) ! seed for random number generator  different on each node
-    maxnchains=12
-    maxntheta =6            ! maximum number of rotation in xy-plane  
-
-    theta_angle= 2.0_dp*pi/maxntheta
-    
-    Lz= nz*delta            ! maximum height box 
-    Lx= nx*delta            ! maximum width box 
-    Ly= ny*delta            ! maximum depth box 
+    conf = 1                  ! counter for conformations
+    seed = 435672             ! *(rank+1) ! seed for random number generator  different on each node
+    maxnchains = 12
+    maxntheta = 6            ! maximum number of rotation in xy-plane  
+    theta_angle = 2.0_dp*pi/maxntheta
+    Lz = nz*delta            ! maximum height box 
+    Lx = nx*delta            ! maximum width box 
+    Ly = ny*delta            ! maximum depth box 
 
     if(isHomopolymer.eqv..FALSE.) then 
         allocate(lsegseq(nseg))
@@ -126,10 +123,10 @@ subroutine make_chains_mc()
 
                 do ntheta=1,maxntheta                  ! rotation in xy-plane
 
-                    theta= ntheta * theta_angle          
+                    theta = ntheta * theta_angle          
                     do s=1,nseg
-                        xpp(s)= xp(s)*cos(theta)+yp(s)*sin(theta) 
-                        ypp(s)=-xp(s)*sin(theta)+yp(s)*cos(theta)   
+                        xpp(s) = xp(s)*cos(theta)+yp(s)*sin(theta) 
+                        ypp(s) =-xp(s)*sin(theta)+yp(s)*cos(theta)   
                     enddo    
 
                     do gn=1,ngr_node                   ! loop over grafted points per node
@@ -143,28 +140,28 @@ subroutine make_chains_mc()
                         xpt =  position_graft(g,1)  !x_ngr(ix)                ! position of graft point
                         ypt =  position_graft(g,2)  !y_ngr(iy) 
                         
-                        weightchain(gn,conf)=.TRUE.  ! init weight     
+                        weightchain(gn,conf) = .TRUE.  ! init weight     
 
                         do s=1,nseg
 
                             ! .. translation onto correct grafting area translation in xy plane 
-                            x(s)=xpp(s)+xpt
-                            y(s)=ypp(s)+ypt
+                            x(s) = xpp(s)+xpt
+                            y(s) = ypp(s)+ypt
 
                             ! .. check z coordinate 
                             if((0>zp(s)).or.(zp(s)>Lz)) then 
-                                weightchain(gn,conf)=.FALSE. 
+                                weightchain(gn,conf) = .FALSE. 
                                 print*,"conf=",conf,"s=",s,"zp=",zp(s)
                             endif   
 
                             ! .. periodic boundary conditions in x-direction and y-direction  
-                            x(s)=pbc(x(s),Lx)
-                            y(s)=pbc(y(s),Ly)
+                            x(s) = pbc(x(s),Lx)
+                            y(s) = pbc(y(s),Ly)
 
                             ! .. transforming form real- to lattice coordinates                 
-                            xc=int(x(s)/delta)+1
-                            yc=int(y(s)/delta)+1
-                            zc=int(zp(s)/delta)+1
+                            xc = int(x(s)/delta)+1
+                            yc = int(y(s)/delta)+1
+                            zc = int(zp(s)/delta)+1
 
                             if(weightchain(gn,conf).eqv..TRUE.) then
                                 call linearIndexFromCoordinate(xc,yc,zc,idx)
@@ -178,7 +175,7 @@ subroutine make_chains_mc()
                                        
                     enddo     ! end loop over graft points
 
-                    conf=conf +1
+                    conf = conf +1
 
                 enddo         ! end loop over rotations
             
@@ -196,7 +193,7 @@ subroutine make_chains_mc()
 
                 do ntheta=1,maxntheta                  ! rotation in xy-plane
 
-                    theta= ntheta * theta_angle          
+                    theta = ntheta * theta_angle          
                     do s=1,nseg
                         xpp(s)= xp(s)*cos(theta)+yp(s)*sin(theta) 
                         ypp(s)=-xp(s)*sin(theta)+yp(s)*cos(theta)   
@@ -215,15 +212,15 @@ subroutine make_chains_mc()
                         do s=1,nseg
 
                             ! .. translation onto correct grafting area translation in xy plane 
-                            x(s)=ut(xpp(s),ypp(s))+xpt
-                            y(s)=vt(xpp(s),ypp(s))+ypt
+                            x(s) = ut(xpp(s),ypp(s))+xpt
+                            y(s) = vt(xpp(s),ypp(s))+ypt
 
                             ! .. check z coordinate 
                             if((0>zp(s)).or.(zp(s)>Lz)) weightchain(gn,conf)=.FALSE. 
 
                             ! .. periodic boundary conditions in x-direction and y-direction  
-                            x(s)=pbc(x(s),Lx)
-                            y(s)=pbc(y(s),Ly)
+                            x(s) = pbc(x(s),Lx)
+                            y(s) = pbc(y(s),Ly)
 
                             ! .. transforming form real- to lattice coordinates                 
                             xc=int(x(s)/delta)+1
@@ -242,7 +239,7 @@ subroutine make_chains_mc()
                                        
                     enddo         ! end loop over graft points
 
-                    conf=conf +1  ! end loop over rotations
+                    conf = conf +1  ! end loop over rotations
 
                 enddo     
             
@@ -255,8 +252,14 @@ subroutine make_chains_mc()
         endif
      
     enddo                     ! end while loop
-            
-    !     .. end chains generation 
+    
+    do gn=1,ngr_node
+        do conf=1,cuantas
+            exp_energychain(gn,conf) = 1.0_dp
+        enddo     
+    enddo   
+
+    !  .. end chains generation 
       
     write(istr,'(I4)')rank
     text='AB Chains generated on node '//istr
@@ -267,7 +270,7 @@ subroutine make_chains_mc()
         allowedconf=0
         do k=1,cuantas
             if(weightchain(gn,k).eqv..TRUE.)then
-                allowedconf=allowedconf+1
+                allowedconf = allowedconf+1
             endif
         enddo
       
@@ -482,7 +485,7 @@ subroutine read_chains_lammps_XYZ(info)
                                         if(idx<=0) then
                                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                                         endif
-                                        exp_energychain(conf)=exp(-energy)
+                                        exp_energychain(gn,conf)=exp(-energy)
                                     endif
                                 enddo                    
                             enddo     ! end loop over graft points
@@ -535,10 +538,10 @@ subroutine make_chains_file()
     integer :: conf,conffile     ! counts number of conformations
     integer :: nsegfile          ! nseg in input file
     integer :: cuantasfile       ! cuantas in input file
-    real(dp)  :: chain(3,nseg+1)   ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
-    real(dp)  :: chains_rot(3,nseg+1) ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
-    real(dp)  :: x,y,z,r            ! coordinates
-    real(dp)  ::  x0,y0,z0           ! origin coordinates
+    real(dp) :: chain(3,nseg+1)   ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
+    real(dp) :: chains_rot(3,nseg+1) ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
+    real(dp) :: x,y,z,r            ! coordinates
+    real(dp) ::  x0,y0,z0           ! origin coordinates
 
     character(len=10) :: fname
     integer :: ios

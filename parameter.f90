@@ -45,7 +45,9 @@
     logical :: isVdW  
     integer :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
     integer :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
-    integer :: layeroffset
+    real(dp), parameter :: Vdwepsilon=1.0e-5_dp ! thresholds below which VdWeps is assumed to be zero
+    logical, dimension(:), allocatable :: isrhoselfconsistent
+    !integer :: layeroffset
     
     !    .. charges 
     integer :: zpolAA(7)
@@ -94,10 +96,10 @@
     character(len=3) ::  verboseflag    ! select input falg 
 
     ! .. chain variables 
-    real(dp) :: lseg    ! segment length of A polymer in nm
+    real(dp) :: lseg              ! segment length of A polymer in nm
     real(dp), dimension(:), allocatable :: lsegAA 
-    real(dp) :: lsegA              ! segment length of A polymer in nm
-    real(dp) :: lsegB              ! segment length of B polymer in nm
+    real(dp) :: lsegA             ! segment length of A polymer in nm
+    real(dp) :: lsegB             ! segment length of B polymer in nm
     real(dp) :: lsegPAA   
     real(dp) :: lsegPEG  
     real(dp) :: lsegPAMPS
@@ -112,7 +114,7 @@
 
     ! ..average structural properties of layer
 
-    real(dp) :: height,heightAB    ! average height of layer 
+    real(dp) :: height             ! average height of layer 
     real(dp) :: qpolA              ! charge poly A of layer 
     real(dp) :: qpolB              ! charge poly B of layer 
     real(dp) :: qpol_tot           ! charge poly A+B of layer 
@@ -143,13 +145,8 @@
     real(dp) :: KionK               ! experimemtal equilibruim constant 
     real(dp) :: pKionK              ! experimental equilibruim constant pKion= -log[Kion]	 
   
-    !     .. bulk volume fractions 
-  
-  !  real(dp) :: pibulk             ! -ln(xsolbulk)
-  !  real(dp) :: xNaClsalt          ! volume fraction of salt in bulk
-  !  real(dp) :: xKClsalt           ! volume fraction of salt in bulk
-  !  real(dp) :: xCaCl2salt         ! volume fraction of divalent salt in bulk
-  
+    !     .. bulk concentrations 
+   
     real(dp) :: cHplus             ! concentration of H+ in bulk in mol/liter
     real(dp) :: cOHmin             ! concentration of OH- in bulk in mol/liter
     real(dp) :: cNaCl              ! concentration of salt in bulk in mol/liter
@@ -158,18 +155,16 @@
     real(dp) :: cCaCl2             ! concentration of CaCl2 in bulk in mol/liter
     real(dp) :: cMgCl2             ! concentration of MgCl2 in bulk in mol/liter
 
-
     type (looplist), target :: pH
     real(dp) :: pHbulk             ! pH of bulk pH = -log([H+])
     real(dp) :: pOHbulk            ! p0H of bulk p0H = -log([0H-])
   
-  
-
     !  retrun error of subroutine read_pKds
     integer, parameter ::  err_pKdfile_noexist = 1
     integer, parameter ::  err_pKdfile         = 2 
     integer, parameter ::  err_pKderror        = 3
 
+    private :: VdWepsilon
     private :: err_pKdfile_noexist,err_pKdfile,err_pKderror  
 
 contains
@@ -1017,6 +1012,93 @@ contains
         
 
     end subroutine read_pKds
+
+
+
+    subroutine allocate_isrhoselfconsistent(info)
+    
+        use globals, only : nsegtypes
+
+        integer,  intent(out), optional :: info
+
+        integer :: ier
+
+        if (present(info)) info = 0
+
+        if (.not. allocated(isrhoselfconsistent))  then 
+            allocate(isrhoselfconsistent(nsegtypes),stat=ier)
+        endif        
+
+        if(ier/=0) then 
+            print*,'Allocation error: allocate_isrhoselfconsistent failed'
+            if (present(info)) info = ier
+
+        endif    
+       
+    end subroutine allocate_isrhoselfconsistent
+
+    ! pre Vdweps and isVdW is allready intialized
+    ! Internally it also determines the segment type number of A constaining segments
+    ! this is also done in routine init_dna 
+    ! isrhoselfconsistent needs to be know to determine neq !!!
+
+    subroutine make_isrhoselfconsistent(isVdW,info)
+
+        use globals, only : nsegtypes,nseg,systype
+        use chains, only : type_of_monomer_char,type_of_monomer,ismonomer_chargeable
+
+        !     .. arguments 
+        logical, intent(in) ::  isVdW
+        integer,  intent(out), optional :: info
+
+        integer :: info_alloc
+        integer :: i, t, tt, s
+        logical :: flag
+        integer :: ttAA, ttP ! local location of A and P segment
+
+        call allocate_isrhoselfconsistent(info_alloc)
+        if(info_alloc/=0) then 
+            print*,"Error: in allocate_isrhoselfconsistent"
+            if(present(info)) info=info_alloc
+            return
+        endif    
+
+        ! determine segment type number of P = phosphate dsDNA or ssDNA  
+        ttP=0
+        ttAA=0
+        do s=1, nseg
+            if(type_of_monomer_char(s)=="AA") ttAA=type_of_monomer(s)
+            if(type_of_monomer_char(s)=="P")  ttP=type_of_monomer(s)
+        enddo    
+        
+
+        if(.not.isVdW) then
+            do i=1,nsegtypes
+                isrhoselfconsistent(i)=.false.
+            enddo
+
+        else 
+            do t=1,nsegtypes
+                flag=.false.
+                do tt=1,nsegtypes
+                    if(abs(VdWeps(t,tt))>Vdwepsilon) flag=.true.
+                enddo
+                isrhoselfconsistent(t)=flag
+            enddo            
+        endif    
+
+        if(ttAA>0) isrhoselfconsistent(ttAA)=.true.  ! check condition ttA==0
+        if(ttP>0) isrhoselfconsistent(ttP)=.true.    ! check condition ttP==0
+
+        ! check that we do not have simultenoeus A=Acrylic acid and P=phosphate
+        if((ttAA>0).and.(ttP>0)) then
+            print*,"Error: both A and P segments"
+            print*,"Stop program"
+            stop
+        endif   
+
+        !print*,"ttAA=",ttAA,"ttP=",ttP,ttAA>0
+    end subroutine make_isrhoselfconsistent
 
 
  end module parameters

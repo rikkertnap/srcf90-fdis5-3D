@@ -40,7 +40,7 @@ subroutine make_guess(x, xguess, isfirstguess, flagstored, xstored)
         endif 
     else if(isfirstguess) then       ! first guess
         call init_guess(x,xguess)
-    else      
+    else     
         do i=1,neq
             xguess(i)=x(i)     
         enddo
@@ -56,9 +56,9 @@ subroutine init_guess(x, xguess)
 
     real(dp), intent(in) :: x(:)          ! iteration vector 
     real(dp), intent(out) :: xguess(:)    ! guess volume fraction solvent and potential 
-        
+       
     select case (systype)
-        case ("elect")     
+        case ("elect")   
             call init_guess_elect(x,xguess)    
         case ("electdouble")
             call init_guess_electdouble(x,xguess)  
@@ -250,8 +250,8 @@ subroutine init_guess_elect(x, xguess)
     use parameters, only : xbulk, infile
     use myutils, only : newunit
   
-    real(dp) :: x(neq)       ! volume fraction solvent iteration vector 
-    real(dp) :: xguess(neq)  ! guess fraction  solvent 
+    real(dp) :: x(:)       ! volume fraction solvent iteration vector 
+    real(dp) :: xguess(:)  ! guess fraction  solvent 
   
     !     ..local variables 
     integer :: n, i
@@ -266,7 +266,7 @@ subroutine init_guess_elect(x, xguess)
         x(i+2*nsize)=0.0_dp
         x(i+3*nsize)=0.0_dp
     enddo
-  
+   
     if (infile.eq.1) then   ! infile is read in from file/stdio  
     
         write(fname(1),'(A7)')'xsol.in'
@@ -304,17 +304,18 @@ subroutine init_guess_elect(x, xguess)
             enddo
         endif            
        
-         do i=1,4
+        do i=1,4
             close(un_file(i))
         enddo
 
     endif
+
     !     .. end init from file 
-  
     do i=1,neq
         xguess(i)=x(i)
     enddo
 
+    
 end subroutine init_guess_elect
 
 
@@ -327,8 +328,8 @@ subroutine init_guess_electA(x, xguess)
     use parameters, only : xbulk, infile
     use myutils, only : newunit
   
-    real(dp) :: x(neq)       ! volume fraction solvent iteration vector 
-    real(dp) :: xguess(neq)  ! guess fraction  solvent 
+    real(dp) :: x(:)       ! volume fraction solvent iteration vector 
+    real(dp) :: xguess(:)  ! guess fraction  solvent 
   
     !     ..local variables 
     integer :: n, i

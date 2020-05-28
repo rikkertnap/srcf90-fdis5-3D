@@ -11,7 +11,7 @@ module Poisson
 
 contains
 
-     subroutine Poisson_Equation(fvec,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
+    subroutine Poisson_Equation(fvec,psi,rhoq,sigmaqSurfR,sigmaqSurfL,eps)
 
         use volume, only : geometry
 
@@ -23,7 +23,8 @@ contains
         real(dp), intent(in) :: rhoq(:)
         real(dp), intent(in) :: sigmaqSurfR(:)
         real(dp), intent(in) :: sigmaqSurfL(:)
-
+        real(dp), optional, intent(in) :: eps(:)
+    
         if(geometry=="cubic") then 
 
             call Poisson_Equation_cubic(fvec,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
@@ -36,6 +37,34 @@ contains
         
     end subroutine
         
+
+    subroutine Poisson_Equation_Eps(fvec,psi,rhoq,sigmaqSurfR,sigmaqSurfL,eps)
+
+        use volume, only : geometry
+
+        implicit none
+
+        ! input arguments 
+        real(dp), intent(inout) :: fvec(:)
+        real(dp), intent(in) :: psi(:)
+        real(dp), intent(in) :: rhoq(:)
+        real(dp), intent(in) :: sigmaqSurfR(:)
+        real(dp), intent(in) :: sigmaqSurfL(:)
+        real(dp), intent(in) :: eps(:)
+    
+        if(geometry=="cubic") then 
+
+            call Poisson_Equation_Eps_cubic(fvec,psi,rhoq,sigmaqSurfR,sigmaqSurfL,eps)
+        
+        else if (geometry=="prism") then 
+        
+              print*,"Poisson Eq with varying dielectric constant for prism coordinates not implemented yet."
+    
+        endif
+        
+    end subroutine
+
+
 
     subroutine Poisson_Equation_cubic(fvec,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
 
@@ -223,6 +252,114 @@ contains
     end subroutine Poisson_Equation_prism
 
 
+
+    subroutine Poisson_Equation_Eps_cubic(fvec,psi,rhoq,sigmaqSurfR,sigmaqSurfL,eps)
+
+        use globals, only : nsize, neq
+        use parameters, only : constqW
+        use volume, only : nx,ny,nz, linearIndexFromCoordinate
+
+        implicit none
+
+        ! input arguments 
+        real(dp), intent(inout) :: fvec(:)
+        real(dp), intent(in) :: psi(:)
+        real(dp), intent(in) :: rhoq(:)
+        real(dp), intent(in) :: sigmaqSurfR(:)
+        real(dp), intent(in) :: sigmaqSurfL(:)
+        real(dp), intent(in) :: eps(:)
+        
+        ! local variables
+        integer :: ix, iy, iz, noffset
+        integer :: idxR, idxL, id2D  
+        integer :: id, idxpls, idxmin, idypls, idymin, idzpls, idzmin
+
+        ! .. electrostatics 
+       
+        noffset=nsize
+
+        do ix=1,nx
+            do iy=1,ny
+                do iz=2,nz-1
+                    call linearIndexFromCoordinate(ix,           iy,iz  ,id)
+                    call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
+                    call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)
+                    call linearIndexFromCoordinate(ix,           iy,iz+1,idzpls)
+                    call linearIndexFromCoordinate(ix,           iy,iz-1,idzmin)
+                    call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
+                    call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+
+                    fvec(noffset+id)= -0.5_dp*( &
+                         (eps(idxpls)+eps(id)    )*psi(idxpls) +& 
+                         (eps(id)    +eps(idxmin))*psi(idxmin) +&
+                         (eps(idypls)+eps(id)    )*psi(idypls) +&
+                         (eps(id)    +eps(idymin))*psi(idymin) +& 
+                         (eps(idzpls)+eps(id)    )*psi(idzpls) +&
+                         (eps(id)    +eps(idzmin))*psi(idzmin) &
+                        -(eps(idxpls)+eps(idxmin)+eps(idypls)+eps(idymin) + &
+                          eps(idzpls)+eps(idzmin)+6.0_dp*eps(id)) *psi(id) +2.0_dp*rhoq(id)*constqW)
+                enddo
+            enddo
+        enddo    
+
+        ! boundary iz=1 
+
+        do ix=1,nx
+            do iy=1,ny
+                iz=1
+                call linearIndexFromCoordinate(ix,           iy,iz  ,id)
+                call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
+                call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)
+                call linearIndexFromCoordinate(ix,           iy,iz+1,idzpls)
+                call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
+                call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+
+              ! fvec(noffset+id)= -0.5_dp*( psi(idxpls)+psi(idxmin) +psi(idypls)+psi(idymin)+psi(idzpls) +sigmaqSurfL(id) &
+              !    - 5.0_dp*psi(id) +rhoq(id)*constqW)
+
+              fvec(noffset+id)= -0.5_dp*( &
+                         (eps(idxpls)+eps(id)    )*psi(idxpls) +& 
+                         (eps(id)    +eps(idxmin))*psi(idxmin) +&
+                         (eps(idypls)+eps(id)    )*psi(idypls) +&
+                         (eps(id)    +eps(idymin))*psi(idymin) +& 
+                         (eps(idzpls)+eps(id)    )*psi(idzpls) + 2.0_dp*sigmaqSurfL(id) &
+                        -(eps(idxpls)+eps(idxmin)+eps(idypls)+eps(idymin) + &
+                          eps(idzpls)+5.0_dp*eps(id)) *psi(id) +2.0_dp*rhoq(id)*constqW)
+            
+            enddo
+        enddo    
+
+        ! boundary iz=nz 
+
+        do ix=1,nx
+            do iy=1,ny
+                iz=nz
+                call linearIndexFromCoordinate(ix,           iy,iz  ,id)
+                call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
+                call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)
+                call linearIndexFromCoordinate(ix,           iy,iz-1,idzmin)
+                call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
+                call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+                
+                id2D=id-(nsize-nx*ny)
+                
+                !fvec(noffset+id)= -0.5_dp*( psi(idxpls)+psi(idxmin) +psi(idypls)+psi(idymin)+psi(idzmin) +sigmaqSurfR(id2D) &
+                !    -5.0_dp*psi(id) +rhoq(id)*constqW)
+
+                fvec(noffset+id)= -0.5_dp*(&
+                         (eps(idxpls)+eps(id)    )*psi(idxpls) +& 
+                         (eps(id)    +eps(idxmin))*psi(idxmin) +&
+                         (eps(idypls)+eps(id)    )*psi(idypls) +&
+                         (eps(id)    +eps(idymin))*psi(idymin) +& 
+                         (eps(idzpls)+eps(id)    )*psi(idzpls) + 2.0_dp*sigmaqSurfR(id2D) &
+                        -(eps(idxpls)+eps(idxmin)+eps(idypls)+eps(idymin) + &
+                          eps(idzmin)+5.0_dp*eps(id)) *psi(id) +2.0_dp*rhoq(id)*constqW)
+            enddo
+        enddo    
+
+
+    end subroutine Poisson_Equation_Eps_cubic
+
     
     subroutine Poisson_Equation_Surface(fvec,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)
 
@@ -303,7 +440,92 @@ contains
             enddo
         endif   
 
-    end subroutine
+    end subroutine Poisson_Equation_Surface
+
+
+
+     subroutine Poisson_Equation_Surface_Eps(fvec,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag,eps)
+
+        use globals, only : nsize, neq, LEFT, RIGHT, systype, nsegtypes
+        use parameters, only : constqW
+        use volume, only : nx,ny,nz, linearIndexFromCoordinate
+
+        implicit none
+
+        ! input arguments 
+        real(dp), intent(inout)  :: fvec(:)
+        real(dp), intent(in)  :: psi(:)
+        real(dp), intent(in)  :: rhoq(:)
+        real(dp), intent(inout) :: psisurfR(:)
+        real(dp), intent(inout) :: psisurfL(:)
+        real(dp), intent(in)  :: sigmaqSurfR(:)
+        real(dp), intent(in)  :: sigmaqSurfL(:)
+        real(dp), intent(in)  :: eps(:)
+        character(len=2), intent(in)  :: bcflag(2)
+
+        ! local variables
+        integer :: ix, iy, iz, noffset
+        integer :: idxR, idxL, idxR2D
+        integer :: id, idxpls, idxmin, idypls, idymin, idzpls, idzmin
+        integer :: neq_bc
+
+        ! .. electrostatics: self consistent boundary conditions
+        
+        if(systype=="elect") then 
+            noffset=4*nsize
+        else if(systype=="electA") then 
+            noffset=3*nsize
+        else if(systype=="electdouble") then 
+            noffset=4*nsize
+        else if(systype=="electnopoly") then 
+            noffset=2*nsize
+         else if(systype=="brush_mul") then 
+            noffset=(2+nsegtypes)*nsize    
+        else 
+            print*,"error: systype wrong value for Poisson_equation_surface "    
+        endif     
+
+        neq_bc=0
+
+        if(bcflag(RIGHT)/='cc') then
+            neq_bc=nx*ny
+            do ix=1,nx
+                do iy=1,ny
+                    call linearIndexFromCoordinate(ix,iy,nz,idxR)
+                    idxR2D=idxR-(nsize-nx*ny) ! check this 
+                    fvec(noffset+idxR2D)=psisurfR(idxR2D)-psi(idxR)-sigmaqSurfR(idxR2D)/2.0_dp
+                enddo
+            enddo
+        else
+            do ix=1,nx
+                do iy=1,ny
+                    call linearIndexFromCoordinate(ix,iy,nz,idxR)
+                    idxR2D=idxR-(nsize-nx*ny)
+                    psisurfR(idxR2D) = psi(idxR)+sigmaqSurfR(idxR2D)/2.0_dp 
+                enddo
+            enddo
+        endif    
+
+        noffset=noffset +neq_bc
+
+        if(bcflag(LEFT)/='cc') then 
+            do ix=1,nx
+                do iy=1,ny
+                    call linearIndexFromCoordinate(ix,iy,1,idxL)
+                    fvec(noffset+idxL)=psi(idxL)-psisurfL(idxL)+sigmaqSurfL(idxL)/2.0_dp
+                enddo
+            enddo
+        else    
+            do ix=1,nx
+                do iy=1,ny
+                    call linearIndexFromCoordinate(ix,iy,1,idxL)
+                    psisurfL(idxL) = psi(idxL)+sigmaqSurfL(idxL)/2.0_dp
+                enddo
+            enddo
+        endif   
+
+    end subroutine Poisson_Equation_Surface_Eps
+
 
         
     subroutine Poisson_Pol_Equation(fvec,D2psi,rhoq,rhob)
@@ -334,7 +556,108 @@ contains
     end subroutine
 
 
-     subroutine grad_and_nabla_pot(psi,Dpsi,D2psi,absDpsi,unitdirDpsi,sigmaqSurfR,sigmaqSurfL)
+
+
+    ! computes gradient electrostaic potential multiplied by (scaled) derivate of dielectric 
+    ! with espect of volumer fraction of polymer. Terms occur in PDF 
+
+    subroutine grad_pot_sqr_eps_cubic(psi,Deps,sigmaqSurfR,sigmaqSurfL,sqrDpsi)
+        
+        use globals, only : nsize
+        use volume, only : nx,ny,nz,delta,linearIndexFromCoordinate
+        use parameters, only : constqE
+
+        implicit none
+
+        ! input arguments 
+        real(dp), intent(in) :: psi(:)
+        real(dp), intent(in) :: Deps(:)   
+        real(dp), intent(in) :: sigmaqSurfR(:)
+        real(dp), intent(in) :: sigmaqSurfL(:)
+        real(dp), intent(inout) :: sqrDpsi(:)
+        
+        ! local variables
+        integer :: ix, iy, iz
+        integer :: idxR, idxL, id2D  
+        integer :: id, idxpls, idxmin, idypls, idymin, idzpls, idzmin
+        real(dp):: Dpsi(3)
+
+        ! .. electrostatics 
+       
+        do ix=1,nx
+            do iy=1,ny
+                do iz=2,nz-1
+                    call linearIndexFromCoordinate(ix,           iy,iz  ,id)
+                    call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
+                    call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)
+                    call linearIndexFromCoordinate(ix,           iy,iz+1,idzpls)
+                    call linearIndexFromCoordinate(ix,           iy,iz-1,idzmin)
+                    call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
+                    call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+    
+                    ! grad
+                    Dpsi(1)=(psi(idxpls)-psi(idxmin)) !/2.0_dp*delta
+                    Dpsi(2)=(psi(idypls)-psi(idymin))
+                    Dpsi(3)=(psi(idzpls)-psi(idzmin))
+    
+                    ! squared and scaled
+                    sqrDpsi(id)= constqE*Deps(id)*(Dpsi(1)**2+Dpsi(2)**2+Dpsi(3)**2)
+                enddo
+            enddo
+        enddo    
+
+        ! boundary iz=1 
+
+        do ix=1,nx
+            do iy=1,ny
+                iz=1
+                call linearIndexFromCoordinate(ix,           iy,iz  ,id)
+                call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
+                call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)
+                call linearIndexFromCoordinate(ix,           iy,iz+1,idzpls)
+                call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
+                call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+
+                ! grad 
+                Dpsi(1)=(psi(idxpls)-psi(idxmin))  
+                Dpsi(2)=(psi(idypls)-psi(idymin))   
+                Dpsi(3)=(psi(idzpls)-(psi(id)+sigmaqSurfL(id))) 
+                
+                ! squared and scaled 
+                sqrDpsi(id)= constqE*Deps(id)*(Dpsi(1)**2+Dpsi(2)**2+Dpsi(3)**2)
+                
+            enddo
+        enddo    
+
+        ! boundary iz=nz 
+
+        do ix=1,nx
+            do iy=1,ny
+                iz=nz
+                call linearIndexFromCoordinate(ix,           iy,iz  ,id)
+                call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
+                call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)
+                call linearIndexFromCoordinate(ix,           iy,iz-1,idzmin)
+                call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
+                call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+                
+                id2D=id-(nsize-nx*ny)
+                
+                ! grad 
+                Dpsi(1)=(psi(idxpls)-psi(idxmin))  
+                Dpsi(2)=(psi(idypls)-psi(idymin))  
+                Dpsi(3)=((sigmaqSurfR(id2D)+psi(id))-psi(idzmin)) 
+
+                ! squared and scaled  
+                sqrDpsi(id)= constqE*Deps(id)*(Dpsi(1)**2+Dpsi(2)**2+Dpsi(3)**2)
+            
+             enddo
+        enddo    
+
+    end subroutine grad_pot_sqr_eps_cubic
+         
+
+    subroutine grad_and_nabla_pot(psi,Dpsi,D2psi,absDpsi,unitdirDpsi,sigmaqSurfR,sigmaqSurfL)
         
         use volume, only : geometry
 

@@ -5,15 +5,7 @@ module surface
    
     implicit none
     
-    !   different surface states
 
-    real(dp) :: fdisS(6)            ! fraction of different surface states
-    real(dp) :: KS(5)               ! experimemtal equilibruim constant 
-    real(dp) :: pKS(5)              ! experimental equilibruim constant pKS= -log[KS]   
-    real(dp) :: K0S(5)              ! intrinsic equilibruim constant
-    real(dp) :: qS(6)               ! charge 
-    real(dp) :: cap                 ! capacitance
- 
     real(dp) :: sigmaSurfL          ! surface density of acid on surface in nm^2
     real(dp) :: sigmaSurfR          ! surface density of acid on surface in nm^2
     
@@ -22,7 +14,17 @@ module surface
     real(dp), dimension(:), allocatable ::  psiSurfL            ! surface potential     
     real(dp), dimension(:), allocatable ::  psiSurfR            ! surface potential 
     
-   ! taurine
+    !   different surface states
+
+    real(dp) :: fdisS(6)            ! fraction of different surface states
+    real(dp) :: KS(5)               ! experimemtal equilibruim constant 
+    real(dp) :: pKS(5)              ! experimental equilibruim constant pKS= -log[KS]   
+    real(dp) :: K0S(5)              ! intrinsic equilibruim constant
+    real(dp) :: qS(6)               ! charge 
+    real(dp) :: cap                 ! capacitance
+
+    !  taurine
+   
     real(dp) :: fdisTaL(4),fdisTaR(4) ! fraction of different surface states
     real(dp) :: KTa(3)               ! experimemtal equilibruim constant 
     real(dp) :: pKTa(3)              ! experimental equilibruim constant pKS= -log[KS]   
@@ -31,7 +33,7 @@ module surface
  
     private  :: allocate_psiSurf_sigmaqSurf
     private  :: init_surface_quartz, init_surface_calcite, init_surface_taurine, init_surface_constcharge, init_surface_clay
-
+    private  :: KS,pKS,cap,KTa,pKTa
 
 contains
 

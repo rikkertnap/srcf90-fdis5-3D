@@ -24,7 +24,7 @@ module myio
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
     integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q
-    integer :: un_dip ,un_dielec,un_xpolABz,un_xpolz, un_xpol, un_fdis 
+    integer :: un_dip ,un_dielec,un_xpolABz, un_xpolz, un_xpol, un_fdis 
    
     ! format specifiers 
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
@@ -205,7 +205,6 @@ subroutine read_inputfile(info)
 
     close(un_input)
     
-    print*,"pass a"
     ! override input bcflags 
     
     if(systype=="electdouble") then
@@ -262,6 +261,7 @@ subroutine read_inputfile(info)
     endif
 
     !  set and overide certain input values
+
     call set_value_nzmin(runtype,nzmin,nzmax)
     call set_value_isVdW(systype,isVdW)
     call set_value_nsegtypes(nsegtypes,chaintype,systype,info)
@@ -270,6 +270,10 @@ subroutine read_inputfile(info)
         if (present(info)) info = info_VdWeps
         return
     endif
+    if(systype=="brushssdna") then
+        KionNa=0.0_dp 
+        KionK=0.0_dp
+    endif    
 
 end subroutine read_inputfile
  
@@ -582,7 +586,7 @@ end subroutine
 subroutine set_value_isVdW(systype, isVdW)
 
     character(len=15), intent(in) :: systype
-    logical, intent(out)  :: isVdW
+    logical, intent(inout)  :: isVdW
 
     character(len=15) :: systypestr(5) 
     integer :: i
@@ -868,8 +872,6 @@ subroutine output_brush_mul
         write(un_psi,*)psiSurfR(i)
     enddo         
 
-   
-
     do i =1, ngr
         write(un_q,*)q(i)
     enddo 
@@ -879,7 +881,7 @@ subroutine output_brush_mul
         write(un_fdis,*)(fdis(i,t),t=1,nsegtypes)
     enddo
     do i=1,nz
-        write(un_xpolz,fmt1reals)xpolABz(i)
+        write(un_xpolz,fmt1reals)xpolz(i)
     enddo     
     
     if(verboseflag=="yes") then 
@@ -992,20 +994,9 @@ subroutine output_brush_mul
     write(un_sys,*)'FEVdW       = ',FEVdW 
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
-    write(un_sys,*)'qpolA       = ',qpolA
-    write(un_sys,*)'qpolB       = ',qpolB
+    write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
     write(un_sys,*)'qpoltot     = ',qpol_tot
-    write(un_sys,*)'avfdisA(1)  = ',avfdisA(1)
-    write(un_sys,*)'avfdisA(2)  = ',avfdisA(2)
-    write(un_sys,*)'avfdisA(3)  = ',avfdisA(3)
-    write(un_sys,*)'avfdisA(4)  = ',avfdisA(4)
-    write(un_sys,*)'avfdisA(5)  = ',avfdisA(5)
-    write(un_sys,*)'avfdisB(1)  = ',avfdisB(1)
-    write(un_sys,*)'avfdisB(2)  = ',avfdisB(2)
-    write(un_sys,*)'avfdisB(3)  = ',avfdisB(3)
-    write(un_sys,*)'avfdisB(4)  = ',avfdisB(4)
-    write(un_sys,*)'avfdisB(5)  = ',avfdisB(5)
-
+    write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
 
@@ -1074,8 +1065,8 @@ subroutine output_elect
     
     character(len=90) :: sysfilename     
     character(len=90) :: xsolfilename 
-    character(len=90) :: xpolABfilename 
-    character(len=90) :: xpolABzfilename 
+    character(len=90) :: xpolfilename 
+    character(len=90) :: xpolzfilename 
     character(len=90) :: xpolendfilename 
     character(len=90) :: xNafilename
     character(len=90) :: xKfilename
@@ -1122,8 +1113,8 @@ subroutine output_elect
         fnamelabel=trim(fnamelabel)//".dat"
 
         sysfilename='system.'//trim(fnamelabel)
-        xpolABfilename='xpolAB.'//trim(fnamelabel)
-        xpolABzfilename='xpolABz.'//trim(fnamelabel)
+        xpolfilename='xpolAB.'//trim(fnamelabel)
+        xpolzfilename='xpolABz.'//trim(fnamelabel)
         xsolfilename='xsol.'//trim(fnamelabel)
         xNafilename='xNaions.'//trim(fnamelabel)
         xKfilename='xKions.'//trim(fnamelabel)
@@ -1147,12 +1138,11 @@ subroutine output_elect
         open(unit=newunit(un_psi),file=potentialfilename)
 
         if(systype/="electnopoly") then          
-            open(unit=newunit(un_xpolAB),file=xpolABfilename)
-!            open(unit=newunit(un_xpolC),file=xpolCfilename)
+            open(unit=newunit(un_xpolAB),file=xpolfilename)
             open(unit=newunit(un_fdisA),file=densfracAfilename) 
             open(unit=newunit(un_fdisB),file=densfracBfilename) 
             open(unit=newunit(un_q),file=qfilename)
-            open(unit=newunit(un_xpolABz),file=xpolABzfilename)
+            open(unit=newunit(un_xpolz),file=xpolzfilename)
         endif     
        
         if(verboseflag=="yes") then    
@@ -1192,7 +1182,7 @@ subroutine output_elect
         write(un_xK,*)'#D    = ',nz*delta 
         write(un_xCa,*)'#D    = ',nz*delta 
         write(un_xNaCl,*)'#D    = ',nz*delta 
-        write(un_xKCL,*)'#D    = ',nz*delta 
+        write(un_xKCl,*)'#D    = ',nz*delta 
         write(un_xpair,*)'#D    = ',nz*delta 
         write(un_charge,*)'#D    = ',nz*delta 
         write(un_xCl,*)'#D    = ',nz*delta 
@@ -1214,18 +1204,23 @@ subroutine output_elect
     enddo         
 
     if(systype/="electnopoly") then 
-
-        do i =1, ngr
-            write(un_q,*)qABL(i),qABR(i)
-        enddo 
+        if(systype/="electdouble") then
+            do i =1, ngr
+                write(un_q,*)q(i)
+            enddo 
+        else
+             do i =1, ngr
+                write(un_q,*)qABL(i),qABR(i)
+            enddo 
+        endif    
 
         do i=1,nsize
-            write(un_xpolAB,fmt3reals)xpolAB(i),rhopolA(i),rhopolB(i)
+            write(un_xpolAB,fmt3reals)xpol(i),rhopol(i,1),rhopol(i,2)
             write(un_fdisA,fmt5reals)(fdisA(i,k),k=1,5)        
             write(un_fdisB,fmt5reals)(fdisB(i,k),k=1,5)
         enddo
         do i=1,nz
-            write(un_xpolABz,fmt1reals)xpolABz(i)
+            write(un_xpolz,fmt1reals)xpolz(i)
         enddo    
     endif   
     
@@ -1366,7 +1361,7 @@ subroutine output_elect
     write(un_sys,*)'FEbind      = ',FEbind
     write(un_sys,*)'FEVdW       = ',FEVdW 
     write(un_sys,*)'FEalt       = ',FEalt
-    write(un_sys,*)'heightAB    = ',heightAB
+    write(un_sys,*)'height      = ',height
     write(un_sys,*)'qpolA       = ',qpolA
     write(un_sys,*)'qpolB       = ',qpolB
     write(un_sys,*)'qpoltot     = ',qpol_tot
@@ -1718,7 +1713,7 @@ subroutine output_electdouble()
     write(un_sys,*)'qpoltot     = ',qpol_tot
     write(un_sys,*)'psiSurfL    = ',psiSurfL
     write(un_sys,*)'psiSurfR    = ',psiSurfR
-    write(un_sys,*)'heightAB    = ',heightAB
+    write(un_sys,*)'heightAB    = ',height
     write(un_sys,*)'avfdisA(1)  = ',avfdisA(1)
     write(un_sys,*)'avfdisA(2)  = ',avfdisA(2)
     write(un_sys,*)'avfdisA(3)  = ',avfdisA(3)
@@ -1885,7 +1880,7 @@ subroutine output_neutral
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'qAB         = ',qAB
     write(un_sys,*)'muAB        = ',-log(qAB)
-    write(un_sys,*)'heightAB    = ',heightAB
+    write(un_sys,*)'heightAB    = ',height
     write(un_sys,*)'nsize       = ',nsize  
     write(un_sys,*)'cuantas     = ',cuantas
     write(un_sys,*)'iterations  = ',iter
@@ -2010,7 +2005,10 @@ subroutine output_individualcontr_fe
     write(un_fe,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT) 
     write(un_fe,*)'FEbind          = ',FEbind 
     write(un_fe,*)'FEchem          = ',FEchem
+    write(un_fe,*)'FEVdW           = ',FEVdW
     write(un_fe,*)'FEconf          = ',FEconf
+    write(un_fe,*)'Econf           = ',Econf
+    
     
     write(un_fe,*)"FEtrans%sol     = ",FEtrans%sol   
     write(un_fe,*)"FEtrans%Na      = ",FEtrans%Na  
@@ -2063,8 +2061,8 @@ subroutine copy_solution(x)
         do i=1,nsize                   
             xsol(i)= x(i)              
             psi(i) = x(i+nsize)        
-            rhopolA(i)=x(i+2*nsize)
-            rhopolB(i)=x(i+3*nsize)
+            rhopol(i,1)=x(i+2*nsize)
+            rhopol(i,2)=x(i+3*nsize)
         enddo
         
         neq_bc=0 ! surface potential  
@@ -2138,15 +2136,24 @@ subroutine compute_vars_and_output()
     use globals, only : systype
     use energy
     use field
-    use parameters, only : heightAB,height
+    use parameters, only : height
 
     select case (systype)
-    case ("elect","electA","electdouble")
+    case ("elect")
     
-        call fcnenergy()       
-        call average_density_z(xpolAB,xpolABz,heightAB)  
+        call fcnenergy()   
+        call charge_polymer()
+        call average_charge_polymer()     
+        call average_density_z(xpol,xpolz,height)  
         call output()
     
+    case ("electA","electdouble")
+    
+        call fcnenergy()   
+        call average_charge_polymer()     
+        call average_density_z(xpolAB,xpolz,height)  
+        call output()
+
     case ("electnopoly")
 
         call fcnenergy()        
@@ -2158,8 +2165,10 @@ subroutine compute_vars_and_output()
     
     case ("brush_mul")
 
-        call fcnenergy()    
-        call average_density_z(xpol,xpolABz,height)    
+        call fcnenergy()   
+        call charge_polymer() 
+        call average_charge_polymer()     
+        call average_density_z(xpol,xpolz,height)    
         call output()           ! writing of output
 
     case default   
