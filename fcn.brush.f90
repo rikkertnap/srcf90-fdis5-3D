@@ -479,7 +479,7 @@ contains
                         do i=1,n
                             rhopol(i,t) = rhopol0 * rhopol(i,t)               ! density polymer of type t 
                             rhoqpol(i)  = rhoqpol(i) + (- fdisA(i,1)+fdisA(i,4)+fdisA(i,6) )*rhopol(i,t)*vsol 
-                            f(i+t*n)    = rhopol(i,t) - rhopolin(i,t) 
+                            f(i+(t+1)*n) = rhopol(i,t) - rhopolin(i,t) 
                             do k=1,4               ! polymer volume fraction
                                 xpol(i)=xpol(i)+rhopol(i,t)*fdisA(i,k)*vpolAA(k)*vsol   
                             enddo
@@ -493,7 +493,7 @@ contains
                     do i=1,n
                         rhopol(i,t) = rhopol0 * rhopol(i,t)               ! density polymer of type t  
                         xpol(i)     = xpol(i) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
-                        f(i+t*n)    = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
+                        f(i+(t+1)*n)    = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
                     enddo
                 endif          
             enddo    
@@ -521,7 +521,7 @@ contains
          
             norm=l2norm(f,(nsegtypes+2)*n)
             iter=iter+1
-
+           
             print*,'iter=', iter ,'norm=',norm
 
         else                      ! Export results 
@@ -918,7 +918,7 @@ contains
         sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
         
         ! gradient potential contribution to PDF
-        call grad_pot_sqr_eps_cubic(psi,Depsfcn,sigmaqSurfR,sigmaqSurfL,expsqrgradpsi)
+        call grad_pot_sqr_eps_cubic(psi,epsfcn, Depsfcn,sigmaqSurfR,sigmaqSurfL,expsqrgradpsi)
 
        
         do i=1,n                  ! init volume fractions
@@ -2592,7 +2592,7 @@ contains
         if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nx*ny
     
         select case (systype)
-            case ("brush_mul")                 ! multi copolymer:
+            case ("brush_mul","brushssdna")                 ! multi copolymer:
 
                 do i=1,nsize                    
                     constr(i)=1.0_dp           ! solvent volume fraction   
@@ -2603,8 +2603,7 @@ contains
                 do i=1,neq_bc                  ! surface electrostatic potential if bcflag/=cc
                     constr(i+4*nsize)=0.0_dp
                 enddo    
- 
-             case ("brushborn")                 
+            case ("brushborn")                 
                 constr=1.0_dp
                 do i=1,nsize                    
                     constr(i+nsize)=0.0_dp     ! electrostatic potential 

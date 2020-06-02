@@ -87,7 +87,7 @@ subroutine allocate_VdWcoeff(info)
 
     alloc_fail=.FALSE.    
 
-    if(systype=="brush_mul") then 
+    if(systype=="brush_mul".or.systype=="brushssdna".or.systype=="brushborn") then 
 
         if (.not. allocated(VdWcoeff))  then 
             allocate(VdWcoeff(-range:range, -range:range, -range:range,nsegtypes,nsegtypes),stat=ier)
@@ -145,7 +145,7 @@ subroutine allocate_auxdensity(info)
     if (present(info)) info = 0
 
     
-    if(systype=="brush_mul") then 
+    if(systype=="brush_mul".or.systype=="brushssdna".or.systype=="brushborn")  then 
         if (.not. allocated(rhopoltmp))  then 
             allocate(rhopoltmp(nx,ny,nz,nsegtypes),stat=ier)
                
@@ -250,19 +250,19 @@ subroutine make_VdWcoeff(info)
 
         call MC_VdWcoeff(lsegPAA , VdWcoeffAA)
 
-    else if (systype=="brush_mul") then    
+    else if (systype=="brush_mul".or.systype=="brushssdna".or.systype=="brushborn") then    
 
         do t=1,nsegtypes
             do s=1,nsegtypes
                 lseg=(lsegAA(t)+lsegAA(s))/2.0_dp
        
-                !call read_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
-                !print*,"rank=",rank,"info=",info
-                !if(info==VdW_err_vdwcoeff_not_exist) then 
-                call MC_VdWcoeff(lseg, VdWcoeff(:,:,:,t,s))
-                !    info=0 ! reset
-                !    if(rank==0) call write_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
-                !endif    
+                call read_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
+                print*,"rank=",rank,"info=",info
+                if(info==VdW_err_vdwcoeff_not_exist) then 
+                    call MC_VdWcoeff(lseg, VdWcoeff(:,:,:,t,s))
+                    info=0 ! reset
+                    if(rank==0) call write_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
+                endif    
             enddo
         enddo    
 
@@ -342,17 +342,18 @@ subroutine MC_VdWcoeff(lseg,VdWcoeff)
 
         radius = sqrt(x**2 + y**2 + z**2) ! real space
  
-        if(radius<=(1.5*delta)) then  ! It is not inside the cut-off sphere
-            if(radius>=lseg) then     ! is within the sphere of the segment
+        if(radius<=(1.5*delta)) then  ! It is inside the cut-off distance 1.5 delta
 
-                ! cell
+            ix = anint(v/delta)   ! 
+            iy = anint(u/delta) 
+            iz = anint(z/delta)
 
-                ix = anint(v/delta)   ! space grid
-                iy = anint(u/delta) 
-                iz = anint(z/delta)
-
+            if(radius>=lseg) then     ! It is not in side sphere of the segment 
+            
                 matriz(ix, iy, iz) = matriz(ix, iy, iz) + (lseg/radius)**6
-            endif
+            else
+                matriz(ix, iy, iz) = matriz(ix, iy, iz) + 1.0_dp
+            endif    
         endif
                 
     enddo
@@ -899,14 +900,15 @@ subroutine write_VdWcoeff(lseg,VdWcoeff,info)
         return
     endif
 
+!"(A9,I1,A5,ES25.16)"
 
     ! write preamble 
-    write(un_VdW,*,iostat=ios)"range     ",range
-    write(un_VdW,*,iostat=ios)"geometry      ",geometry
-    write(un_VdW,*,iostat=ios)"lseg        ",lseg
-    write(un_VdW,*,iostat=ios)"delta       ",delta
-    write(un_VdW,*,iostat=ios)"cutoff      ",VdWcutoff
-    write(un_VdW,*,iostat=ios)"###" ! end of preamble
+    write(un_VdW,'(A15,I2)',  iostat=ios)'range          ',range
+    write(un_VdW,'(A15,A15)', iostat=ios)'geometry       ',geometry
+    write(un_VdW,'(A15,F5.3)',iostat=ios)'lseg           ',lseg
+    write(un_VdW,'(A15,F5.3)',iostat=ios)'delta          ',delta
+    write(un_VdW,'(A15,F5.3)',iostat=ios)'cutoff         ',VdWcutoff
+    write(un_VdW,'(A15)',     iostat=ios)'###            ' ! end of preamble
 
     ! write value VdWcoefficient
     do ix = -range, range

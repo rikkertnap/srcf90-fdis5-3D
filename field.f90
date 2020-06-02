@@ -231,8 +231,8 @@ contains
         select case (systype) 
         case ("brush_mul")
             call charge_polymer_multi()
-        case ("brushssdna")
-            print*,"warning not yet implemented yet."
+        case ("brushssdna","brushborn")
+            call charge_polymer_dna()
         case ("elect","electA","electVdWAB","electdouble")   
             call charge_polymer_binary()
         case default
@@ -243,6 +243,39 @@ contains
        
 
     end subroutine charge_polymer
+
+
+    subroutine charge_polymer_dna()
+
+        use globals, only : nsize, nsegtypes
+        use volume, only : volcell
+        use parameters, only : zpol, qpol, qpol_tot, tA
+
+        integer :: i, t
+
+
+        qpol_tot=0.0_dp
+        do t=1,nsegtypes
+            qpol(t)=0.0_dp
+            if(t/=tA) then    
+                do i=1,nsize
+                    qpol(t)=qpol(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
+                enddo
+            else
+                do i=1,nsize
+                    qpol(t)=qpol(t)+ (-fdisA(i,1)*rhopol(i,1)+fdisA(i,4)*rhopol(i,t))
+                enddo
+            endif    
+
+            qpol(t)=qpol(t)*volcell
+            qpol_tot=qpol_tot+qpol(t)
+        enddo
+
+    end subroutine charge_polymer_dna
+
+
+
+
 
     subroutine charge_polymer_multi()
 
@@ -295,8 +328,8 @@ contains
         select case (systype) 
         case ("brush_mul")
             call average_charge_polymer_multi()
-        case ("brushssdna")
-            print*,"warning not yet implemented yet."
+        case ("brushssdna","brushborn")
+            call average_charge_polymer_dna()
         case ("elect","electA","electVdWAB","electdouble")   
             call average_charge_polymer_binary()
         case default
@@ -307,6 +340,49 @@ contains
 
     end subroutine average_charge_polymer
         
+
+     subroutine average_charge_polymer_dna()
+
+        use globals, only : nseg,nsize,nsegtypes
+        use volume, only : volcell,ngr
+        use parameters, only : zpol, avfdis, avfdisA, tA
+        use chains, only: type_of_monomer
+
+        integer, dimension(:), allocatable   :: npol
+        integer :: i,s,t,k
+
+        allocate(npol(nsegtypes))
+        npol=0.0_dp
+
+        do s=1,nseg
+            t=type_of_monomer(s)
+            npol(t)=npol(t)+1
+        enddo   
+
+        do t=1,nsegtypes
+            avfdis(t)=0.0_dp
+            if(npol(t)/=0) then
+                if(t/=tA) then    
+                    do i=1,nsize
+                        avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
+                    enddo
+                    avfdis(t)=avfdis(t)*volcell/(npol(t)*ngr)        
+                else
+                    do k=1,7
+                        avfdisA(k)=0.0_dp
+                        do i=1,nsize
+                            avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopol(i,t)
+                        enddo
+                        avfdisA(k)=avfdisA(k)*volcell/(npol(t)*ngr)
+                    enddo
+                    avfdis(t)=avfdisA(1)
+                endif       
+            endif
+        enddo         
+
+        deallocate(npol)    
+
+    end subroutine average_charge_polymer_dna
 
     subroutine average_charge_polymer_multi()
 
@@ -334,7 +410,7 @@ contains
                 enddo
                 avfdis(t)=avfdis(t)*volcell/(npol(t)*ngr)        
             else
-                 avfdis(t)=0.0_dp
+                avfdis(t)=0.0_dp
             endif
         enddo         
 

@@ -44,8 +44,10 @@ contains
         case ("electnopoly")
             FEconf=0.0_dp
             Econf=0.0_dp
-        case ("brush_mul")
+        case ("brush_mul","brushssdna")
             call FEconf_brush_mul(FEconf,Econf)
+        case ("brushborn")
+            print*,"FEconfig_entropy not implemented yet"
         case default
             text="FEconf_entropy: wrong systype: "//systype//"stopping program"
             call print_to_log(LogUnit,text)
@@ -54,7 +56,7 @@ contains
 
     end subroutine FEconf_entropy
 
-  ! computes conformational entropy in neutral state 
+   ! computes conformational entropy in neutral state 
 
     subroutine FEconf_neutral(FEconf)
 
@@ -206,6 +208,7 @@ contains
         endif
 
     end subroutine FEconf_brush_mul
+
 
     subroutine FEconf_elect(FEconf)
 

@@ -43,8 +43,8 @@
     real(dp), dimension(:,:), allocatable :: VdWeps    ! strenght VdW interaction in units of kT
     real(dp) :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
     logical :: isVdW  
-    integer :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
-    integer :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
+    real(dp) :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
+    real(dp) :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
     real(dp), parameter :: Vdwepsilon=1.0e-5_dp ! thresholds below which VdWeps is assumed to be zero
     logical, dimension(:), allocatable :: isrhoselfconsistent
     !integer :: layeroffset
@@ -173,12 +173,11 @@ contains
 
     subroutine set_size_neq()
 
-        use globals
+        use globals, only: systype,nsegtypes, nsize,bcflag,LEFT,RIGHT, neq, neqint
         use volume, only : nx, ny, nz
 
-        implicit none
-
         integer(8) :: neq_bc
+        integer :: numeq, t
 
         nsize= nx*ny*nz
         neq_bc=0 
@@ -188,6 +187,14 @@ contains
         select case (systype)
             case ("brush_mul") 
                 neq = (2+nsegtypes) * nsize + neq_bc
+            case ("brushssdna") 
+                neq = (2+nsegtypes) * nsize + neq_bc
+            case ("brushborn")
+                numeq=0 
+                do t=1,nsegtypes
+                    if(isrhoselfconsistent(t)) numeq=numeq+1
+                enddo    
+                neq = nsize*(6+numeq)    
             case ("elect") 
                 neq = 4 * nsize + neq_bc
             case ("electA") 
@@ -563,7 +570,10 @@ contains
             sigmaABR = 0.0_dp
             sigmaAB  = sigmaABL 
             sigma    = sigmaABL    
-
+        case('brushssdna')    
+            sigma = ngr/(nsurf*delta*delta)
+        case('brushborn')    
+            sigma = ngr/(nsurf*delta*delta)   
         case default
             print*,"Error: init_sigma: systype wrong value"
             print*,"stopping program"
@@ -708,7 +718,6 @@ contains
         expmu%OHmin = xbulk%OHmin/xbulk%sol ! vsol = vOHmin 
           
         !     .. end init electrostatic part 
-        
 
         deallocate(x)
         deallocate(xguess)
@@ -723,25 +732,6 @@ contains
         xbulk%sol=1.0_dp ! only solvent 
 
     end subroutine init_expmu_neutral
-
-    subroutine init_expmu
-
-        use globals, only : systype
-        implicit none
-
-        select case (systype)
-        case ( "elect","electA","electdouble","electnopoly")
-            call init_expmu_elect()
-        case("neutral") 
-            call init_expmu_neutral()
-        case default 
-            print*,"Error in call to init_expmu subroutine"    
-            print*,"Wrong value systype : ", systype
-            stop        
-        end select  
-
-    end subroutine init_expmu
-
 
     ! inits chem potential 
 
@@ -763,7 +753,7 @@ contains
             call init_expmu_elect()      
         case("brushssdna") 
             call init_dna  
-            !call init_expmu_elect()
+            call init_expmu_elect()
         case default   
             print*,"Error: systype incorrect at init_vars_input" 
             print*,"Wrong value systype : ", systype
@@ -1092,7 +1082,7 @@ contains
 
         ! check that we do not have simultenoeus A=Acrylic acid and P=phosphate
         if((ttAA>0).and.(ttP>0)) then
-            print*,"Error: both A and P segments"
+            print*,"Error in make_isrhoselfconsistent: both A and P segments"
             print*,"Stop program"
             stop
         endif   

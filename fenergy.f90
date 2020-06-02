@@ -421,10 +421,12 @@ contains
         ! be vary carefull FE = -1/2 \int dz rho_q(z) psi(z)
 
          ! .. chemical and binding contribution
-        if(systype/="brush_mul") then 
-            FEchem = FEchem_react()
-        else
+        if(systype=="brush_mul") then 
             FEchem = FEchem_react_multi()
+        else if(systype=="brushssdna") then
+            FEchem = FEchem_react_multi()
+        else
+            FEchem = FEchem_react()
         endif    
 
         print*,"isVdW in fcnenergy_elect_alternative=",isVdW
@@ -515,16 +517,6 @@ contains
             diffFEchemsurf(RIGHT)=0.0_dp
             ! not yet implemented 
         endif 
-
-
-       
-!        print*,"expmu%Hplus=",expmu%Hplus
-!        print*,"sigmaSurf(RIGHT)=",sigmaSurf(RIGHT)
-!        print*,"dlog(expmu%Hplus))=",dlog(expmu%Hplus)
-!        print*,"diffFEchemTa",diffFEchemTa
-
-!        print*,"difference(LEFT)  =", FEchemsurfalt(LEFT)-FEchemsurf(LEFT)-diffFEchemsurf(LEFT)
-!        print*,"difference(RIGHT) =", FEchemsurfalt(RIGHT)-FEchemsurf(RIGHT)-diffFEchemsurf(RIGHT)
 
 
     end subroutine fcnenergy_elect_alternative
@@ -1017,7 +1009,7 @@ contains
         case("neutral","electnopoly") 
             FEchem_react=0.0_dp
         case default
-            print*,"systype in FEchem_react_wrong"  
+            print*,"systype in FEchem_react wrong"  
         end select
 
     end function FEchem_react
@@ -1088,6 +1080,53 @@ contains
                 endif        
             enddo
 
+
+        case("brushssdna") 
+            
+            do t=1,nsegtypes
+
+                if(ismonomer_chargeable(t)) then
+
+                    if(t==ta) then 
+                        do i=1,nsize
+
+                            betapi=-log(xsol(i))/vsol
+                            lambda=-log(fdisA(i,1)) -psi(i)*zpolAA(1)-betapi*vpolAA(1)*vsol
+                           
+                
+                            rhopolq = 0.0_dp
+                            xpol=0.0_dp
+                            do k=1,4
+                                rhopolq=rhopolq+ zpolAA(k)*fdisA(i,k)*rhopol(i,t)
+                                xpol  =xpol + rhopol(i,t)*fdisA(i,k)*vpolAA(k)*vsol
+                            enddo   
+                            rhopolq=rhopolq+ zpolAA(6)*fdisA(i,6)*rhopol(i,t)
+                            xpol = xpol +rhopol(i,t)*(fdisA(i,5)*vpolAA(5)*vsol/2.0_dp +&
+                                                      fdisA(i,6)*vpolAA(6)*vsol +&
+                                                      fdisA(i,7)*vpolAA(7)*vsol/2.0_dp)
+
+                
+                            FEchem_react = FEchem_react + ( -rhopol(i,t)*lambda &
+                                -psi(i)*rhopolq -betapi*xpol+(fdisA(i,5)+fdisA(i,7))*rhopol(i,t)/2.0_dp)
+                           
+                        enddo
+
+                    else
+                        
+                        do i=1,nsize
+
+                            betapi=-log(xsol(i))/vsol
+                            lambda=-log(fdis(i,t)) -psi(i)*zpol(t,2)-betapi*vpol(t)*vsol
+                            rhopolq=zpol(t,2)*fdis(i,t)*rhopol(i,t)
+            
+                            FEchem_react = FEchem_react + &
+                                (- rhopol(i,t)*lambda -psi(i)*rhopolq -betapi*rhopol(i,t)*vpol(t)*vsol )
+                        enddo
+                    endif
+                        
+                endif        
+            enddo
+
         case default
             print*,"systype in FEchem_react_multi wrong"  
         end select      
@@ -1097,5 +1136,53 @@ contains
 
     end function FEchem_react_multi
 
+
+
+
+    function FEelect_surface() result(FEelsurf)
+
+        use globals, only : bcflag,LEFT,RIGHT, pi
+        use volume, only : areacell, nx, ny, delta
+        use parameters, only : lb
+        use surface, only : sigmaSurfL, sigmaSurfR,sigmaqSurfL, sigmaqSurfR, psiSurfL, psiSurfR
+
+        real(dp) :: FEelsurf(2)
+
+        real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx)
+        real(dp) :: sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
+        integer :: i, s 
+
+        sigmaSurf(RIGHT)  = sigmaSurfR 
+        sigmaSurf(LEFT)   = sigmaSurfL
+
+        do s=1,nx*ny
+            sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
+            sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
+            psiSurf(RIGHT,s)    = psiSurfR(s)
+            psiSurf(LEFT,s)     = psiSurfL(s)
+        enddo    
+      
+        do i = 1,2
+            FEelsurf(i)=0.0_dp
+            do s = 1, nx*ny    
+                sigmaq0Surf(i,s)=  sigmaqSurf(i,s)/(delta*4.0_dp*pi*lb) ! dimensional charge density  
+                FEelsurf(i) = FEelsurf(i)+sigmaq0Surf(i,s) * psiSurf(i,s) /2.0_dp 
+            enddo   
+            FEelsurf(i)=FEelsurf(i)*areacell
+        enddo    
+
+    end function
+         
+    function FEchem_surface(FEelsurf) result(FEchemsurf)
+
+        use globals, only : bcflag,LEFT,RIGHT, pi
+        use volume, only : areacell, nx, ny, delta
+        use parameters, only : lb
+        use surface, only : sigmaSurfL, sigmaSurfR,sigmaqSurfL, sigmaqSurfR, psiSurfL, psiSurfR
+
+        real(dp), intent(in) :: FEelsurf(2)
+        real(dp) ::  FEchemsurf(2)
+
+    end function 
 
 end module energy

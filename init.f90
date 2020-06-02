@@ -72,8 +72,12 @@ subroutine init_guess(x, xguess)
             call init_guess_elect(x,xguess)
         case ("brush_mul")  
             call init_guess_multi(x,xguess)
+        case ("brushssdna")  
+            call init_guess_multi(x,xguess)
+        case ("brushborn") 
+            print*,"not implemented yet."  
         case default   
-            print*,"Wrong value systype : ", systype
+            print*,"Init_guess: Wrong value systype : ", systype
     end select 
 
 end subroutine init_guess
@@ -470,7 +474,7 @@ subroutine init_guess_multi(x, xguess)
     
         write(fname(1),'(A7)')'xsol.in'
         write(fname(2),'(A6)')'psi.in'
-        write(fname(3),'(A6)')'rhi.in'
+        write(fname(3),'(A6)')'rho.in'
      
         do i=1,3 ! loop files
             open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
@@ -490,9 +494,9 @@ subroutine init_guess_multi(x, xguess)
             read(un_file(2),*)psi(i)     ! potential
             read(un_file(3),*)(rhopol(i,t),t=1,nsegtypes)
 
-            x(i)         = xsol(i)    ! placing xsol  in vector x
-            x(i+nsize)   = psi(i)     ! placing xsol  in vector x
-            do t=1,nsegtypes   
+            x(i)         = xsol(i)    ! placing xsol in vector x
+            x(i+nsize)   = psi(i)     ! placing psi in vector x
+            do t=1,nsegtypes          ! placing rhopol(:,t) in vector x
                 x(i+(t+1)*nsize)=rhopol(i,t)
             enddo        
         enddo

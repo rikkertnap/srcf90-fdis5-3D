@@ -34,6 +34,7 @@ program main
     use surface
     use myio
     use myutils
+    use dielectric_const
 
 
     implicit none
@@ -106,22 +107,8 @@ program main
     call allocate_field(nx,ny,nz,nsegtypes)
     call allocate_part_fnc(ngr)
     call init_field()
-    call set_size_neq()             ! number of non-linear equation neq
-    call set_fcn()
     call init_surface(bcflag,nsurf)
-    call init_sigma()
-
-    print*,"lseg=",lseg
-    print*,"#nsegtypes   lsegAA    vpol"
-    do i=1,nsegtypes
-        print*,i,lsegAA(i),vpol(i)
-    enddo
-    print*,"#segment type_num  type_char  isAmonomer"
-    do i=1,nseg
-        print*,i,type_of_monomer(i),type_of_monomer_char(i),isAmonomer(i)
-    enddo 
-    print*,"######"   
-
+    call init_sigma()    
     if(isVdW) then 
         call make_VdWcoeff(info)
         if(info/=0) then
@@ -132,7 +119,13 @@ program main
             stop
         endif
     endif  
-    
+    call make_isrhoselfconsistent(isVdW)
+    call set_size_neq()             ! number of non-linear equation neq
+    call set_fcn()
+   ! call set_dielect_fcn(dielect_env)
+    call write_chain_config()
+   
+
     !  .. computation starts
 
     allocate(xstored(neq))
@@ -150,7 +143,7 @@ program main
         use_xstored = .false.         ! with both flags set false make_guess will set xguess equal to x
         
         pH%val=pH%min
-        call init_expmu()             ! set chemical potenitals
+       
         iter = 0
         
         do while (nz>=nzmin)        ! loop distances
@@ -170,6 +163,7 @@ program main
             if(rank.eq.0) then     ! node rank=0
                 call make_guess(x, xguess, isfirstguess, use_xstored, xstored)
                 call solver(x, xguess, tol_conv, fnorm, issolution)
+                call fcnptr(x, fvec, neq)
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
                     dest =i
@@ -254,8 +248,8 @@ program main
 
                 call make_guess(x, xguess, isfirstguess)
                 call solver(x, xguess, tol_conv, fnorm, issolution)
-
                 call fcnptr(x, fvec, neq)
+                
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
                     dest =i

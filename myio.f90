@@ -37,7 +37,7 @@ module myio
     
     private
     public :: read_inputfile, output_individualcontr_fe, output, compute_vars_and_output
-    public :: myio_err_chainsfile, myio_err_energyfile
+    public :: myio_err_chainsfile, myio_err_energyfile,write_chain_config
 
     
 contains
@@ -283,7 +283,7 @@ subroutine check_value_systype(systype,info)
     character(len=15), intent(in) :: systype
     integer, intent(out),optional :: info
 
-    character(len=15) :: systypestr(11)
+    character(len=15) :: systypestr(10)
     integer :: i
     logical :: flag
 
@@ -297,10 +297,13 @@ subroutine check_value_systype(systype,info)
     systypestr(6)="electA"
     systypestr(7)="electVdWAB"
     systypestr(8)="brush_mul"
+    systypestr(9)="brushssdna"
+    systypestr(10)="brushborn"
+    
    
     flag=.FALSE.
 
-    do i=1,8
+    do i=1,10
         if(systype==systypestr(i)) flag=.TRUE.
     enddo
 
@@ -533,7 +536,7 @@ subroutine check_value_VdWeps(systype,isVdW,info)
     character(len=15), intent(in) :: systype
     integer, intent(out), optional :: info
 
-    character(len=15) :: systypestr(5)
+    character(len=15) :: systypestr(7)
     integer :: i
     logical :: flag
 
@@ -546,8 +549,10 @@ subroutine check_value_VdWeps(systype,isVdW,info)
         systypestr(3)="electA"
         systypestr(4)="electVdWAB"
         systypestr(5)="brush_mul"
+        systypestr(6)="brushssdna"
+        systypestr(7)="brushborn"
        
-        do i=1,5! sofar only electA works with VdW 
+        do i=1,7! sofar only electA works with VdW 
             if(systype==systypestr(i)) flag=.TRUE.
         enddo
     else  ! isVdW=.false. so oke 
@@ -599,11 +604,9 @@ subroutine set_value_isVdW(systype, isVdW)
     systypestr(4)="electVdWAB"
     systypestr(5)="brush_mul"
        
-    isVdW=.FALSE.
+    isVdW=.True.
+    if(systype==systypestr(1)) isVdW=.FALSE.
 
-    do i=1,5
-        if(systype==systypestr(i)) isVdW=.TRUE.
-    enddo
 
 end subroutine
 
@@ -712,7 +715,7 @@ subroutine output()
         call output_individualcontr_fe
     case("neutral") 
         call output_neutral
-    case("brush_mul") 
+    case("brush_mul","brushssdna") 
         call output_brush_mul  
         call output_individualcontr_fe  
     case default
@@ -767,23 +770,8 @@ subroutine output_brush_mul
     ! .. executable statements 
 
     if(nz.eq.nzmax)  then 
-        !     .. make label filenames 
-
-        write(rstr,'(F5.3)')sigma
-        fnamelabel="sg"//trim(adjustl(rstr)) 
-        write(rstr,'(F5.3)')cNaCl
-        fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-        if(cCaCl2>=0.001) then 
-            write(rstr,'(F5.3)')cCaCl2
-        elseif(cCaCl2>0.0) then  
-            write(rstr,'(ES9.2E2)')cCaCl2
-        else 
-            write(rstr,'(F3.1)')cCaCl2
-        endif 
-        fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
-        write(rstr,'(F7.3)')pHbulk
-        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))
-        fnamelabel=trim(fnamelabel)//".dat"
+        !     .. make label filenames f
+        call make_filename_label(fnamelabel)
 
         sysfilename='system.'//trim(fnamelabel)
         xpolfilename='xpol.'//trim(fnamelabel)
@@ -997,6 +985,9 @@ subroutine output_brush_mul
     write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
     write(un_sys,*)'qpoltot     = ',qpol_tot
     write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
+    if(systype=="brushssdna")then
+        write(un_sys,*)'avfdisA      = ',(avfdisA(k),k=1,7)
+    endif    
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
 
@@ -1090,26 +1081,10 @@ subroutine output_elect
     ! .. executable statements 
 
     if(nz.eq.nzmax)  then 
-        !     .. make label filenames 
+        
+        !     .. make label filename
+        call make_filename_label(fnamelabel)
 
-        write(rstr,'(F5.3)')sigmaABL
-        fnamelabel="sg"//trim(adjustl(rstr)) 
-        write(rstr,'(F5.3)')cNaCl
-        fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-        if(cCaCl2>=0.001) then 
-            write(rstr,'(F5.3)')cCaCl2
-        elseif(cCaCl2>0.0) then  
-            write(rstr,'(ES9.2E2)')cCaCl2
-        else 
-            write(rstr,'(F3.1)')cCaCl2
-        endif 
-        fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
-        write(rstr,'(F7.3)')pHbulk
-        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))
-       ! if(isVdW) then 
-       !     write(rstr,'(F7.3)')VdWeps%val
-       !     fnamelabel=trim(fnamelabel)//"eps"//trim(adjustl(rstr))
-       ! endif 
         fnamelabel=trim(fnamelabel)//".dat"
 
         sysfilename='system.'//trim(fnamelabel)
@@ -1470,23 +1445,8 @@ subroutine output_electdouble()
     if(nz.eq.nzmax) then 
 
         !     .. make label filenames 
-        write(rstr,'(F5.3)')sigmaABL
-        fnamelabel="sgL"//trim(adjustl(rstr))
-        write(rstr,'(F5.3)')sigmaABR
-        fnamelabel=trim(fnamelabel)//"sgR"//trim(adjustl(rstr))  
-        write(rstr,'(F5.3)')cNaCl
-        fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-        if(cCaCl2>=0.001) then 
-            write(rstr,'(F5.3)')cCaCl2
-        elseif(cCaCl2>0.0) then  
-            write(rstr,'(ES9.2E2)')cCaCl2
-        else 
-            write(rstr,'(F3.1)')cCaCl2
-        endif    
-        fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
-        write(rstr,'(F7.3)')pHbulk
-        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
-
+        call make_filename_label(fnamelabel)
+       
         ! print*,fnamelabel
 
         !     .. make filenames 
@@ -1786,12 +1746,9 @@ subroutine output_neutral
     
     if(nz==nzmax) then 
 
-        !     .. make label filenames 
-        write(rstr,'(F5.3)')sigmaAB
-        fnamelabel="sg"//trim(adjustl(rstr)) 
-        write(rstr,'(F5.3)')VdWepsAA
-        fnamelabel=trim(fnamelabel)//"VdWepsB"//trim(adjustl(rstr))//".dat"
-
+        !     .. make label filename
+        call make_filename_label(fnamelabel)
+       
         !     .. make filenames 
         sysfilename='system.'//trim(fnamelabel)
         xpolABfilename='xpolAB.'//trim(fnamelabel) 
@@ -1913,74 +1870,7 @@ subroutine output_individualcontr_fe
     if(nz==nzmax) then 
 
         !     .. make label filename
-
-        if(systype=="electdouble") then 
-
-            write(rstr,'(F5.3)')sigmaABL
-            fnamelabel="sgL"//trim(adjustl(rstr))
-            write(rstr,'(F5.3)')sigmaABR
-            fnamelabel=trim(fnamelabel)//"sgR"//trim(adjustl(rstr))  
-            write(rstr,'(F5.3)')cNaCl
-            fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-            if(cCaCl2>=0.001) then 
-                write(rstr,'(F5.3)')cCaCl2
-            elseif(cCaCl2>0.0) then  
-                write(rstr,'(ES9.2E2)')cCaCl2
-            else 
-                write(rstr,'(F3.1)')cCaCl2
-            endif    
-            fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
-            write(rstr,'(F7.3)')pHbulk
-            fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
-
-
-        elseif(systype=="elect".or.systype=="electnopoly".or.systype=="electA") then 
-
-
-            write(rstr,'(F5.3)')sigmaABL
-            fnamelabel="sg"//trim(adjustl(rstr)) 
-            write(rstr,'(F5.3)')cNaCl
-            fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-            if(cCaCl2>=0.001) then 
-                write(rstr,'(F5.3)')cCaCl2
-            elseif(cCaCl2>0.0) then  
-                write(rstr,'(ES9.2E2)')cCaCl2
-            else 
-                write(rstr,'(F3.1)')cCaCl2
-            endif 
-            fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
-            write(rstr,'(F7.3)')pHbulk
-            fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
-
-        elseif(systype=="neutral") then 
-            
-            write(rstr,'(F5.3)')sigmaAB
-            fnamelabel="sg"//trim(adjustl(rstr)) 
-            write(rstr,'(F5.3)')VdWepsBB
-            fnamelabel=trim(fnamelabel)//"VdWepsB"//trim(adjustl(rstr))//".dat"
-
-        elseif(systype=="brush_mul") then 
-            
-            write(rstr,'(F5.3)')sigmaAB
-            fnamelabel="sg"//trim(adjustl(rstr)) 
-            write(rstr,'(F5.3)')cNaCl
-            fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
-            if(cCaCl2>=0.001) then 
-                write(rstr,'(F5.3)')cCaCl2
-            elseif(cCaCl2>0.0) then  
-                write(rstr,'(ES9.2E2)')cCaCl2
-            else 
-                write(rstr,'(F3.1)')cCaCl2
-            endif 
-            fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
-            write(rstr,'(F7.3)')pHbulk
-            fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
-
-        else
-            print*,"Error in output_individualcontr_fe subroutine"
-            print*,"Wrong value systype : ", systype
-        endif    
-
+        call make_filename_label(fnamelabel)
         fenergyfilename='energy.'//trim(fnamelabel)   
             
         !     .. opening files        
@@ -2042,7 +1932,89 @@ subroutine output_individualcontr_fe
 
 end subroutine output_individualcontr_fe
 
-     
+
+subroutine make_filename_label(fnamelabel)
+ 
+    use globals, only : LEFT,RIGHT, systype
+    use parameters, only : sigma,sigmaAB,sigmaABL,sigmaABR,cNaCl,cCaCl2,pHbulk,VdWepsBB
+
+    character(len=*), intent(inout) :: fnamelabel    
+
+
+    character(len=20) :: rstr
+      !     .. make label filename
+
+    select case(systype) 
+    case("electdouble") 
+
+
+        write(rstr,'(F5.3)')sigmaABL
+        fnamelabel="sgL"//trim(adjustl(rstr))
+        write(rstr,'(F5.3)')sigmaABR
+        fnamelabel=trim(fnamelabel)//"sgR"//trim(adjustl(rstr))  
+        write(rstr,'(F5.3)')cNaCl
+        fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
+        if(cCaCl2>=0.001) then 
+            write(rstr,'(F5.3)')cCaCl2
+        elseif(cCaCl2>0.0) then  
+            write(rstr,'(ES9.2E2)')cCaCl2
+        else 
+            write(rstr,'(F3.1)')cCaCl2
+        endif    
+        fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
+        write(rstr,'(F7.3)')pHbulk
+        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
+
+
+    case("elect","electnopoly","electA")  
+
+
+        write(rstr,'(F5.3)')sigmaABL
+        fnamelabel="sg"//trim(adjustl(rstr)) 
+        write(rstr,'(F5.3)')cNaCl
+        fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
+        if(cCaCl2>=0.001) then 
+            write(rstr,'(F5.3)')cCaCl2
+        elseif(cCaCl2>0.0) then  
+            write(rstr,'(ES9.2E2)')cCaCl2
+        else 
+            write(rstr,'(F3.1)')cCaCl2
+        endif 
+        fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
+        write(rstr,'(F7.3)')pHbulk
+        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
+
+    case("neutral")
+        
+        write(rstr,'(F5.3)')sigmaAB
+        fnamelabel="sg"//trim(adjustl(rstr)) 
+        write(rstr,'(F5.3)')VdWepsBB
+        fnamelabel=trim(fnamelabel)//"VdWepsB"//trim(adjustl(rstr))//".dat"
+
+    case("brush_mul","brushssdna","brushborn")  
+        
+        write(rstr,'(F5.3)')sigma
+        fnamelabel="sg"//trim(adjustl(rstr)) 
+        write(rstr,'(F5.3)')cNaCl
+        fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
+        if(cCaCl2>=0.001) then 
+            write(rstr,'(F5.3)')cCaCl2
+        elseif(cCaCl2>0.0) then  
+            write(rstr,'(ES9.2E2)')cCaCl2
+        else 
+            write(rstr,'(F3.1)')cCaCl2
+        endif 
+        fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
+        write(rstr,'(F7.3)')pHbulk
+        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
+
+    case default
+        print*,"Error in output_individualcontr_fe subroutine"
+        print*,"Wrong value systype : ", systype
+    endselect
+
+end subroutine
+
 subroutine copy_solution(x)
 
     use globals, only : systype, neq, nsize, bcflag, LEFT, RIGHT
@@ -2163,7 +2135,7 @@ subroutine compute_vars_and_output()
 
         call output()           ! writing of output
     
-    case ("brush_mul")
+    case ("brush_mul","brushssdna","brushborn")
 
         call fcnenergy()   
         call charge_polymer() 
@@ -2178,6 +2150,28 @@ subroutine compute_vars_and_output()
     end select
          
 end subroutine compute_vars_and_output
+
+
+subroutine write_chain_config()
+
+    use globals, only: nseg, nsegtypes
+    use chains, only : type_of_monomer,type_of_monomer_char,isAmonomer
+    use parameters, only : lseg,lsegAA,vpol, vsol
+
+    integer :: i
+
+    print*,"lseg=",lseg
+    print*,"#nsegtypes   lsegAA    vpol"
+    do i=1,nsegtypes
+        print*,i,lsegAA(i),vpol(i)*vsol
+    enddo
+    print*,"#segment type_num  type_char  isAmonomer"
+    do i=1,nseg
+        print*,i,type_of_monomer(i),type_of_monomer_char(i),isAmonomer(i)
+    enddo 
+    print*,"######"   
+
+end subroutine write_chain_config
 
 
 end module

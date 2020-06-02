@@ -386,20 +386,23 @@ contains
         integer :: neq_bc
 
         ! .. electrostatics: self consistent boundary conditions
-        
-        if(systype=="elect") then 
+        ! .. neeed to be put in function ...
+        select case(systype)
+        case ("elect") 
             noffset=4*nsize
-        else if(systype=="electA") then 
+        case("electA")  
             noffset=3*nsize
-        else if(systype=="electdouble") then 
+        case("electdouble") 
             noffset=4*nsize
-        else if(systype=="electnopoly") then 
+        case("electnopoly") 
             noffset=2*nsize
-         else if(systype=="brush_mul") then 
+        case("brush_mul") 
             noffset=(2+nsegtypes)*nsize    
-        else 
+        case("brushssdna") 
+            noffset=(2+nsegtypes)*nsize    
+        case default    
             print*,"error: systype wrong value for Poisson_equation_surface "    
-        endif     
+        end select
 
         neq_bc=0
 
@@ -468,22 +471,17 @@ contains
         integer :: idxR, idxL, idxR2D
         integer :: id, idxpls, idxmin, idypls, idymin, idzpls, idzmin
         integer :: neq_bc
+        real(dp) :: epsxR, epsxL
 
         ! .. electrostatics: self consistent boundary conditions
         
-        if(systype=="elect") then 
-            noffset=4*nsize
-        else if(systype=="electA") then 
-            noffset=3*nsize
-        else if(systype=="electdouble") then 
-            noffset=4*nsize
-        else if(systype=="electnopoly") then 
-            noffset=2*nsize
-         else if(systype=="brush_mul") then 
+        
+        select case(systype)
+        case("brushborn") 
             noffset=(2+nsegtypes)*nsize    
-        else 
-            print*,"error: systype wrong value for Poisson_equation_surface "    
-        endif     
+        case default    
+            print*,"error: systype wrong value for Poisson_Equation_Surface_Eps "    
+        end select
 
         neq_bc=0
 
@@ -491,16 +489,20 @@ contains
             neq_bc=nx*ny
             do ix=1,nx
                 do iy=1,ny
+                    call linearIndexFromCoordinate(ix,iy,nz-1,idzmin)
                     call linearIndexFromCoordinate(ix,iy,nz,idxR)
-                    idxR2D=idxR-(nsize-nx*ny) ! check this 
-                    fvec(noffset+idxR2D)=psisurfR(idxR2D)-psi(idxR)-sigmaqSurfR(idxR2D)/2.0_dp
+                    idxR2D=idxR-(nsize-nx*ny) 
+                    epsxR=3.0_dp*eps(idxR)-2.0_dp*eps(idzmin)
+                    fvec(noffset+idxR2D)=psisurfR(idxR2D)-psi(idxR)-sigmaqSurfR(idxR2D)*epsxR/2.0_dp
                 enddo
             enddo
         else
             do ix=1,nx
                 do iy=1,ny
+                    call linearIndexFromCoordinate(ix,iy,nz-1,idzmin)
                     call linearIndexFromCoordinate(ix,iy,nz,idxR)
                     idxR2D=idxR-(nsize-nx*ny)
+                    epsxR=3.0_dp*eps(idxR)-2.0_dp*eps(idzmin)
                     psisurfR(idxR2D) = psi(idxR)+sigmaqSurfR(idxR2D)/2.0_dp 
                 enddo
             enddo
@@ -511,15 +513,19 @@ contains
         if(bcflag(LEFT)/='cc') then 
             do ix=1,nx
                 do iy=1,ny
+                    call linearIndexFromCoordinate(ix,iy,2,idzpls)
                     call linearIndexFromCoordinate(ix,iy,1,idxL)
-                    fvec(noffset+idxL)=psi(idxL)-psisurfL(idxL)+sigmaqSurfL(idxL)/2.0_dp
+                    epsxL=3.0_dp*eps(idxL)-2.0_dp*eps(idzpls)
+                    fvec(noffset+idxL)=psi(idxL)-psisurfL(idxL)+sigmaqSurfL(idxL)*epsxL/2.0_dp
                 enddo
             enddo
         else    
             do ix=1,nx
                 do iy=1,ny
+                    call linearIndexFromCoordinate(ix,iy,2,idzpls)
                     call linearIndexFromCoordinate(ix,iy,1,idxL)
-                    psisurfL(idxL) = psi(idxL)+sigmaqSurfL(idxL)/2.0_dp
+                    epsxL=3.0_dp*eps(idxL)-2.0_dp*eps(idzpls)
+                    psisurfL(idxL) = psi(idxL)+sigmaqSurfL(idxL)*epsxL/2.0_dp
                 enddo
             enddo
         endif   
@@ -559,9 +565,9 @@ contains
 
 
     ! computes gradient electrostaic potential multiplied by (scaled) derivate of dielectric 
-    ! with espect of volumer fraction of polymer. Terms occur in PDF 
+    ! with respect of volume fraction of polymer. Terms occur in PDF 
 
-    subroutine grad_pot_sqr_eps_cubic(psi,Deps,sigmaqSurfR,sigmaqSurfL,sqrDpsi)
+    subroutine grad_pot_sqr_eps_cubic(psi,eps,Deps,sigmaqSurfR,sigmaqSurfL,sqrDpsi)
         
         use globals, only : nsize
         use volume, only : nx,ny,nz,delta,linearIndexFromCoordinate
@@ -571,6 +577,7 @@ contains
 
         ! input arguments 
         real(dp), intent(in) :: psi(:)
+        real(dp), intent(in) :: eps(:)   
         real(dp), intent(in) :: Deps(:)   
         real(dp), intent(in) :: sigmaqSurfR(:)
         real(dp), intent(in) :: sigmaqSurfL(:)
@@ -580,7 +587,7 @@ contains
         integer :: ix, iy, iz
         integer :: idxR, idxL, id2D  
         integer :: id, idxpls, idxmin, idypls, idymin, idzpls, idzmin
-        real(dp):: Dpsi(3)
+        real(dp):: Dpsi(3),epsz0,epsznz
 
         ! .. electrostatics 
        
@@ -618,10 +625,11 @@ contains
                 call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
                 call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
 
+                epsz0=3.0_dp*eps(id)-2.0_dp*eps(idzpls)
                 ! grad 
                 Dpsi(1)=(psi(idxpls)-psi(idxmin))  
                 Dpsi(2)=(psi(idypls)-psi(idymin))   
-                Dpsi(3)=(psi(idzpls)-(psi(id)+sigmaqSurfL(id))) 
+                Dpsi(3)=(psi(idzpls)-(psi(id)+sigmaqSurfL(id)/epsz0)) 
                 
                 ! squared and scaled 
                 sqrDpsi(id)= constqE*Deps(id)*(Dpsi(1)**2+Dpsi(2)**2+Dpsi(3)**2)
@@ -630,6 +638,7 @@ contains
         enddo    
 
         ! boundary iz=nz 
+
 
         do ix=1,nx
             do iy=1,ny
@@ -643,10 +652,11 @@ contains
                 
                 id2D=id-(nsize-nx*ny)
                 
+                epsznz=3.0_dp*eps(id)-2.0_dp*eps(idzmin)
                 ! grad 
                 Dpsi(1)=(psi(idxpls)-psi(idxmin))  
                 Dpsi(2)=(psi(idypls)-psi(idymin))  
-                Dpsi(3)=((sigmaqSurfR(id2D)+psi(id))-psi(idzmin)) 
+                Dpsi(3)=((sigmaqSurfR(id2D)/epsznz+psi(id))-psi(idzmin)) 
 
                 ! squared and scaled  
                 sqrDpsi(id)= constqE*Deps(id)*(Dpsi(1)**2+Dpsi(2)**2+Dpsi(3)**2)
