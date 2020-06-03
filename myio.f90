@@ -478,12 +478,14 @@ subroutine check_value_chainmethod(chainmethod,info)
     ! permissible values of chainmethod
 
     chainmethodstr(1)="MC"
-    chainmethodstr(2)="FILE_lammps_XYZ"
-    chainmethodstr(3)="FILE_TXT"
+    chainmethodstr(2)="FILE_lammps_xyz"
+    chainmethodstr(3)="FILE_lammps_trj"
+    chainmethodstr(4)="FILE_TXT"
+       
  
     flag=.FALSE.
 
-    do i=1,3
+    do i=1,4
         if(chainmethod==chainmethodstr(i)) flag=.TRUE.
     enddo
         

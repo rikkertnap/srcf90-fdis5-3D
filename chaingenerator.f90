@@ -32,7 +32,9 @@ subroutine make_chains(chainmethod)
     case ("MC")
         call make_chains_mc()
     case ("FILE_lammps_XYZ") 
-        call read_chains_lammps_xyz  
+        call read_chains_lammps_xyz
+    case ("FILE_lammps_TRJ") 
+        call read_chains_lammps_trj  
     case ("FILE_TXT") 
         call make_chains_file()
     case default
@@ -522,6 +524,254 @@ subroutine read_chains_lammps_XYZ(info)
     close(un_ene)
 
 end subroutine read_chains_lammps_XYZ
+
+
+! Reads confomations from a file called traj.xyz
+! Format lammps trajectory file in xyz format
+! number of ATOMS much equal nseg+1  
+! differeent processor rank get assigned different conformations
+
+subroutine read_chains_lammps_trj(info)
+
+    !     .. variable and constant declaractions  
+    use mpivars                                                                                     
+    use globals
+    use chains
+    use random
+    use parameters
+    use volume
+    use chain_rotation
+    use myio, only : myio_err_chainsfile, myio_err_energyfile
+    use myutils,  only :  print_to_log, LogUnit, lenText, newunit
+
+    ! .. argument
+
+    integer, intent(out),optional :: info
+
+    ! .. local variables
+
+    integer :: i,j,s,rot,g,gn      ! dummy indices
+    integer :: idx                 ! index label
+    integer :: ix,iy,iz,idxtmp,ntheta
+    integer :: nchains              ! number of rotations
+    integer :: maxnchains           ! number of rotations
+    integer :: maxntheta            ! maximum number of rotation in xy-plane
+    integer :: conf,conffile        ! counts number of conformations  
+    integer :: nsegfile             ! nseg in chain file      
+    integer :: cuantasfile          ! cuantas in chain file                                              
+    real(dp) :: chain(3,nseg+1)     ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1  
+    real(dp) :: chain_rot(3,nseg+1) 
+    real(dp) :: xseg(3,nseg+1)
+    real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
+    real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates 
+    real(dp) :: Lx,Ly,Lz         ! sizes box
+    real(dp) :: xpt,ypt          ! coordinates
+    real(dp) :: theta, theta_angle
+    real(dp) :: xc,yc,zc          
+    integer  :: xi,yi,zi         
+    real(dp) :: energy                                               
+    character(len=14) :: fname
+    integer :: ios 
+    character(len=30) :: str
+    integer :: nchain, rotmax, maxattempts, idatom, item, moltype
+    integer :: un, un_ene ! unit number
+    logical :: is_positive_rot, exist
+    character(len=lenText) :: text,istr 
+
+
+    ! .. executable statements                                                                                                     
+    ! .. open file                                                                                              
+
+    write(fname,'(A14)')'traj.lammpstrj'
+    inquire(file=fname,exist=exist)
+    if(exist) then
+        open(unit=newunit(un),file=fname,status='old',iostat=ios)
+    else
+        print*,'chains.lammostrj file does not exit'
+        if (present(info)) info = myio_err_chainsfile
+        return
+    endif
+    if(ios >0 ) then
+        print*, 'Error opening file : iostat =', ios
+        if (present(info)) info = myio_err_chainsfile
+        return
+    endif
+
+
+    write(fname,'(A8)')'traj.ene' ! traectory energy
+    inquire(file=fname,exist=exist)
+    if(exist) then
+        open(unit=newunit(un_ene),file=fname,status='old',iostat=ios)
+    else
+        print*,'traj.ene file does not exit'
+        if (present(info)) info = myio_err_energyfile
+        return
+    endif
+    if(ios >0 ) then
+        print*, 'Error opening file : iostat =', ios
+        if (present(info)) info = myio_err_energyfile
+        return
+    endif
+
+    conf=0                    ! counter for conformations                                                           
+    conffile=0                ! counter for conformations in file                                                                    
+    seed=435672               ! seed for random number generator    
+    maxnchains=12                                                                         
+    maxattempts=72            ! maximum number of attempts to rotate conf                                                                   
+    !rotmax=maxnchainsrotations  ! maximum number of rotation conf  
+    rotmax=maxnchains
+    ios=0
+
+    maxntheta =6                ! maximum number of rotation in xy-plane  
+    theta_angle= 2.0_dp*pi/maxntheta    
+    Lz= nz*delta            ! maximum height box 
+    Lx= nx*delta            ! maximum width box 
+    Ly= ny*delta            ! maximum depth box 
+
+
+    do while ((conf<cuantas).and.(ios==0))
+    
+
+        if(conf.ne.0) then ! skip preamble 
+            do i=1,9
+                read(un,*,iostat=ios)str
+            enddo    
+        else               ! read preamble
+            do i=1,3
+                read(un,*,iostat=ios)str
+            enddo   
+            read(un,*,iostat=ios)nsegfile
+            do i=5,9
+                read(un,*,iostat=ios)str
+            enddo   
+            if(nsegfile.ne.(nseg+1)) then ! nsegfile =nseg+1 . The chain has one 'segement' more: tethered point.
+                print*,"nseg chain file not equal internal (nseg+1) : stop program"
+                stop
+            endif    
+        endif
+
+    
+        do s=1,nseg+1              ! .. read form  trajecotory file
+            read(un,*,iostat=ios)item,idatom,moltype,xc,yc,zc,ix,iy,iz
+            xseg(1,item) = xc 
+            xseg(2,item) = yc
+            xseg(3,item) = zc
+            !print*,"index=",idatom, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
+        enddo
+
+        read(un_ene,*,iostat=ios)energy
+
+        conffile=conffile +1 
+
+
+        if(mod(conffile,size)==rank) then 
+            ! .. assignes this conformation to process numberrank
+            ! .. 'first' segment, sets origin 
+
+            do s=1,nseg+1        
+                chain(2,s) = (xseg(1,s)-xseg(1,1)) 
+                chain(3,s) = (xseg(2,s)-xseg(2,1))
+                chain(1,s) = (xseg(3,s)-xseg(3,1))
+                !print*,"conf=",conf,"s=",s,(chain(i,s),i=1,3)
+            enddo
+ 
+            do rot=1,rotmax        
+                 
+                nchain=1
+                is_positive_rot=.false.
+
+                do while ((is_positive_rot.eqv..false.).and.(nchain.lt.maxattempts))
+                    is_positive_rot=rotation(chain,chain_rot,nseg)
+                    nchain=nchain+1
+                enddo
+                !print*,"conf=",conf,"is_positve=",is_positive_rot
+
+                if(is_positive_rot) then
+            
+                    if(geometry=="cubic") then !  transforming form real- to lattice coordinates
+            
+                        do ntheta=1,maxntheta                  ! rotation in xy-plane
+
+                            conf=conf+1
+                            theta= ntheta * theta_angle
+
+                            do s=1,nseg
+                                xp(s)= chain_rot(2,s+1)*cos(theta)+chain_rot(3,s+1)*sin(theta) 
+                                yp(s)=-chain_rot(2,s+1)*sin(theta)+chain_rot(3,s+1)*cos(theta)
+                                zp(s)= chain_rot(1,s+1)   
+                            enddo    
+
+                            do gn=1,ngr_node                   ! loop over grafted points per node
+                               
+                                g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
+                               
+                                xpt =  position_graft(g,1)     ! position of graft point
+                                ypt =  position_graft(g,2)   
+                                
+                                weightchain(gn,conf)=.TRUE.  ! init weight     
+
+                                do s=1,nseg
+
+                                    ! .. translation onto correct grafting area translation in xy plane 
+                                    x(s)=xp(s)+xpt
+                                    y(s)=yp(s)+ypt
+                                    ! .. check z coordinate 
+                                    if((0>zp(s)).or.(zp(s)>Lz)) weightchain(gn,conf)=.FALSE. 
+                                    ! .. periodic boundary conditions in x-direction and y-direction  
+                                    x(s)=pbc(x(s),Lx)
+                                    y(s)=pbc(y(s),Ly)
+
+                                    ! .. transforming form real- to lattice coordinates                 
+                                    xi=int(x(s)/delta)+1
+                                    yi=int(y(s)/delta)+1
+                                    zi=int(zp(s)/delta)+1
+
+                                    if(weightchain(gn,conf).eqv..TRUE.) then
+                                        call linearIndexFromCoordinate(xi,yi,zi,idx)
+                                        indexchain_init(s,gn,conf) = idx
+                                        if(idx<=0) then
+                                            print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                                        endif
+                                        exp_energychain(gn,conf)=exp(-energy)
+                                    endif
+                                enddo                    
+                            enddo     ! end loop over graft points
+
+                        enddo         ! end loop over rotations
+            
+                    else if(geometry=="prism") then
+                     ! to be done later 
+
+                    else 
+                        print*,"Error: in make_chains_mc: geometry not cubic, prism, or square"
+                        print*,"stopping program"
+                        stop
+                    endif
+                endif  ! if 
+            enddo      ! rotation loop
+        endif          ! if distrubtion if 
+    enddo              ! end while loop                                                                                                          
+    !  .. end chains generation    
+    
+
+    if(conf<=cuantas) then
+        print*,"subroutine make_chains_lammps_XYZ : something went wrong"
+        print*,"conf     = ",conf," cuantas     = ",cuantas
+        print*,"conffile = ",conffile
+        stop
+    else
+        text="Chains generated: subroutine make_chains_lammps_file"
+        call print_to_log(LogUnit,text)
+        readinchains=conffile
+    endif
+
+    close(un)
+    close(un_ene)
+
+end subroutine read_chains_lammps_trj
+
+
+
 
 subroutine make_chains_file()
   
