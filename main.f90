@@ -3,17 +3,11 @@
 ! coated onto a planar surface,                                  |
 ! input/output: see myio.f90                                     |
 ! ---------------------------------------------------------------|
-! todo 5 june 2019                                               | 
-! 1 remove C monomer                                             |
-! 2 add VdW fcnneutral                                           |
-! 3 added VdWepsAA and VdWepsBB to input and output              |
-! ---------------------------------------------------------------|
 
 
 program main
 
     !     .. variable and constant declaractions
-
     use mpivars
     use globals       ! parameters definitions
     use physconst
@@ -35,7 +29,6 @@ program main
     use myio
     use myutils
     use dielectric_const
-
 
     implicit none
 
@@ -105,10 +98,10 @@ program main
     call set_properties_chain(chainperiod,chaintype) 
     call make_chains(chainmethod)   ! generate polymer configurations
     call allocate_field(nx,ny,nz,nsegtypes)
-    call allocate_part_fnc(ngr)
+    call allocate_part_fnc()
     call init_field()
     call init_surface(bcflag,nsurf)
-    call init_sigma()    
+   
     if(isVdW) then 
         call make_VdWcoeff(info)
         if(info/=0) then
@@ -119,12 +112,12 @@ program main
             stop
         endif
     endif  
+   
     call make_isrhoselfconsistent(isVdW)
     call set_size_neq()             ! number of non-linear equation neq
     call set_fcn()
-   ! call set_dielect_fcn(dielect_env)
+    call set_dielect_fcn(dielect_env)
     call write_chain_config()
-   
 
     !  .. computation starts
 
@@ -235,13 +228,15 @@ program main
             loop%val=loop%max
         endif
 
+        call set_fcn()
+
         do while (loop%min<=loop%val.and.loop%val<=loop%max.and.&
                 (abs(loop%stepsize)>=loop%delta))
             
             
-            call init_vars_input()  ! sets up chem potenitals
-            call chain_filter()
-            call set_fcn()
+            call init_vars_input()  ! sets up chem potentials
+            call chain_filter()      
+            !call set_fcn()
             flag_solver = 0
 
             if(rank==0) then     ! node rank=0
@@ -249,7 +244,7 @@ program main
                 call make_guess(x, xguess, isfirstguess)
                 call solver(x, xguess, tol_conv, fnorm, issolution)
                 call fcnptr(x, fvec, neq)
-                
+                !issolution=.true.
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
                     dest =i

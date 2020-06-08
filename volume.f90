@@ -64,30 +64,30 @@ contains
         areacell = delta*delta
         nsurf = nx*ny  
         areasurf=nsurf*delta*delta
-        ngrx=int(nx/ngr_freq)
-        ngry=int(ny/ngr_freq)
+        ! ngrx=int(nx/ngr_freq)
+        ! ngry=int(ny/ngr_freq)
 
-        ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
+        ! ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
 
-        ! check 
-        if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
-            print*,"ngr test failed: exiting"
-            print*,"nx= ",nx," ny= ",ny," ngr_freq = ",ngr_freq
-            stop
-        endif    
-        !     .. compute ngr_node = the number of grafted areas assigned to one node
-        !     .. part of the parallelization of program
-        ngr_node = int(ngr/size)
-        ! ..testing
-        if(ngr/=(ngr_node*size)) then
-            print*,"ngr_node test failed: exiting"
-            print*,"ngrnode=",ngr_node,"ngr=",ngr,"size=",size
-            stop
-        endif
+        ! ! check 
+        ! if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
+        !     print*,"ngr test failed: exiting"
+        !     print*,"nx= ",nx," ny= ",ny," ngr_freq = ",ngr_freq
+        !     stop
+        ! endif    
+        ! !     .. compute ngr_node = the number of grafted areas assigned to one node
+        ! !     .. part of the parallelization of program
+        ! ngr_node = int(ngr/size)
+        ! ! ..testing
+        ! if(ngr/=(ngr_node*size)) then
+        !     print*,"ngr_node test failed: exiting"
+        !     print*,"ngrnode=",ngr_node,"ngr=",ngr,"size=",size
+        !     stop
+        ! endif
 
-        allocate(position_graft(ngr,2)) ! only after ngr has been established position_graft can be allocated
+        ! allocate(position_graft(ngr,2)) ! only after ngr has been established position_graft can be allocated
 
-        call init_graftpoints()
+        ! call init_graftpoints()
 
     end subroutine init_lattice
          

@@ -60,16 +60,8 @@ subroutine init_guess(x, xguess)
     select case (systype)
         case ("elect")   
             call init_guess_elect(x,xguess)    
-        case ("electdouble")
-            call init_guess_electdouble(x,xguess)  
-        case ("electnopoly") 
-            call init_guess_electnopoly(x,xguess)  
         case ("neutral")  
             call init_guess_neutral(x,xguess)
-        case ("electA")  
-            call init_guess_electA(x,xguess)
-        case ("electVdWAB")  
-            call init_guess_elect(x,xguess)
         case ("brush_mul")  
             call init_guess_multi(x,xguess)
         case ("brushssdna")  
@@ -85,163 +77,7 @@ end subroutine init_guess
          
 
 
-subroutine init_guess_electdouble(x, xguess)
-      
-    use globals, only : neq,bcflag,LEFT,RIGHT,nsize
-    use volume, only : nsurf
-    use field, only : xsol,psi,fdisA,rhopolA,rhopolB
-    use surface, only : psisurfL, psisurfR 
-    use parameters, only : xbulk, infile
-    use myutils, only : newunit
-  
-    real(dp) :: x(:)       ! volume fraction solvent iteration vector 
-    real(dp) :: xguess(:)  ! guess fraction  solvent 
-  
-    !     ..local variables 
-    integer :: n, i
-    character(len=8) :: fname(4)
-    integer :: ios,un_file(4)
-  
-    ! .. init guess all xbulk     
-    do i=1,nsize
-        x(i)=xbulk%sol
-        x(i+  nsize)=0.0_dp
-        x(i+2*nsize)=0.0_dp        ! 0.000001_dp
-        x(i+3*nsize)=0.0_dp
-    enddo
-  
-    if (infile.eq.1) then   ! infile is read in from file/stdio  
-    
-        write(fname(1),'(A7)')'xsol.in'
-        write(fname(2),'(A6)')'psi.in'
-        write(fname(3),'(A7)')'rhoA.in'
-        write(fname(4),'(A7)')'rhoB.in'
-        
-        do i=1,4 ! loop files
-        
-            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
-            if(ios >0 ) then    
-                print*, 'file number =',un_file(i),' file name =',fname(i)
-                print*, 'Error opening file : iostat =', ios
-                stop
-            endif
-        enddo
-     
-        if(bcflag(LEFT)/="cc") then 
-            do i=1,nsurf 
-                read(un_file(2),*)psisurfL(i)     ! surface potetial 
-            enddo
-        endif        
-        do i=1,nsize
-            read(un_file(1),*)xsol(i)       ! solvent
-            read(un_file(2),*)psi(i)        ! degree of complexation A
-            read(un_file(3),*)rhopolA(i)    ! degree of complexation A
-            read(un_file(4),*)rhopolB(i)    ! degree of complexation A
-            x(i)         = xsol(i)       ! placing xsol  in vector x
-            x(i+nsize)   = psi(i)        ! placing xsol  in vector x
-            x(i+2*nsize) = rhopolA(i)    ! placing xsol  in vector x
-            x(i+3*nsize) = rhopolB(i)    ! placing xsol  in vector x
-        enddo
-        if(bcflag(RIGHT)/="cc") then 
-            do i=1,nsurf
-                read(un_file(2),*)psisurfR(i)     ! degree of complexation A 
-            enddo
-        endif    
-        
-        do i=1,4
-            close(un_file(i))
-        enddo
 
-    endif  !     .. end init from file 
-  
-    do i=1,neq
-        xguess(i)=x(i)
-    enddo
-
-end subroutine init_guess_electdouble
-
-subroutine init_guess_electnopoly(x, xguess)
-    
-    use globals, only : neq,bcflag,LEFT,RIGHT,nsize
-    use volume, only : nsurf
-    use field, only : xsol,psi
-    use surface, only : psisurfL, psisurfR   
-    use parameters, only : xbulk ,infile
-    use myutils, only : newunit
-  
-    real(dp) :: x(:)       ! volume fraction solvent iteration vector 
-    real(dp) :: xguess(:)  ! guess fraction  solvent 
-  
-    !     ..local variables 
-    integer :: n, i
-    character(len=8) :: fname(2)
-    integer :: ios,un_file(4)
-    integer :: neq_bc 
-  
-  
-    ! .. init guess all xbulk     
-
-    do i=1,nsize
-        x(i)=xbulk%sol
-        x(i+nsize)=0.0_dp
-    enddo
-
-    neq_bc=0
-    if(bcflag(LEFT)/="cc") then
-        neq_bc=neq_bc+nsurf
-        do i=1,nsurf 
-            x(2*nsize+i)=0.0_dp
-        enddo  
-    endif
-    if(bcflag(RIGHT)/="cc") then 
-        do i=1,nsurf
-            x(2*nsize+neq_bc+i)=0.0_dp
-        enddo
-        neq_bc=neq_bc+nsurf
-    endif     
-
-    if (infile.eq.1) then   ! infile is read in from file/stdio  
-    
-        write(fname(1),'(A7)')'xsol.in'
-        write(fname(2),'(A6)')'psi.in'
-     
-        do i=1,2 ! loop files
-            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
-            if(ios >0 ) then    
-                print*, 'file number =',un_file(i),' file name =',fname(i)
-                print*, 'Error opening file : iostat =', ios
-                stop
-            endif
-        enddo
-     
-        if(bcflag(LEFT)/="cc") then
-            do i=1,nsurf
-                read(un_file(2),*)psisurfL(i)     ! degree of complexation A
-            enddo   
-        endif     
-        do i=1,nsize
-            read(un_file(1),*)xsol(i)    ! solvent
-            read(un_file(2),*)psi(i)     ! degree of complexation A
-            x(i)      = xsol(i)     ! placing xsol  in vector x
-            x(i+nsize) = psi(i)     ! placing xsol  in vector x
-        enddo
-        if(bcflag(RIGHT)/="cc") then 
-            do i=1,nsurf
-                read(un_file(2),*)psisurfR(i)     ! degree of complexation A 
-            enddo
-        endif        
-        do i=1,2
-            close(un_file(i))
-        enddo
-
-    endif
-    !     .. end init from file 
-  
-    do i=1,neq
-        xguess(i)=x(i)
-    enddo
-
-end subroutine init_guess_electnopoly
 
 !     purpose: initalize x and xguess
 
@@ -249,7 +85,7 @@ subroutine init_guess_elect(x, xguess)
 
     use globals, only : neq,bcflag,LEFT,RIGHT,nsize
     use volume, only : nsurf
-    use field, only : xsol,psi,rhopolA,rhopolB
+    use field, only : xsol,psi,rhopol
     use surface, only : psisurfL, psisurfR 
     use parameters, only : xbulk, infile
     use myutils, only : newunit
@@ -261,6 +97,7 @@ subroutine init_guess_elect(x, xguess)
     integer :: n, i
     character(len=8) :: fname(4)
     integer :: ios,un_file(4)
+    integer, parameter :: A=1, B=2   
   
     ! .. init guess all xbulk     
 
@@ -294,12 +131,12 @@ subroutine init_guess_elect(x, xguess)
         do i=1,nsize
             read(un_file(1),*)xsol(i)    ! solvent
             read(un_file(2),*)psi(i)     ! degree of complexation A
-            read(un_file(3),*)rhopolA(i) ! degree of complexation A
-            read(un_file(4),*)rhopolB(i)   ! degree of complexation A
+            read(un_file(3),*)rhopol(i,A) ! degree of complexation A
+            read(un_file(4),*)rhopol(i,B)   ! degree of complexation A
             x(i)         = xsol(i)    ! placing xsol  in vector x
             x(i+nsize)   = psi(i)     ! placing xsol  in vector x
-            x(i+2*nsize) = rhopolA(i) ! placing xsol  in vector x
-            x(i+3*nsize) = rhopolB(i)   ! placing xsol  in vector x
+            x(i+2*nsize) = rhopol(i,A) ! placing xsol  in vector x
+            x(i+3*nsize) = rhopol(i,B)   ! placing xsol  in vector x
         enddo
     
         if(bcflag(RIGHT)/="cc") then
@@ -323,84 +160,11 @@ subroutine init_guess_elect(x, xguess)
 end subroutine init_guess_elect
 
 
-subroutine init_guess_electA(x, xguess)
-
-    use globals, only : neq,bcflag,LEFT,RIGHT,nsize
-    use volume, only : nsurf
-    use field, only : xsol,psi,rhopolA
-    use surface, only : psisurfL, psisurfR 
-    use parameters, only : xbulk, infile
-    use myutils, only : newunit
-  
-    real(dp) :: x(:)       ! volume fraction solvent iteration vector 
-    real(dp) :: xguess(:)  ! guess fraction  solvent 
-  
-    !     ..local variables 
-    integer :: n, i
-    character(len=8) :: fname(3)
-    integer :: ios,un_file(3)
-  
-    ! .. init guess all xbulk     
-
-    do i=1,nsize
-        x(i)=xbulk%sol
-        x(i+nsize)=0.0_dp
-        x(i+2*nsize)=0.0_dp
-    enddo
-  
-    if (infile.eq.1) then   ! infile is read in from file/stdio  
-    
-        write(fname(1),'(A7)')'xsol.in'
-        write(fname(2),'(A6)')'psi.in'
-        write(fname(3),'(A7)')'rhoA.in'
-        
-        do i=1,3 ! loop files
-            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
-            if(ios >0 ) then    
-                print*, 'file num ber =',un_file(i),' file name =',fname(i)
-                print*, 'Error opening file : iostat =', ios
-                stop
-            endif
-        enddo
-        if(bcflag(LEFT)/="cc") then 
-            do i=1,nsurf
-                read(un_file(2),*)psisurfL(i)
-            enddo
-        endif            
-        do i=1,nsize
-            read(un_file(1),*)xsol(i)    ! solvent
-            read(un_file(2),*)psi(i)     ! degree of complexation A
-            read(un_file(3),*)rhopolA(i) ! degree of complexation A
-            x(i)         = xsol(i)    ! placing xsol  in vector x
-            x(i+nsize)   = psi(i)     ! placing xsol  in vector x
-            x(i+2*nsize) = rhopolA(i) ! placing xsol  in vector x
-        enddo
-    
-        if(bcflag(RIGHT)/="cc") then
-            do i=1,nsurf 
-                read(un_file(2),*)psisurfR(i)
-            enddo
-        endif            
-       
-         do i=1,3
-            close(un_file(i))
-        enddo
-
-    endif
-    !     .. end init from file 
-  
-    do i=1,neq
-        xguess(i)=x(i)
-    enddo
-
-end subroutine init_guess_electA
-
-
 subroutine init_guess_neutral(x, xguess)
     
-    use globals, only : neq,nsize
+    use globals, only : neqint,nsize,nsegtypes
     use volume, only : nz
-    use field, only : xsol,rhopolB 
+    use field, only : xsol,rhopol
     use parameters, only : xbulk, infile
     use myutils, only : newunit
   
@@ -408,34 +172,46 @@ subroutine init_guess_neutral(x, xguess)
     real(dp) :: xguess(:)  ! guess fraction  solvent 
   
     !     ..local variables 
-    integer :: n, i
-    character(len=8) :: fname
-    integer :: ios,un_file
+    integer :: n, i, t
+    character(len=8) :: fname(2)
+    integer :: ios,un_file(2)
   
     !     .. init guess all xbulk      
 
+    do i=1,neqint
+        x(i)=0.0_dp    
+    enddo
+
     do i=1,nsize
         x(i)=xbulk%sol
     enddo
-  
+
+
     if (infile.eq.1) then   ! infile is read in from file/stdio  
-        write(fname,'(A7)')'xsol.in'
-        open(unit=newunit(un_file),file=fname,iostat=ios,status='old')
-        if(ios >0 ) then
-            print*, 'file number =',un_file,' file name =',fname
-            print*, 'Error opening file : iostat =', ios                
-            stop
-        endif
-     
+        write(fname(1),'(A7)')'xsol.in'
+        write(fname(2),'(A6)')'rho.in'
+        do i=1,2 ! loop files
+            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
+            if(ios >0 ) then
+                print*, 'file number =',un_file,' file name =',fname
+                print*, 'Error opening file : iostat =', ios                
+                stop
+            endif
+        enddo
         do i=1,nsize
-            read(un_file,*)xsol(i)       ! solvent
-            x(i)      = xsol(i)       ! placing xsol  in vector x
+            read(un_file(1),*)xsol(i) ! solvent
+            read(un_file(2),*)(rhopol(i,t),t=1,nsegtypes)
+            x(i) = xsol(i)            ! placing xsol  in vector x
+            do t=1,nsegtypes          ! placing rhopol(:,t) in vector x
+                x(i+t*nsize)=rhopol(i,t)
+            enddo      
         enddo     
-        close(un_file)
+        close(un_file(1))
+        close(un_file(2))
     endif
     !     .. end init from file 
   
-    do i=1,neq
+    do i=1,neqint
         xguess(i)=x(i)
     enddo
     
@@ -460,7 +236,6 @@ subroutine init_guess_multi(x, xguess)
     integer :: ios,un_file(4)
   
     ! .. init guess all xbulk     
-
 
     do i=1,neqint
         x(i)=0.0_dp    
@@ -573,21 +348,6 @@ subroutine make_guess_from_xstored(xguess,xstored)
         do i=1,neq_bc
             xguess(4*nsize+i)=xstored(4*(nsize+nsurf*nzstep)+i) 
         enddo
-
-    elseif (systype=="electnopoly".or.systype=="dipolarstrong".or.systype=="dipolarweak".or.&
-        systype=="dipolarweakA".or.systype=="dipolarnopoly") then 
-        do i=1,nsize/2
-            xguess(i)=xstored(i)                    ! volume fraction solvent 
-            xguess(i+nsize)=xstored(i+nsize+nsurf*nzstep)       ! potential
-        enddo
-        do i=nsize/2+1,nsize  ! shift by nzstep
-            xguess(i)=xstored(i+nsurf*nzstep)    
-            xguess(i+nsize)=xstored(i+nsize+2*nsurf*nzstep)      
-        enddo       
-
-        do i=1,neq_bc
-            xguess(2*nsize+i)=xstored(2*(nsize+nsurf*nzstep)+i) 
-        enddo   
     else
         print*,"Error : make_guess_from_xstored wrong systype"
         print*,"systype",systype

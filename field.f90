@@ -11,11 +11,6 @@ module field
     real(dp), dimension(:,:), allocatable :: rhopolin 
     real(dp), dimension(:), allocatable :: rhoqpol  ! charge density  monomer of polymer in layer i 
 
-    real(dp), dimension(:), allocatable :: xpolAB  ! total volume fraction of polymer 
-    !real(dp), dimension(:), allocatable :: xpolABz ! total volume fraction of polymer in z-direction
-    real(dp), dimension(:), allocatable :: rhopolA ! density A monomer of polymer 
-    real(dp), dimension(:), allocatable :: rhopolB ! density B monomer of polymer 
-
     real(dp), dimension(:), allocatable :: xsol    ! volume fraction solvent
     real(dp), dimension(:), allocatable :: psi     ! electrostatic potential 
     real(dp), dimension(:), allocatable :: xNa     ! volume fraction of positive Na+ ion
@@ -30,7 +25,7 @@ module field
     real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
 
     real(dp), dimension(:), allocatable :: rhoq    ! total free charge density in units of vsol  
-    !real(dp), dimension(:), allocatable :: qpol    ! charge density of polymer
+  
     real(dp),dimension(:), allocatable :: epsfcn    ! dielectric constant 
     real(dp),dimension(:), allocatable :: Depsfcn   ! derivative dielectric constant
 
@@ -38,15 +33,10 @@ module field
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
     real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
      
-    real(dp), dimension(:), allocatable :: q      ! normalization partion fnc polymer 
-    
-    real(dp), dimension(:), allocatable :: qAB      ! normalization partion fnc polymer 
-    real(dp), dimension(:), allocatable :: qABL,qABR
-
-    real(dp), dimension(:), allocatable :: rhopolAL ! density A monomer of polymer z=0 surface
-    real(dp), dimension(:), allocatable :: rhopolBL ! density B monomer of polymer z=0 surface
-    real(dp), dimension(:), allocatable :: rhopolAR ! density A monomer of polymer z=nz delta surface 
-    real(dp), dimension(:), allocatable :: rhopolBR ! density B monomer of polymer z=nz delta surface
+    real(dp), allocatable :: q        ! normalization partion fnc polymer 
+    real(dp), allocatable :: lnq      ! exponent of normalization partion fnc polymer 
+    real(dp), allocatable :: qAB      ! normalization partion fnc polymer 
+    real(dp), allocatable :: qABL,qABR
 
   
 contains
@@ -65,9 +55,6 @@ contains
         allocate(rhopol(N,nsegtypes),stat=ier) 
         allocate(rhopolin(N,nsegtypes),stat=ier) 
         allocate(rhoqpol(N),stat=ier) 
-        allocate(xpolAB(N),stat=ier)
-        allocate(rhopolA(N),stat=ier)
-        allocate(rhopolB(N),stat=ier)
         allocate(xsol(N),stat=ier)
         allocate(psi(N+2*Nx*Ny))
         allocate(xNa(N),stat=ier)
@@ -84,13 +71,8 @@ contains
         allocate(fdis(N,nsegtypes),stat=ier)
         allocate(fdisA(N,7),stat=ier)
         allocate(fdisB(N,5),stat=ier)
-        allocate(rhopolAL(N),stat=ier)
-        allocate(rhopolAR(N),stat=ier)
-        allocate(rhopolBL(N),stat=ier)
-        allocate(rhopolBR(N),stat=ier)
         allocate(epsfcn(N),stat=ier)    ! relative dielectric constant
-        allocate(Depsfcn(N),stat=ier)   ! derivate relative dielectric constant
-
+        allocate(Depsfcn(N),stat=ier)   ! derivate relative dielectric constan
 
         if( ier/=0 ) then
             print*, 'Allocation error : stat =', ier
@@ -106,9 +88,6 @@ contains
         deallocate(xpolz)
         deallocate(rhopol)
         deallocate(rhoqpol)
-        deallocate(xpolAB)
-        deallocate(rhopolA)
-        deallocate(rhopolB)
         deallocate(xsol)
         deallocate(psi)
         deallocate(xNa)
@@ -122,24 +101,15 @@ contains
         deallocate(rhoq)
         deallocate(fdisA)
         deallocate(fdisB)
-        deallocate(rhopolAL)
-        deallocate(rhopolAR)
-        deallocate(rhopolBL)
-        deallocate(rhopolBR)
         deallocate(epsfcn)
         deallocate(Depsfcn)
         
     end subroutine deallocate_field
 
 
-    subroutine allocate_part_fnc(N)
+    subroutine allocate_part_fnc()
        
-        integer, intent(in) :: N
-
-        allocate(qAB(N))
-        allocate(qABL(N))
-        allocate(qABR(N))
-        allocate(q(N))
+        allocate(q)
 
     end subroutine allocate_part_fnc
 
@@ -148,11 +118,8 @@ contains
     subroutine init_field()
 
         xpol=0.0_dp
-        xpolAB=0.0_dp
         rhopol=0.0_dp
         rhoqpol=0.0_dp
-        rhopolA=0.0_dp
-        rhopolB=0.0_dp
         xsol=0.0_dp
         xNa=0.0_dp
         xK=0.0_dp
@@ -163,10 +130,6 @@ contains
         xHplus=0.0_dp
         xOHmin=0.0_dp
         rhoq=0.0_dp
-        rhopolAL=0.0_dp
-        rhopolAR=0.0_dp
-        rhopolBL=0.0_dp
-        rhopolBR=0.0_dp
         fdisA=0.0_dp
         fdisB=0.0_dp
         xpolz=0.0_dp
@@ -212,7 +175,7 @@ contains
 
         sumrhopol=0.0_dp
         do i=1,nsize
-            sumrhopol=sumrhopol+(rhopolA(i)+rhopolB(i))
+            sumrhopol=sumrhopol+(rhopol(i,1)+rhopol(i,2))
         enddo    
         sumrhopol=sumrhopol*volcell
 
@@ -233,7 +196,7 @@ contains
             call charge_polymer_multi()
         case ("brushssdna","brushborn")
             call charge_polymer_dna()
-        case ("elect","electA","electVdWAB","electdouble")   
+        case ("elect")  
             call charge_polymer_binary()
         case default
             print*,"Error in average_charge_polymer subroutine"    
@@ -253,7 +216,6 @@ contains
 
         integer :: i, t
 
-
         qpol_tot=0.0_dp
         do t=1,nsegtypes
             qpol(t)=0.0_dp
@@ -272,9 +234,6 @@ contains
         enddo
 
     end subroutine charge_polymer_dna
-
-
-
 
 
     subroutine charge_polymer_multi()
@@ -352,7 +311,8 @@ contains
         integer :: i,s,t,k
 
         allocate(npol(nsegtypes))
-        npol=0.0_dp
+        
+        npol=0
 
         do s=1,nseg
             t=type_of_monomer(s)
@@ -366,14 +326,14 @@ contains
                     do i=1,nsize
                         avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
                     enddo
-                    avfdis(t)=avfdis(t)*volcell/(npol(t)*ngr)        
+                    avfdis(t)=avfdis(t)*volcell/(npol(t))        
                 else
                     do k=1,7
                         avfdisA(k)=0.0_dp
                         do i=1,nsize
                             avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopol(i,t)
                         enddo
-                        avfdisA(k)=avfdisA(k)*volcell/(npol(t)*ngr)
+                        avfdisA(k)=avfdisA(k)*volcell/(npol(t))
                     enddo
                     avfdis(t)=avfdisA(1)
                 endif       
@@ -395,8 +355,8 @@ contains
         integer :: i,s,t
 
         allocate(npol(nsegtypes))
-        npol=0.0_dp
-
+        
+        npol=0
         do s=1,nseg
             t=type_of_monomer(s)
             npol(t)=npol(t)+1
@@ -408,7 +368,7 @@ contains
                 do i=1,nsize
                     avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
                 enddo
-                avfdis(t)=avfdis(t)*volcell/(npol(t)*ngr)        
+                avfdis(t)=avfdis(t)*volcell/npol(t)        
             else
                 avfdis(t)=0.0_dp
             endif
@@ -446,7 +406,7 @@ contains
               do i=1,nsize
                  avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopol(i,A)
               enddo
-              avfdisA(k)=avfdisA(k)*volcell/(npolA*ngr)
+              avfdisA(k)=avfdisA(k)*volcell/npolA
            enddo
         else
            avfdisA=0.0_dp
@@ -458,7 +418,7 @@ contains
               do i=1,nsize
                  avfdisB(k)=avfdisB(k)+fdisB(i,k)*rhopol(i,B)
               enddo
-              avfdisB(k)=avfdisB(k)*volcell/(npolB*ngr)
+              avfdisB(k)=avfdisB(k)*volcell/npolB
            enddo
         else
            do k=1,5

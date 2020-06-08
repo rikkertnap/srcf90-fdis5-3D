@@ -11,8 +11,9 @@ module chaingenerator
     implicit none
 
     integer, parameter :: lenfname=40
+    integer :: conf_write
 
-    private :: lenfname
+    private :: lenfname, conf_write
     private :: pbc 
 
 contains
@@ -31,9 +32,9 @@ subroutine make_chains(chainmethod)
     select case (chainmethod)
     case ("MC")
         call make_chains_mc()
-    case ("FILE_lammps_XYZ") 
+    case ("FILE_lammps_xyz") 
         call read_chains_lammps_xyz
-    case ("FILE_lammps_TRJ") 
+    case ("FILE_lammps_trj") 
         call read_chains_lammps_trj  
     case ("FILE_TXT") 
         call make_chains_file()
@@ -56,9 +57,8 @@ subroutine make_chains_mc()
     use globals
     use chains
     use random
-    use parameters, only : geometry, lseg
-    use volume, only : ngrx, ngry, nx, ny, nz, delta, ngr, ngr_node, ngr_freq 
-    use volume, only : position_graft
+    use parameters, only : geometry, lseg, write_mc_chains
+    use volume, only : nx, ny, nz, delta
     use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
     use volume, only : ut, vt
     use myutils
@@ -66,9 +66,6 @@ subroutine make_chains_mc()
     use cadenas_sequence
 
     !     .. variable and constant declaractions      
-
-    real(dp), dimension(:), allocatable :: x_ngr  ! x coordinate of  grafting point
-    real(dp), dimension(:), allocatable :: y_ngr  
 
     integer :: i,j,k,s,g,gn      ! dummy indices
     integer :: idx               ! index label
@@ -82,23 +79,31 @@ subroutine make_chains_mc()
     real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates
     real(dp) :: xpp(nseg), ypp(nseg), zpp(nseg)  
-    real(dp) :: Lx,Ly,Lz         ! sizes box
+    real(dp) :: Lx,Ly,Lz,xcm,ycm,zcm         ! sizes box
     real(dp) :: xpt,ypt          ! coordinates
     real(dp) :: theta, theta_angle
     character(len=lenText) :: text, istr
-    integer  :: xc,yc,zc        
+    integer  :: xi,yi,zi ,un_trj        
 
     !     .. executable statements
     !     .. initializations of variables     
        
-    conf = 1                  ! counter for conformations
-    seed = 435672             ! *(rank+1) ! seed for random number generator  different on each node
+    conf = 1                 ! counter for conformations
+    seed = 435672*(rank+1)   ! seed for random number generator  different on each node
     maxnchains = 12
     maxntheta = 6            ! maximum number of rotation in xy-plane  
     theta_angle = 2.0_dp*pi/maxntheta
     Lz = nz*delta            ! maximum height box 
     Lx = nx*delta            ! maximum width box 
     Ly = ny*delta            ! maximum depth box 
+    xcm= Lx/2.0_dp           ! center box
+    ycm= Ly/2.0_dp
+    zcm= Lz/2.0_dp
+
+    if(write_mc_chains) then 
+        conf_write=0
+        un_trj= open_chain_lammps_trj()
+    endif   
 
     if(isHomopolymer.eqv..FALSE.) then 
         allocate(lsegseq(nseg))
@@ -113,15 +118,26 @@ subroutine make_chains_mc()
             call make_linear_seq_chains(chain,nchains,maxnchains,nseg) 
         endif  
 
+        if(write_mc_chains) then 
+            call write_chain_lammps_trj(un_trj,chain,nchains)
+            !if(conf==maxntheta.and.rank==0) then
+            !    print*,"Hello mc "
+            !    do s=1,nseg
+            !        write(122,*)chain(2,s,1),chain(3,s,1),chain(1,s,1)
+            !        print*,chain(2,s,1),chain(3,s,1),chain(1,s,1)
+            !    enddo
+            !endif
+        endif        
         if(geometry=="cubic") then
             
             do j=1,nchains   
             
                 do s=1,nseg                          !  transforming form real- to lattice coordinates
-                    zp(s) = chain(1,s,j)
-                    xp(s) = chain(2,s,j)
-                    yp(s) = chain(3,s,j) 
+                    zp(s) = chain(1,s,j)-chain(1,1,j)
+                    xp(s) = chain(2,s,j)-chain(2,1,j)
+                    yp(s) = chain(3,s,j)-chain(3,1,j)
                 enddo
+
 
                 do ntheta=1,maxntheta                  ! rotation in xy-plane
 
@@ -131,52 +147,36 @@ subroutine make_chains_mc()
                         ypp(s) =-xp(s)*sin(theta)+yp(s)*cos(theta)   
                     enddo    
 
-                    do gn=1,ngr_node                   ! loop over grafted points per node
-                   
-                        g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
-                      
-                        idxtmp = g
-                        ix = mod(idxtmp-1,ngrx)+1      ! inverse of g
-                        iy = int((idxtmp-1)/ngrx)+1
+                    weightchain(conf)=.TRUE.
+
+                    do s=1,nseg
+
+                        ! .. translation onto center box 
+                        x(s) = xpp(s) + xcm
+                        y(s) = ypp(s) + ycm
+                        z(s) = zp(s)  + zcm
+
+                        ! .. check z coordinate 
+                        if((z(s)>Lz)) weightchain(conf)=.FALSE.
+
+                        ! .. periodic boundary conditions in x-direction and y-direction an z-direction 
+                        x(s) = pbc(x(s),Lx)
+                        y(s) = pbc(y(s),Ly)
+                        z(s) = pbc(z(s),Lz)
+
+                        ! .. transforming form real- to lattice coordinates                 
+                        xi = int(x(s)/delta)+1
+                        yi = int(y(s)/delta)+1
+                        zi = int(z(s)/delta)+1
                         
-                        xpt =  position_graft(g,1)  !x_ngr(ix)                ! position of graft point
-                        ypt =  position_graft(g,2)  !y_ngr(iy) 
-                        
-                        weightchain(gn,conf) = .TRUE.  ! init weight     
+                        call linearIndexFromCoordinate(xi,yi,zi,idx)
+                        indexchain_init(s,conf) = idx
+                        if(idx<=0) then
+                            print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                        endif
 
-                        do s=1,nseg
-
-                            ! .. translation onto correct grafting area translation in xy plane 
-                            x(s) = xpp(s)+xpt
-                            y(s) = ypp(s)+ypt
-
-                            ! .. check z coordinate 
-                            if((0>zp(s)).or.(zp(s)>Lz)) then 
-                                weightchain(gn,conf) = .FALSE. 
-                                print*,"conf=",conf,"s=",s,"zp=",zp(s)
-                            endif   
-
-                            ! .. periodic boundary conditions in x-direction and y-direction  
-                            x(s) = pbc(x(s),Lx)
-                            y(s) = pbc(y(s),Ly)
-
-                            ! .. transforming form real- to lattice coordinates                 
-                            xc = int(x(s)/delta)+1
-                            yc = int(y(s)/delta)+1
-                            zc = int(zp(s)/delta)+1
-
-                            if(weightchain(gn,conf).eqv..TRUE.) then
-                                call linearIndexFromCoordinate(xc,yc,zc,idx)
-                                indexchain_init(s,gn,conf) = idx
-                                if(idx<=0) then
-                                    print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
-                                endif
-                            endif
-
-                        enddo  
-                                       
-                    enddo     ! end loop over graft points
-
+                    enddo            
+                    
                     conf = conf +1
 
                 enddo         ! end loop over rotations
@@ -188,9 +188,9 @@ subroutine make_chains_mc()
             do j=1,nchains   
             
                 do s=1,nseg                     !  transforming form real- to lattice coordinates
-                    zp(s) = chain(1,s,j)
-                    xp(s) = chain(2,s,j)
-                    yp(s) = chain(3,s,j) 
+                    zp(s) = chain(1,s,j)-chain(1,1,j)
+                    xp(s) = chain(2,s,j)-chain(2,1,j)
+                    yp(s) = chain(3,s,j)-chain(3,1,j)
                 enddo
 
                 do ntheta=1,maxntheta                  ! rotation in xy-plane
@@ -201,43 +201,34 @@ subroutine make_chains_mc()
                         ypp(s)=-xp(s)*sin(theta)+yp(s)*cos(theta)   
                     enddo    
 
+                    do s=1,nseg
 
-                    do gn=1,ngr_node                   ! loop over grafted points per node
-                   
-                        g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
-                         
-                        xpt = position_graft(g,1)
-                        ypt = position_graft(g,2)
+                        xpp(s)=xpp(s) + xcm
+                        ypp(s)=ypp(s) + ycm
+                        z(s)  = zp(s) + zcm
+                            
+                        ! .. check z coordinate 
+                        if((z(s)>Lz)) weightchain(conf)=.FALSE. 
+
+                        ! .. translation onto correct grafting area translation in xy plane 
+                        x(s) = ut(xpp(s),ypp(s))
+                        y(s) = vt(xpp(s),ypp(s))
                         
-                        weightchain(gn,conf)=.TRUE.  ! init weight     
+                        ! .. periodic boundary conditions in x-direction and y-direction  
+                        x(s) = pbc(x(s),Lx)
+                        y(s) = pbc(y(s),Ly)
+                        z(s) = pbc(z(s),Ly)
 
-                        do s=1,nseg
+                        ! .. transforming form real- to lattice coordinates                 
+                        xi=int(x(s)/delta)+1
+                        yi=int(y(s)/delta)+1
+                        zi=int(z(s)/delta)+1
 
-                            ! .. translation onto correct grafting area translation in xy plane 
-                            x(s) = ut(xpp(s),ypp(s))+xpt
-                            y(s) = vt(xpp(s),ypp(s))+ypt
-
-                            ! .. check z coordinate 
-                            if((0>zp(s)).or.(zp(s)>Lz)) weightchain(gn,conf)=.FALSE. 
-
-                            ! .. periodic boundary conditions in x-direction and y-direction  
-                            x(s) = pbc(x(s),Lx)
-                            y(s) = pbc(y(s),Ly)
-
-                            ! .. transforming form real- to lattice coordinates                 
-                            xc=int(x(s)/delta)+1
-                            yc=int(y(s)/delta)+1
-                            zc=int(zp(s)/delta)+1
-
-                            if(weightchain(gn,conf).eqv..TRUE.) then
-                                call linearIndexFromCoordinate(xc,yc,zc,idx)
-                                indexchain_init(s,gn,conf) = idx
-                                if(idx<=0) then
-                                    print*,"index=",idx, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
-                                endif
-                            endif
-
-                        enddo  
+                        call linearIndexFromCoordinate(xi,yi,zi,idx)
+                        indexchain_init(s,conf) = idx
+                        if(idx<=0) then
+                            print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                        endif
                                        
                     enddo         ! end loop over graft points
 
@@ -248,19 +239,18 @@ subroutine make_chains_mc()
             enddo                 ! end loop over nchains
 
         else 
-           print*,"Error: in make_chains_mc: geometry not cubic, prism, or square"
+           print*,"Error: in make_chains_mc: geometry not cubic or prism"
            print*,"stopping program"
            stop
         endif
      
     enddo                     ! end while loop
     
-    do gn=1,ngr_node
-        do conf=1,cuantas
-            exp_energychain(gn,conf) = 1.0_dp
-        enddo     
-    enddo   
-
+    
+    do conf=1,cuantas
+        exp_energychain(conf) = 1.0_dp
+    enddo     
+    
     !  .. end chains generation 
       
     write(istr,'(I4)')rank
@@ -268,22 +258,23 @@ subroutine make_chains_mc()
     call print_to_log(LogUnit,text)
     !print*,text
 
-    do gn=1,ngr_node
-        allowedconf=0
-        do k=1,cuantas
-            if(weightchain(gn,k).eqv..TRUE.)then
-                allowedconf = allowedconf+1
-            endif
-        enddo
-      
-        if(allowedconf/=cuantas) then 
-            print*,"allowedconf=",allowedconf,"gn=",gn,"rank=",rank
-            print*,"make_chains_mc: Not all conformations were allowed"    
-        endif
-
+   
+    allowedconf=0
+    do k=1,cuantas
+        if(weightchain(k).eqv..TRUE.) allowedconf = allowedconf+1
     enddo
-        
+      
+    if(allowedconf/=cuantas) then 
+        print*,"allowedconf=",allowedconf,"rank=",rank
+        print*,"make_chains_mc: Not all conformations met constraint z(s)<Lz)"    
+    endif
+    
     if(isHomopolymer.eqv..FALSE.) deallocate(lsegseq)
+
+    if(write_mc_chains) then
+        ! call write_indexchain_lammps_trj()
+          close(un_trj)
+    endif     
 
 end subroutine make_chains_mc
 
@@ -298,7 +289,7 @@ end subroutine make_chains_mc
 subroutine read_chains_lammps_XYZ(info)
 
     !     .. variable and constant declaractions  
-    use mpivars                                                                                     
+    use mpivars, only : rank                                                                                     
     use globals
     use chains
     use random
@@ -328,11 +319,11 @@ subroutine read_chains_lammps_XYZ(info)
     real(dp) :: xseg(3,nseg+1)
     real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates 
-    real(dp) :: Lx,Ly,Lz         ! sizes box
+    real(dp) :: Lx,Ly,Lz,xcm,ycm,zcm         ! sizes box
     real(dp) :: xpt,ypt          ! coordinates
-    real(dp) :: theta, theta_angle
+    real(dp) :: theta, theta_angle     
+    integer  :: xi,yi,zi
     real(dp) :: xc,yc,zc          
-    integer  :: xi,yi,zi          
     real(dp) :: energy                                               
     character(len=8) :: fname
     integer :: ios 
@@ -346,7 +337,8 @@ subroutine read_chains_lammps_XYZ(info)
     ! .. executable statements                                                                                                     
     ! .. open file                                                                                              
 
-    write(fname,'(A8)')'traj.xyz' ! trajectory coordinates
+    write(istr,'(I4)')rank
+    fname='traj.'//trim(adjustl(istr))//'.xyz'
     inquire(file=fname,exist=exist)
     if(exist) then
         open(unit=newunit(un),file=fname,status='old',iostat=ios)
@@ -390,7 +382,9 @@ subroutine read_chains_lammps_XYZ(info)
     Lz= nz*delta            ! maximum height box 
     Lx= nx*delta            ! maximum width box 
     Ly= ny*delta            ! maximum depth box 
-
+    xcm= Lx/2.0_dp           ! center box
+    ycm= Ly/2.0_dp
+    zcm= Lz/2.0_dp
 
     do while ((conf<cuantas).and.(ios==0))
     
@@ -400,13 +394,13 @@ subroutine read_chains_lammps_XYZ(info)
         else               ! read preamble
             read(un,*,iostat=ios)nsegfile
             read(un,*,iostat=ios)
-            if(nsegfile.ne.(nseg+1)) then ! nsegfile =nseg+1 . The chain has one 'segement' more: tethered point.
-                print*,"nseg chain file not equal internal (nseg+1) : stop program"
+            if(nsegfile.ne.nseg) then ! nsegfile =nseg+1 . The chain has one 'segement' more: tethered point.
+                print*,"nseg chain file not equal internal nseg : stop program"
                 stop
             endif    
         endif
         
-        do s=1,nseg+1              ! .. read form  trajecotory file
+        do s=1,nseg              ! .. read form  trajecotory file
             read(un,*,iostat=ios)idatom,xc,yc,zc
             xseg(1,s) = xc/10.0_dp  ! .. convert from Angstrom to nm
             xseg(2,s) = yc/10.0_dp
@@ -423,7 +417,7 @@ subroutine read_chains_lammps_XYZ(info)
             ! .. assignes this conformation to process numberrank
             ! .. 'first' segment, sets origin 
 
-            do s=1,nseg+1        
+            do s=1,nseg        
                 chain(2,s) = (xseg(1,s)-xseg(1,1)) 
                 chain(3,s) = (xseg(2,s)-xseg(2,1))
                 chain(1,s) = (xseg(3,s)-xseg(3,1))
@@ -433,10 +427,10 @@ subroutine read_chains_lammps_XYZ(info)
             do rot=1,rotmax        
                  
                 nchain=1
-                is_positive_rot=.false.
+                is_positive_rot=.true.
 
-                do while ((is_positive_rot.eqv..false.).and.(nchain.lt.maxattempts))
-                    is_positive_rot=rotation(chain,chain_rot,nseg)
+                do while (nchain.lt.maxattempts)
+                    is_positive_rot=rotation(chain,chain_rot,nseg-1)
                     nchain=nchain+1
                 enddo
                 !print*,"conf=",conf,"is_positve=",is_positive_rot
@@ -451,54 +445,48 @@ subroutine read_chains_lammps_XYZ(info)
                             theta= ntheta * theta_angle
 
                             do s=1,nseg
-                                xp(s)= chain_rot(2,s+1)*cos(theta)+chain_rot(3,s+1)*sin(theta) 
-                                yp(s)=-chain_rot(2,s+1)*sin(theta)+chain_rot(3,s+1)*cos(theta)
-                                zp(s)= chain_rot(1,s+1)   
-                            enddo    
 
-                            do gn=1,ngr_node                   ! loop over grafted points per node
-                               
-                                g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
-                               
-                                xpt =  position_graft(g,1)     ! position of graft point
-                                ypt =  position_graft(g,2)   
+                                xp(s)= chain_rot(2,s)*cos(theta)+chain_rot(3,s)*sin(theta) 
+                                yp(s)=-chain_rot(2,s)*sin(theta)+chain_rot(3,s)*cos(theta)
+                                zp(s)= chain_rot(1,s)  
+
+                            enddo 
+
+                            do s=1,nseg
+
+                                ! .. translation onto correct volume translation to cneter xyz 
+                                x(s) = xp(s) + xcm
+                                y(s) = yp(s) + ycm
+                                z(s) = zp(s) + zcm
+
+                                ! .. periodic boundary conditions in x-direction and y-direction and z-direction 
+                                x(s) = pbc(x(s),Lx)
+                                y(s) = pbc(y(s),Ly)
+                                z(s) = pbc(z(s),Lz)
+
+                                ! .. transforming form real- to lattice coordinates                 
+                                xi = int(x(s)/delta)+1
+                                yi = int(y(s)/delta)+1
+                                zi = int(z(s)/delta)+1
                                 
-                                weightchain(gn,conf)=.TRUE.  ! init weight     
+                                call linearIndexFromCoordinate(xi,yi,zi,idx) 
 
-                                do s=1,nseg
-
-                                    ! .. translation onto correct grafting area translation in xy plane 
-                                    x(s)=xp(s)+xpt
-                                    y(s)=yp(s)+ypt
-                                    ! .. check z coordinate 
-                                    if((0>zp(s)).or.(zp(s)>Lz)) weightchain(gn,conf)=.FALSE. 
-                                    ! .. periodic boundary conditions in x-direction and y-direction  
-                                    x(s)=pbc(x(s),Lx)
-                                    y(s)=pbc(y(s),Ly)
-
-                                    ! .. transforming form real- to lattice coordinates                 
-                                    xi=int(x(s)/delta)+1
-                                    yi=int(y(s)/delta)+1
-                                    zi=int(zp(s)/delta)+1
-
-                                    if(weightchain(gn,conf).eqv..TRUE.) then
-                                        call linearIndexFromCoordinate(xi,yi,zi,idx)
-                                        indexchain_init(s,gn,conf) = idx
-                                        if(idx<=0) then
-                                            print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
-                                        endif
-                                        exp_energychain(gn,conf)=exp(-energy)
-                                    endif
-                                enddo                    
-                            enddo     ! end loop over graft points
-
+                                indexchain_init(s,conf) = idx
+                                if(idx<=0) then
+                                    print*,"index=",idx, " xc=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                                endif
+                            
+                            enddo
+                                
+                            exp_energychain(conf)=exp(-energy)
+                            
                         enddo         ! end loop over rotations
             
                     else if(geometry=="prism") then
                      ! to be done later 
 
                     else 
-                        print*,"Error: in make_chains_mc: geometry not cubic, prism, or square"
+                        print*,"Error: in make_chains_lammps_xyz: geometry not cubic or prism"
                         print*,"stopping program"
                         stop
                     endif
@@ -534,7 +522,7 @@ end subroutine read_chains_lammps_XYZ
 subroutine read_chains_lammps_trj(info)
 
     !     .. variable and constant declaractions  
-    use mpivars                                                                                     
+    use mpivars, only : rank                                                                                    
     use globals
     use chains
     use random
@@ -564,15 +552,17 @@ subroutine read_chains_lammps_trj(info)
     real(dp) :: xseg(3,nseg+1)
     real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates 
-    real(dp) :: Lx,Ly,Lz         ! sizes box
+    real(dp) :: xpp(nseg),ypp(nseg)
+    real(dp) :: Lx,Ly,Lz,xcm,ycm,zcm         ! sizes box
     real(dp) :: xpt,ypt          ! coordinates
     real(dp) :: theta, theta_angle
     real(dp) :: xc,yc,zc          
     integer  :: xi,yi,zi         
     real(dp) :: energy                                               
-    character(len=14) :: fname
+    character(len=25) :: fname
     integer :: ios 
     character(len=30) :: str
+    real(dp) :: xbox0,xbox1,scalefactor
     integer :: nchain, rotmax, maxattempts, idatom, item, moltype
     integer :: un, un_ene ! unit number
     logical :: is_positive_rot, exist
@@ -581,8 +571,9 @@ subroutine read_chains_lammps_trj(info)
 
     ! .. executable statements                                                                                                     
     ! .. open file                                                                                              
-
-    write(fname,'(A14)')'traj.lammpstrj'
+    write(istr,'(I4)')rank
+    fname='traj.'//trim(adjustl(istr))//'.lammpstrj'
+    
     inquire(file=fname,exist=exist)
     if(exist) then
         open(unit=newunit(un),file=fname,status='old',iostat=ios)
@@ -598,7 +589,7 @@ subroutine read_chains_lammps_trj(info)
     endif
 
 
-    write(fname,'(A8)')'traj.ene' ! traectory energy
+    write(fname,'(A8)')'traj.ene' ! trajectory energy
     inquire(file=fname,exist=exist)
     if(exist) then
         open(unit=newunit(un_ene),file=fname,status='old',iostat=ios)
@@ -627,7 +618,9 @@ subroutine read_chains_lammps_trj(info)
     Lz= nz*delta            ! maximum height box 
     Lx= nx*delta            ! maximum width box 
     Ly= ny*delta            ! maximum depth box 
-
+    xcm= Lx/2.0_dp          ! center box
+    ycm= Ly/2.0_dp
+    zcm= Lz/2.0_dp
 
     do while ((conf<cuantas).and.(ios==0))
     
@@ -641,126 +634,121 @@ subroutine read_chains_lammps_trj(info)
                 read(un,*,iostat=ios)str
             enddo   
             read(un,*,iostat=ios)nsegfile
-            do i=5,9
-                read(un,*,iostat=ios)str
-            enddo   
-            if(nsegfile.ne.(nseg+1)) then ! nsegfile =nseg+1 . The chain has one 'segement' more: tethered point.
-                print*,"nseg chain file not equal internal (nseg+1) : stop program"
+            read(un,*,iostat=ios)str
+            read(un,*,iostat=ios)xbox0,xbox1
+            read(un,*,iostat=ios)str
+            read(un,*,iostat=ios)str 
+            read(un,*,iostat=ios)str 
+            if(nsegfile.ne.nseg) then ! nsegfile =nseg+1 . The chain has one 'segement' more: tethered point.
+                print*,"nseg chain file not equal internal  nseg : stop program"
                 stop
             endif    
+            scalefactor=(xbox1-xbox0)*unit_conv
         endif
 
     
-        do s=1,nseg+1              ! .. read form  trajecotory file
+        do s=1,nseg              ! .. read form  trajecotory file
             read(un,*,iostat=ios)item,idatom,moltype,xc,yc,zc,ix,iy,iz
-            xseg(1,item) = xc 
-            xseg(2,item) = yc
-            xseg(3,item) = zc
+            xseg(1,item) = xc*scalefactor 
+            xseg(2,item) = yc*scalefactor
+            xseg(3,item) = zc*scalefactor
             !print*,"index=",idatom, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
         enddo
 
+        ! if(conf==0.and.rank==0) then
+        !     print*,"Hello mc: = ",scalefactor
+        !     do s=1,nseg
+        !         write(123,*)xseg(1,s),xseg(2,s),xseg(3,s)
+        !         print*,xseg(1,s),xseg(2,s),xseg(3,s)
+        !     enddo
+        ! endif    
+       
         read(un_ene,*,iostat=ios)energy
 
         conffile=conffile +1 
 
+        ! .. 'first' segment, sets origin 
 
-        if(mod(conffile,size)==rank) then 
-            ! .. assignes this conformation to process numberrank
-            ! .. 'first' segment, sets origin 
+        do s=1,nseg        
+            chain(2,s) = (xseg(1,s)-xseg(1,1)) 
+            chain(3,s) = (xseg(2,s)-xseg(2,1))
+            chain(1,s) = (xseg(3,s)-xseg(3,1))
+        enddo
 
-            do s=1,nseg+1        
-                chain(2,s) = (xseg(1,s)-xseg(1,1)) 
-                chain(3,s) = (xseg(2,s)-xseg(2,1))
-                chain(1,s) = (xseg(3,s)-xseg(3,1))
-                !print*,"conf=",conf,"s=",s,(chain(i,s),i=1,3)
+        do rot=1,rotmax        
+             
+            is_positive_rot=rotation(chain,chain_rot,nseg-1)
+            do s=1,nseg                          !  transforming form real- to lattice coordinates
+                zp(s) = chain_rot(1,s) !1->z
+                xp(s) = chain_rot(2,s) !2->x 
+                yp(s) = chain_rot(3,s) !3->y
             enddo
- 
-            do rot=1,rotmax        
-                 
-                nchain=1
-                is_positive_rot=.false.
-
-                do while ((is_positive_rot.eqv..false.).and.(nchain.lt.maxattempts))
-                    is_positive_rot=rotation(chain,chain_rot,nseg)
-                    nchain=nchain+1
-                enddo
-                !print*,"conf=",conf,"is_positve=",is_positive_rot
-
-                if(is_positive_rot) then
             
-                    if(geometry=="cubic") then !  transforming form real- to lattice coordinates
+
+            if(geometry=="cubic") then !  transforming form real- to lattice coordinates
+    
+                do ntheta=1,maxntheta                  ! rotation in xy-plane
+
+                    conf=conf+1
+                    theta = ntheta * theta_angle          
             
-                        do ntheta=1,maxntheta                  ! rotation in xy-plane
+                    do s=1,nseg
+                        xpp(s)= xp(s)*cos(theta)+yp(s)*sin(theta) 
+                        ypp(s)=-xp(s)*sin(theta)+yp(s)*cos(theta)   
+                    enddo    
 
-                            conf=conf+1
-                            theta= ntheta * theta_angle
+                    do s=1,nseg
 
-                            do s=1,nseg
-                                xp(s)= chain_rot(2,s+1)*cos(theta)+chain_rot(3,s+1)*sin(theta) 
-                                yp(s)=-chain_rot(2,s+1)*sin(theta)+chain_rot(3,s+1)*cos(theta)
-                                zp(s)= chain_rot(1,s+1)   
-                            enddo    
+                    ! .. translation onto correct volume translation to cneter xyz 
+                        x(s) = xpp(s) + xcm
+                        y(s) = ypp(s) + ycm
+                        z(s) =  zp(s) + zcm
 
-                            do gn=1,ngr_node                   ! loop over grafted points per node
-                               
-                                g = rank*ngr_node +gn          ! g real number grafted postion gn relative to rank node    
-                               
-                                xpt =  position_graft(g,1)     ! position of graft point
-                                ypt =  position_graft(g,2)   
-                                
-                                weightchain(gn,conf)=.TRUE.  ! init weight     
+                        ! .. periodic boundary conditions in x-direction and y-direction an z-direction 
+                        x(s) = pbc(x(s),Lx)
+                        y(s) = pbc(y(s),Ly)
+                        z(s) = pbc(z(s),Lz)
 
-                                do s=1,nseg
+                        ! .. transforming form real- to lattice coordinates                 
+                        xi = int(x(s)/delta)+1
+                        yi = int(y(s)/delta)+1
+                        zi = int(z(s)/delta)+1
+                        
+                        call linearIndexFromCoordinate(xi,yi,zi,idx)
+                        
+                        indexchain_init(s,conf) = idx
+                        if(idx<=0.or.idx>nsize) then
+                            print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                        endif
+                    
+                    enddo
+                        
+                    exp_energychain(conf)=0.0_dp !exp(-energy)
+                    
+                enddo         ! end loop over rotations
+    
+            else if(geometry=="prism") then
+             ! to be done later 
 
-                                    ! .. translation onto correct grafting area translation in xy plane 
-                                    x(s)=xp(s)+xpt
-                                    y(s)=yp(s)+ypt
-                                    ! .. check z coordinate 
-                                    if((0>zp(s)).or.(zp(s)>Lz)) weightchain(gn,conf)=.FALSE. 
-                                    ! .. periodic boundary conditions in x-direction and y-direction  
-                                    x(s)=pbc(x(s),Lx)
-                                    y(s)=pbc(y(s),Ly)
 
-                                    ! .. transforming form real- to lattice coordinates                 
-                                    xi=int(x(s)/delta)+1
-                                    yi=int(y(s)/delta)+1
-                                    zi=int(zp(s)/delta)+1
-
-                                    if(weightchain(gn,conf).eqv..TRUE.) then
-                                        call linearIndexFromCoordinate(xi,yi,zi,idx)
-                                        indexchain_init(s,gn,conf) = idx
-                                        if(idx<=0) then
-                                            print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
-                                        endif
-                                        exp_energychain(gn,conf)=exp(-energy)
-                                    endif
-                                enddo                    
-                            enddo     ! end loop over graft points
-
-                        enddo         ! end loop over rotations
-            
-                    else if(geometry=="prism") then
-                     ! to be done later 
-
-                    else 
-                        print*,"Error: in make_chains_mc: geometry not cubic, prism, or square"
-                        print*,"stopping program"
-                        stop
-                    endif
-                endif  ! if 
-            enddo      ! rotation loop
-        endif          ! if distrubtion if 
+            else 
+                print*,"Error: in make_chains_lajmmps_tr: geometry not cubic or prism"
+                print*,"stopping program"
+                stop
+            endif
+     
+        enddo      ! rotation loop 
     enddo              ! end while loop                                                                                                          
     !  .. end chains generation    
     
 
     if(conf<=cuantas) then
-        print*,"subroutine make_chains_lammps_XYZ : something went wrong"
+        print*,"subroutine make_chains_lammps_trj : something went wrong"
         print*,"conf     = ",conf," cuantas     = ",cuantas
         print*,"conffile = ",conffile
         stop
     else
-        text="Chains generated: subroutine make_chains_lammps_file"
+        text="Chains generated: subroutine make_chains_lammps_trj"
         call print_to_log(LogUnit,text)
         readinchains=conffile
     endif
@@ -769,8 +757,6 @@ subroutine read_chains_lammps_trj(info)
     close(un_ene)
 
 end subroutine read_chains_lammps_trj
-
-
 
 
 subroutine make_chains_file()
@@ -955,36 +941,32 @@ end subroutine read_sequence_copoly_from_file
 
 subroutine chain_filter()
     
-    use  globals
-    use  chains
-    use  random
-    use  parameters
-    use  volume
+    use  globals, only : nseg, cuantas
+    use  chains, only : indexchain,indexchain_init,max_confor
+    use  volume, only : nz, coordinateFromLinearIndex,linearIndexFromCoordinate
 
-    implicit none
-
-    integer :: conf,s,allowed_conf
-    integer :: count_seg 
+    integer :: conf,s 
     integer :: indx  ! temporary index of chain
-    integer :: ix,iy,iz,gn
+    integer :: ix,iy,iz,izpbc
 
-    do gn=1,ngr_node              ! loop over grafted points per node
-        allowed_conf=1            ! counts allowed conformations 
-        do conf=1,max_confor      ! loop of all polymer conformations to filter out allowed ones 
-            count_seg=0
-            do s=1,nseg
-                indx=indexchain_init(s,gn,conf)
-                call coordinateFromLinearIndex(indx,ix,iy,iz)
-                if(iz<=nz) then  ! nz is distance in between plates  
-                    indexchain(s,gn,allowed_conf)=indx
-                    count_seg=count_seg+1
-                endif
-            enddo
-            if (count_seg.eq.nseg) allowed_conf = allowed_conf+1 ! conformation  is allowed  
+    do conf=1,cuantas        
+        do s=1,nseg
+            indx=indexchain_init(s,conf)
+            call coordinateFromLinearIndex(indx,ix,iy,iz)
+            if(iz<=nz) then  ! nz is distance in between plates  
+                indexchain(s,conf)=indx
+            else
+                izpbc=ipbc(iz,nz)
+                print*,"iz=",iz,"izpbc=",izpbc
+                call linearIndexFromCoordinate(ix,iy,izpbc,indx)
+                indexchain(s,conf)=indx
+            endif
         enddo
-    enddo
 
-    cuantas=allowed_conf-1    ! the number of allowed conformations 
+        !indx=indexchain(1,conf)
+        !call coordinateFromLinearIndex(indx,ix,iy,iz)
+        !print*,"conf=",conf,indx,ix,iy,iz
+    enddo
 
 end subroutine  chain_filter
 
@@ -1095,6 +1077,20 @@ function pbc(z,deltaz) result(zpbc)
     endif   
 end function
 
+
+function ipbc(ival,imax) result(intpbc)
+    implicit none 
+    integer, intent(in) :: ival
+    integer, intent(in) :: imax
+    integer :: intpbc
+
+    if(ival>0) then
+        intpbc=ival-int((ival-1)/imax)*imax
+    else
+        intpbc=ival-(int((ival-1)/imax)-1)*imax
+    endif
+
+end function
 
 
 !     .. returns number of A monomer
@@ -1251,6 +1247,151 @@ logical function is_polymer_neutral(ismonomer_chargeable, nsegtypes)
     endif
 
 end  function is_polymer_neutral
+
+
+! make a lammps trajectory file based on  indexchain_init
+
+subroutine write_indexchain_lammps_trj(info)
+
+    use mpivars, only : rank
+    use globals, only : nseg, cuantas
+    use myutils, only : newunit, lenText
+    use volume, only : delta, nz, coordinateFromLinearIndex
+    use chains, only : indexchain_init, type_of_monomer
+    use myio, only : myio_err_chainsfile
+
+    integer, optional, intent(inout) :: info
+
+
+    character(len=lenText) :: text, istr
+    character(len=25) :: fname
+    integer :: ios, un_trj 
+    real(dp):: xs, ys, zs
+    integer :: ix, iy, iz, i, j, k, idx
+    real(dp) :: xbox0, xbox1
+    integer :: idatom, item, moltype, conf
+
+    ! open file 
+
+    write(istr,'(I4)')rank
+    fname='traj.'//trim(adjustl(istr))//'.lammpstrj'
+    open(unit=newunit(un_trj),file=fname,status='new',iostat=ios)
+    if(ios >0 ) then
+        print*, 'Error opening : ',fname,' file : iostat =', ios
+        if (present(info)) info = myio_err_chainsfile
+        return
+    endif
+
+    ix=0
+    iy=0
+    iz=0
+    xbox0=0.0_dp
+    xbox1=nz*delta
+    
+    do conf=1,cuantas
+        ! write preamble 
+        write(un_trj,*)'ITEM: TIMESTEP' 
+        write(un_trj,*)conf 
+        write(un_trj,*)'ITEM: NUMBER OF ATOMS' 
+        write(un_trj,*)nseg 
+        write(un_trj,*)'ITEM: BOX BOUNDS ff ff ff'
+        write(un_trj,*)xbox0,xbox1
+        write(un_trj,*)xbox0,xbox1
+        write(un_trj,*)xbox0,xbox1
+        write(un_trj,*)'ITEM: ATOMS id mol type xs ys zs ix iy iz'
+        !  determine xs, ys, zs,
+        do item=1,nseg
+            idx=indexchain_init(item,conf)
+            call coordinateFromLinearIndex(idx, i, j, k)
+            xs=(i-0.5_dp)*delta/xbox1
+            ys=(j-0.5_dp)*delta/xbox1
+            zs=(k-0.5_dp)*delta/xbox1
+            idatom=1
+            moltype=type_of_monomer(item) 
+            write(un_trj,*)item,idatom,moltype,xs,ys,zs,ix,iy,iz
+        enddo    
+    enddo
+        
+    close(un_trj)    
+
+
+end subroutine write_indexchain_lammps_trj
+
+
+function open_chain_lammps_trj(info)result(un_trj)
+
+    use mpivars, only : rank
+    use myutils, only : newunit, lenText
+    use myio, only : myio_err_chainsfile
+
+    integer, optional, intent(inout) :: info
+
+    integer :: un_trj
+    ! local
+    character(len=lenText) :: istr
+    character(len=25) :: fname
+    integer :: ios
+
+    write(istr,'(I4)')rank
+    fname='traj.'//trim(adjustl(istr))//'.lammpstrj'
+    open(unit=newunit(un_trj),file=fname,status='new',iostat=ios)
+    if(ios >0 ) then
+        print*, 'Error opening : ',fname,' file : iostat =', ios
+        if (present(info)) info = myio_err_chainsfile
+        return
+    endif
+
+
+end function
+
+
+subroutine write_chain_lammps_trj(un_trj,chain,nchains)
+
+    use globals, only : nseg
+    use myutils, only : newunit, lenText
+    use volume, only : delta, nz, coordinateFromLinearIndex
+    use chains, only :  type_of_monomer
+
+    real(dp), intent(in) :: chain(:,:,:)
+    integer, intent(in) :: nchains
+    integer , intent(in) :: un_trj
+    
+    character(len=lenText) :: istr
+    real(dp) :: xs, ys, zs
+    integer :: ix, iy, iz, i, j, k
+    real(dp) :: xbox0, xbox1
+    integer :: idatom, item, moltype, conf
+
+    ix=0
+    iy=0
+    iz=0
+    xbox0=0.0_dp
+    xbox1=nz*delta
+    do j=1,nchains   
+        
+        conf_write=conf_write+1 
+        ! write preamble 
+        write(un_trj,*)'ITEM: TIMESTEP' 
+        write(un_trj,*)conf_write 
+        write(un_trj,*)'ITEM: NUMBER OF ATOMS' 
+        write(un_trj,*)nseg 
+        write(un_trj,*)'ITEM: BOX BOUNDS ff ff ff'
+        write(un_trj,*)xbox0,xbox1
+        write(un_trj,*)xbox0,xbox1
+        write(un_trj,*)xbox0,xbox1
+        write(un_trj,*)'ITEM: ATOMS id mol type xs ys zs ix iy iz'
+        do item=1,nseg
+            zs = chain(1,item,j)/xbox1
+            xs = chain(2,item,j)/xbox1
+            ys = chain(3,item,j)/xbox1 
+            idatom=1
+            moltype=type_of_monomer(item) 
+            write(un_trj,*)item,idatom,moltype,xs,ys,zs,ix,iy,iz
+        enddo    
+    enddo
+        
+end subroutine write_chain_lammps_trj
+
 
 
 end module chaingenerator

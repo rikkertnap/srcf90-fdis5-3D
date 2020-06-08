@@ -54,10 +54,9 @@ contains
     subroutine fcnenergy()
  
         use globals, only : systype 
-        use myutils
+        use myutils, only : print_to_log,LogUnit,lenText
 
-        implicit none
-        
+      
         character(len=lenText) :: text 
 
         select case (systype) 
@@ -66,7 +65,7 @@ contains
             call fcnenergy_electbrush_mul() 
             call fcnenergy_elect_alternative()
 
-        case("elect","electdouble","electnopoly","electA")  
+        case("elect")
             
             call fcnenergy_elect()
             call fcnenergy_elect_alternative()
@@ -94,8 +93,6 @@ contains
         use field
         use VdW
         use surface
-
-        implicit none
 
         !  .. local arguments 
     
@@ -138,11 +135,7 @@ contains
 
         ! .. calcualtion of FEVdW
         if(isVdW) then 
-            if(systype=="electA") then
-                FEVdW=-VdW_energy_homo(rhopol(:,A))
-            else if(systype=="electVdWAB") then
-                FEVdW =-VdW_energy_diblock(rhopol(:,A),rhopol(:,B))
-            endif
+            FEVdW =-VdW_energy_diblock(rhopol(:,A),rhopol(:,B))
         else   
             FEVdW=0.0_dp
         endif
@@ -155,129 +148,18 @@ contains
         qres = (volcell/vsol)*qres
         sumphiA = volcell*sumphiA
         sumphiB = volcell*sumphiB
-        checkphi= nseg*ngr-sumphiA-sumphiB
+        checkphi= nseg-sumphiA-sumphiB
 
-
-        if(systype=="nopoly".or.systype=="neutral") then 
-            FEbind = 0.0_dp 
-        else if(systype=="electVdWpos") then 
-            FEbind = FEbindA
-        else 
-            FEbind = FEbindA+FEbindB
-        endif     
+        FEbind = FEbindA+FEbindB
         
         ! .. calcualtion of FEq
-        if(systype=="electnopoly".or.systype=="dipolarnopoly") then 
-            FEq=0.0_dp
-        elseif(systype=="elect") then 
-            FEq=0.0_dp
-            do g=1,ngr
-                FEq=FEq-log(q(g))    
-            enddo
-        elseif(systype=="electA".or.systype=="electVdWAB") then 
-            FEq=0.0_dp
-            do g=1,ngr
-                FEq=FEq-log(qABL(g))    
-            enddo
-        elseif(systype=="electdouble") then
-            FEq=0.0_dp
-            do g=1,ngr
-                FEq=FEq-log(qABL(g)) -log(qABR(g))   
-            enddo
-        elseif(systype=="neutral") then
-            FEq=0.0_dp
-            do g=1,ngr
-                FEq=FEq-log(qAB(g))  
-            enddo
-        else
-            print*,"Error in fcnenergy"
-            print*,"Calculation FEq failed, wrong systype : ",systype 
-            stop   
-        endif
+        FEq=-log(q)    
             
-        ! .. surface charge constribution 
+        !     .. total free energy  
 
-        sigmaSurf(RIGHT)  = sigmaSurfR 
-        sigmaSurf(LEFT)   = sigmaSurfL
-
-        do s=1,nx*ny
-            sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
-            sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
-            psiSurf(RIGHT,s)    = psiSurfR(s)
-            psiSurf(LEFT,s)     = psiSurfL(s)
-        enddo    
-      
-        do i = 1,2
-            FEelsurf(i)=0.0_dp
-            do s = 1, nx*ny    
-                sigmaq0Surf(i,s)=  sigmaqSurf(i,s)/(delta*4.0_dp*pi*lb) ! dimensional charge density  
-                FEelsurf(i) = FEelsurf(i)+sigmaq0Surf(i,s) * psiSurf(i,s) /2.0_dp 
-            enddo   
-            FEelsurf(i)=FEelsurf(i)*areacell
-        enddo    
-
-        if(bcflag(RIGHT)=='qu') then ! quartz
-
-            FEchemSurftmp=0.0_dp
-            do s=1, nx*ny
-                FEchemSurftmp=FEchemSurftmp+log(fdisS(2)) ! area surface integration measure 
-            enddo    
-            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+        FE = FEq  + FEpi + FErho + FEel + FEVdW + FEbind
         
-        elseif(bcflag(RIGHT)=="cl" ) then  ! clay
-        
-            FEchemSurftmp=0.0_dp
-            do s=1, nx*ny
-                FEchemSurftmp=FEchemSurftmp+(log(fdisS(2))+qS(2)*psiSurfR(s)) 
-            enddo    
-
-            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
-        
-        elseif(bcflag(RIGHT)=="ca" ) then ! calcite
-        
-            FEchemSurf(RIGHT) =(log(fdisS(2))+log(fdisS(5)))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) - &
-                2.0_dp*FEelsurf(RIGHT)
-        
-        elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
-        
-            FEchemSurf(RIGHT)=(log(fdisTaR(2))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
-        
-        elseif(bcflag(RIGHT)=="cc") then  
-        
-            FEchemSurf(RIGHT)=0.0_dp
-        
-        else
-            print*,"Error in fcnenergy"
-            print*,"Wrong value bcflag(RIGHT) : ",bcflag(RIGHT)
-            stop
-        endif 
-
-        if(bcflag(LEFT)=="ta" ) then ! taurine 
-
-            FEchemSurf(LEFT)= log(fdisTaL(2))*sigmaSurf(LEFT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
-        
-        elseif(bcflag(LEFT)=="cc") then  
-        
-            FEchemSurf(LEFT)=0.0_dp
-        
-        else
-            print*,"Error in fcnenergy"
-            print*,"Wrong value bcflag(LEFT) : ",bcflag(LEFT)
-        endif 
-
-        !     .. total free energy per area of surface 
-
-        FE = FEq  + FEpi + FErho + FEel + FEelSurf(RIGHT) + FEelSurf(LEFT)
-        FE = FE + FEchemSurf(RIGHT)+FEchemSurf(LEFT) + FEVdW + FEbind
-        
-        do i=LEFT,RIGHT
-            qsurf(i)=0.0_dp
-            do s=1,nx*ny     
-                qsurf(i) = qsurf(i)+sigmaqSurf(i,s)
-            enddo
-            qsurf(i)=(qsurf(i)/(4.0_dp*pi*lb*delta))*areacell  ! areacell=area size one surface element, 4*pi*lb*delta make correct dimensional full unit    
-        enddo
-
+    
         qres = qres + (qsurf(RIGHT)+qsurf(LEFT))  ! total residual charge 
   
         volumelat= volcell*nsize !nz*delta   ! volume lattice
@@ -300,9 +182,6 @@ contains
         use surface
         use conform_entropy
 
-
-        implicit none
-
         !  .. local arguments 
     
         real(dp) :: sigmaq0,psi0
@@ -311,18 +190,18 @@ contains
         integer :: i,j,s               ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
         integer :: nzadius
-        real(dp) :: sigmaSurf(2),sigmaqSurf(2,nx*ny),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
-        real(dp) :: diffFEchemTa, FEchemSurftmp
+        !real(dp) :: sigmaSurf(2),sigmaqSurf(2,nx*ny),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
+        !real(dp) :: diffFEchemTa, FEchemSurftmp
 
-        sigmaSurf(RIGHT)  = sigmaSurfR 
-        sigmaSurf(LEFT)   = sigmaSurfL
+        ! sigmaSurf(RIGHT)  = sigmaSurfR 
+        ! sigmaSurf(LEFT)   = sigmaSurfL
         
-        do s=1,nx*ny
-            sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
-            sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
-            psiSurf(RIGHT,s)    = psiSurfR(s)
-            psiSurf(LEFT,s)     = psiSurfL(s)
-        enddo    
+        ! do s=1,nx*ny
+        !     sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
+        !     sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
+        !     psiSurf(RIGHT,s)    = psiSurfR(s)
+        !     psiSurf(LEFT,s)     = psiSurfL(s)
+        ! enddo    
 
         !  .. computation ofalternative computation free energy
 
@@ -353,64 +232,7 @@ contains
 
 
         ! .. surface chemical contribution
-
-        if(bcflag(RIGHT)=='qu') then ! quartz
-            FEchemSurftmp=0.0_dp
-            do s=1,nx*ny
-                FEchemSurftmp=FEchemSurftmp+log(fdisS(1))+qS(1)*psiSurfR(s)
-            enddo
-
-            FEchemSurfalt(RIGHT) = (FEchemSurftmp)*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
-
-        elseif(bcflag(RIGHT)=="cl" ) then  ! clay        
-            FEchemSurftmp=0.0_dp
-            do s=1,nx*ny
-                FEchemSurftmp=FEchemSurftmp+log(fdisS(1))+qS(1)*psiSurfR(s)
-            enddo
-
-            FEchemSurfalt(RIGHT) = (FEchemSurftmp)*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
-
-        elseif(bcflag(RIGHT)=="ca" ) then ! calcite
-        
-            FEchemSurfalt(RIGHT) =(log(fdisS(2))+log(fdisS(5)))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) - &
-                2.0_dp*FEelsurf(RIGHT)
-        
-        elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
-            FEchemSurftmp=0.0_dp
-            do s=1,nx*ny
-                FEchemSurftmp=FEchemSurftmp+log(fdisTaR(1))+qTA(1)*psiSurfR(s)
-            enddo
-
-            FEchemSurfalt(RIGHT)=(FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
-        
-        elseif(bcflag(RIGHT)=="cc") then  
-            
-            FEchemSurfalt(RIGHT)=0.0_dp
-        
-        else
-            print*,"Error in fcnenergy"
-            print*,"Wrong value bcflag(RIGHT) : ",bcflag(RIGHT)
-            stop
-        endif 
-
-        if(bcflag(LEFT)=="ta" ) then ! taurine 
-            FEchemSurftmp=0.0_dp
-            do s=1,nx*ny
-                FEchemSurftmp=FEchemSurftmp+log(fdisTaL(1))+qTA(1)*psiSurfL(s)
-            enddo
-            FEchemSurfalt(LEFT)=FEchemSurftmp*sigmaSurf(LEFT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
-        
-
-        elseif(bcflag(LEFT)=="cc") then  
-        
-            FEchemSurfalt(LEFT)=0.0_dp
-        
-        else
-        
-            print*,"Error in fcnenergy"
-            print*,"Wrong value bcflag(LEFT) : ",bcflag(LEFT)
-        
-        endif 
+ 
 
         ! .. summing all contrubutions
         
@@ -433,7 +255,7 @@ contains
         if(isVdW) FEalt = FEalt-FEVdW ! add Van der Waals
             
         FEalt = FEalt + FEconf + FEchem 
-        FEalt = FEalt- FEel + FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurfalt(RIGHT)+FEchemSurfalt(LEFT) 
+        FEalt = FEalt- FEel !+ FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurfalt(RIGHT)+FEchemSurfalt(LEFT) 
 
         ! .. delta translational entropy
 
@@ -501,22 +323,22 @@ contains
 !        print*,"delta FEchemsurfalt(RIGHT)=",FEchemsurfalt(RIGHT)-FEchemsurf(RIGHT)
 
         
-        if(bcflag(LEFT)=="ta" ) then 
-            diffFEchemsurf(LEFT)= (sigmaSurf(LEFT)/(4.0_dp*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
-        else
-            diffFEchemsurf(LEFT)=0.0_dp
-        endif
+        ! if(bcflag(LEFT)=="ta" ) then 
+        !     diffFEchemsurf(LEFT)= (sigmaSurf(LEFT)/(4.0_dp*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
+        ! else
+        !     diffFEchemsurf(LEFT)=0.0_dp
+        ! endif
 
-        if(bcflag(RIGHT)=='qu') then ! quartz
-            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0_dp*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
-        elseif(bcflag(RIGHT)=='cl') then ! quartz
-            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0_dp*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
-        elseif(bcflag(RIGHT)=="ta" ) then ! taurine       
-            diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0_dp*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
-        else
-            diffFEchemsurf(RIGHT)=0.0_dp
-            ! not yet implemented 
-        endif 
+        ! if(bcflag(RIGHT)=='qu') then ! quartz
+        !     diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0_dp*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
+        ! elseif(bcflag(RIGHT)=='cl') then ! quartz
+        !     diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0_dp*pi*lb*delta))*( dlog(K0S(1)) -dlog(expmu%Hplus))
+        ! elseif(bcflag(RIGHT)=="ta" ) then ! taurine       
+        !     diffFEchemsurf(RIGHT)= (sigmaSurf(RIGHT)/(4.0_dp*pi*lb*delta))*( dlog(K0Ta(1)) -dlog(expmu%Hplus))
+        ! else
+        !     diffFEchemsurf(RIGHT)=0.0_dp
+        !     ! not yet implemented 
+        ! endif 
 
 
     end subroutine fcnenergy_elect_alternative
@@ -571,7 +393,7 @@ contains
             qres = qres + rhoq(i)
         enddo
 
-        checkphi=nseg*ngr
+        checkphi=nseg
         do t=1,nsegtypes
             sumphi(t)=0.0_dp
             do i=1,nsize    
@@ -606,102 +428,14 @@ contains
 
         
         ! .. calcualtion of FEq
+        FEq=-log(q)  
         
-        FEq=0.0_dp
-        do g=1,ngr
-            FEq=FEq-log(q(g))  
-        enddo
-            
-        ! .. surface charge constribution 
 
-        sigmaSurf(RIGHT)  = sigmaSurfR 
-        sigmaSurf(LEFT)   = sigmaSurfL
+        ! .. total free energy per area of surface 
 
-        do s=1,nx*ny
-            sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
-            sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
-            psiSurf(RIGHT,s)    = psiSurfR(s)
-            psiSurf(LEFT,s)     = psiSurfL(s)
-        enddo    
-      
-        do i = 1,2
-            FEelsurf(i)=0.0_dp
-            do s = 1, nx*ny    
-                sigmaq0Surf(i,s)=  sigmaqSurf(i,s)/(delta*4.0_dp*pi*lb) ! dimensional charge density  
-                FEelsurf(i) = FEelsurf(i)+sigmaq0Surf(i,s) * psiSurf(i,s) /2.0_dp 
-            enddo   
-            FEelsurf(i)=FEelsurf(i)*areacell
-        enddo    
-
-        if(bcflag(RIGHT)=='qu') then ! quartz
-
-            FEchemSurftmp=0.0_dp
-            do s=1, nx*ny
-                FEchemSurftmp=FEchemSurftmp+log(fdisS(2)) ! area surface integration measure 
-            enddo    
-            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+        FE = FEq  + FEpi + FErho + FEel + FEVdW + FEbind
         
-        elseif(bcflag(RIGHT)=="cl" ) then  ! clay
-        
-            FEchemSurftmp=0.0_dp
-            do s=1, nx*ny
-                FEchemSurftmp=FEchemSurftmp+(log(fdisS(2))+qS(2)*psiSurfR(s)) 
-            enddo    
-
-            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
-        
-        elseif(bcflag(RIGHT)=="ca" ) then ! calcite
-        
-            FEchemSurf(RIGHT) =(log(fdisS(2))+log(fdisS(5)))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) - &
-                2.0_dp*FEelsurf(RIGHT)
-        
-        elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
-        
-            FEchemSurf(RIGHT)=(log(fdisTaR(2))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
-        
-        elseif(bcflag(RIGHT)=="cc") then  
-        
-            FEchemSurf(RIGHT)=0.0_dp
-        
-        else
-            print*,"Error in fcnenergy"
-            print*,"Wrong value bcflag(RIGHT) : ",bcflag(RIGHT)
-            stop
-        endif 
-
-        if(bcflag(LEFT)=="ta" ) then ! taurine 
-
-            FEchemSurf(LEFT)= log(fdisTaL(2))*sigmaSurf(LEFT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
-        
-        elseif(bcflag(LEFT)=="cc") then  
-        
-            FEchemSurf(LEFT)=0.0_dp
-        
-        else
-            print*,"Error in fcnenergy"
-            print*,"Wrong value bcflag(LEFT) : ",bcflag(LEFT)
-        endif 
-
-
-        !     .. total free energy per area of surface 
-
-        FE = FEq  + FEpi + FErho + FEel + FEelSurf(RIGHT) + FEelSurf(LEFT)
-        FE = FE + FEchemSurf(RIGHT)+FEchemSurf(LEFT) + FEVdW + FEbind
-        
-!        print*,"FE = " ,FE
-        
-        do i=LEFT,RIGHT
-            qsurf(i)=0.0_dp
-            do s=1,nx*ny     
-                qsurf(i) = qsurf(i)+sigmaqSurf(i,s)
-            enddo
-            qsurf(i)=(qsurf(i)/(4.0_dp*pi*lb*delta))*areacell  ! areacell=area size one surface element, 4*pi*lb*delta make correct dimensional full unit    
-        enddo
-
-!        print*,"qsurf(LEFT)=",qsurf(LEFT),"qsurf(RIGHT)=",qsurf(RIGHT),"qres=",qres    
-
-        qres = qres + (qsurf(RIGHT)+qsurf(LEFT))  ! total residual charge 
-
+        ! .. print*,"FE = " ,FE
         
         volumelat= volcell*nsize !nz*delta   ! volume lattice
 
@@ -720,80 +454,82 @@ contains
 
         !  .. variable and constant declaractions 
     
-        use globals, only : nsize
+        use globals, only : nsize, nseg, nsegtypes
         use volume, only : volcell
         use parameters
         use field
         use VdW
         use conform_entropy
 
-        implicit none
-
         !     .. local arguments 
     
-        real(dp) :: sigmaq0,psi0
-        real(dp) :: qsurf              ! total charge on surface 
-        real(dp) :: qsurfg             ! total charge on grafting surface 
-        integer  :: i,j,g               ! dummy variables 
+        integer  :: i,j,t              ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
-    !    integer :: nzadius
+        integer  :: ier
+        logical  :: alloc_fail
+
+        if (.not. allocated(sumphi))  then 
+            allocate(sumphi(nsegtypes),stat=ier)
+            if( ier/=0 ) alloc_fail=.true.
+        endif
 
         !     .. computation of free energy 
     
         FEpi  = 0.0_dp
         FErho = 0.0_dp
+        FEq = 0.0_dp
+        FEVdW = 0.0_dp 
         FEel  = 0.0_dp
         FEelsurf = 0.0_dp
-        sumphiA = 0.0_dp
-        sumphiB = 0.0_dp
-
-        FEq = 0.0_dp
         FEbind = 0.0_dp
         FEchem = 0.0_dp
-        FEVdW = 0.0_dp 
+
         qres = 0.0_dp
+        sumphi= 0.0_dp
 
         do i=1,nsize
             FEpi = FEpi  + log(xsol(i))
             FErho = FErho - xsol(i) 
-            sumphiA = sumphiA +  rhopolA(i)
-            sumphiB = sumphiB +  rhopolB(i)
+        enddo
+
+        checkphi=nseg
+        do t=1,nsegtypes
+            sumphi(t)=0.0_dp
+            do i=1,nsize    
+                sumphi(t) = sumphi(t) + rhopol(i,t)
+            enddo
+            sumphi(t) = volcell*sumphi(t)
+            checkphi = checkphi-sumphi(t)
         enddo
     
         FEpi  = (volcell/vsol)*FEpi
         FErho = (volcell/vsol)*FErho
     
-        sumphiA = volcell*sumphiA
-        sumphiB = volcell*sumphiB
-        FEVdW=-VdW_energy_homo(rhopolB)
+        ! .. calcualtion of FEVdW
+        if(isVdW) then 
+            FEVdW=-VdW_energy(rhopol)
+        else   
+            FEVdW=0.0_dp
+        endif
+
         
-        do g=1,ngr
-            FEq=FEq-log(qAB(g))  
-        enddo
-
-        FEel = 0.0_dp    
-        FEelsurf =0.0_dp
-        FEchem =0.0_dp
-        FEbind =0.0_dp
-        qres =0.0_dp
-        qsurf =0.0_dp 
-
-        !  .. total free energy per area of surface 
+        FEq=-log(q)  
+        
+        !  .. total free energy 
 
         FE = FEq + FEpi + FErho + FEVdW 
         
        
-        volumelat= volcell*nsize  ! nz*delta  ! volume lattice divide by area surface
+        volumelat= volcell*nsize  ! volume lattice divide by area surface
         FEbulk = log(xbulk%sol)-xbulk%sol
         FEbulk = volumelat*FEbulk/(vsol)
         deltaFE  = FE -FEbulk
     
-        ! altnative computation free energy
-        call FEconf_entropy(FEconf,Econf)
+        ! alternative computation free energy
 
         FEtrans%sol=FEtrans_entropy(xsol,xbulk%sol,vsol,"w")     
         
-        FEalt= FEconf+FEtrans%sol-FEVdW
+        FEalt= FEconf+FEtrans%sol-FEVdW+Econf
     
     end subroutine fcnenergy_neutral
 
@@ -937,8 +673,6 @@ contains
         use volume, only : volcell
         use parameters, only : vpolA,vsol,zpolA,vpolB,zpolB
 
-        implicit none
-
         integer :: i, k
         real(dp) :: lambdaA, lambdaB, rhopolAq, rhopolBq, xpolA, xpolB
         real(dp) :: betapi
@@ -946,7 +680,7 @@ contains
 
 
         select case (systype)
-        case ("elect","electVdWAB","electdouble") 
+        case ("elect")
 
             FEchem_react = 0.0_dp
 
@@ -995,13 +729,13 @@ contains
                 xpolA=0.0_dp
 
                 do k=1,4
-                    rhopolAq=rhopolAq+ zpolA(k)*fdisA(i,k)*rhopolA(i)
-                    xpolA   =xpolA + rhopolA(i)*fdisA(i,k)*vpolA(k)*vsol
+                    rhopolAq=rhopolAq+ zpolA(k)*fdisA(i,k)*rhopol(i,A)
+                    xpolA   =xpolA + rhopol(i,A)*fdisA(i,k)*vpolA(k)*vsol
                 enddo   
-                xpolA = xpolA +rhopolA(i)*fdisA(i,5)*vpolA(5)*vsol/2.0_dp
+                xpolA = xpolA +rhopol(i,A)*fdisA(i,5)*vpolA(5)*vsol/2.0_dp
                 
-                FEchem_react = FEchem_react + (- rhopolA(i)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
-                    +fdisA(i,5)*rhopolA(i)/2.0_dp)
+                FEchem_react = FEchem_react + (- rhopol(i,A)*lambdaA -psi(i)*rhopolAq -betapi*xpolA &
+                    +fdisA(i,5)*rhopol(i,A)/2.0_dp)
             enddo
 
             FEchem_react=volcell*FEChem_react 

@@ -77,10 +77,11 @@
     real(dp) :: constq0          ! constant in Poisson eq dielectric constant of vacuum 
     real(dp) :: constqE          ! electrostatic pre-factor in pdf 
 
-    real(dp) :: sigmaAB          ! sigma AB polymer coated on planar surface
-    real(dp) :: sigmaABL         ! sigma AB polymer coated on planar surface
-    real(dp) :: sigmaABR         ! sigma AB polymer coated on planar surface
-    real(dp) :: sigma            ! sigma  polymer coated on planar surface
+    !real(dp) :: sigmaAB          ! sigma AB polymer coated on planar surface
+    !real(dp) :: sigmaABL         ! sigma AB polymer coated on planar surface
+    !real(dp) :: sigmaABR         ! sigma AB polymer coated on planar surface
+    !real(dp) :: sigma            ! sigma  polymer coated on planar surface
+
   
      !  .. solver variables
 
@@ -105,12 +106,13 @@
     real(dp) :: lsegPAMPS
     real(dp) :: lsegPS  
 
-    character(len=15) :: chainmethod   ! method of generating chains ="MC" or "FILE" 
-    character(len=8)  :: chaintype     ! type of chain: diblock,alt
+    character(len=15) :: chainmethod  ! method of generating chains ="MC" or "FILE" 
+    character(len=8)  :: chaintype    ! type of chain: diblock,alt
     integer :: readinchains           ! nunmber of used/readin chains
     integer :: chainperiod            ! peridociy of repeat of A or B block 
     integer :: maxnchainsrotations    ! number of rotations read in from input.in, assigned to maxnchain in chaingenerator default 12  
-    integer :: tA             ! segment number type of monomer type A  
+    integer :: tA                     ! segment number type of monomer type A  
+    logical :: write_mc_chains        ! if true MC chain write of file
 
     ! ..average structural properties of layer
 
@@ -164,6 +166,10 @@
     integer, parameter ::  err_pKdfile         = 2 
     integer, parameter ::  err_pKderror        = 3
 
+    ! lammmps unit conversion ! converts sigma to nm 
+
+    real(dp) :: unit_conv
+
     private :: VdWepsilon
     private :: err_pKdfile_noexist,err_pKdfile,err_pKderror  
 
@@ -197,16 +203,8 @@ contains
                 neq = nsize*(6+numeq)    
             case ("elect") 
                 neq = 4 * nsize + neq_bc
-            case ("electA") 
-                neq = 3 * nsize + neq_bc
-            case("electVdWAB")             ! copolymer weak polyacid, VdW
-                neq = 4 * nsize + neq_bc
-            case ("electdouble")  
-                neq = 4 * nsize 
-            case ("electnopoly") 
-                neq = 2 * nsize + neq_bc
             case ("neutral") 
-                neq = nsize
+                neq = (2+nsegtypes) * nsize 
             case ("bulk water") 
                 neq = 5 
             case default
@@ -374,8 +372,9 @@ contains
 
         pKw=14.0_dp                 ! water equilibruim constant
         Tref=298.0_dp               ! temperature in Kelvin
-        dielectW=78.54_dp           ! dielectric constant water
-        
+        dielectW = 78.54_dp         ! dielectric constant water
+        dielectP =   2.0_dp 
+
         seed  = 435672              ! seed for random number generator
 
         call init_elect_constants(Tref)  
@@ -546,41 +545,23 @@ contains
 
     end subroutine init_elect_constants
    
-    ! compute surface coverge based on number of grafted point (ngr) 
-    subroutine init_sigma()
+    ! compute number density density polymer
 
-        use globals, only : systype
-        use volume, only : ngr, nsurf, delta
+    function init_denspol()result(denspol)
 
-        select case (systype) 
-        case("elect","electA","neutral") 
-            sigmaABL = ngr/(nsurf*delta*delta)
-            sigmaABR = 0.0_dp
-            sigmaAB  = sigmaABL    
-        case("electdouble")
-            sigmaABL = ngr/(nsurf*delta*delta)
-            sigmaABR = sigmaABL
-            sigmaAB  = sigmaABL
-        case('electnopoly')    
-            sigmaABL = 0.0_dp
-            sigmaABR = 0.0_dp
-            sigmaAB  = 0.0_dp 
-        case('brush_mul')    
-            sigmaABL = ngr/(nsurf*delta*delta)
-            sigmaABR = 0.0_dp
-            sigmaAB  = sigmaABL 
-            sigma    = sigmaABL    
-        case('brushssdna')    
-            sigma = ngr/(nsurf*delta*delta)
-        case('brushborn')    
-            sigma = ngr/(nsurf*delta*delta)   
-        case default
-            print*,"Error: init_sigma: systype wrong value"
-            print*,"stopping program"
-            stop
-        end select
+        use globals, only : nseg, nsize
+        use volume, only : delta
 
-    end subroutine
+        real(dp) :: denspol
+
+        ! local 
+        real(dp) :: vol
+
+        vol=nsize*(delta**3)
+        denspol= nseg*1.0_dp/vol   
+ 
+    end function
+
          
    
     !     purpose: initialize expmu needed by fcn 
@@ -601,10 +582,11 @@ contains
         character(len=15) :: systype_old
         logical :: issolution
         
-        real(dp) :: xNaClsalt          ! volume fraction of salt in bulk
-        real(dp) :: xKClsalt           ! volume fraction of salt in bulk
-        real(dp) :: xCaCl2salt         ! volume fraction of divalent salt in bulk
-  
+        real(dp) :: xNaClsalt          ! volume fraction of NaCl salt in bulk
+        real(dp) :: xKClsalt           ! volume fraction of KCl salt in bulk
+        real(dp) :: xCaCl2salt         ! volume fraction of CaCl2 salt in bulk
+        real(dp) :: xMgCl2salt         ! volume fraction of MgCl2 salt in bulk
+        real(dp) :: xRbClsalt          ! volume fraction of RbCl salt in bulk
 
         allocate(x(5))
         allocate(xguess(5))
@@ -633,12 +615,20 @@ contains
 
         xKClsalt = (cKCl*Na/(1.0e24_dp))*((vK+vCl)*vsol) ! volume fraction KCl salt in mol/l
         xbulk%K = xKClsalt*vK/(vK+vCl)  
-        xbulk%Cl = xbulk%Cl+xKClsalt*vCl/(vK+vCl)  
+        xbulk%Cl = xbulk%Cl+xKClsalt*vCl/(vK+vCl) 
+
+        xRbClsalt = (cRbCl*Na/(1.0e24_dp))*((vRb+vCl)*vsol) ! volume fraction RbCl salt in mol/l
+        xbulk%Rb = xRbClsalt*vRb/(vRb+vCl)  
+        xbulk%Cl = xbulk%Cl+xRbClsalt*vCl/(vRb+vCl)   
         
         xCaCl2salt = (cCaCl2*Na/(1.0e24_dp))*((vCa+2.0_dp*vCl)*vsol) ! volume fraction CaCl2 in mol/l
         xbulk%Ca=xCaCl2salt*vCa/(vCa+2.0_dp*vCl)
         xbulk%Cl=xbulk%Cl+ xCaCl2salt*2.0_dp*vCl/(vCa+2.0_dp*vCl)
         
+        xMgCl2salt = (cMgCl2*Na/(1.0e24_dp))*((vMg+2.0_dp*vCl)*vsol) ! volume fraction MgCl2 in mol/l
+        xbulk%Mg=xMgCl2salt*vMg/(vMg+2.0_dp*vCl)
+        xbulk%Cl=xbulk%Cl+ xMgCl2salt*2.0_dp*vCl/(vMg+2.0_dp*vCl)
+
         xbulk%NaCl=0.0_dp    ! no ion pairing
         xbulk%KCl=0.0_dp     ! no ion pairing
         
@@ -710,7 +700,9 @@ contains
         ! exp(beta mu_i) = (rhobulk_i v_i) / exp(- beta pibulk v_i) 
         expmu%Na    = xbulk%Na   /(xbulk%sol**vNa) 
         expmu%K     = xbulk%K    /(xbulk%sol**vK)
+        expmu%Rb    = xbulk%Rb   /(xbulk%sol**vRb)
         expmu%Ca    = xbulk%Ca   /(xbulk%sol**vCa) 
+        expmu%Mg    = xbulk%Mg   /(xbulk%sol**vMg) 
         expmu%Cl    = xbulk%Cl   /(xbulk%sol**vCl)
         expmu%NaCl  = xbulk%NaCl /(xbulk%sol**vNaCl)
         expmu%KCl   = xbulk%KCl  /(xbulk%sol**vKCl)
@@ -745,7 +737,7 @@ contains
         integer :: i
 
         select case (systype)
-        case ("elect","electA","electdouble","electnopoly")
+        case ("elect")
             call init_expmu_elect()
         case ("neutral")
             call init_expmu_neutral()   

@@ -87,41 +87,10 @@ subroutine allocate_VdWcoeff(info)
 
     alloc_fail=.FALSE.    
 
-    if(systype=="brush_mul".or.systype=="brushssdna".or.systype=="brushborn") then 
-
-        if (.not. allocated(VdWcoeff))  then 
-            allocate(VdWcoeff(-range:range, -range:range, -range:range,nsegtypes,nsegtypes),stat=ier)
-            if( ier/=0 ) alloc_fail=.true.
-        endif
-
-    else if(systype=="electVdWAB") then 
-    
-        if (.not. allocated(VdWcoeffAA))  then 
-            allocate(VdWcoeffAA(-range:range, -range:range, -range:range),stat=ier)
-            if( ier/=0) alloc_fail=.true.
-        endif
-    
-        if (.not. allocated(VdWcoeffAB))  then 
-            allocate(VdWcoeffAA(-range:range, -range:range, -range:range),stat=ier)
-            if( ier/=0) alloc_fail=.true.
-        endif
-    
-
-        if (.not. allocated(VdWcoeffBB))  then 
-            allocate(VdWcoeffBB(-range:range, -range:range, -range:range),stat=ier)
-            if( ier/=0) alloc_fail=.true.
-        endif
-
-    else if(systype=="electA") then 
-        
-        if (.not. allocated(VdWcoeffAA))  then 
-            allocate(VdWcoeffAA(-range:range, -range:range, -range:range),stat=ier)
-            if( ier/=0) alloc_fail=.true.
-        endif 
-    else 
-        print*, 'Allocate_VdWcoeff: wrong systype =', systype
-        if(present(info)) info= VdW_err_systype
-    endif      
+    if (.not. allocated(VdWcoeff))  then 
+        allocate(VdWcoeff(-range:range, -range:range, -range:range,nsegtypes,nsegtypes),stat=ier)            
+        if( ier/=0 ) alloc_fail=.true.
+    endif
 
 
     if(alloc_fail) then 
@@ -145,51 +114,19 @@ subroutine allocate_auxdensity(info)
     if (present(info)) info = 0
 
     
-    if(systype=="brush_mul".or.systype=="brushssdna".or.systype=="brushborn")  then 
-        if (.not. allocated(rhopoltmp))  then 
-            allocate(rhopoltmp(nx,ny,nz,nsegtypes),stat=ier)
+    
+    if (.not. allocated(rhopoltmp))  then 
+        allocate(rhopoltmp(nx,ny,nz,nsegtypes),stat=ier)
                
-            if( ier.ne.0 ) then
-                print*, 'Allocation error in auxilary polymer density: stat =', ier
-                if(present(info)) info= VdW_err_allocation
-                return
-            endif
-        else
-           print*,'Allocation warning: auxilary polymer density already allocated'
+        if( ier.ne.0 ) then
+            print*, 'Allocation error in auxilary polymer density: stat =', ier
+            if(present(info)) info= VdW_err_allocation                
+            return
         endif
-        
-
-    else if(systype=="electVdWAB".or.systype=="electA") then 
-
-        if (.not. allocated(rhopolAtmp))  then 
-           allocate(rhopolAtmp(nx,ny,nz),stat=ier)
-           
-            if( ier.ne.0 ) then
-                print*, 'Allocation error in auxilary polymer density: stat =', ier
-                if(present(info)) info= VdW_err_allocation
-                return
-            endif
-        else
-           print*,'Allocation warning: auxilary polymer density already allocated'
-        endif
-
-        if (.not. allocated(rhopolBtmp))  then 
-           allocate(rhopolBtmp(nx,ny,nz),stat=ier)
-           
-           if( ier.ne.0 ) then
-                print*, 'Allocation error in auxilary polymer density: stat =', ier
-                if(present(info)) info= VdW_err_allocation
-                return
-           endif
-        else
-           print*,'Allocation warning: auxilary polymer density already allocated'
-        endif
-
-    else 
-        print*, 'Allocate_auxdensity: wrong systype =', systype
-        if(present(info)) info= VdW_err_systype
-    endif    
-
+    else
+       print*,'Allocation warning: auxilary polymer density already allocated'
+    endif
+    
 
 end subroutine allocate_auxdensity
  
@@ -232,46 +169,20 @@ subroutine make_VdWcoeff(info)
     call allocate_VdWcoeff(info_allocate_VdW)
     call allocate_auxdensity(info_allocate_dens)
 
-    if ((info_allocate_VdW/=0).or.(info_allocate_dens/=0)) then 
-
-        text="make_VdWcoeff allocation failure"
-        call print_to_log(LogUnit,text)
-        if(present(info)) info= VdW_err_allocation
-        
-    else if(systype=="electVdWAB") then
-      
-        lsegAB=(lsegPAA+lsegPAMPS)/2.0_dp
-
-        call MC_VdWcoeff(lsegPAA, VdWcoeffAA)
-        call MC_VdWcoeff(lsegPAMPS, VdWcoeffBB)
-        call MC_VdWcoeff(lsegAB , VdWcoeffAB)
-        
-    else if (systype=="electA") then 
-
-        call MC_VdWcoeff(lsegPAA , VdWcoeffAA)
-
-    else if (systype=="brush_mul".or.systype=="brushssdna".or.systype=="brushborn") then    
-
-        do t=1,nsegtypes
-            do s=1,nsegtypes
-                lseg=(lsegAA(t)+lsegAA(s))/2.0_dp
+   
+    do t=1,nsegtypes
+        do s=1,nsegtypes
+            lseg=(lsegAA(t)+lsegAA(s))/2.0_dp
        
-                call read_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
-                print*,"rank=",rank,"info=",info
-                if(info==VdW_err_vdwcoeff_not_exist) then 
-                    call MC_VdWcoeff(lseg, VdWcoeff(:,:,:,t,s))
-                    info=0 ! reset
-                    if(rank==0) call write_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
-                endif    
-            enddo
-        enddo    
-
-    else
-        text="make_VdWcoeff called with wrong systype"
-        call print_to_log(LogUnit,text)
-        if(present(info)) info= VdW_err_systype
-        return
-    endif   
+            call read_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
+            print*,"rank=",rank,"info=",info
+            if(info==VdW_err_vdwcoeff_not_exist) then 
+                call MC_VdWcoeff(lseg, VdWcoeff(:,:,:,t,s))
+                info=0 ! reset
+                if(rank==0) call write_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
+            endif    
+        enddo
+    enddo    
 
     call make_VdWeps(info_VdWeps)   
     if (info_VdWeps == VdW_err_inputfile) then
@@ -433,9 +344,9 @@ subroutine VdW_contribution_exp_homo(rhopol,exppi)
                 
                         do az = -2,2
                             jz = iz+az
-                            if(1<=jz.and.jz<=nz) then 
-                                protemp=protemp + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)
-                            endif    
+                            jz = ipbc(jz,nz)
+                            protemp=protemp + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)
+                                
                         enddo
                     enddo
                 enddo
@@ -495,12 +406,13 @@ subroutine VdW_contribution_exp_diblock(rhopolA,rhopolB,exppiA,exppiB)
                 
                         do az = -2,2
                             jz = iz+az
-                            if(1<=jz.and.jz<=nz) then 
-                                protempAA=protempAA + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)
-                                protempAB=protempAB + VdWcoeffAB(ax,ay,az)*rhopolBtmp(jx, jy, jz)
-                                protempBA=protempBA + VdWcoeffAB(ax,ay,az)*rhopolAtmp(jx, jy, jz)
-                                protempBB=protempBB + VdWcoeffBB(ax,ay,az)*rhopolBtmp(jx, jy, jz)
-                            endif    
+                            jz = ipbc(jz,nz)
+
+                            protempAA=protempAA + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)
+                            protempAB=protempAB + VdWcoeffAB(ax,ay,az)*rhopolBtmp(jx, jy, jz)
+                            protempBA=protempBA + VdWcoeffAB(ax,ay,az)*rhopolAtmp(jx, jy, jz)
+                            protempBB=protempBB + VdWcoeffBB(ax,ay,az)*rhopolBtmp(jx, jy, jz)
+                            
                         enddo
                     enddo
                 enddo
@@ -554,12 +466,11 @@ subroutine VdW_contribution_exp(rhopol,exppi,segtype)
                         jy = ipbc(jy,ny) 
                         do az = -range,range
                             jz = iz+az
-                            if(1<=jz.and.jz<=nz) then 
-                                do t=1,nsegtypes
-                                    protemp = protemp + VdWeps(segtype,t) * VdWcoeff(ax,ay,az,segtype,t) &
-                                        * rhopoltmp(jx,jy,jz,t)
-                                enddo
-                            endif    
+                            jz = ipbc(jz,nz)
+                            do t=1,nsegtypes
+                                protemp = protemp + VdWeps(segtype,t) * VdWcoeff(ax,ay,az,segtype,t) &
+                                    * rhopoltmp(jx,jy,jz,t)
+                            enddo
                         enddo
                     enddo
                 enddo
@@ -611,9 +522,10 @@ function VdW_energy_homo(rhopol)result(EVdW)
                 
                         do az = -2,2
                             jz = iz+az
-                            if(1<=jz.and.jz<=nz) then 
-                                Etemp=Etemp + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolAtmp(ix, iy, iz)
-                            endif    
+                            jz = ipbc(jz,nz)
+
+                            Etemp=Etemp + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolAtmp(ix, iy, iz)
+                                
                         enddo
                     enddo
                 enddo
@@ -668,11 +580,12 @@ function VdW_energy_diblock(rhopolA,rhopolB)result(EVdW)
                 
                         do az = -2,2
                             jz = iz+az
-                            if(1<=jz.and.jz<=nz) then 
-                                EtempAA=EtempAA + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolAtmp(ix, iy, iz)
-                                EtempAB=EtempAB + VdWcoeffAB(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolBtmp(ix, iy, iz)
-                                EtempBB=EtempBB + VdWcoeffBB(ax,ay,az)*rhopolBtmp(jx, jy, jz)*rhopolBtmp(ix, iy, iz)
-                            endif    
+                            jz =ipbc(jz,nz)
+
+                            EtempAA=EtempAA + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolAtmp(ix, iy, iz)
+                            EtempAB=EtempAB + VdWcoeffAB(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolBtmp(ix, iy, iz)
+                            EtempBB=EtempBB + VdWcoeffBB(ax,ay,az)*rhopolBtmp(jx, jy, jz)*rhopolBtmp(ix, iy, iz)
+                                
                         enddo
                     enddo
                 enddo
@@ -730,9 +643,10 @@ function VdW_energy(rhopol)result(EVdW)
                         
                                 do az = -range,range 
                                     jz = iz+az
-                                    if(1<=jz.and.jz<=nz) then
-                                        Etemp=Etemp + VdWcoeff(ax,ay,az,s,t)*rhopoltmp(jx, jy, jz,s)*rhopoltmp(ix, iy, iz,t)
-                                    endif    
+                                    jz = ipbc(jz,nz)
+
+                                    Etemp=Etemp + VdWcoeff(ax,ay,az,s,t)*rhopoltmp(jx, jy, jz,s)*rhopoltmp(ix, iy, iz,t)
+                                        
                                 enddo
                             enddo
                         enddo
@@ -1062,7 +976,7 @@ subroutine read_VdWcoeff(lseg,VdWcoeff,info)
         do iy=-range,range
             do iz=-range,range
                 read(un_input,*)VdWcoeff(ix,iy,iz)
-                print*,ix,iy,iz,VdWcoeff(ix, iy, iz) 
+                !print*,ix,iy,iz,VdWcoeff(ix, iy, iz) 
             enddo
         enddo
     enddo    
