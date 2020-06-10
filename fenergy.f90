@@ -973,10 +973,106 @@ contains
         use volume, only : areacell, nx, ny, delta
         use parameters, only : lb
         use surface, only : sigmaSurfL, sigmaSurfR,sigmaqSurfL, sigmaqSurfR, psiSurfL, psiSurfR
+        use surface, only : fdisS, fdisTaR, fdisTaL, qS
 
         real(dp), intent(in) :: FEelsurf(2)
         real(dp) ::  FEchemsurf(2)
 
-    end function 
+        real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx)
+        real(dp) :: sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
+        real(dp) :: FEchemSurftmp
+        integer :: s 
+
+
+        sigmaSurf(RIGHT)  = sigmaSurfR 
+        sigmaSurf(LEFT)   = sigmaSurfL
+
+        do s=1,nx*ny
+            sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
+            sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
+            psiSurf(RIGHT,s)    = psiSurfR(s)
+            psiSurf(LEFT,s)     = psiSurfL(s)
+        enddo    
+
+        if(bcflag(RIGHT)=='qu') then ! quartz
+
+            FEchemSurftmp=0.0_dp
+            do s=1, nx*ny
+                FEchemSurftmp=FEchemSurftmp+log(fdisS(2)) ! area surface integration measure 
+            enddo    
+            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+        
+        elseif(bcflag(RIGHT)=="cl" ) then  ! clay
+        
+            FEchemSurftmp=0.0_dp
+            do s=1, nx*ny
+                FEchemSurftmp=FEchemSurftmp+(log(fdisS(2))+qS(2)*psiSurfR(s)) 
+            enddo    
+
+            FEchemSurf(RIGHT) = FEchemSurftmp*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(RIGHT)
+        
+        elseif(bcflag(RIGHT)=="ca" ) then ! calcite
+        
+            FEchemSurf(RIGHT) =(log(fdisS(2))+log(fdisS(5)))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb) - &
+                2.0_dp*FEelsurf(RIGHT)
+        
+        elseif(bcflag(RIGHT)=="ta" ) then ! taurine 
+        
+            FEchemSurf(RIGHT)=(log(fdisTaR(2))*sigmaSurf(RIGHT)*areacell/(delta*4.0_dp*pi*lb)) -2.0_dp*FEelsurf(RIGHT)
+        
+        elseif(bcflag(RIGHT)=="cc") then  
+        
+            FEchemSurf(RIGHT)=0.0_dp
+        
+        else
+            print*,"Error in FEchem_surface"
+            print*,"Wrong value bcflag(RIGHT) : ",bcflag(RIGHT)
+            stop
+        endif 
+
+        if(bcflag(LEFT)=="ta" ) then ! taurine 
+
+            FEchemSurf(LEFT)= log(fdisTaL(2))*sigmaSurf(LEFT)*areacell/(delta*4.0_dp*pi*lb) -2.0_dp*FEelsurf(LEFT)
+        
+        elseif(bcflag(LEFT)=="cc") then  
+        
+            FEchemSurf(LEFT)=0.0_dp
+        
+        else
+            print*,"Error in FEchem_surface"
+            print*,"Wrong value bcflag(LEFT) : ",bcflag(LEFT)
+        endif 
+
+    end function
+
+ 
+    function SurfaceCharge(sigmaqSurfR,sigmaqSurfL) result(qsurf)
+        
+        use globals, only : LEFT,RIGHT
+        use volume, only : nx,ny,areacell,delta
+        use mathconst
+        use parameters, only : lb
+
+        real(dp), intent(in) :: sigmaqSurfR(:),sigmaqSurfL(:)
+        real(dp) :: qsurf(2)
+        ! local
+        integer :: i, s 
+        real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx)
+  
+        do s=1,nx*ny
+            sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
+            sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
+        enddo    
+
+        do i=LEFT,RIGHT
+            qsurf(i)=0.0_dp
+            do s=1,nx*ny     
+                qsurf(i) = qsurf(i)+sigmaqSurf(i,s)
+            enddo
+            qsurf(i)=(qsurf(i)/(4.0_dp*pi*lb*delta))*areacell  ! areacell=area size one surface element, 4*pi*lb*delta make correct dimensional full unit    
+        enddo
+        
+    end function
+
 
 end module energy
