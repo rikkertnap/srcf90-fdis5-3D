@@ -116,6 +116,7 @@ contains
             xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
             xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
             xNaCl(i)   = expmu%NaCl*(xsol(i)**vNaCl)
+            xpro(i)    = expmu%pro*(xsol(i)**vpro)
         enddo
 
         !  fdis(i,t) is assocaited with fraction of monomer of type t at i in state 2 
@@ -204,7 +205,7 @@ contains
             enddo        
 
             do i=1,n
-                f(i)    = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) -1.0_dp
+                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) +xpro(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                     zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
             !   print*,i,rhoq(i)
@@ -327,7 +328,7 @@ contains
             xRb(i)     = expmu%Rb*(xsol(i)**vRb)*exp(-psi(i)*zRb) ! Rb+ volume fraction
             xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
             xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
-            ! xNaCl(i)   = expmu%NaCl*(xsol(i)**vNaCl) ! for this fcn KionNa=0 => xNaCl=0 
+            xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! crowder volume fraction  
         enddo
 
 
@@ -471,7 +472,7 @@ contains
             enddo    
 
             do i=1,n
-                f(i)    = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) -1.0_dp
+                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xpro(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                     zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
             enddo
@@ -587,7 +588,7 @@ contains
             xRb(i)     = expmu%Rb*(xsol(i)**vRb)*exp(-psi(i)*zRb) ! Rb+ volume fraction
             xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
             xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
-            ! xNaCl(i)   = expmu%NaCl*(xsol(i)**vNaCl) ! for this fcn KionNa=0 => xNaCl=0 
+            xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! crowder volume fraction 
         enddo
 
         !  AH   <=> A- + H+  
@@ -713,7 +714,7 @@ contains
             enddo    
 
             do i=1,n
-                f(i)    = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) -1.0_dp
+                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xpro(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                     zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
             enddo
@@ -881,6 +882,7 @@ contains
             xRb(i)     = expmu%Rb*(xsol(i)**vRb)*exp(-psi(i)*zRb) ! Rb+ volume fraction
             xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
             xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
+            xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! crowder volume fraction  
             ! xNaCl(i)   = expmu%NaCl*(xsol(i)**vNaCl) ! for this fcn KionNa=0 => xNaCl=0 
 
             lbr = lb/epsfcn(i)     ! local Bjerrum length
@@ -1063,7 +1065,7 @@ contains
            
             ! .. packing contraint and total charge 
             do i=1,n
-                f(i)    = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) -1.0_dp
+                f(i)    = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xpro(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                     zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol 
             enddo
@@ -1183,6 +1185,7 @@ contains
             xCl(i)   = expmu%Cl*(xsol(i)**vCl)*exp(-psi(i)*zCl) ! ion neg volume fraction
             xHplus(i) = expmu%Hplus*(xsol(i))*exp(-psi(i))      ! H+  volume fraction
             xOHmin(i) = expmu%OHmin*(xsol(i))*exp(+psi(i))      ! OH-  volume fraction
+            xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! crowder volume fraction  
        
             xA(1)= xHplus(i)/(K0aA(1)*(xsol(i)**deltavA(1)))      ! AH/A-
             xA(2)= (xNa(i)/vNa)/(K0aA(2)*(xsol(i)**deltavA(2)))   ! ANa/A-
@@ -1296,7 +1299,7 @@ contains
                 xpol(i)=xpol(i)+rhopol(i,A)*(fdisA(i,5)*vpolA(5)*vsol/2.0_dp)
                 xpol(i)=xpol(i)+rhopol(i,B)*(fdisB(i,5)*vpolB(5)*vsol/2.0_dp)
        
-                f(i)=xpol(i)+xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)-1.0_dp
+                f(i)=xpol(i)+xsol(i)+xNa(i)+xCl(i)+xNaCl(i)+xK(i)+xKCl(i)+xCa(i)+xHplus(i)+xOHmin(i)+xpro(i)-1.0_dp
 
                 rhoq(i)= zNa*xNa(i)/vNa + zCa*xCa(i)/vCa +zK*xK(i)/vK + zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                     ((zpolA(1)*fdisA(i,1)+ zpolA(4)*fdisA(i,4))*rhopol(i,A) + &
@@ -1386,26 +1389,17 @@ contains
         ! read out x 
         do i=1,n                     
             xsol(i) = x(i)        ! volume fraction solvent
+            xpol(i) = 0.0_dp      ! volume fraction polymer
+            xpro(i) = expmu%pro*(xsol(i)**vpro) ! crowder volume fraction  
         enddo 
 
         do t=1,nsegtypes
             k=t*n
             do i=1,n 
-                rhopolin(i,t) = x(i+k) ! density 
-            enddo    
-        enddo
-             
-        !  .. assign global and local polymer density 
-
-        do t=1,nsegtypes
-            do i=1,n
-                rhopol(i,t)=0.0_dp 
+                rhopolin(i,t) = x(i+k)  ! .. density 
+                rhopol(i,t)=0.0_dp      ! .. assign global and local polymer density 
                 local_rhopol(i,t)=0.0_dp
             enddo    
-        enddo    
-       
-        do i=1,n                  ! init volume fractions
-            xpol(i)  = 0.0_dp     ! volume fraction polymer
         enddo
 
         do t=1,nsegtypes
@@ -1413,7 +1407,6 @@ contains
                 fdis(i,t)  = 0.0_dp
                 exppi(i,t) = xsol(i)**vpol(t)  
             enddo
-
         enddo      
        
         ! Van der Waals   
@@ -1428,7 +1421,7 @@ contains
         local_q = 0.0_dp    ! init q
              
         do c=1,cuantas         ! loop over cuantas
-            pro=1.0_dp         ! initial weight conformation (1 or 0)
+            pro=exp_energychain(c)        ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -1478,12 +1471,11 @@ contains
             enddo        
 
             do i=1,n
-                f(i) = xpol(i)+xsol(i)-1.0_dp
+                f(i) = xpol(i)+xsol(i)+xpro(i)-1.0_dp
             enddo
           
-            !     .. end computation polymer density and charge density  
+            !     .. end computation polymer density 
 
-        
             norm=l2norm(f,neqint)
             iter=iter+1
 
@@ -1518,8 +1510,6 @@ contains
         use parameters
         use physconst
         use vectornorm
-
-        implicit none
 
         !     .. scalar arguments
 
@@ -1637,11 +1627,11 @@ contains
                 enddo 
               
             case default
-            
+
                 do i=1,neqint
                     constr(i)=1.0_dp
-                enddo 
-        
+                enddo
+                 
         end select  
 
     end subroutine set_contraints
@@ -1653,8 +1643,6 @@ contains
 
         use globals
         use fcnpointer
-        
-        implicit none   
 
         select case (systype) 
         case ("brush_mul")

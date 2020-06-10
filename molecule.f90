@@ -15,6 +15,7 @@ module molecules
         real(dp) :: KCl
         real(dp) :: Hplus
         real(dp) :: OHmin
+        real(dp) :: pro 
     end type moleclist
 
 
@@ -25,11 +26,11 @@ module molecules
         real(dp) :: Na
         real(dp) :: Cl
         real(dp) :: K
+        real(dp) :: Rb 
         real(dp) :: Ca
         real(dp) :: Mg
         real(dp) :: Hplus
         real(dp) :: OHmin
-        real(dp) :: Rb 
     end type bornmoleclist 
 
 

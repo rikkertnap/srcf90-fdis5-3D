@@ -57,7 +57,7 @@ subroutine make_chains_mc()
     use globals
     use chains
     use random
-    use parameters, only : geometry, lseg, write_mc_chains
+    use parameters, only : geometry, lseg, write_mc_chains, isVdW
     use volume, only : nx, ny, nz, delta
     use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
     use volume, only : ut, vt
@@ -83,7 +83,8 @@ subroutine make_chains_mc()
     real(dp) :: xpt,ypt          ! coordinates
     real(dp) :: theta, theta_angle
     character(len=lenText) :: text, istr
-    integer  :: xi,yi,zi ,un_trj        
+    integer  :: xi,yi,zi ,un_trj, un_ene
+    real(dp), dimension(:), allocatable :: Int_Energy        
 
     !     .. executable statements
     !     .. initializations of variables     
@@ -100,9 +101,13 @@ subroutine make_chains_mc()
     ycm= Ly/2.0_dp
     zcm= Lz/2.0_dp
 
+    allocate(Int_Energy(maxnchains))
+    Int_Energy=0.0_dp
+
     if(write_mc_chains) then 
         conf_write=0
         un_trj= open_chain_lammps_trj()
+        un_ene= open_chain_energy()
     endif   
 
     if(isHomopolymer.eqv..FALSE.) then 
@@ -118,16 +123,13 @@ subroutine make_chains_mc()
             call make_linear_seq_chains(chain,nchains,maxnchains,nseg) 
         endif  
 
-        if(write_mc_chains) then 
-            call write_chain_lammps_trj(un_trj,chain,nchains)
-            !if(conf==maxntheta.and.rank==0) then
-            !    print*,"Hello mc "
-            !    do s=1,nseg
-            !        write(122,*)chain(2,s,1),chain(3,s,1),chain(1,s,1)
-            !        print*,chain(2,s,1),chain(3,s,1),chain(1,s,1)
-            !    enddo
-            !endif
-        endif        
+        if(write_mc_chains) call write_chain_lammps_trj(un_trj,chain,nchains)    
+        if(isVdW) Int_Energy= VdWpotentialenergy(chain,nchains)
+        do j=1,nchains
+            write(un_ene,*)Int_energy(j)
+        enddo     
+           
+
         if(geometry=="cubic") then
             
             do j=1,nchains   
@@ -137,7 +139,6 @@ subroutine make_chains_mc()
                     xp(s) = chain(2,s,j)-chain(2,1,j)
                     yp(s) = chain(3,s,j)-chain(3,1,j)
                 enddo
-
 
                 do ntheta=1,maxntheta                  ! rotation in xy-plane
 
@@ -174,9 +175,11 @@ subroutine make_chains_mc()
                         if(idx<=0) then
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                         endif
-
                     enddo            
-                    
+            
+
+                    exp_energychain(conf)=exp(-Int_Energy(j)) 
+            
                     conf = conf +1
 
                 enddo         ! end loop over rotations
@@ -229,8 +232,10 @@ subroutine make_chains_mc()
                         if(idx<=0) then
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                         endif
-                                       
+                        
                     enddo         ! end loop over graft points
+
+                    exp_energychain(conf)=exp(-Int_Energy(j)) 
 
                     conf = conf +1  ! end loop over rotations
 
@@ -246,10 +251,6 @@ subroutine make_chains_mc()
      
     enddo                     ! end while loop
     
-    
-    do conf=1,cuantas
-        exp_energychain(conf) = 1.0_dp
-    enddo     
     
     !  .. end chains generation 
       
@@ -274,7 +275,9 @@ subroutine make_chains_mc()
     if(write_mc_chains) then
         ! call write_indexchain_lammps_trj()
           close(un_trj)
-    endif     
+    endif   
+
+    deallocate(Int_Energy)  
 
 end subroutine make_chains_mc
 
@@ -589,7 +592,7 @@ subroutine read_chains_lammps_trj(info)
     endif
 
 
-    write(fname,'(A8)')'traj.ene' ! trajectory energy
+    fname='traj.'//trim(adjustl(istr))//'.ene' ! trajectory energy
     inquire(file=fname,exist=exist)
     if(exist) then
         open(unit=newunit(un_ene),file=fname,status='old',iostat=ios)
@@ -652,7 +655,6 @@ subroutine read_chains_lammps_trj(info)
             xseg(1,item) = xc*scalefactor 
             xseg(2,item) = yc*scalefactor
             xseg(3,item) = zc*scalefactor
-            !print*,"index=",idatom, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
         enddo
 
         ! if(conf==0.and.rank==0) then
@@ -1341,7 +1343,6 @@ function open_chain_lammps_trj(info)result(un_trj)
         return
     endif
 
-
 end function
 
 
@@ -1393,5 +1394,69 @@ subroutine write_chain_lammps_trj(un_trj,chain,nchains)
 end subroutine write_chain_lammps_trj
 
 
+function open_chain_energy(info)result(un_ene)
 
+    use mpivars, only : rank
+    use myutils, only : newunit, lenText
+    use myio, only : myio_err_chainsfile
+
+    integer, optional, intent(inout) :: info
+
+    integer :: un_ene
+    ! local
+    character(len=lenText) :: istr
+    character(len=25) :: fname
+    integer :: ios
+
+    write(istr,'(I4)')rank
+    fname='traj.'//trim(adjustl(istr))//'.ene'
+    open(unit=newunit(un_ene),file=fname,status='new',iostat=ios)
+    if(ios >0 ) then
+        print*, 'Error opening : ',fname,' file : iostat =', ios
+        if (present(info)) info = myio_err_chainsfile
+        return
+    endif
+
+end function
+
+function VdWpotentialenergy(chain,nchains)result(Energy)
+
+    use globals, only : nseg
+    use myutils, only : newunit, lenText
+    use volume, only : delta, nz, coordinateFromLinearIndex
+    use chains, only : type_of_monomer
+    use parameters, only :  lsegAA,VdWeps
+
+    real(dp), intent(in) :: chain(:,:,:)
+    integer, intent(in) :: nchains
+
+    real(dp) :: Energy(nchains)
+    real(dp) :: Ene,sqrlseg,sqrdist
+    integer :: k,i,j,s,t
+    real(dp) :: xi,xj,yi,yj,zi,zj
+
+    do k=1,nchains
+        Ene=0.0_dp      
+        do i=1,nseg
+            do j=i+1,nseg
+                s=type_of_monomer(i)
+                t=type_of_monomer(j)
+                zi = chain(1,i,k)
+                xi = chain(2,i,k)
+                yi = chain(3,i,k) 
+                zj = chain(1,j,k)
+                xj = chain(2,j,k)
+                yj = chain(3,j,k) 
+                sqrdist=(xi-xj)**2+(yi-yj)**2+(zi-zj)**2
+                sqrlseg=((lsegAA(t)+lsegAA(s))/2.0_dp)**2
+                Ene=Ene - VdWeps(s,t)*(sqrlseg/sqrdist)**3
+            enddo
+        enddo 
+        Energy(k) = Ene            
+    enddo
+
+ end function VdWpotentialenergy
+ 
+   
+        
 end module chaingenerator

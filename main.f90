@@ -77,6 +77,7 @@ program main
     if(rank==0) print*,text
 
     ! .. init
+
     call read_inputfile(info)
     if(info/=0) then
         write(istr,'(I3)')info
@@ -96,12 +97,7 @@ program main
     call make_sequence_chain(chainperiod,chaintype)
     call make_charge_table(ismonomer_chargeable,zpol,nsegtypes)
     call set_properties_chain(chainperiod,chaintype) 
-    call make_chains(chainmethod)   ! generate polymer configurations
-    call allocate_field(nx,ny,nz,nsegtypes)
-    call allocate_part_fnc()
-    call init_field()
-    call init_surface(bcflag,nsurf)
-   
+    
     if(isVdW) then 
         call make_VdWcoeff(info)
         if(info/=0) then
@@ -111,8 +107,18 @@ program main
             print*,text
             stop
         endif
+    else
+        call make_VdWeps(info)    
     endif  
+
+    call make_chains(chainmethod)   ! generate polymer configurations
+    call allocate_field(nx,ny,nz,nsegtypes)
+    call allocate_part_fnc()
+    call init_field()
+    call init_surface(bcflag,nsurf)
    
+    ! VdW used to here 
+
     call make_isrhoselfconsistent(isVdW)
     call set_size_neq()             ! number of non-linear equation neq
     call set_fcn()
@@ -211,6 +217,10 @@ program main
 
         if(runtype=="rangepH") then 
             loop => pH
+        else if(runtype=="rangecpro") then 
+            loop => cpro
+        else if(runtype=="rangeVdWeps") then 
+            loop => VdWfac    
         else
             if(associated(loop)) nullify(loop) ! make explict that no association is made
         endif  
@@ -244,7 +254,6 @@ program main
                 call make_guess(x, xguess, isfirstguess)
                 call solver(x, xguess, tol_conv, fnorm, issolution)
                 call fcnptr(x, fvec, neq)
-                !issolution=.true.
                 flag_solver = 0   ! stop nodes
                 do i = 1, size-1
                     dest =i
@@ -282,7 +291,7 @@ program main
                     enddo
                 endif
 
-                ! commucitate new values of loop from master to compute nodes to advance while loop on compute nodes
+                ! communicate new values of loop from master to compute nodes to advance while loop on compute nodes
                 do i = 1, size-1
                     dest = i
                     call MPI_SEND(loop%val, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)

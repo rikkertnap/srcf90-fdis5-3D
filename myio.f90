@@ -25,7 +25,7 @@ module myio
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
     integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q
-    integer :: un_dip ,un_dielec,un_xpolABz, un_xpolz, un_xpol, un_fdis 
+    integer :: un_dip ,un_dielec,un_xpolABz, un_xpolz, un_xpol, un_fdis, un_xpro 
    
     ! format specifiers 
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
@@ -80,6 +80,13 @@ subroutine read_inputfile(info)
     isSet_savePalpha  =.false.  
     write_mc_chains   =.false.
 
+    ! defailt concentrations
+    cKCl=0.0_dp
+    cCaCl2=0.0_dp
+    cMgCl2=0.0_dp
+    cRbCl=0.0_dp
+    
+
     ios=0 
     line = 0
 
@@ -133,16 +140,28 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) KionNa
             case ('KionK')
                 read(buffer,*,iostat=ios) KionK
-            !case ('sigmaSurfL')
-            !    read(buffer,*,iostat=ios) sigmaSurfL
-            !case ('sigmaSurfR')
-            !    read(buffer,*,iostat=ios) sigmaSurfR
             case ('cNaCl')
                 read(buffer,*,iostat=ios) cNaCl
             case ('cKCl')
                 read(buffer,*,iostat=ios) cKCl
+            case ('cRbCl')
+                read(buffer,*,iostat=ios) cRbCl
             case ('cCaCl2')
                 read(buffer,*,iostat=ios) cCaCl2
+            case ('cMgCl2')
+                read(buffer,*,iostat=ios) cMgCl2
+            case ('cpro%val')
+                read(buffer,*,iostat=ios) cpro%val
+            case ('cpro%min')
+                read(buffer,*,iostat=ios) cpro%min
+            case ('cpro%max')
+                read(buffer,*,iostat=ios) cpro%max
+            case ('cpro%stepsize')
+                read(buffer,*,iostat=ios) cpro%stepsize
+            case ('cpro%delta')
+                read(buffer,*,iostat=ios) cpro%delta
+            case ('Rpro')
+                read(buffer,*,iostat=ios) Rpro
             case ('nsize')
                 read(buffer,*,iostat=ios) nsize
             case ('nseg')
@@ -187,16 +206,23 @@ subroutine read_inputfile(info)
             case ('gamma')
                 read(buffer,*,iostat=ios) gamma  
             case ('write_mc_chains')
-                read(buffer,*,iostat=ios) write_mc_chains      
-            !case ('isRandom_pos_graft')
-            !    read(buffer,*,iostat=ios) isRandom_pos_graft  
-            !case ('seed_graft')
-            !    read(buffer,*,iostat=ios) seed_graft   
+                read(buffer,*,iostat=ios) write_mc_chains        
             case ('precondition')    
                 read(buffer,*,iostat=ios) precondition
                 isSet_precondition=.true.   
             case ('dielect_env')
                 read(buffer,*,iostat=ios) dielect_env
+            case ('VdWfac%val')
+                read(buffer,*,iostat=ios) VdWfac%val
+            case ('VdWfac%min')
+                read(buffer,*,iostat=ios) VdWfac%min
+            case ('VdWfac%max')
+                read(buffer,*,iostat=ios) VdWfac%max
+            case ('VdWfac%stepsize')
+                read(buffer,*,iostat=ios) VdWfac%stepsize
+            case ('VdWfac%delta')
+                read(buffer,*,iostat=ios) VdWfac%delta    
+
             case default
                 if(pos>1) then 
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -281,9 +307,11 @@ subroutine read_inputfile(info)
         if (present(info)) info = info_VdWeps
         return
     endif
-    if(systype=="brushssdna") then
+    if(systype=="brushssdna".or.systype=="brushborn".or.systype=="brush_mul") then
         KionNa=0.0_dp 
         KionK=0.0_dp
+        cpro%val =0.0_dp
+        Rpro=0.1_dp
     endif    
 
 end subroutine read_inputfile
@@ -330,7 +358,7 @@ subroutine check_value_runtype(runtype,info)
     character(len=15), intent(in) :: runtype
     integer, intent(out),optional :: info
 
-    character(len=15) :: runtypestr(3)
+    character(len=15) :: runtypestr(4)
     integer :: i
     logical :: flag
 
@@ -339,10 +367,11 @@ subroutine check_value_runtype(runtype,info)
     runtypestr(1)="rangepH"
     runtypestr(2)="rangeVdWeps"
     runtypestr(3)="rangedist"
+    runtypestr(4)="rangecpro"
 
     flag=.FALSE.
 
-    do i=1,3
+    do i=1,4
         if(runtype==runtypestr(i)) flag=.TRUE.
     enddo
 
@@ -740,6 +769,7 @@ subroutine output()
         call output_elect  
     case("neutral") 
         call output_neutral
+        call output_individualcontr_fe
     case("brush_mul","brushssdna") 
         call output_brush_mul  
         call output_individualcontr_fe  
@@ -866,7 +896,7 @@ subroutine output_brush_mul
         write(un_xK,*)'#D    = ',nz*delta 
         write(un_xCa,*)'#D    = ',nz*delta 
         write(un_xNaCl,*)'#D    = ',nz*delta 
-        write(un_xKCL,*)'#D    = ',nz*delta 
+        write(un_xKCl,*)'#D    = ',nz*delta 
         write(un_xpair,*)'#D    = ',nz*delta 
         write(un_charge,*)'#D    = ',nz*delta 
         write(un_xCl,*)'#D    = ',nz*delta 
@@ -1435,6 +1465,7 @@ subroutine output_neutral
     character(len=90) :: xsolfilename 
     character(len=90) :: xpolfilename 
     character(len=90) :: xpolzfilename 
+    character(len=90) :: xprofilename 
     
     character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals   
 
@@ -1465,12 +1496,16 @@ subroutine output_neutral
         xpolfilename='xpol.'//trim(fnamelabel)
         xpolzfilename='xpolz.'//trim(fnamelabel)  
         xsolfilename='xsol.'//trim(fnamelabel)   
+        xprofilename='xpro.'//trim(fnamelabel)   
+
 
         !      .. opening files
         open(unit=newunit(un_sys),file=sysfilename)   
         open(unit=newunit(un_xpol),file=xpolfilename)
         open(unit=newunit(un_xpolz),file=xpolzfilename)
         open(unit=newunit(un_xsol),file=xsolfilename)
+        open(unit=newunit(un_xpro),file=xprofilename)
+        
         
     else ! check that files are open
         inquire(unit=un_sys, opened=isopen)
@@ -1481,12 +1516,16 @@ subroutine output_neutral
         if(.not.isopen) write(*,*)"un_xsol is not open"
         inquire(unit=un_xpolz, opened=isopen)
         if(.not.isopen) write(*,*)"un_xpolz is not open"
+        inquire(unit=un_xpro, opened=isopen)
+        if(.not.isopen) write(*,*)"un_xpro is not open"
     endif    
         
 
     do i=1,nsize    
        write(un_xpol,fmt3reals)xpol(i),(rhopol(i,t),t=1,nsegtypes)
        write(un_xsol,fmt1reals)xsol(i)
+       write(un_xpro,fmt1reals)xpro(i)
+       
     enddo
     do i=1,nz   
        write(un_xpolz,fmt1reals)xpolz(i)
@@ -1523,6 +1562,9 @@ subroutine output_neutral
         ! volume 
         write(un_sys,*)'vsol        = ',vsol
         write(un_sys,*)'vpol        = ',(vpol(t)*vsol,t=1,nsegtypes)
+        write(un_sys,*)'vpro        = ',vpro
+        write(un_sys,*)'cpro        = ',cpro%val
+                
         
         write(un_sys,*)'===end distance independent settings=='
     endif
@@ -1537,6 +1579,7 @@ subroutine output_neutral
     write(un_sys,*)'FEconf      = ',FEconf
     write(un_sys,*)'Econf       = ',Econf  
     write(un_sys,*)'FEtrans%sol = ',FEtrans%sol  
+    write(un_sys,*)'FEtrans%pro = ',FEtrans%pro  
     write(un_sys,*)'fnorm       = ',fnorm
     write(un_sys,*)'sumphi      = ',(sumphi(t),t=1,nsegtypes)
     write(un_sys,*)'check phi   = ',checkphi
@@ -1558,6 +1601,7 @@ subroutine output_neutral
         close(un_xpol)
         close(un_sys)
         close(un_xpolz)
+        close(un_xpro)
     endif
   
 end subroutine output_neutral
@@ -1610,21 +1654,26 @@ subroutine output_individualcontr_fe
     write(un_fe,*)"FEtrans%sol     = ",FEtrans%sol   
     write(un_fe,*)"FEtrans%Na      = ",FEtrans%Na  
     write(un_fe,*)"FEtrans%Cl      = ",FEtrans%Cl  
-    write(un_fe,*)"FEtrans%Ca      = ",FEtrans%Ca  
+    write(un_fe,*)"FEtrans%Ca      = ",FEtrans%Ca
+    write(un_fe,*)"FEtrans%Mg      = ",FEtrans%Mg  
     write(un_fe,*)"FEtrans%K       = ",FEtrans%K
     write(un_fe,*)"FEtrans%KCl     = ",FEtrans%KCl
     write(un_fe,*)"FEtrans%NaCl    = ",FEtrans%NaCl  
     write(un_fe,*)"FEtrans%Hplus   = ",FEtrans%Hplus  
     write(un_fe,*)"FEtrans%OHmin   = ",FEtrans%OHmin  
+    write(un_fe,*)"FEtrans%pro     = ",FEtrans%pro
+    
     
     write(un_fe,*)"FEchempot%Na    = ",FEchempot%Na
     write(un_fe,*)"FEchempot%Cl    = ",FEchempot%Cl
     write(un_fe,*)"FEchempot%Ca    = ",FEchempot%Ca
+    write(un_fe,*)"FEchempot%Mg    = ",FEchempot%Mg
     write(un_fe,*)"FEchempot%K     = ",FEchempot%K
     write(un_fe,*)"FEchempot%KCl   = ",FEchempot%KCl
     write(un_fe,*)"FEchempot%NaCl  = ",FEchempot%NaCl
     write(un_fe,*)"FEchempot%Hplus = ",FEchempot%Hplus
     write(un_fe,*)"FEchempot%OHmin = ",FEchempot%OHmin
+    write(un_fe,*)"FEchempot%pro   = ",FEchempot%pro
 
     write(un_fe,*)"FEchemsurf(LEFT)     = ",FEchemsurf(LEFT)
     write(un_fe,*)"FEchemsurf(RIGHT)    = ",FEchemsurf(RIGHT)
@@ -1643,7 +1692,7 @@ end subroutine output_individualcontr_fe
 subroutine make_filename_label(fnamelabel)
  
     use globals, only : LEFT,RIGHT, systype
-    use parameters, only : cNaCl,cCaCl2,pHbulk,VdWepsBB,init_denspol
+    use parameters, only : cNaCl,cCaCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWfac
 
     character(len=*), intent(inout) :: fnamelabel    
 
@@ -1678,8 +1727,16 @@ subroutine make_filename_label(fnamelabel)
         
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr)) 
-        write(rstr,'(F5.3)')VdWepsBB
-        fnamelabel=trim(fnamelabel)//"VdWepsB"//trim(adjustl(rstr))//".dat"
+        if(cCaCl2>=0.001) then 
+            write(rstr,'(F5.3)')cpro%val
+        elseif(cCaCl2>0.0) then  
+            write(rstr,'(ES9.2E2)')cpro%val
+        else 
+            write(rstr,'(F3.1)')cpro%val
+        endif 
+        fnamelabel=trim(fnamelabel)//"cPro"//trim(adjustl(rstr))
+        write(rstr,'(F5.3)')VdWfac%val
+        fnamelabel=trim(fnamelabel)//"VdWfac"//trim(adjustl(rstr))//".dat"
 
     case("brush_mul","brushssdna","brushborn")  
         

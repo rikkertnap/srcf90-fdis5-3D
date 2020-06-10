@@ -73,7 +73,13 @@ contains
         case("neutral")
             
             call fcnenergy_neutral()
+            call fcnenergy_neutral_alternative()
         
+        case ("brushborn")
+             print*,"not there yet"   
+        !    call fcnenergy_electbrush_mul() 
+        !    call fcnenergy_elect_alternative()    
+
         case default  
 
             text="fcnenergy: wrong systype: "//systype//"stopping program"
@@ -123,7 +129,7 @@ contains
         do i=1,nsize
             FEpi = FEpi  + log(xsol(i))
             FErho = FErho - (xsol(i) + xHplus(i) + xOHmin(i)+ xNa(i)/vNa + xCa(i)/vCa + xCl(i)/vCl+xK(i)/vK +&
-                xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
+                xNaCl(i)/vNaCl +xKCl(i)/vKCl   +xpro(i)/vpro)                 ! sum over  rho_i 
             FEel  = FEel  - rhoq(i) * psi(i)/2.0_dp      
             FEbindA = FEbindA + fdisA(i,5)*rhopol(i,A)
             FEbindB = FEbindB + fdisB(i,5)*rhopol(i,B)
@@ -164,8 +170,8 @@ contains
   
         volumelat= volcell*nsize !nz*delta   ! volume lattice
 
-        FEbulk   = log(xbulk%sol)-(xbulk%sol+xbulk%Hplus +xbulk%OHmin+ & 
-            xbulk%Na/vNa +xbulk%Ca/vCa +xbulk%Cl/vCl+ xbulk%K/vK + xbulk%NaCl/vNaCl +xbulk%KCl/vKCl )
+        FEbulk   = log(xbulk%sol)-(xbulk%sol+xbulk%Hplus +xbulk%OHmin+ xbulk%Na/vNa +&
+            xbulk%Ca/vCa +xbulk%Cl/vCl+ xbulk%K/vK + xbulk%NaCl/vNaCl +xbulk%KCl/vKCl +xbulk%pro/vpro)
         FEbulk = volumelat*FEbulk/(vsol)
 
         deltaFE = FE - FEbulk
@@ -215,8 +221,8 @@ contains
         FEtrans%KCl   = FEtrans_entropy(xKCl,xbulk%KCl,vKCl)
         FEtrans%NaCl  = FEtrans_entropy(xNaCl,xbulk%NaCl,vNaCl)
         FEtrans%Hplus = FEtrans_entropy(xHplus,xbulk%Hplus,vsol,"w")
-        FEtrans%OHmin = FEtrans_entropy(xOHmin,xbulk%OHmin,vsol,"w")    
-
+        FEtrans%OHmin = FEtrans_entropy(xOHmin,xbulk%OHmin,vsol,"w")  
+        FEtrans%pro   = FEtrans_entropy(xpro,xbulk%pro,vpro)  
 
         ! .. chemical potential + standard chemical potential 
 
@@ -229,7 +235,7 @@ contains
         FEchempot%NaCl  = FEchem_pot(xNaCl,expmu%NaCl,vNaCl)
         FEchempot%Hplus = FEchem_pot(xHplus,expmu%Hplus,vsol,"w")
         FEchempot%OHmin = FEchem_pot(xOHmin,expmu%OHmin,vsol,"w")
-
+        FEchempot%pro   = FEchem_pot(xpro,expmu%pro,vpro)
 
         ! .. surface chemical contribution
  
@@ -237,9 +243,10 @@ contains
         ! .. summing all contrubutions
         
         FEalt = FEtrans%sol +FEtrans%Na+ FEtrans%Cl +FEtrans%NaCl+FEtrans%Ca 
-        FEalt = FEalt+FEtrans%OHmin +FEtrans%Hplus +FEtrans%K +FEtrans%KCl
+        FEalt = FEalt+FEtrans%OHmin +FEtrans%Hplus +FEtrans%K +FEtrans%KCl +FEtrans%pro 
         FEalt = FEalt+FEchempot%sol +FEchempot%Na+ FEchempot%Cl +FEchempot%NaCl+FEchempot%Ca 
         FEalt = FEalt+FEchempot%OHmin +FEchempot%Hplus+ FEchempot%K +FEchempot%K+FEchempot%KCl
+        FEalt = FEalt+FEchempot%pro
         ! be vary carefull FE = -1/2 \int dz rho_q(z) psi(z)
 
          ! .. chemical and binding contribution
@@ -267,7 +274,8 @@ contains
         FEtransbulk%KCl   = FEtrans_entropy_bulk(xbulk%KCl,vKCl)
         FEtransbulk%NaCl  = FEtrans_entropy_bulk(xbulk%NaCl,vNaCl)
         FEtransbulk%Hplus = FEtrans_entropy_bulk(xbulk%Hplus,vsol,"w")
-        FEtransbulk%OHmin = FEtrans_entropy_bulk(xbulk%OHmin,vsol,"w")    
+        FEtransbulk%OHmin = FEtrans_entropy_bulk(xbulk%OHmin,vsol,"w")   
+        FEtransbulk%pro   = FEtrans_entropy_bulk(xbulk%pro,vpro)  
 
         ! .. delta chemical potential + standard chemical potential 
 
@@ -280,16 +288,17 @@ contains
         FEchempotbulk%NaCl  = FEchem_pot_bulk(xbulk%NaCl,expmu%NaCl,vNaCl)
         FEchempotbulk%Hplus = FEchem_pot_bulk(xbulk%Hplus,expmu%Hplus,vsol,"w")
         FEchempotbulk%OHmin = FEchem_pot_bulk(xbulk%OHmin,expmu%OHmin,vsol,"w")
-
+        FEchempotbulk%pro   = FEchem_pot_bulk(xbulk%pro,expmu%pro,vpro) 
         
         ! .. bulk free energy
 
         volumelat = volcell*nsize   ! volume lattice 
         FEbulkalt = FEtransbulk%sol +FEtransbulk%Na+ FEtransbulk%Cl +FEtransbulk%NaCl+FEtransbulk%Ca 
-        FEbulkalt = FEbulkalt+FEtransbulk%OHmin +FEtransbulk%Hplus +FEtransbulk%K +FEtransbulk%KCl
+        FEbulkalt = FEbulkalt+FEtransbulk%OHmin +FEtransbulk%Hplus +FEtransbulk%K +FEtransbulk%KCl +FEtransbulk%pro 
         FEbulkalt = FEbulkalt+FEchempotbulk%sol +FEchempotbulk%Na+FEchempotbulk%Cl +FEchempotbulk%NaCl+FEchempotbulk%Ca 
-        FEbulkalt = FEbulkalt+FEchempotbulk%OHmin +FEchempotbulk%Hplus -FEchempotbulk%K -FEchempotbulk%KCl
-      
+        FEbulkalt = FEbulkalt+FEchempotbulk%OHmin +FEchempotbulk%Hplus +FEchempotbulk%K +FEchempotbulk%KCl
+        FEbulkalt = FEbulkalt+FEchempotbulk%pro
+
         FEbulkalt = volumelat*FEbulkalt
 
         ! .. delta
@@ -303,6 +312,7 @@ contains
         deltaFEtrans%NaCl  = FEtrans%NaCl - FEtransbulk%NaCl * volumelat
         deltaFEtrans%Hplus = FEtrans%Hplus- FEtransbulk%Hplus * volumelat
         deltaFEtrans%OHmin = FEtrans%OHmin- FEtransbulk%OHmin * volumelat
+        deltaFEtrans%pro   = FEtrans%pro  - FEtransbulk%pro * volumelat
          
         deltaFEchempot%sol   = FEchempot%sol  - FEchempotbulk%sol * volumelat
         deltaFEchempot%Na    = FEchempot%Na   - FEchempotbulk%Na * volumelat
@@ -313,7 +323,7 @@ contains
         deltaFEchempot%NaCl  = FEchempot%NaCl - FEchempotbulk%NaCl * volumelat
         deltaFEchempot%Hplus = FEchempot%Hplus- FEchempotbulk%Hplus * volumelat
         deltaFEchempot%OHmin = FEchempot%OHmin- FEchempotbulk%OHmin * volumelat
-
+        deltaFEchempot%pro   = FEchempot%pro  - FEchempotbulk%pro * volumelat
 
         ! .. differences
 
@@ -356,12 +366,12 @@ contains
         !  .. local arguments 
     
         real(dp) :: sigmaq0,psi0
-        real(dp) :: qsurf(2)           ! total charge on surface 
-        real(dp) :: qsurfg             ! total charge on grafting surface  
+       ! real(dp) :: qsurf(2)           ! total charge on surface 
+        !real(dp) :: qsurfg             ! total charge on grafting surface  
         integer  :: i,j,s,g,t          ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
         integer  :: nzadius
-        real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
+        !real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
         real(dp) :: FEchemSurftmp
         integer  :: ier
         logical  :: alloc_fail
@@ -388,7 +398,7 @@ contains
         do i=1,nsize
             FEpi = FEpi  + log(xsol(i))
             FErho = FErho - (xsol(i) + xHplus(i) + xOHmin(i)+ xNa(i)/vNa + xCa(i)/vCa + xCl(i)/vCl+xK(i)/vK +&
-                xNaCl(i)/vNaCl +xKCl(i)/vKCl)                 ! sum over  rho_i 
+                xNaCl(i)/vNaCl +xKCl(i)/vKCl +xpro(i)/vpro)                 ! sum over  rho_i 
             FEel  = FEel  - rhoq(i) * psi(i)
             qres = qres + rhoq(i)
         enddo
@@ -457,9 +467,9 @@ contains
         use globals, only : nsize, nseg, nsegtypes
         use volume, only : volcell
         use parameters
-        use field
-        use VdW
-        use conform_entropy
+        use field, only : xsol, xpro, rhopol, q
+        use VdW, only : VdW_energy
+    
 
         !     .. local arguments 
     
@@ -489,7 +499,7 @@ contains
 
         do i=1,nsize
             FEpi = FEpi  + log(xsol(i))
-            FErho = FErho - xsol(i) 
+            FErho = FErho - xsol(i) -xpro(i)/vpro 
         enddo
 
         checkphi=nseg
@@ -521,17 +531,67 @@ contains
         
        
         volumelat= volcell*nsize  ! volume lattice divide by area surface
-        FEbulk = log(xbulk%sol)-xbulk%sol
+        FEbulk = log(xbulk%sol)-xbulk%sol-xbulk%pro/vpro
         FEbulk = volumelat*FEbulk/(vsol)
         deltaFE  = FE -FEbulk
     
-        ! alternative computation free energy
-
-        FEtrans%sol=FEtrans_entropy(xsol,xbulk%sol,vsol,"w")     
-        
-        FEalt= FEconf+FEtrans%sol-FEVdW+Econf
-    
     end subroutine fcnenergy_neutral
+      
+
+    subroutine fcnenergy_neutral_alternative()
+
+        !  .. variable and constant declaractions 
+    
+        use globals, only : nsize, nseg, nsegtypes
+        use volume, only : volcell
+        use parameters
+        use field
+        use VdW
+        use conform_entropy
+ 
+        real(dp) :: volumelat          ! volume lattice 
+        
+        ! .. translational entropy
+        FEtrans%sol=FEtrans_entropy(xsol,xbulk%sol,vsol,"w")     
+        FEtrans%pro=FEtrans_entropy(xpro,xbulk%pro,vpro)
+       
+        ! .. chemical potential + standard chemical potential 
+        FEchempot%sol   = 0.0_dp ! by construction  
+        FEchempot%pro   = FEchem_pot(xpro,expmu%pro,vpro)
+
+    
+        ! .. summing all contributions
+        
+        FEalt = FEtrans%sol +FEtrans%pro + FEchempot%sol +FEchempot%pro
+        FEalt= FEalt +FEconf -FEVdW+Econf
+
+                
+        ! .. delta translational entropy
+        FEtransbulk%sol   = FEtrans_entropy_bulk(xbulk%sol,vsol,"w")   
+        FEtransbulk%pro   = FEtrans_entropy_bulk(xbulk%pro,vpro)  
+
+        ! .. delta chemical potential + standard chemical potential 
+        FEchempotbulk%sol   = 0.0_dp ! by construction  
+        FEchempotbulk%pro   = FEchem_pot_bulk(xbulk%pro,expmu%pro,vpro) 
+        
+        ! .. bulk free energy
+        volumelat = volcell*nsize   ! volume lattice 
+        FEbulkalt = FEtransbulk%sol +FEtransbulk%pro +FEchempotbulk%sol +FEchempotbulk%pro
+
+        FEbulkalt = volumelat*FEbulkalt
+
+        ! .. delta
+        deltaFEtrans%sol   = FEtrans%sol  - FEtransbulk%sol * volumelat
+        deltaFEtrans%pro   = FEtrans%pro  - FEtransbulk%pro * volumelat
+        deltaFEchempot%sol   = FEchempot%sol  - FEchempotbulk%sol * volumelat
+        deltaFEchempot%pro   = FEchempot%pro  - FEchempotbulk%pro * volumelat
+
+        ! .. differences
+
+        deltaFEalt = FEalt - FEbulkalt
+
+    
+    end subroutine fcnenergy_neutral_alternative
 
 
     real(dp) function FEtrans_entropy(xvol,xvolbulk,vol,flag)

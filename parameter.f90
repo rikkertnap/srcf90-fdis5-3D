@@ -30,6 +30,7 @@
     real(dp) :: vMg                ! volume positive divalent ion in units of vsol
     real(dp) :: vNaCl
     real(dp) :: vKCl
+    real(dp) :: vpro
   
     !  .. radii
   
@@ -39,16 +40,19 @@
     real(dp) :: RCl
     real(dp) :: RCa
     real(dp) :: RMg
-    
-    real(dp), dimension(:,:), allocatable :: VdWeps    ! strenght VdW interaction in units of kT
+    real(dp) :: Rpro
+
+    !  .. VdW variables
+    real(dp), dimension(:,:), allocatable :: VdWeps, VdWepsin    ! strenght VdW interaction in units of kT
     real(dp) :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
     logical :: isVdW  
     real(dp) :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
     real(dp) :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
     real(dp), parameter :: Vdwepsilon=1.0e-5_dp ! thresholds below which VdWeps is assumed to be zero
     logical, dimension(:), allocatable :: isrhoselfconsistent
-    !integer :: layeroffset
-    
+    type(looplist), target :: VdWfac ! concentration of crowder /protien in mol/liter 
+
+
     !    .. charges 
     integer :: zpolAA(7)
     integer, dimension(:,:), allocatable :: zpol          ! valence charge polymer
@@ -76,14 +80,8 @@
     real(dp) :: constqW          ! constant in Poisson eq dielectric constant of water       
     real(dp) :: constq0          ! constant in Poisson eq dielectric constant of vacuum 
     real(dp) :: constqE          ! electrostatic pre-factor in pdf 
-
-    !real(dp) :: sigmaAB          ! sigma AB polymer coated on planar surface
-    !real(dp) :: sigmaABL         ! sigma AB polymer coated on planar surface
-    !real(dp) :: sigmaABR         ! sigma AB polymer coated on planar surface
-    !real(dp) :: sigma            ! sigma  polymer coated on planar surface
-
   
-     !  .. solver variables
+    !  .. solver variables
 
     integer  :: itmax            ! maximum number of iterations
     real(dp) :: tol_conv         ! error imposed accuaracy
@@ -156,6 +154,8 @@
     real(dp) :: cRbCl              ! concentration of RbCl in bulk in mol/liter
     real(dp) :: cCaCl2             ! concentration of CaCl2 in bulk in mol/liter
     real(dp) :: cMgCl2             ! concentration of MgCl2 in bulk in mol/liter
+    
+    type(looplist), target :: cpro ! concentration of crowder /protien in mol/liter 
 
     type (looplist), target :: pH
     real(dp) :: pHbulk             ! pH of bulk pH = -log([H+])
@@ -294,16 +294,8 @@ contains
         RMg = 0.072_dp             ! radius of Mg2+ in nm 
         
         !     .. volume
-        if(systype/="neutral") then 
-            vsol = 0.030_dp              ! volume water solvent molecule in (nm)^3
-        elseif(systype=="neutral") then 
-            vsol  = 0.030_dp
-           ! vsol = 0.218_dp             ! volume hexane Mw=86.18 g/mol and rho=0.6548 g/ml  
-        else 
-            print*,"Error in call to init_constants subroutine"   
-            print*,"Wrong system flag"
-            stop
-        endif   
+        
+        vsol = 0.030_dp              ! volume water solvent molecule in (nm)^3
 
         vNa  = ((4.0_dp/3.0_dp)*pi*(RNa)**3)/vsol 
         vK   = ((4.0_dp/3.0_dp)*pi*(RK)**3)/vsol 
@@ -315,6 +307,9 @@ contains
         vNaCl= (vNa+vCl)          ! contact ion pair
         vKCl = (vK+vCl)           ! contact ion pair
         
+        !      .. volume crowder/protein
+        vpro  = ((4.0_dp/3.0_dp)*pi*(Rpro)**3)/vsol 
+
         !     .. volume polymer segments
         !     .. all volume scaled by vsol
         
@@ -570,9 +565,7 @@ contains
     subroutine init_expmu_elect()
  
         use globals
-        use physconst
-        
-        implicit none 
+        use physconst, only : Na
         
         !     .. local variable
         
@@ -613,35 +606,38 @@ contains
         endif
         
 
-        xKClsalt = (cKCl*Na/(1.0e24_dp))*((vK+vCl)*vsol) ! volume fraction KCl salt in mol/l
+        xKClsalt = (cKCl*Na/(1.0e24_dp))*((vK+vCl)*vsol) ! volume fraction KCl salt 
         xbulk%K = xKClsalt*vK/(vK+vCl)  
         xbulk%Cl = xbulk%Cl+xKClsalt*vCl/(vK+vCl) 
 
-        xRbClsalt = (cRbCl*Na/(1.0e24_dp))*((vRb+vCl)*vsol) ! volume fraction RbCl salt in mol/l
+        xRbClsalt = (cRbCl*Na/(1.0e24_dp))*((vRb+vCl)*vsol) ! volume fraction RbCl salt
         xbulk%Rb = xRbClsalt*vRb/(vRb+vCl)  
         xbulk%Cl = xbulk%Cl+xRbClsalt*vCl/(vRb+vCl)   
         
-        xCaCl2salt = (cCaCl2*Na/(1.0e24_dp))*((vCa+2.0_dp*vCl)*vsol) ! volume fraction CaCl2 in mol/l
+        xCaCl2salt = (cCaCl2*Na/(1.0e24_dp))*((vCa+2.0_dp*vCl)*vsol) ! volume fraction CaCl2 
         xbulk%Ca=xCaCl2salt*vCa/(vCa+2.0_dp*vCl)
         xbulk%Cl=xbulk%Cl+ xCaCl2salt*2.0_dp*vCl/(vCa+2.0_dp*vCl)
         
-        xMgCl2salt = (cMgCl2*Na/(1.0e24_dp))*((vMg+2.0_dp*vCl)*vsol) ! volume fraction MgCl2 in mol/l
+        xMgCl2salt = (cMgCl2*Na/(1.0e24_dp))*((vMg+2.0_dp*vCl)*vsol) ! volume fraction MgCl2
         xbulk%Mg=xMgCl2salt*vMg/(vMg+2.0_dp*vCl)
         xbulk%Cl=xbulk%Cl+ xMgCl2salt*2.0_dp*vCl/(vMg+2.0_dp*vCl)
+
+        xbulk%pro = (cpro%val*Na/(1.0e24_dp))*(vpro*vsol)! volume fraction crowder/protein 
 
         xbulk%NaCl=0.0_dp    ! no ion pairing
         xbulk%KCl=0.0_dp     ! no ion pairing
         
-        xbulk%sol=1.0_dp -xbulk%Hplus -xbulk%OHmin -xbulk%Cl -xbulk%Na -xbulk%K-xbulk%NaCl-xbulk%KCl-xbulk%Ca   
-        
-        !     .. if Kion neq 0 ion pairing !
-        
+        xbulk%sol=1.0_dp -xbulk%Hplus -xbulk%OHmin -xbulk%Cl -xbulk%Na -xbulk%K-xbulk%NaCl-xbulk%KCl & 
+                -xbulk%Ca -xbulk%Rb -xbulk%Mg -xbulk%pro
+
+
+        !     .. if Kion == 0 ion pairing !
         !     .. intrinstic equilibruim constant acid        
         !     Kion  = 0.246_dp ! unit 1/M= liter per mol !!!
         K0ionK  = KionK /(vsol*Na/1.0e24_dp) ! intrinstic equilibruim constant 
         K0ionNa = KionNa/(vsol*Na/1.0e24_dp) ! intrinstic equilibruim constant 
         
-        if((KionNa.ne.0.0_dp).or.(KionK.ne.0.0_dp)) then  
+        if((KionNa/=0.0_dp).or.(KionK/=0.0_dp)) then  
             systype_old=systype 
             systype="bulk water"        ! set solver to fcnbulk
             call set_size_neq()         ! number of nonlinear equations
@@ -694,9 +690,7 @@ contains
 
         Ka  = 10.0_dp**(-pKa) ! experimental equilibruim constant acid 
         K0a = (Ka*vsol)*(Na/1.0e24_dp) ! intrinstic equilibruim constant 
- 
 
-        !pibulk = -log(xbulk%sol)  ! pressure (pi) of bulk
         ! exp(beta mu_i) = (rhobulk_i v_i) / exp(- beta pibulk v_i) 
         expmu%Na    = xbulk%Na   /(xbulk%sol**vNa) 
         expmu%K     = xbulk%K    /(xbulk%sol**vK)
@@ -708,6 +702,7 @@ contains
         expmu%KCl   = xbulk%KCl  /(xbulk%sol**vKCl)
         expmu%Hplus = xbulk%Hplus/xbulk%sol ! vsol = vHplus 
         expmu%OHmin = xbulk%OHmin/xbulk%sol ! vsol = vOHmin 
+        expmu%pro   = xbulk%pro  /(xbulk%sol**vpro) 
           
         !     .. end init electrostatic part 
 
@@ -719,9 +714,14 @@ contains
 
     subroutine init_expmu_neutral
 
-        implicit none
-          
-        xbulk%sol=1.0_dp ! only solvent 
+        use precision_definition
+        use physconst, only : Na
+
+        xbulk%pro = (cpro%val*Na/(1.0e24_dp))*(vpro*vsol) ! volume fraction crowder/protein     
+        xbulk%sol=1.0_dp -xbulk%pro                   ! volume fraction solvent 
+
+        expmu%pro   = xbulk%pro  /(xbulk%sol**vpro) 
+
 
     end subroutine init_expmu_neutral
 
@@ -729,9 +729,7 @@ contains
 
     subroutine init_vars_input()
 
-        use globals, only : systype
-     
-        implicit none
+        use globals, only : systype, runtype
         
         ! local variable
         integer :: i
@@ -739,11 +737,13 @@ contains
         select case (systype)
         case ("elect")
             call init_expmu_elect()
+            call set_VdWepsAAandBB() ! specail assigemnt of VdWepsAA etc  
         case ("neutral")
             call init_expmu_neutral()   
-        case("brush_mul") 
+            if(runtype=="rangeVdWeps") call set_VdWepsfactor(VdWfac)
+        case ("brush_mul") 
             call init_expmu_elect()      
-        case("brushssdna") 
+        case ("brushssdna") 
             call init_dna  
             call init_expmu_elect()
         case default   
@@ -754,8 +754,6 @@ contains
          end select
              
     end subroutine init_vars_input
-
-
 
    
     subroutine allocate_chain_parameters
@@ -1082,5 +1080,49 @@ contains
         !print*,"ttAA=",ttAA,"ttP=",ttP,ttAA>0
     end subroutine make_isrhoselfconsistent
 
+
+    ! special assignment for runtype==rangeVdWeps
+    ! pre VdWeps and VdWepsin allocated 
+
+    subroutine set_VdWepsin
+
+        VdWepsin= VdWeps
+
+    end subroutine set_VdWepsin
+
+
+    ! special assignment for certain systype values
+    ! use VdWeps to assigns specific values VdWepsAA etc
+    ! pre VdWeps and VdWepsin allocated 
+    subroutine set_VdWepsAAandBB
+
+        use globals, only : systype
+            
+        select case (systype)
+        case ("elect")  ! diblock copolymer lseg determined in cadenas_sequence      
+            VdWepsAA = VdWeps(1,1) 
+            VdWepsAB = VdWeps(1,2) 
+            VdWepsBB = VdWeps(2,1) 
+        case ("neutral","brush_mul","brush","brush_neq","brushvarelec","brushborn","brushssdna")
+        case default
+            print*,"Error: in set_VdWepsAAandBB, systype=",systype
+            print*,"stopping program"
+            stop
+        end select  
+
+    end subroutine set_VdWepsAAandBB
+
+
+    ! special assignment for runtype==rangeVdWeps
+    
+    subroutine set_VdWepsfactor(VdWfac)
+
+        TYPE(looplist), intent(in) :: VdWfac
+
+        VdWeps=VdWfac%val*VdWepsin
+
+        call set_VdWepsAAandBB
+
+    end subroutine set_VdWepsfactor
 
  end module parameters

@@ -32,7 +32,6 @@ contains
             Econf=0.0_dp
         case ("neutral")
             call FEconf_neutral(FEconf,Econf)
-            Econf=0.0_dp
         case ("brush_mul","brushssdna")
             call FEconf_brush_mul(FEconf,Econf)
         case ("brushborn")
@@ -120,19 +119,14 @@ contains
         ! communicate FEconf
 
         if(rank==0) then
-
             FEconf=FEconf_local
             Econf=Econf_local
-         
-
             do i=1, size-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                
                 FEconf=FEconf +FEconf_local
                 Econf =Econf+Econf_local
-                
             enddo 
         else     ! Export results
             dest = 0
@@ -146,8 +140,6 @@ contains
             FEconf = FEconf/q-log(q)  
             Econf = Econf/q  
         endif
-
-
 
     end subroutine FEconf_neutral
 
@@ -247,8 +239,7 @@ contains
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 
                 FEconf=FEconf +FEconf_local
-                Econf =Econf+Econf_local
-                
+                Econf =Econf+Econf_local                
             enddo 
         else     ! Export results
             dest = 0

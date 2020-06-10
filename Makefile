@@ -143,8 +143,6 @@ FF= ftn
 endif 
 
 
-
-
 ifdef is_quest 
 
 FFLAGS= -O3 -cpp -DVERSION=\"$(GIT_VERSION)\" -no-wrap-margin

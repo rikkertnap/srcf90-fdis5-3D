@@ -15,7 +15,7 @@ module field
     real(dp), dimension(:), allocatable :: psi     ! electrostatic potential 
     real(dp), dimension(:), allocatable :: xNa     ! volume fraction of positive Na+ ion
     real(dp), dimension(:), allocatable :: xK      ! volume fraction of positive K+ ion
-    real(dp), dimension(:), allocatable :: xRb      ! volume fraction of positive Rb+ ion
+    real(dp), dimension(:), allocatable :: xRb     ! volume fraction of positive Rb+ ion
     real(dp), dimension(:), allocatable :: xCa     ! volume fraction of positive Ca2+ ion
     real(dp), dimension(:), allocatable :: xMg     ! volume fraction of positive Mg2+ ion    
     real(dp), dimension(:), allocatable :: xNaCl   ! volume fraction of NaCl ion pair
@@ -23,6 +23,8 @@ module field
     real(dp), dimension(:), allocatable :: xCl     ! volume fraction of negative ion
     real(dp), dimension(:), allocatable :: xHplus  ! volume fraction of Hplus
     real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
+    real(dp), dimension(:), allocatable :: xpro    ! volume fraction of crowder 
+
 
     real(dp), dimension(:), allocatable :: rhoq    ! total free charge density in units of vsol  
   
@@ -35,8 +37,8 @@ module field
      
     real(dp), allocatable :: q        ! normalization partion fnc polymer 
     real(dp), allocatable :: lnq      ! exponent of normalization partion fnc polymer 
-    real(dp), allocatable :: qAB      ! normalization partion fnc polymer 
-    real(dp), allocatable :: qABL,qABR
+! real(dp), allocatable :: qAB      ! normalization partion fnc polymer 
+   ! real(dp), allocatable :: qABL,qABR
 
   
 contains
@@ -73,7 +75,8 @@ contains
         allocate(fdisB(N,5),stat=ier)
         allocate(epsfcn(N),stat=ier)    ! relative dielectric constant
         allocate(Depsfcn(N),stat=ier)   ! derivate relative dielectric constan
-
+        allocate(xpro(N),stat=ier) 
+        
         if( ier/=0 ) then
             print*, 'Allocation error : stat =', ier
             stop
@@ -103,6 +106,7 @@ contains
         deallocate(fdisB)
         deallocate(epsfcn)
         deallocate(Depsfcn)
+        deallocate(xpro)
         
     end subroutine deallocate_field
 
@@ -134,6 +138,7 @@ contains
         fdisB=0.0_dp
         xpolz=0.0_dp
         psi=0.0_dp
+        xpro=0.0_dp
            
     end subroutine init_field
 

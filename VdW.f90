@@ -12,16 +12,9 @@ module VdW
     use precision_definition
     implicit none
 
-    real(dp), dimension(:,:,:,:,:), allocatable :: VdWcoeff
-    
-    real(dp), dimension(:,:,:), allocatable :: VdWcoeffAA
-    real(dp), dimension(:,:,:), allocatable :: VdWcoeffAB
-    real(dp), dimension(:,:,:), allocatable :: VdWcoeffBB
-
+    real(dp), dimension(:,:,:,:,:), allocatable :: VdWcoeff    
     real(dp), dimension(:,:,:,:), allocatable :: rhopoltmp
-    real(dp), dimension(:,:,:), allocatable :: rhopolAtmp  
-    real(dp), dimension(:,:,:), allocatable :: rhopolBtmp
-    
+
     integer, parameter :: range = 2 
     integer, parameter :: MCsteps = 100000000
     
@@ -34,7 +27,7 @@ module VdW
 
     private
     public :: make_VdWcoeff,VdW_contribution_exp_diblock,VdW_contribution_exp_homo,VdW_contribution_exp
-    public :: VdW_energy_homo,VdW_energy_diblock,VdW_energy
+    public :: VdW_energy_homo,VdW_energy_diblock,VdW_energy,  make_VdWeps
 
 contains
 
@@ -112,8 +105,6 @@ subroutine allocate_auxdensity(info)
     integer :: ier
     
     if (present(info)) info = 0
-
-    
     
     if (.not. allocated(rhopoltmp))  then 
         allocate(rhopoltmp(nx,ny,nz,nsegtypes),stat=ier)
@@ -133,12 +124,21 @@ end subroutine allocate_auxdensity
 subroutine allocate_VdWeps
     
     use globals, only : nsegtypes
-    use parameters, only : VdWeps
+    use parameters, only : VdWeps, VdWepsin
 
     integer :: ier
    
     if (.not. allocated(VdWeps))  then 
         allocate(VdWeps(nsegtypes,nsegtypes),stat=ier)
+    endif        
+
+    if(ier/=0) then 
+        print*,'Allocation error: allocate_VdWeps failed'
+        stop
+    endif    
+
+    if (.not. allocated(VdWepsin))  then 
+        allocate(VdWepsin(nsegtypes,nsegtypes),stat=ier)
     endif        
 
     if(ier/=0) then 
@@ -168,15 +168,14 @@ subroutine make_VdWcoeff(info)
 
     call allocate_VdWcoeff(info_allocate_VdW)
     call allocate_auxdensity(info_allocate_dens)
-
    
     do t=1,nsegtypes
         do s=1,nsegtypes
             lseg=(lsegAA(t)+lsegAA(s))/2.0_dp
        
             call read_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
-            print*,"rank=",rank,"info=",info
-            if(info==VdW_err_vdwcoeff_not_exist) then 
+
+            if(info/=0) then  
                 call MC_VdWcoeff(lseg, VdWcoeff(:,:,:,t,s))
                 info=0 ! reset
                 if(rank==0) call write_VdWcoeff(lseg,VdWcoeff(:,:,:,t,s),info)
@@ -319,11 +318,12 @@ subroutine VdW_contribution_exp_homo(rhopol,exppi)
 
     integer :: id,ix,iy,iz, jx,jy,jz, ax,ay,az
     real(dp) :: protemp
+    integer,  parameter  :: A=1
     
     !  allocate rhopol tmp 
     do id=1,nsize
         call coordinateFromLinearIndex(id, ix, iy, iz)
-        rhopolAtmp(ix,iy,iz) = rhopol(id)   
+        rhopoltmp(ix,iy,iz,A) = rhopol(id)   
     enddo
     
     !VdWstr = VdWeps
@@ -345,7 +345,7 @@ subroutine VdW_contribution_exp_homo(rhopol,exppi)
                         do az = -2,2
                             jz = iz+az
                             jz = ipbc(jz,nz)
-                            protemp=protemp + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)
+                            protemp=protemp + VdWcoeff(ax,ay,az,A,A)*rhopoltmp(jx, jy, jz,A)
                                 
                         enddo
                     enddo
@@ -376,12 +376,13 @@ subroutine VdW_contribution_exp_diblock(rhopolA,rhopolB,exppiA,exppiB)
 
     integer :: id,ix,iy,iz, jx,jy,jz, ax,ay,az
     real(dp) :: protempAA,protempAB,protempBA,protempBB
-    
+    integer,  parameter  :: A=1, B=2
+
     !  allocate rhopol tmp 
     do id=1,nsize
         call coordinateFromLinearIndex(id, ix, iy, iz)
-        rhopolAtmp(ix,iy,iz) = rhopolA(id)  
-        rhopolBtmp(ix,iy,iz) = rhopolB(id)    
+        rhopoltmp(ix,iy,iz,A) = rhopolA(id)  
+        rhopoltmp(ix,iy,iz,B) = rhopolB(id)    
     enddo
     
     !VdWstr = VdWeps
@@ -408,10 +409,10 @@ subroutine VdW_contribution_exp_diblock(rhopolA,rhopolB,exppiA,exppiB)
                             jz = iz+az
                             jz = ipbc(jz,nz)
 
-                            protempAA=protempAA + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)
-                            protempAB=protempAB + VdWcoeffAB(ax,ay,az)*rhopolBtmp(jx, jy, jz)
-                            protempBA=protempBA + VdWcoeffAB(ax,ay,az)*rhopolAtmp(jx, jy, jz)
-                            protempBB=protempBB + VdWcoeffBB(ax,ay,az)*rhopolBtmp(jx, jy, jz)
+                            protempAA=protempAA + VdWcoeff(ax,ay,az,A,A)*rhopoltmp(jx, jy, jz,A)
+                            protempAB=protempAB + VdWcoeff(ax,ay,az,A,B)*rhopoltmp(jx, jy, jz,B)
+                            protempBA=protempBA + VdWcoeff(ax,ay,az,A,B)*rhopoltmp(jx, jy, jz,A)
+                            protempBB=protempBB + VdWcoeff(ax,ay,az,B,B)*rhopoltmp(jx, jy, jz,B)
                             
                         enddo
                     enddo
@@ -496,13 +497,13 @@ function VdW_energy_homo(rhopol)result(EVdW)
     real(dp) :: EVdW
     integer :: id,ix,iy,iz, jx,jy,jz, ax,ay,az
     real(dp) :: Etemp
-
+    integer, parameter :: A=1
     
     !  allocate rhopol tmp 
     do id=1,nsize
         call coordinateFromLinearIndex(id, ix, iy, iz)
         print*,id,ix,iy,iz 
-        rhopolAtmp(ix,iy,iz) = rhopol(id) 
+        rhopoltmp(ix,iy,iz,A) = rhopol(id) 
     enddo
     
     Etemp =0.0_dp
@@ -524,7 +525,7 @@ function VdW_energy_homo(rhopol)result(EVdW)
                             jz = iz+az
                             jz = ipbc(jz,nz)
 
-                            Etemp=Etemp + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolAtmp(ix, iy, iz)
+                            Etemp=Etemp + VdWcoeff(ax,ay,az,A,A)*rhopoltmp(jx, jy, jz,A)*rhopoltmp(ix, iy, iz,A)
                                 
                         enddo
                     enddo
@@ -552,13 +553,14 @@ function VdW_energy_diblock(rhopolA,rhopolB)result(EVdW)
     real(dp) :: EVdW
     integer :: id,ix,iy,iz, jx,jy,jz, ax,ay,az
     real(dp) :: EtempAA,EtempAB,EtempBB
+    integer,  parameter  :: A=1, B=2
 
     
     !  allocate rhopol tmp 
     do id=1,nsize
         call coordinateFromLinearIndex(id, ix, iy, iz)
-        rhopolAtmp(ix,iy,iz) = rhopolA(id)
-        rhopolBtmp(ix,iy,iz) = rhopolB(id)   
+        rhopoltmp(ix,iy,iz,A) = rhopolA(id)
+        rhopoltmp(ix,iy,iz,B) = rhopolB(id)   
     enddo
     
     EtempAA =0.0_dp
@@ -582,9 +584,9 @@ function VdW_energy_diblock(rhopolA,rhopolB)result(EVdW)
                             jz = iz+az
                             jz =ipbc(jz,nz)
 
-                            EtempAA=EtempAA + VdWcoeffAA(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolAtmp(ix, iy, iz)
-                            EtempAB=EtempAB + VdWcoeffAB(ax,ay,az)*rhopolAtmp(jx, jy, jz)*rhopolBtmp(ix, iy, iz)
-                            EtempBB=EtempBB + VdWcoeffBB(ax,ay,az)*rhopolBtmp(jx, jy, jz)*rhopolBtmp(ix, iy, iz)
+                            EtempAA=EtempAA + VdWcoeff(ax,ay,az,A,A)*rhopoltmp(jx, jy, jz,A)*rhopoltmp(ix, iy, iz,A)
+                            EtempAB=EtempAB + VdWcoeff(ax,ay,az,A,B)*rhopoltmp(jx, jy, jz,A)*rhopoltmp(ix, iy, iz,B)
+                            EtempBB=EtempBB + VdWcoeff(ax,ay,az,B,B)*rhopoltmp(jx, jy, jz,B)*rhopoltmp(ix, iy, iz,B)
                                 
                         enddo
                     enddo
@@ -664,8 +666,8 @@ end function
 subroutine read_VdWeps(info)
     
     use mpivars
-    use globals, only : nsegtypes 
-    use parameters, only : VdWeps 
+    use globals, only : nsegtypes , runtype
+    use parameters, only : VdWeps, VdWepsin 
     use myutils, only : newunit
 
     integer,  intent(out), optional :: info
@@ -711,45 +713,27 @@ subroutine read_VdWeps(info)
         return
     endif
     
-    close(un_input)    
-    
+    close(un_input)   
+
+
 end subroutine read_VdWeps
+
+
 
 
 subroutine make_VdWeps(info)
 
+    use parameters, only : set_VdWepsAAandBB, set_VdWepsin
     integer,  intent(out), optional :: info
     
+
     call allocate_VdWeps()
     call read_VdWeps(info)
+    ! special assign 
     call set_VdWepsAAandBB
+    call set_VdWepsin
+
 end subroutine
-
-
-! special assignment for certain systype values
-! use VdWeps to assigns specific values VdWepsAA etc
-
-subroutine set_VdWepsAAandBB
-
-    use globals, only : systype
-    use parameters, only : VdWeps, VdWepsAA, VdWepsBB, VdWepsAB 
-
-        
-    select case (systype)
-    case ("elect","electVdWAB","electdouble") ! diblock copolymer lseg determined in cadenas_sequence      
-        VdWepsAA = VdWeps(1,1) 
-        VdWepsAB = VdWeps(1,2) 
-        VdWepsBB = VdWeps(2,1) 
-    case ("electA","neutral")  ! homopolymer weak polyacid VdW  orhomopolymer neutral
-        VdWepsAA = VdWeps(1,1)
-    case ("brush_mul","brush","brush_neq","brushvarelec","brushborn","brushssdna")
-    case default
-        print*,"Error: in VdWepsAA, systype=",systype
-        print*,"stopping program"
-        stop
-    end select  
-
-end subroutine set_VdWepsAAandBB
 
 
 function ipbc(ival,imax) result(intpbc)
@@ -809,7 +793,7 @@ subroutine write_VdWcoeff(lseg,VdWcoeff,info)
             return
         endif
     else
-        print*,'VdWcoeff file allready exit'
+        print*,'VdWcoeff file allready exist'
         if (present(info)) info = VdW_err_vdwcoeff_exist
         return
     endif
@@ -943,31 +927,40 @@ subroutine read_VdWcoeff(lseg,VdWcoeff,info)
     
     if(ios >0 ) then
         print*, 'Error parsing file : iostat =', ios
+        close(un_input)
         if (present(info)) info = VdW_err_vdwcoeff
         return
     endif
 
     if(delta_file /= delta) then 
-       print*,'delta in VdWcoeff file not equal delta' 
-       print*,'delta_file = ',delta_file, ' delta = ',delta
-       stop
+        print*,'delta in VdWcoeff file not equal delta' 
+        print*,'delta_file = ',delta_file, ' delta = ',delta
+        close(un_input)
+        if (present(info)) info = VdW_err_vdwcoeff
+        return
     endif
 
     if(VdWcutoff_file /= VdWcutoff) then 
-       print*,'cuttoff in VdWcoeff file not equal imposed cutoff'
-       print*,'cutoff_file = ',VdWcutoff_file, ' cutoff = ',VdWcutoff
-       stop
+        print*,'cuttoff in VdWcoeff file not equal imposed cutoff'
+        print*,'cutoff_file = ',VdWcutoff_file, ' cutoff = ',VdWcutoff
+        close(un_input)
+        if (present(info)) info = VdW_err_vdwcoeff
+        return
     endif
     
     if(range_file /= range) then
-       print*,'range in VdWcoeff file not large enough'
-       print*,'range_file=',range_file,'range =',range
-       stop
+        print*,'range in VdWcoeff file not large enough'
+        print*,'range_file=',range_file,'range =',range
+        close(un_input)
+        if (present(info)) info = VdW_err_vdwcoeff
+        return
     endif
     
     if(geometry_file /= geometry) then 
-       print*,'geometry in VdWcoeff file not equal delta'
-       stop
+        print*,'geometry in VdWcoeff file not equal delta'
+        close(un_input)
+        if (present(info)) info = VdW_err_vdwcoeff
+        return
     endif        
     
     ! read file
@@ -976,7 +969,6 @@ subroutine read_VdWcoeff(lseg,VdWcoeff,info)
         do iy=-range,range
             do iz=-range,range
                 read(un_input,*)VdWcoeff(ix,iy,iz)
-                !print*,ix,iy,iz,VdWcoeff(ix, iy, iz) 
             enddo
         enddo
     enddo    
@@ -985,6 +977,8 @@ subroutine read_VdWcoeff(lseg,VdWcoeff,info)
     
     
 end subroutine read_VdWcoeff
+
+
 
 
 end module VdW
