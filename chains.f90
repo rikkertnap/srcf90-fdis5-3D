@@ -11,7 +11,7 @@ module chains
     character(len=2), dimension(:), allocatable :: type_of_monomer_char ! type of monomer represented as two letters
     logical, dimension(:,:), allocatable    :: ismonomer_of_type        ! ismomomer_of_type(s,t)= true if segment number "s" is of type "t" otherwise false 
     logical, dimension(:), allocatable      :: ismonomer_chargeable     ! ismonomer_chargeabl(s)=true if segment number type "t" is acid or base  
-    real(dp), dimension(:), allocatable     :: exp_energychain          ! energy chain   
+    real(dp), dimension(:), allocatable     :: energychain              ! energy chain   
     logical, dimension(:),   allocatable    :: weightchain
 
     logical :: isHomopolymer
@@ -21,14 +21,12 @@ contains
   
     subroutine allocate_chains(cuantas,nseg,nsegtypes,ngr_node)
 
-        implicit none
-    
         integer, intent(in) :: cuantas,nseg,nsegtypes,ngr_node
     
         !     .. extra 100 in index because of  nchain rotations
         allocate(indexchain(nseg,cuantas+100))
         allocate(indexchain_init(nseg,cuantas+100))
-        allocate(exp_energychain(cuantas+100))
+        allocate(energychain(cuantas+100))
         allocate(weightchain(cuantas+100))
         allocate(isAmonomer(nseg)) 
         allocate(type_of_monomer(nseg)) 

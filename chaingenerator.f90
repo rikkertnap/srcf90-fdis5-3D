@@ -1,7 +1,7 @@
 ! --------------------------------------------------------------|
 !                                                               | 
 ! chainsgenerator.f90:                                          |       
-! generator chains on planar surface                            |
+! generator chains in center of box                             |
 ! --------------------------------------------------------------|
 
 
@@ -33,13 +33,11 @@ subroutine make_chains(chainmethod)
     case ("MC")
         call make_chains_mc()
     case ("FILE_lammps_xyz") 
-        call read_chains_lammps_xyz
+        call read_chains_lammps_XYZ
     case ("FILE_lammps_trj") 
         call read_chains_lammps_trj  
-    case ("FILE_TXT") 
-        call make_chains_file()
     case default
-        text="chainmethod not equalt to MC or FILE"
+        text="chainmethod not equal to MC, FILEE_lammps_XYZ, or FILE_lammps_trj"
         call print_to_log(LogUnit,text)
         print*,text
         stop
@@ -57,7 +55,7 @@ subroutine make_chains_mc()
     use globals
     use chains
     use random
-    use parameters, only : geometry, lseg, write_mc_chains, isVdW
+    use parameters, only : geometry, lseg, write_mc_chains, isVdW, isVdWintEne
     use volume, only : nx, ny, nz, delta
     use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
     use volume, only : ut, vt
@@ -84,7 +82,8 @@ subroutine make_chains_mc()
     real(dp) :: theta, theta_angle
     character(len=lenText) :: text, istr
     integer  :: xi,yi,zi ,un_trj, un_ene
-    real(dp), dimension(:), allocatable :: Int_Energy        
+    real(dp), dimension(:), allocatable :: energy        
+   
 
     !     .. executable statements
     !     .. initializations of variables     
@@ -100,10 +99,10 @@ subroutine make_chains_mc()
     xcm= Lx/2.0_dp           ! center box
     ycm= Ly/2.0_dp
     zcm= Lz/2.0_dp
-
-    allocate(Int_Energy(maxnchains))
-    Int_Energy=0.0_dp
-
+   
+    allocate(energy(maxnchains))
+    energy=0.0_dp
+            
     if(write_mc_chains) then 
         conf_write=0
         un_trj= open_chain_lammps_trj()
@@ -116,6 +115,7 @@ subroutine make_chains_mc()
     endif    
   
     do while (conf<=max_confor)
+
         nchains= 0      ! init zero 
         if(isHomopolymer) then 
             call make_linear_chains(chain,nchains,maxnchains,nseg,lseg) ! chain generator f90
@@ -123,13 +123,15 @@ subroutine make_chains_mc()
             call make_linear_seq_chains(chain,nchains,maxnchains,nseg) 
         endif  
 
-        if(write_mc_chains) call write_chain_lammps_trj(un_trj,chain,nchains)    
-        if(isVdW) Int_Energy= VdWpotentialenergy(chain,nchains)
-        do j=1,nchains
-            write(un_ene,*)Int_energy(j)
-        enddo     
-           
+        if(isVdWintEne) energy= VdWpotentialenergy(chain,nchains)
 
+        if(write_mc_chains)  then
+            call write_chain_lammps_trj(un_trj,chain,nchains)    
+            do j=1,nchains
+                write(un_ene,*)energy(j)    
+            enddo    
+        endif
+            
         if(geometry=="cubic") then
             
             do j=1,nchains   
@@ -177,9 +179,7 @@ subroutine make_chains_mc()
                         endif
                     enddo            
             
-
-                    exp_energychain(conf)=exp(-Int_Energy(j)) 
-            
+                    energychain(conf)=energy(j) 
                     conf = conf +1
 
                 enddo         ! end loop over rotations
@@ -235,8 +235,7 @@ subroutine make_chains_mc()
                         
                     enddo         ! end loop over graft points
 
-                    exp_energychain(conf)=exp(-Int_Energy(j)) 
-
+                    energychain(conf)=energy(j)
                     conf = conf +1  ! end loop over rotations
 
                 enddo     
@@ -251,15 +250,15 @@ subroutine make_chains_mc()
      
     enddo                     ! end while loop
     
-    
     !  .. end chains generation 
       
     write(istr,'(I4)')rank
     text='AB Chains generated on node '//istr
     call print_to_log(LogUnit,text)
-    !print*,text
 
-   
+    ! .. find lowest global chainenergy and substract from all 
+    call global_minimum_chainenergy()   
+
     allowedconf=0
     do k=1,cuantas
         if(weightchain(k).eqv..TRUE.) allowedconf = allowedconf+1
@@ -273,14 +272,13 @@ subroutine make_chains_mc()
     if(isHomopolymer.eqv..FALSE.) deallocate(lsegseq)
 
     if(write_mc_chains) then
-        ! call write_indexchain_lammps_trj()
-          close(un_trj)
+        close(un_trj)
+        close(un_ene)
     endif   
 
-    deallocate(Int_Energy)  
+    deallocate(energy)  
 
 end subroutine make_chains_mc
-
 
 
 
@@ -356,21 +354,6 @@ subroutine read_chains_lammps_XYZ(info)
         return
     endif
 
-    write(fname,'(A8)')'traj.ene' ! traectory energy
-    inquire(file=fname,exist=exist)
-    if(exist) then
-        open(unit=newunit(un_ene),file=fname,status='old',iostat=ios)
-    else
-        print*,'traj.ene file does not exit'
-        if (present(info)) info = myio_err_energyfile
-        return
-    endif
-    if(ios >0 ) then
-        print*, 'Error opening file : iostat =', ios
-        if (present(info)) info = myio_err_energyfile
-        return
-    endif
-
     conf=0                    ! counter for conformations                                                           
     conffile=0                ! counter for conformations in file                                                                    
     seed=435672               ! seed for random number generator    
@@ -408,97 +391,94 @@ subroutine read_chains_lammps_XYZ(info)
             xseg(1,s) = xc/10.0_dp  ! .. convert from Angstrom to nm
             xseg(2,s) = yc/10.0_dp
             xseg(3,s) = zc/10.0_dp 
-            !print*,"index=",idatom, " xc=",xc," yc=",yc," zc=",zc, "conf=",conf,"s=",s 
         enddo
-
-        read(un_ene,*,iostat=ios)energy
 
         conffile=conffile +1 
 
+        ! .. 'first' segment, sets origin 
+        do s=1,nseg        
+            chain(2,s) = (xseg(1,s)-xseg(1,1)) 
+            chain(3,s) = (xseg(2,s)-xseg(2,1))
+            chain(1,s) = (xseg(3,s)-xseg(3,1))
+        enddo
 
-        if(mod(conffile,size)==rank) then 
-            ! .. assignes this conformation to process numberrank
-            ! .. 'first' segment, sets origin 
+        ! .. compute chain energy 
+        energy= VdWpotentialenergy_lammps(chain)
 
-            do s=1,nseg        
-                chain(2,s) = (xseg(1,s)-xseg(1,1)) 
-                chain(3,s) = (xseg(2,s)-xseg(2,1))
-                chain(1,s) = (xseg(3,s)-xseg(3,1))
-                !print*,"conf=",conf,"s=",s,(chain(i,s),i=1,3)
+        do rot=1,rotmax        
+             
+            nchain=1
+            is_positive_rot=.true.
+
+            do while (nchain.lt.maxattempts)
+                is_positive_rot=rotation(chain,chain_rot,nseg-1)
+                nchain=nchain+1
             enddo
- 
-            do rot=1,rotmax        
-                 
-                nchain=1
-                is_positive_rot=.true.
+            !print*,"conf=",conf,"is_positve=",is_positive_rot
 
-                do while (nchain.lt.maxattempts)
-                    is_positive_rot=rotation(chain,chain_rot,nseg-1)
-                    nchain=nchain+1
-                enddo
-                !print*,"conf=",conf,"is_positve=",is_positive_rot
+            if(is_positive_rot) then
+        
+                if(geometry=="cubic") then !  transforming form real- to lattice coordinates
+        
+                    do ntheta=1,maxntheta                  ! rotation in xy-plane
 
-                if(is_positive_rot) then
-            
-                    if(geometry=="cubic") then !  transforming form real- to lattice coordinates
-            
-                        do ntheta=1,maxntheta                  ! rotation in xy-plane
+                        conf=conf+1
+                        theta= ntheta * theta_angle
 
-                            conf=conf+1
-                            theta= ntheta * theta_angle
+                        do s=1,nseg
 
-                            do s=1,nseg
+                            xp(s)= chain_rot(2,s)*cos(theta)+chain_rot(3,s)*sin(theta) 
+                            yp(s)=-chain_rot(2,s)*sin(theta)+chain_rot(3,s)*cos(theta)
+                            zp(s)= chain_rot(1,s)  
 
-                                xp(s)= chain_rot(2,s)*cos(theta)+chain_rot(3,s)*sin(theta) 
-                                yp(s)=-chain_rot(2,s)*sin(theta)+chain_rot(3,s)*cos(theta)
-                                zp(s)= chain_rot(1,s)  
+                        enddo 
 
-                            enddo 
+                        do s=1,nseg
 
-                            do s=1,nseg
+                            ! .. translation onto correct volume translation to cneter xyz 
+                            x(s) = xp(s) + xcm
+                            y(s) = yp(s) + ycm
+                            z(s) = zp(s) + zcm
 
-                                ! .. translation onto correct volume translation to cneter xyz 
-                                x(s) = xp(s) + xcm
-                                y(s) = yp(s) + ycm
-                                z(s) = zp(s) + zcm
+                            ! .. periodic boundary conditions in x-direction and y-direction and z-direction 
+                            x(s) = pbc(x(s),Lx)
+                            y(s) = pbc(y(s),Ly)
+                            z(s) = pbc(z(s),Lz)
 
-                                ! .. periodic boundary conditions in x-direction and y-direction and z-direction 
-                                x(s) = pbc(x(s),Lx)
-                                y(s) = pbc(y(s),Ly)
-                                z(s) = pbc(z(s),Lz)
-
-                                ! .. transforming form real- to lattice coordinates                 
-                                xi = int(x(s)/delta)+1
-                                yi = int(y(s)/delta)+1
-                                zi = int(z(s)/delta)+1
-                                
-                                call linearIndexFromCoordinate(xi,yi,zi,idx) 
-
-                                indexchain_init(s,conf) = idx
-                                if(idx<=0) then
-                                    print*,"index=",idx, " xc=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
-                                endif
+                            ! .. transforming form real- to lattice coordinates                 
+                            xi = int(x(s)/delta)+1
+                            yi = int(y(s)/delta)+1
+                            zi = int(z(s)/delta)+1
                             
-                            enddo
-                                
-                            exp_energychain(conf)=exp(-energy)
-                            
-                        enddo         ! end loop over rotations
-            
-                    else if(geometry=="prism") then
-                     ! to be done later 
+                            call linearIndexFromCoordinate(xi,yi,zi,idx) 
 
-                    else 
-                        print*,"Error: in make_chains_lammps_xyz: geometry not cubic or prism"
-                        print*,"stopping program"
-                        stop
-                    endif
-                endif  ! if 
-            enddo      ! rotation loop
-        endif          ! if distrubtion if 
-    enddo              ! end while loop                                                                                                          
-    !  .. end chains generation    
+                            indexchain_init(s,conf) = idx
+                            if(idx<=0) then
+                                print*,"index=",idx, " xc=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                            endif
+                        
+                        enddo
+                            
+                        energychain(conf)=energy
+                        
+                    enddo         ! end loop over rotations
+        
+                else if(geometry=="prism") then
+                 ! to be done later 
+
+                else 
+                    print*,"Error: in make_chains_lammps_xyz: geometry not cubic or prism"
+                    print*,"stopping program"
+                    stop
+                endif
+            endif  ! if 
+        enddo      ! rotation loop 
+    enddo          ! end while loop                                                                                                          
     
+    !  .. end chains generation    
+
+    ! .. find lowest global chainenergy and substract from all 
+    call global_minimum_chainenergy()   
 
     if(conf<=cuantas) then
         print*,"subroutine make_chains_lammps_XYZ : something went wrong"
@@ -512,7 +492,6 @@ subroutine read_chains_lammps_XYZ(info)
     endif
 
     close(un)
-    close(un_ene)
 
 end subroutine read_chains_lammps_XYZ
 
@@ -553,11 +532,11 @@ subroutine read_chains_lammps_trj(info)
     real(dp) :: chain(3,nseg+1)     ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1  
     real(dp) :: chain_rot(3,nseg+1) 
     real(dp) :: xseg(3,nseg+1)
-    real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
+    real(dp) :: x(nseg), y(nseg), z(nseg)    ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates 
     real(dp) :: xpp(nseg),ypp(nseg)
-    real(dp) :: Lx,Ly,Lz,xcm,ycm,zcm         ! sizes box
-    real(dp) :: xpt,ypt          ! coordinates
+    real(dp) :: Lx,Ly,Lz,xcm,ycm,zcm ! sizes box and center of mass box
+    real(dp) :: xpt,ypt              ! coordinates
     real(dp) :: theta, theta_angle
     real(dp) :: xc,yc,zc          
     integer  :: xi,yi,zi         
@@ -567,10 +546,9 @@ subroutine read_chains_lammps_trj(info)
     character(len=30) :: str
     real(dp) :: xbox0,xbox1,scalefactor
     integer :: nchain, rotmax, maxattempts, idatom, item, moltype
-    integer :: un, un_ene ! unit number
+    integer :: un ! unit number
     logical :: is_positive_rot, exist
-    character(len=lenText) :: text,istr 
-
+    character(len=lenText) :: text,istr
 
     ! .. executable statements                                                                                                     
     ! .. open file                                                                                              
@@ -588,22 +566,6 @@ subroutine read_chains_lammps_trj(info)
     if(ios >0 ) then
         print*, 'Error opening file : iostat =', ios
         if (present(info)) info = myio_err_chainsfile
-        return
-    endif
-
-
-    fname='traj.'//trim(adjustl(istr))//'.ene' ! trajectory energy
-    inquire(file=fname,exist=exist)
-    if(exist) then
-        open(unit=newunit(un_ene),file=fname,status='old',iostat=ios)
-    else
-        print*,'traj.ene file does not exit'
-        if (present(info)) info = myio_err_energyfile
-        return
-    endif
-    if(ios >0 ) then
-        print*, 'Error opening file : iostat =', ios
-        if (present(info)) info = myio_err_energyfile
         return
     endif
 
@@ -627,7 +589,6 @@ subroutine read_chains_lammps_trj(info)
 
     do while ((conf<cuantas).and.(ios==0))
     
-
         if(conf.ne.0) then ! skip preamble 
             do i=1,9
                 read(un,*,iostat=ios)str
@@ -656,16 +617,8 @@ subroutine read_chains_lammps_trj(info)
             xseg(2,item) = yc*scalefactor
             xseg(3,item) = zc*scalefactor
         enddo
-
-        ! if(conf==0.and.rank==0) then
-        !     print*,"Hello mc: = ",scalefactor
-        !     do s=1,nseg
-        !         write(123,*)xseg(1,s),xseg(2,s),xseg(3,s)
-        !         print*,xseg(1,s),xseg(2,s),xseg(3,s)
-        !     enddo
-        ! endif    
        
-        read(un_ene,*,iostat=ios)energy
+        ! read(un_ene,*,iostat=ios)energy
 
         conffile=conffile +1 
 
@@ -676,6 +629,9 @@ subroutine read_chains_lammps_trj(info)
             chain(3,s) = (xseg(2,s)-xseg(2,1))
             chain(1,s) = (xseg(3,s)-xseg(3,1))
         enddo
+
+        ! .. compute chain energy 
+        energy= VdWpotentialenergy_lammps(chain)
 
         do rot=1,rotmax        
              
@@ -725,24 +681,26 @@ subroutine read_chains_lammps_trj(info)
                     
                     enddo
                         
-                    exp_energychain(conf)=0.0_dp !exp(-energy)
+                    energychain(conf)=energy
                     
                 enddo         ! end loop over rotations
     
             else if(geometry=="prism") then
-             ! to be done later 
-
+             
+            ! to be done later 
 
             else 
-                print*,"Error: in make_chains_lajmmps_tr: geometry not cubic or prism"
+                print*,"Error: in make_chains_lajmmps_trj: geometry not cubic or prism"
                 print*,"stopping program"
                 stop
             endif
      
         enddo      ! rotation loop 
-    enddo              ! end while loop                                                                                                          
+    enddo          ! end while loop                                                                                                          
     !  .. end chains generation    
     
+    ! .. find lowest global chainenergy and substract from all 
+    call global_minimum_chainenergy()   
 
     if(conf<=cuantas) then
         print*,"subroutine make_chains_lammps_trj : something went wrong"
@@ -756,56 +714,18 @@ subroutine read_chains_lammps_trj(info)
     endif
 
     close(un)
-    close(un_ene)
 
 end subroutine read_chains_lammps_trj
 
 
-subroutine make_chains_file()
-  
-    !     .. variable and constant declaractions                                                           
-    use globals
-    use chains
-    use random
-    use parameters
-    use volume
-    use chain_rotation, only : rotation
-
-
-    integer :: j,s,rot           ! dummy indices 
-    integer :: conf,conffile     ! counts number of conformations
-    integer :: nsegfile          ! nseg in input file
-    integer :: cuantasfile       ! cuantas in input file
-    real(dp) :: chain(3,nseg+1)   ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
-    real(dp) :: chains_rot(3,nseg+1) ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1
-    real(dp) :: x,y,z,r            ! coordinates
-    real(dp) ::  x0,y0,z0           ! origin coordinates
-
-    character(len=10) :: fname
-    integer :: ios
-    logical :: rottest
-    integer :: nchain,rotmax,maxattempts
-
-    !     .. executable statements                                                                          
-    !     .. reading in chains  from file  
-
-    write(fname,'(A10)')'chains.dat'
-    open(unit=1,file=fname,iostat=ios,status='old')
-    if(ios >0 ) then
-        print*, 'Error opening file : iostat =', ios
-        stop
-    endif   
-
-end subroutine make_chains_file
-
 ! post: isAmonomer set 
 ! for chaintype==multi , type_of_monomer,type_of_monomer_char
-! ismonomer_of_type are set.
+! ismonomer_type are set.
 
 subroutine make_sequence_chain(freq,chaintype)
   
-    use globals
-    use chains
+    use globals, only : nseg, nsegtypes
+    use chains, only :  isAmonomer,type_of_monomer_char, type_of_monomer,ismonomer_of_type
     use parameters, only : typesfname
 
     integer, intent(in) :: freq
@@ -964,13 +884,70 @@ subroutine chain_filter()
                 indexchain(s,conf)=indx
             endif
         enddo
-
-        !indx=indexchain(1,conf)
-        !call coordinateFromLinearIndex(indx,ix,iy,iz)
-        !print*,"conf=",conf,indx,ix,iy,iz
     enddo
 
 end subroutine  chain_filter
+
+function minimum_chainenergy() result(min_chainenergy)
+
+    use  mpivars
+    use  globals, only :cuantas
+    use  chains, only : energychain
+
+    real(dp) :: min_chainenergy
+
+    integer :: conf, unitno
+    
+    unitno=10*rank+100
+    min_chainenergy =0.0_dp
+    do conf=1,cuantas        
+        if(min_chainenergy > energychain(conf)) min_chainenergy=energychain(conf)
+    enddo
+   
+end function
+
+
+subroutine global_minimum_chainenergy()
+
+    use  mpivars
+    use  globals, only :cuantas
+    use  chains, only : energychain
+
+    real(dp) :: localmin(2), globalmin(2)
+    integer :: i
+
+    localmin(1)=minimum_chainenergy()
+    localmin(2)=rank   
+    print*,"rank ",rank ," has local lowest value of", localmin(1)
+    
+    call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
+    call MPI_ALLREDUCE(localmin, globalmin, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
+    
+    if (rank == 0) then  
+        print*,"Rank ",globalmin(2)," has lowest value of", globalmin(1)  
+    endif
+
+    call shift_energy_chain(globalmin(1))
+
+end subroutine
+
+
+
+! post: substract minimum internal energy from all internal chain energies
+subroutine shift_energy_chain(min_chainenergy)
+    
+    use  globals, only :cuantas
+    use  chains, only : energychain
+    
+    real(dp), intent(in) :: min_chainenergy
+
+    ! local
+    integer :: conf
+    do conf=1,cuantas        
+        energychain(conf)=energychain(conf)-min_chainenergy
+    enddo
+
+end subroutine shift_energy_chain
 
 
 subroutine set_properties_chain(freq,chaintype)
@@ -1038,8 +1015,8 @@ subroutine set_lsegAA
             lsegAA(2) = lsegPAMPS        
         case ("electA")                 ! homopolymer weak polyacid VdW     
             lsegAA = lsegPAA
-        case ("neutral")                ! homopolymer neutral
-            lsegAA = lsegPEG
+        case ("neutral","neutralnoVdW")                ! homopolymer neutral
+            !lsegAA = lsegPEG
         case ("brush_mul","brush","brush_neq","brushvarelec","brushborn","brushssdna")
             ! lsegAA = lsegPAA !0.36287_dp
         case default
@@ -1101,10 +1078,8 @@ end function
 function number_Amonomers(nseg)result(npolA)
   
     use chains, only : isAmonomer
-    implicit none
 
     integer , intent(in) :: nseg
-    
     integer :: npolA
 
     !     .. local variables
@@ -1114,7 +1089,6 @@ function number_Amonomers(nseg)result(npolA)
     do s=1,nseg
         if(isAmonomer(s).eqv..true.) npolA=npolA+1
     enddo
-  
 
 end function number_Amonomers
 
@@ -1126,7 +1100,6 @@ subroutine read_type_of_monomer(type_of_monomer, type_of_monomer_char,filename, 
 
     use mpivars
     use  myutils
-    implicit none 
     
     !     .. arguments 
     integer, intent(inout) :: type_of_monomer(:)
@@ -1178,8 +1151,6 @@ end subroutine read_type_of_monomer
 
 subroutine make_type_table(ismonomer_of_type,type_of_monomer,nseg,nsegtypes)
     
-    implicit none
-
     logical, intent(out) :: ismonomer_of_type(:,:)
     integer, intent(in) :: type_of_monomer(:) 
     integer, intent(in) :: nseg
@@ -1192,13 +1163,10 @@ subroutine make_type_table(ismonomer_of_type,type_of_monomer,nseg,nsegtypes)
         do t=1,nsegtypes   
             ismonomer_of_type(s,t)=.false.
         enddo
-        !print*,"type_of_monomer(",s,")=",type_of_monomer(s)
         ismonomer_of_type(s,type_of_monomer(s))=.true.    
     enddo
 
 end subroutine make_type_table
-
-
 
 
 ! routine determines is segment type t is chargeable
@@ -1206,8 +1174,6 @@ end subroutine make_type_table
 ! post: ismonomer_chargeable list of logicals
 
 subroutine make_charge_table(ismonomer_chargeable,zpol,nsegtypes)
-    
-    implicit none
  
     logical, intent(out) :: ismonomer_chargeable(:)
     integer, intent(in) :: zpol(:,:)
@@ -1263,7 +1229,6 @@ subroutine write_indexchain_lammps_trj(info)
     use myio, only : myio_err_chainsfile
 
     integer, optional, intent(inout) :: info
-
 
     character(len=lenText) :: text, istr
     character(len=25) :: fname
@@ -1333,16 +1298,26 @@ function open_chain_lammps_trj(info)result(un_trj)
     character(len=lenText) :: istr
     character(len=25) :: fname
     integer :: ios
-
+    logical :: exist
+    
     write(istr,'(I4)')rank
     fname='traj.'//trim(adjustl(istr))//'.lammpstrj'
-    open(unit=newunit(un_trj),file=fname,status='new',iostat=ios)
-    if(ios >0 ) then
-        print*, 'Error opening : ',fname,' file : iostat =', ios
-        if (present(info)) info = myio_err_chainsfile
-        return
-    endif
-
+    inquire(file=fname,exist=exist)
+    if(.not.exist) then
+        open(unit=newunit(un_trj),file=fname,status='new',iostat=ios)
+        if(ios >0 ) then
+            print*, 'Error opening : ',fname,' file : iostat =', ios
+            if (present(info)) info = myio_err_chainsfile
+            return
+        endif
+    else
+        open(unit=newunit(un_trj),file=fname,status='old',iostat=ios)
+        if(ios >0 ) then
+            print*, 'Error opening : ',fname,' file : iostat =', ios
+            if (present(info)) info = myio_err_chainsfile
+            return
+        endif
+    endif    
 end function
 
 
@@ -1410,7 +1385,7 @@ function open_chain_energy(info)result(un_ene)
 
     write(istr,'(I4)')rank
     fname='traj.'//trim(adjustl(istr))//'.ene'
-    open(unit=newunit(un_ene),file=fname,status='new',iostat=ios)
+    open(unit=newunit(un_ene),file=fname,status='replace',iostat=ios)
     if(ios >0 ) then
         print*, 'Error opening : ',fname,' file : iostat =', ios
         if (present(info)) info = myio_err_chainsfile
@@ -1423,7 +1398,7 @@ function VdWpotentialenergy(chain,nchains)result(Energy)
 
     use globals, only : nseg
     use myutils, only : newunit, lenText
-    use volume, only : delta, nz, coordinateFromLinearIndex
+    use volume, only : delta, nx, ny, nz, coordinateFromLinearIndex
     use chains, only : type_of_monomer
     use parameters, only :  lsegAA,VdWeps
 
@@ -1434,22 +1409,32 @@ function VdWpotentialenergy(chain,nchains)result(Energy)
     real(dp) :: Ene,sqrlseg,sqrdist
     integer :: k,i,j,s,t
     real(dp) :: xi,xj,yi,yj,zi,zj
+    real(dp) :: Lz,Ly,Lx
+
+    Lz= nz*delta            ! maximum height box 
+    Lx= nx*delta            ! maximum width box 
+    Ly= ny*delta            ! maximum depth box 
 
     do k=1,nchains
         Ene=0.0_dp      
         do i=1,nseg
             do j=i+1,nseg
+
                 s=type_of_monomer(i)
                 t=type_of_monomer(j)
-                zi = chain(1,i,k)
-                xi = chain(2,i,k)
-                yi = chain(3,i,k) 
-                zj = chain(1,j,k)
-                xj = chain(2,j,k)
-                yj = chain(3,j,k) 
+               
+                zi = pbc(chain(1,i,k),Lz)
+                xi = pbc(chain(2,i,k),Lx)
+                yi = pbc(chain(3,i,k),Ly) 
+                zj = pbc(chain(1,j,k),Lz)
+                xj = pbc(chain(2,j,k),Lx)
+                yj = pbc(chain(3,j,k),Ly) 
+
                 sqrdist=(xi-xj)**2+(yi-yj)**2+(zi-zj)**2
                 sqrlseg=((lsegAA(t)+lsegAA(s))/2.0_dp)**2
+
                 Ene=Ene - VdWeps(s,t)*(sqrlseg/sqrdist)**3
+
             enddo
         enddo 
         Energy(k) = Ene            
@@ -1457,6 +1442,51 @@ function VdWpotentialenergy(chain,nchains)result(Energy)
 
  end function VdWpotentialenergy
  
+function VdWpotentialenergy_lammps(chain)result(Energy)
+
+    use globals, only : nseg
+    use myutils, only : newunit, lenText
+    use volume, only : delta, nx, ny, nz, coordinateFromLinearIndex
+    use chains, only : type_of_monomer
+    use parameters, only :  lsegAA,VdWeps
+
+    real(dp), intent(in) :: chain(:,:)
+   
+    real(dp) :: Energy
+    real(dp) :: Ene,sqrlseg,sqrdist
+    integer :: k,i,j,s,t
+    real(dp) :: xi,xj,yi,yj,zi,zj
+    real(dp) :: Lz,Ly,Lx
+
+    Lz= nz*delta            ! maximum height box 
+    Lx= nx*delta            ! maximum width box 
+    Ly= ny*delta            ! maximum depth box 
+    
+    Ene=0.0_dp      
+
+    do i=1,nseg
+        do j=i+1,nseg
+
+            s=type_of_monomer(i)
+            t=type_of_monomer(j)
+
+            zi = pbc(chain(1,i),Lz)
+            xi = pbc(chain(2,i),Lx)
+            yi = pbc(chain(3,i),Ly) 
+            zj = pbc(chain(1,j),Lz)
+            xj = pbc(chain(2,j),Lx)
+            yj = pbc(chain(3,j),Ly) 
+
+            sqrdist=(xi-xj)**2+(yi-yj)**2+(zi-zj)**2
+            sqrlseg=((lsegAA(t)+lsegAA(s))/2.0_dp)**2
+
+            Ene=Ene - VdWeps(s,t)*(sqrlseg/sqrdist)**3
+
+        enddo
+    enddo 
+    Energy = Ene            
+
+end function VdWpotentialenergy_lammps
    
         
 end module chaingenerator

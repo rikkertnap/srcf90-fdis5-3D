@@ -395,7 +395,7 @@ contains
         local_q = 0.0_dp    ! init q
          
         do c=1,cuantas         ! loop over cuantas
-            pro=exp_energychain(c) 
+            pro=exp(-energychain(c)) 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -648,7 +648,7 @@ contains
          
         do c=1,cuantas         ! loop over cuantas
             !pro=1.0_dp         ! initial weight conformation (1 or 0)
-            pro=exp_energychain(c) 
+            pro=exp(-energychain(c)) 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -761,7 +761,7 @@ contains
         use globals
         use parameters
         use volume
-        use chains, only : indexchain, type_of_monomer,exp_energychain, ismonomer_chargeable
+        use chains, only : indexchain, type_of_monomer,energychain, ismonomer_chargeable
         use field
         use vectornorm
         use VdW, only : VdW_contribution_exp
@@ -982,7 +982,7 @@ contains
              
         do c=1,cuantas         ! loop over cuantas
             !pro=1.0_dp         ! initial weight conformation (1 or 0)
-            pro=exp_energychain(c) 
+            pro=exp(-energychain(c)) 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -1421,7 +1421,7 @@ contains
         local_q = 0.0_dp    ! init q
              
         do c=1,cuantas         ! loop over cuantas
-            pro=exp_energychain(c)        ! initial weight conformation (1 or 0)
+            pro=exp(-VdWscale%val*energychain(c))        ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -1494,7 +1494,154 @@ contains
          
         endif
 
-    end subroutine fcnneutral
+end subroutine fcnneutral
+
+
+ subroutine fcnneutralnoVdW(x,f,nn)
+
+        use mpivars
+        use globals
+        use parameters, Tlocal=>Tref 
+        use volume
+        use chains
+        use field
+        use vectornorm
+        use VdW 
+       
+        !     .. scalar arguments
+
+        integer(8), intent(in) :: nn
+
+        !     .. array arguments
+
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+
+        !     .. local variables
+        
+        real(dp) :: local_rhopol(nsize,nsegtypes)
+        real(dp) :: local_q
+        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro
+        integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
+        real(dp) :: norm
+        real(dp) :: rhopol0 !integra_q
+        integer  :: noffset
+
+        !     .. executable statements 
+
+        !     .. communication between processors 
+
+        if (rank.eq.0) then 
+            flag_solver = 1      !  continue program  
+            do i = 1, size-1
+                dest = i
+                call MPI_SEND(flag_solver, 1, MPI_INTEGER,dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(x, neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+            enddo
+        endif
+
+        n=nsize
+        
+        ! read out x 
+        do i=1,n                     
+            xsol(i) = x(i)        ! volume fraction solvent
+            xpol(i) = 0.0_dp      ! volume fraction polymer
+            xpro(i) = expmu%pro*(xsol(i)**vpro) ! crowder volume fraction  
+        enddo 
+
+        do t=1,nsegtypes
+            k=t*n
+            do i=1,n 
+                rhopol(i,t)=0.0_dp      ! .. assign global and local polymer density 
+                local_rhopol(i,t)=0.0_dp
+            enddo    
+        enddo
+
+        do t=1,nsegtypes
+            do i=1,n
+                fdis(i,t)  = 0.0_dp
+                exppi(i,t) = xsol(i)**vpol(t)  
+            enddo
+        enddo      
+
+        !  .. computation polymer volume fraction      
+
+        local_q = 0.0_dp    ! init q
+             
+        do c=1,cuantas         ! loop over cuantas
+            pro=exp(-VdWscale%val*energychain(c))        ! initial weight conformation (1 or 0)
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                pro = pro *exppi(k,t)
+            enddo    
+            local_q = local_q+pro
+            do s=1,nseg
+                k=indexchain(s,c) 
+                t=type_of_monomer(s)
+                local_rhopol(k,t)=local_rhopol(k,t)+pro ! unnormed polymer density at k given that the 'beginning'of chain is at l
+            enddo
+        enddo
+         
+        !   .. import results 
+
+        if (rank==0) then 
+          
+            do t=1,nsegtypes
+                do i=1,n
+                    rhopol(i,t)=local_rhopol(i,t) ! polymer density 
+                enddo
+            enddo
+    
+            q=local_q
+
+            do t=1,nsegtypes
+                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+            enddo
+             
+            do i=1, size-1
+                source = i
+                call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
+                q=q+local_q
+            enddo 
+          
+            !     .. construction of fcn and volume fraction polymer             
+            rhopol0=(1.0_dp/volcell)/q  ! volume polymer segment per volume cell
+
+            !rhopol0=0.0_dp
+            do t=1, nsegtypes
+                do i=1,n
+                    rhopol(i,t) = rhopol0 * rhopol(i,t)       ! density polymer of type t  
+                    xpol(i)     = xpol(i) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
+                enddo
+            enddo        
+
+            do i=1,n
+                f(i) = xpol(i)+xsol(i)+xpro(i)-1.0_dp
+            enddo
+          
+            !     .. end computation polymer density 
+
+            norm=l2norm(f,neqint)
+            iter=iter+1
+
+            print*,'iter=', iter ,'norm=',norm
+
+        else                      ! Export results 
+            
+            dest = 0 
+           
+            do t=1,nsegtypes
+                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
+                    MPI_COMM_WORLD, ierr)
+            enddo
+
+            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+         
+        endif
+
+    end subroutine fcnneutralnoVdW
 
 
     !     .. function solves for bulk volume fraction 
@@ -1653,8 +1800,10 @@ contains
             fcnptr => fcnbrushborn    
         case ("elect")                  ! copolymer weak polyacid, no VdW
              fcnptr => fcnelect    
-        case ("neutral")                ! homopolymer neutral
+        case ("neutral")                ! copolymer neutral
             fcnptr => fcnneutral
+        case ("neutralnoVdW")             ! homopolymer neutral
+            fcnptr => fcnneutralnoVdW
         case ("bulk water")             ! determines compositon bulk electrolyte solution
              fcnptr => fcnbulk
         case default

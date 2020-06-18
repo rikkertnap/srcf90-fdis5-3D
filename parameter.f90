@@ -45,13 +45,13 @@
     !  .. VdW variables
     real(dp), dimension(:,:), allocatable :: VdWeps, VdWepsin    ! strenght VdW interaction in units of kT
     real(dp) :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
-    logical :: isVdW  
+    logical :: isVdW              ! if true VdW energy 
+    logical :: isVdWintEne        ! if true VdWpotentialenergy is used to compute internal VdW energy chain
     real(dp) :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
     real(dp) :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
     real(dp), parameter :: Vdwepsilon=1.0e-5_dp ! thresholds below which VdWeps is assumed to be zero
     logical, dimension(:), allocatable :: isrhoselfconsistent
-    type(looplist), target :: VdWfac ! concentration of crowder /protien in mol/liter 
-
+    type(looplist), target :: VdWscale ! scale factor in VdW interaction
 
     !    .. charges 
     integer :: zpolAA(7)
@@ -186,15 +186,15 @@ contains
         integer :: numeq, t
 
         nsize= nx*ny*nz
-        neq_bc=0 
-        if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nx*ny
-        if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nx*ny
+        !neq_bc=0 
+        !if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nx*ny
+        !if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nx*ny
 
         select case (systype)
             case ("brush_mul") 
-                neq = (2+nsegtypes) * nsize + neq_bc
+                neq = (2+nsegtypes) * nsize 
             case ("brushssdna") 
-                neq = (2+nsegtypes) * nsize + neq_bc
+                neq = (2+nsegtypes) * nsize 
             case ("brushborn")
                 numeq=0 
                 do t=1,nsegtypes
@@ -202,9 +202,11 @@ contains
                 enddo    
                 neq = nsize*(6+numeq)    
             case ("elect") 
-                neq = 4 * nsize + neq_bc
+                neq = 4 * nsize 
             case ("neutral") 
-                neq = (2+nsegtypes) * nsize 
+                neq = (1+nsegtypes) * nsize
+            case ("neutralnoVdW") 
+                neq = nsize  
             case ("bulk water") 
                 neq = 5 
             case default
@@ -738,9 +740,9 @@ contains
         case ("elect")
             call init_expmu_elect()
             call set_VdWepsAAandBB() ! specail assigemnt of VdWepsAA etc  
-        case ("neutral")
+        case ("neutral","neutralnoVdW")
             call init_expmu_neutral()   
-            if(runtype=="rangeVdWeps") call set_VdWepsfactor(VdWfac)
+            if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)
         case ("brush_mul") 
             call init_expmu_elect()      
         case ("brushssdna") 
@@ -1103,7 +1105,7 @@ contains
             VdWepsAA = VdWeps(1,1) 
             VdWepsAB = VdWeps(1,2) 
             VdWepsBB = VdWeps(2,1) 
-        case ("neutral","brush_mul","brush","brush_neq","brushvarelec","brushborn","brushssdna")
+        case ("neutral","neutralnoVdW","brush_mul","brush","brush_neq","brushvarelec","brushborn","brushssdna")
         case default
             print*,"Error: in set_VdWepsAAandBB, systype=",systype
             print*,"stopping program"
@@ -1115,14 +1117,14 @@ contains
 
     ! special assignment for runtype==rangeVdWeps
     
-    subroutine set_VdWepsfactor(VdWfac)
+    subroutine set_VdWeps_scale(VdWscale)
 
-        TYPE(looplist), intent(in) :: VdWfac
+        TYPE(looplist), intent(in) :: VdWscale
 
-        VdWeps=VdWfac%val*VdWepsin
+        VdWeps=VdWscale%val*VdWepsin
 
         call set_VdWepsAAandBB
 
-    end subroutine set_VdWepsfactor
+    end subroutine set_VdWeps_scale
 
  end module parameters

@@ -212,17 +212,16 @@ subroutine read_inputfile(info)
                 isSet_precondition=.true.   
             case ('dielect_env')
                 read(buffer,*,iostat=ios) dielect_env
-            case ('VdWfac%val')
-                read(buffer,*,iostat=ios) VdWfac%val
-            case ('VdWfac%min')
-                read(buffer,*,iostat=ios) VdWfac%min
-            case ('VdWfac%max')
-                read(buffer,*,iostat=ios) VdWfac%max
-            case ('VdWfac%stepsize')
-                read(buffer,*,iostat=ios) VdWfac%stepsize
-            case ('VdWfac%delta')
-                read(buffer,*,iostat=ios) VdWfac%delta    
-
+            case ('VdWscale%val')
+                read(buffer,*,iostat=ios) VdWscale%val
+            case ('VdWscale%min')
+                read(buffer,*,iostat=ios) VdWscale%min
+            case ('VdWscale%max')
+                read(buffer,*,iostat=ios) VdWscale%max
+            case ('VdWscale%stepsize')
+                read(buffer,*,iostat=ios) VdWscale%stepsize
+            case ('VdWscale%delta')
+                read(buffer,*,iostat=ios) VdWscale%delta     
             case default
                 if(pos>1) then 
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -296,17 +295,20 @@ subroutine read_inputfile(info)
         return
     endif
 
-
-    !  set and overide certain input values
+    !  .. set input values
 
     call set_value_nzmin(runtype,nzmin,nzmax)
     call set_value_isVdW(systype,isVdW)
+    call set_value_isVdWintEne(systype, isVdWintEne)
     call set_value_nsegtypes(nsegtypes,chaintype,systype,info)
+    
     call check_value_VdWeps(systype,isVdW,info_VdWeps)
     if (info_VdWeps == myio_err_VdWeps) then
         if (present(info)) info = info_VdWeps
         return
     endif
+
+    ! overide certain input values
     if(systype=="brushssdna".or.systype=="brushborn".or.systype=="brush_mul") then
         KionNa=0.0_dp 
         KionK=0.0_dp
@@ -322,7 +324,7 @@ subroutine check_value_systype(systype,info)
     character(len=15), intent(in) :: systype
     integer, intent(out),optional :: info
 
-    character(len=15) :: systypestr(6)
+    character(len=15) :: systypestr(7)
     integer :: i
     logical :: flag
 
@@ -333,11 +335,12 @@ subroutine check_value_systype(systype,info)
     systypestr(3)="brush_mul"
     systypestr(4)="brushssdna"
     systypestr(5)="brushborn"
-    systypestr(6)="bulk_water"
+    systypestr(6)="bulk water"
+    systypestr(7)="neutralnoVdW"
    
     flag=.FALSE.
 
-    do i=1,6
+    do i=1,7
         if(systype==systypestr(i)) flag=.TRUE.
     enddo
 
@@ -507,7 +510,7 @@ subroutine check_value_chainmethod(chainmethod,info)
     integer, intent(out),optional :: info
 
     logical :: flag
-    character(len=15) :: chainmethodstr(4) 
+    character(len=15) :: chainmethodstr(3) 
     integer :: i
 
     ! permissible values of chainmethod
@@ -515,12 +518,10 @@ subroutine check_value_chainmethod(chainmethod,info)
     chainmethodstr(1)="MC"
     chainmethodstr(2)="FILE_lammps_xyz"
     chainmethodstr(3)="FILE_lammps_trj"
-    chainmethodstr(4)="FILE_TXT"
        
- 
     flag=.FALSE.
 
-    do i=1,4
+    do i=1,3
         if(chainmethod==chainmethodstr(i)) flag=.TRUE.
     enddo
         
@@ -658,19 +659,37 @@ subroutine set_value_isVdW(systype, isVdW)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdW
 
-    character(len=15) :: systypestr(1) 
+    character(len=15) :: systypestr(2) 
     integer :: i
 
     ! permissible values of systype that involve VdW interaction 
     
     systypestr(1)="elect"
-       
+    systypestr(2)="neutralnoVdW"   
     isVdW=.True.
-    if(systype==systypestr(1)) isVdW=.FALSE.
-
+    do i=1,2     
+        if(systype==systypestr(i)) isVdW=.FALSE.
+    enddo    
 
 end subroutine
 
+! isVdWintEne = .true. then  compute internal VdW energy chain 
+
+subroutine set_value_isVdWintEne(systype, isVdWintEne)
+
+    character(len=15), intent(in) :: systype
+    logical, intent(inout)  :: isVdWintEne
+
+    character(len=15) :: systypestr(1) 
+    integer :: i
+
+    ! permissible values of systype that involve internal VdW chain energy 
+    
+    systypestr(1)="neutralnoVdW"   
+    isVdWintEne=.False.
+    if(systype==systypestr(1)) isVdWintEne=.true.
+    
+end subroutine
 
 ! changes value isVdW based on values of VdWeps parameter
 ! pre :VdWeps need to be initialized see module VdW
@@ -767,7 +786,7 @@ subroutine output()
     select case (systype)
     case ("elect")
         call output_elect  
-    case("neutral") 
+    case("neutral","neutralnoVdW") 
         call output_neutral
         call output_individualcontr_fe
     case("brush_mul","brushssdna") 
@@ -1692,7 +1711,7 @@ end subroutine output_individualcontr_fe
 subroutine make_filename_label(fnamelabel)
  
     use globals, only : LEFT,RIGHT, systype
-    use parameters, only : cNaCl,cCaCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWfac
+    use parameters, only : cNaCl,cCaCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale
 
     character(len=*), intent(inout) :: fnamelabel    
 
@@ -1723,7 +1742,7 @@ subroutine make_filename_label(fnamelabel)
         write(rstr,'(F7.3)')pHbulk
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
 
-    case("neutral")
+    case("neutral","neutralnoVdW")
         
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr)) 
@@ -1735,8 +1754,8 @@ subroutine make_filename_label(fnamelabel)
             write(rstr,'(F3.1)')cpro%val
         endif 
         fnamelabel=trim(fnamelabel)//"cPro"//trim(adjustl(rstr))
-        write(rstr,'(F5.3)')VdWfac%val
-        fnamelabel=trim(fnamelabel)//"VdWfac"//trim(adjustl(rstr))//".dat"
+        write(rstr,'(F5.3)')VdWscale%val
+        fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
 
     case("brush_mul","brushssdna","brushborn")  
         
@@ -1802,13 +1821,15 @@ subroutine copy_solution(x)
     case ("neutral")
 
         do i=1,nsize                   
-            xsol(i)= x(i)             
-            rhopol(i,B)=x(i+nsize)       
+            xsol(i)= x(i)     
         enddo
-        print*,"copy_solution: case neutral not correct"
-        print*,"stopping program"
-        stop
 
+    case ("neutralnoVdW")
+
+        do i=1,nsize                   
+            xsol(i)= x(i)     
+        enddo 
+           
     case default   
 
         print*,"Error: systype incorrect in copy_solution"
@@ -1837,7 +1858,7 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height)  
         call output()
     
-    case ("neutral")  
+    case ("neutral","neutralnoVdW")  
 
         call fcnenergy()  
         call average_density_z(xpol,xpolz,height) 

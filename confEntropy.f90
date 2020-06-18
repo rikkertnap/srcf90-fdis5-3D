@@ -30,7 +30,7 @@ contains
         case ("elect")
             call FEconf_elect(FEconf)
             Econf=0.0_dp
-        case ("neutral")
+        case ("neutral","neutralnoVdW")
             call FEconf_neutral(FEconf,Econf)
         case ("brush_mul","brushssdna")
             call FEconf_brush_mul(FEconf,Econf)
@@ -47,14 +47,13 @@ contains
    ! computes conformational entropy in neutral state 
 
     subroutine FEconf_neutral(FEconf,Econf)
-
     
         !  .. variables and constant declaractions 
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
-        use chains, only : indexchain, type_of_monomer, exp_energychain
+        use chains, only : indexchain, type_of_monomer, energychain
         use field, only : xsol, rhopol, q
-        use parameters, only : vpol, isVdW
+        use parameters, only : vpol, isVdW, VdWscale
         use VdW, only : VdW_contribution_exp
 
         real(dp), intent(out) :: FEconf,Econf
@@ -63,10 +62,8 @@ contains
         real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
         real(dp) :: pro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
-        
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
-
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -106,14 +103,14 @@ contains
         Econf_local=0.0_dp ! init FEconf
             
         do c=1,cuantas         ! loop over cuantas
-            pro=exp_energychain(c)     
+            pro=exp(-VdWscale%val*energychain(c))     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
                 pro = pro*exppi(k,t)
             enddo    
             FEconf_local=FEconf_local+pro*log(pro)
-            Econf_local= Econf_local-(pro)*log(exp_energychain(c))
+            Econf_local= Econf_local+pro*energychain(c)*VdWscale%val
         enddo
         
         ! communicate FEconf
@@ -149,12 +146,10 @@ contains
         !  .. variables and constant declaractions 
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
-        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable ,exp_energychain
+        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, energychain
         use field, only : xsol,psi, fdis,rhopol,q
         use parameters
         use VdW, only : VdW_contribution_exp
-
-        implicit none
 
         real(dp), intent(out) :: FEconf,Econf
         
@@ -162,10 +157,8 @@ contains
         real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
         real(dp) :: pro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
-        
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
-
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -215,14 +208,14 @@ contains
         Econf_local=0.0_dp ! init FEconf
             
         do c=1,cuantas         ! loop over cuantas
-            pro=exp_energychain(c)     
+            pro=exp(-energychain(c))     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
                 pro = pro*exppi(k,t)
             enddo    
             FEconf_local=FEconf_local+pro*log(pro)
-            Econf_local= Econf_local-(pro)*log(exp_energychain(c))
+            Econf_local= Econf_local+pro*energychain(c)
         enddo
         
         ! communicate FEconf
@@ -267,12 +260,9 @@ contains
         use field
         use parameters
 
-        implicit none
-
         real(dp), intent(out) :: FEconf
         
         !     .. declare local variables
-
         real(dp) :: exppiA(nsize),exppiB(nsize)    ! auxilairy variable for computing P(\alpha) 
         integer  :: i,k,c,s,g,gn         ! dummy indices
         real(dp) :: pro
@@ -312,23 +302,18 @@ contains
         
             pro=1.0_dp                ! initial weight conformation 
             
-            if(weightchain(c)) then ! initial weight conformation 
-
-                pro=1.0_dp
             
-                do s=1,nseg              ! loop over segments 
-                    k=indexchain(s,c)         
-                    if(isAmonomer(s)) then ! A segment 
-                        pro = pro*exppiA(k)
-                    else
-                        pro = pro*exppiB(k)
-                    endif
-                enddo
+            do s=1,nseg              ! loop over segments 
+                k=indexchain(s,c)         
+                if(isAmonomer(s)) then ! A segment 
+                    pro = pro*exppiA(k)
+                else
+                    pro = pro*exppiB(k)
+                endif
+            enddo
 
-               FEconf_local=FEconf_local+pro*log(pro)
-              
-            endif
-        
+           FEconf_local=FEconf_local+pro*log(pro)
+                  
         enddo  
 
         ! communicate FEconfABL and FEcopnd_ABR

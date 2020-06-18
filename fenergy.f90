@@ -70,10 +70,10 @@ contains
             call fcnenergy_elect()
             call fcnenergy_elect_alternative()
         
-        case("neutral")
+        case("neutral","neutralnoVdW")
             
             call fcnenergy_neutral()
-            call fcnenergy_neutral_alternative()
+            call fcnenergy_neutral_alternative()  
         
         case ("brushborn")
              print*,"not there yet"   

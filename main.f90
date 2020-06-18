@@ -220,7 +220,7 @@ program main
         else if(runtype=="rangecpro") then 
             loop => cpro
         else if(runtype=="rangeVdWeps") then 
-            loop => VdWfac    
+            loop => VdWscale    
         else
             if(associated(loop)) nullify(loop) ! make explict that no association is made
         endif  
@@ -239,13 +239,14 @@ program main
         endif
 
         call set_fcn()
+        call chain_filter()   
 
         do while (loop%min<=loop%val.and.loop%val<=loop%max.and.&
                 (abs(loop%stepsize)>=loop%delta))
             
             
             call init_vars_input()  ! sets up chem potentials
-            call chain_filter()      
+            !call chain_filter()      
             !call set_fcn()
             flag_solver = 0
 
