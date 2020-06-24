@@ -393,103 +393,106 @@ subroutine read_chains_lammps_XYZ(info)
             xseg(3,s) = zc/10.0_dp 
         enddo
 
-        conffile=conffile +1 
+        if(ios==0) then ! read was succesfull 
 
-        ! .. 'first' segment, sets origin 
-        do s=1,nseg        
-            chain(2,s) = (xseg(1,s)-xseg(1,1)) 
-            chain(3,s) = (xseg(2,s)-xseg(2,1))
-            chain(1,s) = (xseg(3,s)-xseg(3,1))
-        enddo
+             conffile=conffile +1 
 
-        ! .. compute chain energy 
-        energy= VdWpotentialenergy_lammps(chain)
-
-        do rot=1,rotmax        
-             
-            nchain=1
-            is_positive_rot=.true.
-
-            do while (nchain.lt.maxattempts)
-                is_positive_rot=rotation(chain,chain_rot,nseg-1)
-                nchain=nchain+1
+            ! .. 'first' segment, sets origin 
+            do s=1,nseg        
+                chain(2,s) = (xseg(1,s)-xseg(1,1)) 
+                chain(3,s) = (xseg(2,s)-xseg(2,1))
+                chain(1,s) = (xseg(3,s)-xseg(3,1))
             enddo
-            !print*,"conf=",conf,"is_positve=",is_positive_rot
 
-            if(is_positive_rot) then
+            ! .. compute chain energy 
+            energy= VdWpotentialenergy_lammps(chain)
         
-                if(geometry=="cubic") then !  transforming form real- to lattice coordinates
-        
-                    do ntheta=1,maxntheta                  ! rotation in xy-plane
+            do rot=1,rotmax        
+                 
+                nchain=1
+                is_positive_rot=.true.
 
-                        conf=conf+1
-                        theta= ntheta * theta_angle
+                do while (nchain.lt.maxattempts)
+                    is_positive_rot=rotation(chain,chain_rot,nseg-1)
+                    nchain=nchain+1
+                enddo
+                !print*,"conf=",conf,"is_positve=",is_positive_rot
 
-                        do s=1,nseg
+                if(is_positive_rot) then
+            
+                    if(geometry=="cubic") then !  transforming form real- to lattice coordinates
+            
+                        do ntheta=1,maxntheta                  ! rotation in xy-plane
 
-                            xp(s)= chain_rot(2,s)*cos(theta)+chain_rot(3,s)*sin(theta) 
-                            yp(s)=-chain_rot(2,s)*sin(theta)+chain_rot(3,s)*cos(theta)
-                            zp(s)= chain_rot(1,s)  
+                            conf=conf+1
+                            theta= ntheta * theta_angle
 
-                        enddo 
+                            do s=1,nseg
 
-                        do s=1,nseg
+                                xp(s)= chain_rot(2,s)*cos(theta)+chain_rot(3,s)*sin(theta) 
+                                yp(s)=-chain_rot(2,s)*sin(theta)+chain_rot(3,s)*cos(theta)
+                                zp(s)= chain_rot(1,s)  
 
-                            ! .. translation onto correct volume translation to cneter xyz 
-                            x(s) = xp(s) + xcm
-                            y(s) = yp(s) + ycm
-                            z(s) = zp(s) + zcm
+                            enddo 
 
-                            ! .. periodic boundary conditions in x-direction and y-direction and z-direction 
-                            x(s) = pbc(x(s),Lx)
-                            y(s) = pbc(y(s),Ly)
-                            z(s) = pbc(z(s),Lz)
+                            do s=1,nseg
 
-                            ! .. transforming form real- to lattice coordinates                 
-                            xi = int(x(s)/delta)+1
-                            yi = int(y(s)/delta)+1
-                            zi = int(z(s)/delta)+1
+                                ! .. translation onto correct volume translation to cneter xyz 
+                                x(s) = xp(s) + xcm
+                                y(s) = yp(s) + ycm
+                                z(s) = zp(s) + zcm
+
+                                ! .. periodic boundary conditions in x-direction and y-direction and z-direction 
+                                x(s) = pbc(x(s),Lx)
+                                y(s) = pbc(y(s),Ly)
+                                z(s) = pbc(z(s),Lz)
+
+                                ! .. transforming form real- to lattice coordinates                 
+                                xi = int(x(s)/delta)+1
+                                yi = int(y(s)/delta)+1
+                                zi = int(z(s)/delta)+1
+                                
+                                call linearIndexFromCoordinate(xi,yi,zi,idx) 
+
+                                indexchain_init(s,conf) = idx
+                                if(idx<=0) then
+                                    print*,"index=",idx, " xc=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                                endif
                             
-                            call linearIndexFromCoordinate(xi,yi,zi,idx) 
-
-                            indexchain_init(s,conf) = idx
-                            if(idx<=0) then
-                                print*,"index=",idx, " xc=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
-                            endif
-                        
-                        enddo
+                            enddo
+                                
+                            energychain(conf)=energy
                             
-                        energychain(conf)=energy
-                        
-                    enddo         ! end loop over rotations
-        
-                else if(geometry=="prism") then
-                 ! to be done later 
+                        enddo         ! end loop over rotations
+            
+                    else if(geometry=="prism") then
+                     ! to be done later 
 
-                else 
-                    print*,"Error: in make_chains_lammps_xyz: geometry not cubic or prism"
-                    print*,"stopping program"
-                    stop
-                endif
-            endif  ! if 
-        enddo      ! rotation loop 
+                    else 
+                        print*,"Error: in make_chains_lammps_xyz: geometry not cubic or prism"
+                        print*,"stopping program"
+                        stop
+                    endif
+                endif  ! if 
+            enddo      ! rotation loop
+        endif     
     enddo          ! end while loop                                                                                                          
     
-    !  .. end chains generation    
-
-    ! .. find lowest global chainenergy and substract from all 
-    call global_minimum_chainenergy()   
+    !  .. end chains generation     
 
     if(conf<=cuantas) then
-        print*,"subroutine make_chains_lammps_XYZ : something went wrong"
-        print*,"conf     = ",conf," cuantas     = ",cuantas
+        print*,"subroutine make_chains_lammps_XYZ :"
+        print*,"conf     = ",conf," less then cuantas     = ",cuantas
         print*,"conffile = ",conffile
-        stop
+        cuantas = conf
     else
         text="Chains generated: subroutine make_chains_lammps_file"
         call print_to_log(LogUnit,text)
         readinchains=conffile
     endif
+
+    ! .. find lowest global chainenergy and substract from all 
+    call global_minimum_chainenergy()   
 
     close(un)
 
@@ -578,7 +581,7 @@ subroutine read_chains_lammps_trj(info)
     rotmax=maxnchains
     ios=0
 
-    maxntheta =6                ! maximum number of rotation in xy-plane  
+    maxntheta =12                ! maximum number of rotation in xy-plane  
     theta_angle= 2.0_dp*pi/maxntheta    
     Lz= nz*delta            ! maximum height box 
     Lx= nx*delta            ! maximum width box 
@@ -618,100 +621,103 @@ subroutine read_chains_lammps_trj(info)
             xseg(3,item) = zc*scalefactor
         enddo
        
-        ! read(un_ene,*,iostat=ios)energy
+        if(ios==0) then ! read was succesfull 
 
-        conffile=conffile +1 
+            conffile=conffile +1 
 
-        ! .. 'first' segment, sets origin 
+            ! .. 'first' segment, sets origin 
 
-        do s=1,nseg        
-            chain(2,s) = (xseg(1,s)-xseg(1,1)) 
-            chain(3,s) = (xseg(2,s)-xseg(2,1))
-            chain(1,s) = (xseg(3,s)-xseg(3,1))
-        enddo
-
-        ! .. compute chain energy 
-        energy= VdWpotentialenergy_lammps(chain)
-
-        do rot=1,rotmax        
-             
-            is_positive_rot=rotation(chain,chain_rot,nseg-1)
-            do s=1,nseg                          !  transforming form real- to lattice coordinates
-                zp(s) = chain_rot(1,s) !1->z
-                xp(s) = chain_rot(2,s) !2->x 
-                yp(s) = chain_rot(3,s) !3->y
+            do s=1,nseg        
+                chain(2,s) = (xseg(1,s)-xseg(1,1)) 
+                chain(3,s) = (xseg(2,s)-xseg(2,1))
+                chain(1,s) = (xseg(3,s)-xseg(3,1))
             enddo
-            
 
-            if(geometry=="cubic") then !  transforming form real- to lattice coordinates
-    
-                do ntheta=1,maxntheta                  ! rotation in xy-plane
+            ! .. compute chain energy 
+            energy= VdWpotentialenergy_lammps(chain)
 
-                    conf=conf+1
-                    theta = ntheta * theta_angle          
-            
-                    do s=1,nseg
-                        xpp(s)= xp(s)*cos(theta)+yp(s)*sin(theta) 
-                        ypp(s)=-xp(s)*sin(theta)+yp(s)*cos(theta)   
-                    enddo    
+            do rot=1,rotmax        
+                 
+                is_positive_rot=rotation(chain,chain_rot,nseg-1)
+                do s=1,nseg                          !  transforming form real- to lattice coordinates
+                    zp(s) = chain_rot(1,s) !1->z
+                    xp(s) = chain_rot(2,s) !2->x 
+                    yp(s) = chain_rot(3,s) !3->y
+                enddo
+                
 
-                    do s=1,nseg
+                if(geometry=="cubic") then !  transforming form real- to lattice coordinates
+        
+                    do ntheta=1,maxntheta                  ! rotation in xy-plane
 
-                    ! .. translation onto correct volume translation to cneter xyz 
-                        x(s) = xpp(s) + xcm
-                        y(s) = ypp(s) + ycm
-                        z(s) =  zp(s) + zcm
+                        conf=conf+1
+                        theta = ntheta * theta_angle          
+                
+                        do s=1,nseg
+                            xpp(s)= xp(s)*cos(theta)+yp(s)*sin(theta) 
+                            ypp(s)=-xp(s)*sin(theta)+yp(s)*cos(theta)   
+                        enddo    
 
-                        ! .. periodic boundary conditions in x-direction and y-direction an z-direction 
-                        x(s) = pbc(x(s),Lx)
-                        y(s) = pbc(y(s),Ly)
-                        z(s) = pbc(z(s),Lz)
+                        do s=1,nseg
 
-                        ! .. transforming form real- to lattice coordinates                 
-                        xi = int(x(s)/delta)+1
-                        yi = int(y(s)/delta)+1
-                        zi = int(z(s)/delta)+1
+                        ! .. translation onto correct volume translation to cneter xyz 
+                            x(s) = xpp(s) + xcm
+                            y(s) = ypp(s) + ycm
+                            z(s) =  zp(s) + zcm
+
+                            ! .. periodic boundary conditions in x-direction and y-direction an z-direction 
+                            x(s) = pbc(x(s),Lx)
+                            y(s) = pbc(y(s),Ly)
+                            z(s) = pbc(z(s),Lz)
+
+                            ! .. transforming form real- to lattice coordinates                 
+                            xi = int(x(s)/delta)+1
+                            yi = int(y(s)/delta)+1
+                            zi = int(z(s)/delta)+1
+                            
+                            call linearIndexFromCoordinate(xi,yi,zi,idx)
+                            
+                            indexchain_init(s,conf) = idx
+                            if(idx<=0.or.idx>nsize) then
+                                print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                            endif
                         
-                        call linearIndexFromCoordinate(xi,yi,zi,idx)
+                        enddo
+                            
+                        energychain(conf)=energy
                         
-                        indexchain_init(s,conf) = idx
-                        if(idx<=0.or.idx>nsize) then
-                            print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
-                        endif
-                    
-                    enddo
-                        
-                    energychain(conf)=energy
-                    
-                enddo         ! end loop over rotations
-    
-            else if(geometry=="prism") then
-             
-            ! to be done later 
+                    enddo         ! end loop over rotations
+        
+                else if(geometry=="prism") then
+                 
+                ! to be done later 
 
-            else 
-                print*,"Error: in make_chains_lajmmps_trj: geometry not cubic or prism"
-                print*,"stopping program"
-                stop
-            endif
-     
-        enddo      ! rotation loop 
+                else 
+                    print*,"Error: in make_chains_lajmmps_trj: geometry not cubic or prism"
+                    print*,"stopping program"
+                    stop
+                endif
+         
+            enddo      ! rotation loop
+        endif     
     enddo          ! end while loop                                                                                                          
     !  .. end chains generation    
     
-    ! .. find lowest global chainenergy and substract from all 
-    call global_minimum_chainenergy()   
 
     if(conf<=cuantas) then
-        print*,"subroutine make_chains_lammps_trj : something went wrong"
-        print*,"conf     = ",conf," cuantas     = ",cuantas
+        print*,"subroutine make_chains_lammps_trj :" 
+        print*,"conf     = ",conf," less imposed cuantas     = ",cuantas
         print*,"conffile = ",conffile
-        stop
+        cuantas=conf           
     else
         text="Chains generated: subroutine make_chains_lammps_trj"
         call print_to_log(LogUnit,text)
         readinchains=conffile
     endif
+
+    ! .. find lowest global chainenergy and substract from all 
+    call global_minimum_chainenergy()   
+
 
     close(un)
 
