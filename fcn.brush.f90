@@ -1521,8 +1521,8 @@ end subroutine fcnneutral
         
         real(dp) :: local_rhopol(nsize,nsegtypes)
         real(dp) :: local_q
-        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro,lnproshift
         integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
         real(dp) :: norm
         real(dp) :: rhopol0 !integra_q
@@ -1561,7 +1561,8 @@ end subroutine fcnneutral
         do t=1,nsegtypes
             do i=1,n
                 fdis(i,t)  = 0.0_dp
-                exppi(i,t) = xsol(i)**vpol(t)  
+                lnexppi(i,t) = log(xsol(i))*vpol(t)  
+                !print*,xsol(i),exppi(i,t)
             enddo
         enddo      
 
@@ -1569,14 +1570,19 @@ end subroutine fcnneutral
 
         local_q = 0.0_dp    ! init q
              
+        lnproshift =log(xbulk%sol)*vpol(1)*nseg
+
         do c=1,cuantas         ! loop over cuantas
-            pro=exp(-VdWscale%val*energychain(c))        ! initial weight conformation (1 or 0)
+            lnpro=0.0 !-VdWscale%val*energychain(c)        ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro *exppi(k,t)
-            enddo    
+                lnpro = lnpro +lnexppi(k,t)
+                !print*,s,lnpro,lnproshift
+            enddo   
+            pro=exp(lnpro-lnproshift)
             local_q = local_q+pro
+            
             do s=1,nseg
                 k=indexchain(s,c) 
                 t=type_of_monomer(s)

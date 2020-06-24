@@ -4,8 +4,8 @@ module chains
     use globals
     implicit none
   
-    integer(2), dimension(:,:), allocatable :: indexchain               ! index(alpha,s)= layer number of conf alpha and segment number s
-    integer(2), dimension(:,:), allocatable :: indexchain_init 
+    integer, dimension(:,:), allocatable :: indexchain               ! index(alpha,s)= layer number of conf alpha and segment number s
+    integer, dimension(:,:), allocatable :: indexchain_init 
     logical, dimension(:), allocatable      :: isAmonomer               ! isAmonomer(s) =.true. if s is a "A" monomoer  
     integer, dimension(:), allocatable      :: type_of_monomer          ! type of monomer represented as a number
     character(len=2), dimension(:), allocatable :: type_of_monomer_char ! type of monomer represented as two letters

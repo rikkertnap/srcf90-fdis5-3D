@@ -620,6 +620,7 @@ subroutine read_chains_lammps_trj(info)
             xseg(2,item) = yc*scalefactor
             xseg(3,item) = zc*scalefactor
         enddo
+     
        
         if(ios==0) then ! read was succesfull 
 
@@ -678,6 +679,7 @@ subroutine read_chains_lammps_trj(info)
                             call linearIndexFromCoordinate(xi,yi,zi,idx)
                             
                             indexchain_init(s,conf) = idx
+
                             if(idx<=0.or.idx>nsize) then
                                 print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                             endif
@@ -706,7 +708,7 @@ subroutine read_chains_lammps_trj(info)
 
     if(conf<=cuantas) then
         print*,"subroutine make_chains_lammps_trj :" 
-        print*,"conf     = ",conf," less imposed cuantas     = ",cuantas
+        print*,"conf     = ",conf," less then imposed cuantas     = ",cuantas
         print*,"conffile = ",conffile
         cuantas=conf           
     else
