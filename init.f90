@@ -355,22 +355,24 @@ end subroutine init_guess_multi
 
 subroutine make_guess_from_xstored(xguess,xstored)
 
-    use globals, only : neq, neqmax, systype, bcflag, LEFT, RIGHT, nsize
+    use globals, only : neq, neqmax, systype, bcflag, LEFT, RIGHT, nsize, nsegtypes
     use volume, only : nz, nzstep, nsurf
+
 
     real(dp), intent(out) :: xguess(:)    ! guess volume fraction solvent and potentia
     real(dp), intent(in) :: xstored(:)
 
     !   .. local variables
-    integer :: i, neq_bc
+    integer :: i, neq_bc, t, k
 
     neq_bc=0  
       
     if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nsurf
     if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nsurf 
 
-    if(systype=="elect") then 
-        
+
+    select case (systype)
+    case ("elect")       
         do i=1,nsize
             xguess(i)=xstored(i)                                ! volume fraction solvent 
             xguess(i+  nsize)=xstored(i+   nsize+nsurf*nzstep)       ! potential
@@ -382,7 +384,7 @@ subroutine make_guess_from_xstored(xguess,xstored)
             xguess(4*nsize+i)=xstored(4*(nsize+nsurf*nzstep)+i) 
         enddo
 
-    elseif(systype=="electdouble") then 
+    case ("electdouble") 
         ! assume xstored xsol,psi symetric xsol(1)=xsol(nsize) etc     
         do i=1,nsize/2
             xguess(i)=xstored(i)                                ! volume fraction solvent 
@@ -400,11 +402,37 @@ subroutine make_guess_from_xstored(xguess,xstored)
         do i=1,neq_bc
             xguess(4*nsize+i)=xstored(4*(nsize+nsurf*nzstep)+i) 
         enddo
-    else
+    case ("neutral")  
+
+        do t=0,nsegtypes
+            k=t*nsize
+            do i=1,nsize/2
+                xguess(i+k)=xstored(i+k+t*nsurf*nzstep)                               
+            enddo
+        enddo 
+        do t=0,nsegtypes
+            k=t*nsize 
+            do i=nsize/2+1,nsize
+                xguess(i+k)=xstored(i+k+(t+1)*nsurf*nzstep)                             
+            enddo
+        enddo    
+             
+    case ("neutralnoVdW") 
+        do i=1,nsize/2
+            xguess(i)=xstored(i)                                ! volume fraction solvent 
+        enddo
+        do i=nsize/2+1,nsize  ! shift by nzstep
+            xguess(i)=xstored(i+nsurf*nzstep)    
+        enddo       
+    case ("brush_mul","brushssdna","brushborn")
+        print*,"make_guess_from_xstored: this systyep not implemented"
+
+    case default
+
         print*,"Error : make_guess_from_xstored wrong systype"
         print*,"systype",systype
         stop
-    endif    
+    end select  
 
 end subroutine make_guess_from_xstored
 

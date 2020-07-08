@@ -1539,6 +1539,13 @@ subroutine output_neutral
         if(.not.isopen) write(*,*)"un_xpro is not open"
     endif    
         
+     !   .. writting files
+    !   .. this line seperates different distances 
+      
+    write(un_xsol,*)'#D    = ',nz*delta 
+    write(un_xpol,*)'#D    = ',nz*delta       
+    write(un_xpro,*)'#D    = ',nz*delta 
+    write(un_xpolz,*)'#D    = ',nz*delta     
 
     do i=1,nsize    
        write(un_xpol,fmt3reals)xpol(i),(rhopol(i,t),t=1,nsegtypes)
@@ -1668,6 +1675,7 @@ subroutine output_individualcontr_fe
     write(un_fe,*)'FEVdW           = ',FEVdW
     write(un_fe,*)'FEconf          = ',FEconf
     write(un_fe,*)'Econf           = ',Econf
+    write(un_fe,*)'Eshift          = ',Eshift
     
     
     write(un_fe,*)"FEtrans%sol     = ",FEtrans%sol   

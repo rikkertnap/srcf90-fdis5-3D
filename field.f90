@@ -6,7 +6,7 @@ module field
     implicit none
     
     real(dp), dimension(:), allocatable :: xpol     ! volume fraction of polymer   
-    real(dp), dimension(:), allocatable :: xpolz ! total volume fraction of polymer in z-direction  
+    real(dp), dimension(:), allocatable :: xpolz    ! total volume fraction of polymer in z-direction  
     real(dp), dimension(:,:), allocatable :: rhopol ! density  monomer of polymer in layer i of type t
     real(dp), dimension(:,:), allocatable :: rhopolin 
     real(dp), dimension(:), allocatable :: rhoqpol  ! charge density  monomer of polymer in layer i 
@@ -24,12 +24,9 @@ module field
     real(dp), dimension(:), allocatable :: xHplus  ! volume fraction of Hplus
     real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
     real(dp), dimension(:), allocatable :: xpro    ! volume fraction of crowder 
-
-
     real(dp), dimension(:), allocatable :: rhoq    ! total free charge density in units of vsol  
-  
-    real(dp),dimension(:), allocatable :: epsfcn    ! dielectric constant 
-    real(dp),dimension(:), allocatable :: Depsfcn   ! derivative dielectric constant
+    real(dp),dimension(:), allocatable :: epsfcn   ! dielectric constant 
+    real(dp),dimension(:), allocatable :: Depsfcn  ! derivative dielectric constant
 
     real(dp), dimension(:,:), allocatable :: fdis   ! degree of dissociation of acid monomer
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
@@ -37,8 +34,8 @@ module field
      
     real(dp), allocatable :: q        ! normalization partion fnc polymer 
     real(dp), allocatable :: lnq      ! exponent of normalization partion fnc polymer 
-! real(dp), allocatable :: qAB      ! normalization partion fnc polymer 
-   ! real(dp), allocatable :: qABL,qABR
+
+    real(dp) :: lnproshift ! shift in exponetn palpha
 
   
 contains

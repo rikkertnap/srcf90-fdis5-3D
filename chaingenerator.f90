@@ -607,7 +607,7 @@ subroutine read_chains_lammps_trj(info)
             read(un,*,iostat=ios)str 
             read(un,*,iostat=ios)str 
             if(nsegfile.ne.nseg) then ! nsegfile =nseg+1 . The chain has one 'segement' more: tethered point.
-                print*,"nseg chain file not equal internal  nseg : stop program"
+                print*,"nseg chain file not equal internal nseg : stop program"
                 stop
             endif    
             scalefactor=(xbox1-xbox0)*unit_conv
@@ -629,9 +629,9 @@ subroutine read_chains_lammps_trj(info)
             ! .. 'first' segment, sets origin 
 
             do s=1,nseg        
-                chain(2,s) = (xseg(1,s)-xseg(1,1)) 
-                chain(3,s) = (xseg(2,s)-xseg(2,1))
-                chain(1,s) = (xseg(3,s)-xseg(3,1))
+                chain(2,s) = (xseg(1,s)-xseg(1,1)) !x->2
+                chain(3,s) = (xseg(2,s)-xseg(2,1)) !y->3  
+                chain(1,s) = (xseg(3,s)-xseg(3,1)) !z->1
             enddo
 
             ! .. compute chain energy 
@@ -887,7 +887,7 @@ subroutine chain_filter()
                 indexchain(s,conf)=indx
             else
                 izpbc=ipbc(iz,nz)
-                print*,"iz=",iz,"izpbc=",izpbc
+                !print*,"iz=",iz,"izpbc=",izpbc
                 call linearIndexFromCoordinate(ix,iy,izpbc,indx)
                 indexchain(s,conf)=indx
             endif
@@ -951,6 +951,7 @@ subroutine shift_energy_chain(min_chainenergy)
 
     ! local
     integer :: conf
+
     do conf=1,cuantas        
         energychain(conf)=energychain(conf)-min_chainenergy
     enddo
@@ -1452,7 +1453,8 @@ function VdWpotentialenergy(chain,nchains)result(Energy)
  
 function VdWpotentialenergy_lammps(chain)result(Energy)
 
-    use globals, only : nseg
+    use mpivars, only : rank
+    use globals, only : nseg, nsegtypes
     use myutils, only : newunit, lenText
     use volume, only : delta, nx, ny, nz, coordinateFromLinearIndex
     use chains, only : type_of_monomer
@@ -1461,7 +1463,7 @@ function VdWpotentialenergy_lammps(chain)result(Energy)
     real(dp), intent(in) :: chain(:,:)
    
     real(dp) :: Energy
-    real(dp) :: Ene,sqrlseg,sqrdist
+    real(dp) :: Ene,sqrlseg,sqrdist,sqrmin
     integer :: k,i,j,s,t
     real(dp) :: xi,xj,yi,yj,zi,zj
     real(dp) :: Lz,Ly,Lx
@@ -1471,6 +1473,7 @@ function VdWpotentialenergy_lammps(chain)result(Energy)
     Ly= ny*delta            ! maximum depth box 
     
     Ene=0.0_dp      
+    !sqrmin=1000.0_dp
 
     do i=1,nseg
         do j=i+1,nseg
@@ -1481,6 +1484,7 @@ function VdWpotentialenergy_lammps(chain)result(Energy)
             zi = pbc(chain(1,i),Lz)
             xi = pbc(chain(2,i),Lx)
             yi = pbc(chain(3,i),Ly) 
+
             zj = pbc(chain(1,j),Lz)
             xj = pbc(chain(2,j),Lx)
             yj = pbc(chain(3,j),Ly) 
@@ -1489,9 +1493,12 @@ function VdWpotentialenergy_lammps(chain)result(Energy)
             sqrlseg=((lsegAA(t)+lsegAA(s))/2.0_dp)**2
 
             Ene=Ene - VdWeps(s,t)*(sqrlseg/sqrdist)**3
-
+            !if(rank==0)print*,i,j,Ene
+            !if(sqrdist<sqrmin)sqrmin=sqrdist
         enddo
     enddo 
+
+    !if(rank==0)print*,"total ",Ene,"  min dist",sqrt(sqrmin),' ',(lsegAA(t),t=1,nsegtypes) 
     Energy = Ene            
 
 end function VdWpotentialenergy_lammps

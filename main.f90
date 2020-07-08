@@ -117,7 +117,7 @@ program main
     call init_field()
     call init_surface(bcflag,nsurf)
    
-    ! VdW used to here 
+    ! VdW used to be here 
 
     call make_isrhoselfconsistent(isVdW)
     call set_size_neq()             ! number of non-linear equation neq
@@ -304,16 +304,17 @@ program main
 
             iter  = 0              ! reset of iteration counter
 
-         enddo ! end while loop
+        enddo ! end while loop
+
+        deallocate(x)
+        deallocate(xguess)
+        deallocate(fvec)
 
     endif
 
     call MPI_FINALIZE(ierr)
 
     deallocate(xstored)
-    deallocate(x)
-    deallocate(xguess)
-    deallocate(fvec)
       
     call deallocate_field()
 

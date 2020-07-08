@@ -32,6 +32,7 @@ module energy
     real(dp) :: FEalt               ! free energy
     real(dp) :: FEbulkalt           ! free energybulk
     real(dp) :: deltaFEalt          ! free energy difference delteFE=FE-FEbulk
+    real(dp) :: Eshift              ! shift in energy for palpha for neutralnoVdW
 
     real(dp) :: FEchemsurfalt(2)    ! chemical free energy surface
     real(dp) :: diffFEchemsurf(2)   ! difference cheme
@@ -467,7 +468,7 @@ contains
         use globals, only : nsize, nseg, nsegtypes
         use volume, only : volcell
         use parameters
-        use field, only : xsol, xpro, rhopol, q
+        use field, only : xsol, xpro, rhopol, q, lnproshift
         use VdW, only : VdW_energy
     
 
@@ -522,12 +523,14 @@ contains
             FEVdW=0.0_dp
         endif
 
-        
+        ! Shift in palpha  i.e q 
+        Eshift=lnproshift 
+
         FEq=-log(q)  
         
         !  .. total free energy 
 
-        FE = FEq + FEpi + FErho + FEVdW 
+        FE = FEq + FEpi + FErho + FEVdW -Eshift
         
        
         volumelat= volcell*nsize  ! volume lattice divide by area surface
@@ -565,7 +568,7 @@ contains
         FEalt = FEtrans%sol +FEtrans%pro + FEchempot%sol +FEchempot%pro
         FEalt= FEalt +FEconf -FEVdW+Econf
 
-                
+    
         ! .. delta translational entropy
         FEtransbulk%sol   = FEtrans_entropy_bulk(xbulk%sol,vsol,"w")   
         FEtransbulk%pro   = FEtrans_entropy_bulk(xbulk%pro,vpro)  

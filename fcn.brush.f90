@@ -1504,7 +1504,7 @@ end subroutine fcnneutral
         use parameters, Tlocal=>Tref 
         use volume
         use chains
-        use field
+        use field, only : xpol, xsol ,xpro, rhopol, q, lnproshift
         use vectornorm
         use VdW 
        
@@ -1522,12 +1522,12 @@ end subroutine fcnneutral
         real(dp) :: local_rhopol(nsize,nsegtypes)
         real(dp) :: local_q
         real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro,lnpro,lnproshift
+        real(dp) :: pro,lnpro
         integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
         real(dp) :: norm
         real(dp) :: rhopol0 !integra_q
         integer  :: noffset
-
+        real(dp) :: locallnproshift(2), globallnproshift(2)
         !     .. executable statements 
 
         !     .. communication between processors 
@@ -1560,9 +1560,8 @@ end subroutine fcnneutral
 
         do t=1,nsegtypes
             do i=1,n
-                fdis(i,t)  = 0.0_dp
+                !fdis(i,t)  = 0.0_dp
                 lnexppi(i,t) = log(xsol(i))*vpol(t)  
-                !print*,xsol(i),exppi(i,t)
             enddo
         enddo      
 
@@ -1570,15 +1569,43 @@ end subroutine fcnneutral
 
         local_q = 0.0_dp    ! init q
              
-        lnproshift =log(xbulk%sol)*vpol(1)*nseg
-
+       
+        lnpro=0.0_dp
         do c=1,cuantas         ! loop over cuantas
-            lnpro=0.0 !-VdWscale%val*energychain(c)        ! initial weight conformation (1 or 0)
+
+            lnpro=lnpro!-VdWscale%val*energychain(c)        ! internal energy
+
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
                 lnpro = lnpro +lnexppi(k,t)
-                !print*,s,lnpro,lnproshift
+            enddo   
+        enddo
+
+        locallnproshift(1)=lnpro/cuantas
+        locallnproshift(2)=rank   
+        !print*,"rank ",rank ," has local lnproshift value of", locallnproshift(1)
+    
+        call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
+        call MPI_ALLREDUCE(locallnproshift, globallnproshift, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
+    
+        !if (rank == 0) then  
+        !    print*,"Rank ",globallnproshift(2)," has lowest value of", globallnproshift(1)  
+        !endif            
+
+        lnproshift=globallnproshift(1)
+
+        !lnproshift =log(xbulk%sol)*vpol(1)*nseg ! guess 
+            
+
+        do c=1,cuantas         ! loop over cuantas
+
+            lnpro=0.0_dp-VdWscale%val*energychain(c)        ! internal energy
+
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro +lnexppi(k,t)
             enddo   
             pro=exp(lnpro-lnproshift)
             local_q = local_q+pro
@@ -1773,7 +1800,7 @@ end subroutine fcnneutral
                 do i=1,neq_bc                  ! surface electrostatic potential if bcflag/=cc
                     constr(i+4*nsize)=0.0_dp
                 enddo   
-            case ("neutral")                 ! neutral polymers
+            case ("neutral","neutralnoVdW")                 ! neutral polymers
             
                 do i=1,nsize
                     constr(i)=1.0_dp
@@ -1808,7 +1835,7 @@ end subroutine fcnneutral
              fcnptr => fcnelect    
         case ("neutral")                ! copolymer neutral
             fcnptr => fcnneutral
-        case ("neutralnoVdW")             ! homopolymer neutral
+        case ("neutralnoVdW")           ! homopolymer neutral
             fcnptr => fcnneutralnoVdW
         case ("bulk water")             ! determines compositon bulk electrolyte solution
              fcnptr => fcnbulk

@@ -17,6 +17,7 @@ module chains
     logical :: isHomopolymer
     double precision, dimension(:),allocatable :: lsegseq  ! only needed for copolymer
 
+
 contains
   
     subroutine allocate_chains(cuantas,nseg,nsegtypes,ngr_node)
@@ -24,10 +25,10 @@ contains
         integer, intent(in) :: cuantas,nseg,nsegtypes,ngr_node
     
         !     .. extra 100 in index because of  nchain rotations
-        allocate(indexchain(nseg,cuantas+100))
-        allocate(indexchain_init(nseg,cuantas+100))
-        allocate(energychain(cuantas+100))
-        allocate(weightchain(cuantas+100))
+        allocate(indexchain(nseg,cuantas+200))
+        allocate(indexchain_init(nseg,cuantas+200))
+        allocate(energychain(cuantas+200))
+        allocate(weightchain(cuantas+200))
         allocate(isAmonomer(nseg)) 
         allocate(type_of_monomer(nseg)) 
         allocate(type_of_monomer_char(nseg))
