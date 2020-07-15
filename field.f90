@@ -194,7 +194,7 @@ contains
         use globals, only : systype
         
         select case (systype) 
-        case ("brush_mul")
+        case ("brush_mul","brush_mulnoVdW")
             call charge_polymer_multi()
         case ("brushssdna","brushborn")
             call charge_polymer_dna()
@@ -287,7 +287,7 @@ contains
         use globals, only : systype
         
         select case (systype) 
-        case ("brush_mul")
+        case ("brush_mul","brush_mulnoVdW")
             call average_charge_polymer_multi()
         case ("brushssdna","brushborn")
             call average_charge_polymer_dna()
@@ -368,7 +368,7 @@ contains
             if(npol(t)/=0) then
                 avfdis(t)=0.0_dp
                 do i=1,nsize
-                    avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
+                    avfdis(t)=avfdis(t)+((1.0_dp-fdis(i,t))*zpol(t,1)+fdis(i,t)*zpol(t,2))*rhopol(i,t)
                 enddo
                 avfdis(t)=avfdis(t)*volcell/npol(t)        
             else

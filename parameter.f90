@@ -182,17 +182,15 @@ contains
         use globals, only: systype,nsegtypes, nsize,bcflag,LEFT,RIGHT, neq, neqint
         use volume, only : nx, ny, nz
 
-        integer(8) :: neq_bc
         integer :: numeq, t
 
         nsize= nx*ny*nz
-        !neq_bc=0 
-        !if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nx*ny
-        !if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nx*ny
 
         select case (systype)
             case ("brush_mul") 
                 neq = (2+nsegtypes) * nsize 
+            case ("brush_mulnoVdW") 
+                neq = 2 * nsize     
             case ("brushssdna") 
                 neq = (2+nsegtypes) * nsize 
             case ("brushborn")
@@ -376,7 +374,7 @@ contains
 
         call init_elect_constants(Tref)  
 
-        max_confor=cuantas
+        cuantas=max_confor
 
     end subroutine init_constants
 
@@ -723,7 +721,7 @@ contains
         xbulk%sol=1.0_dp -xbulk%pro                   ! volume fraction solvent 
 
         expmu%pro   = xbulk%pro  /(xbulk%sol**vpro) 
-
+        print*,xbulk%pro,expmu%pro
 
     end subroutine init_expmu_neutral
 
@@ -743,7 +741,7 @@ contains
         case ("neutral","neutralnoVdW")
             call init_expmu_neutral()   
             if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)
-        case ("brush_mul") 
+        case ("brush_mul","brush_mulnoVdW") 
             call init_expmu_elect()      
         case ("brushssdna") 
             call init_dna  
@@ -1105,7 +1103,7 @@ contains
             VdWepsAA = VdWeps(1,1) 
             VdWepsAB = VdWeps(1,2) 
             VdWepsBB = VdWeps(2,1) 
-        case ("neutral","neutralnoVdW","brush_mul","brush","brush_neq","brushvarelec","brushborn","brushssdna")
+        case ("neutral","neutralnoVdW","brush_mul","brush_mulnoVdW","brushvarelec","brushborn","brushssdna")
         case default
             print*,"Error: in set_VdWepsAAandBB, systype=",systype
             print*,"stopping program"

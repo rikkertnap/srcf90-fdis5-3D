@@ -33,7 +33,6 @@ module listfcn
 
 contains
 
-
     ! brush of multiblock copolymers
 
     subroutine fcnelectbrushmulti(x,f,nn)
@@ -149,7 +148,7 @@ contains
         local_q = 0.0_dp    ! init q
              
         do c=1,cuantas         ! loop over cuantas
-            pro=1.0_dp         ! initial weight conformation (1 or 0)
+            pro=exp(-VdWscale%val*energychain(c))     ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -245,6 +244,216 @@ contains
     end subroutine fcnelectbrushmulti
 
 
+    ! brush of multiblock copolymers
+
+    subroutine fcnelectbrushmultinoVdW(x,f,nn)
+
+        use mpivars
+        use globals
+        use parameters, Tlocal=>Tref 
+        use volume
+        use chains
+        use field
+        use vectornorm
+        use VdW 
+        use surface
+        use Poisson
+
+        !     .. scalar arguments
+
+        integer(8), intent(in) :: nn
+
+        !     .. array arguments
+
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+
+        !     .. local variables
+        
+        real(dp) :: local_rhopol(nsize,nsegtypes)
+        real(dp) :: local_q,locallnproshift(2),globallnproshift(2)
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro
+        integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
+        real(dp) :: norm
+        real(dp) :: rhopol0 !integra_q
+        integer  :: noffset
+
+        !     .. executable statements 
+
+        !     .. communication between processors 
+
+        if (rank.eq.0) then 
+            flag_solver = 1      !  continue program  
+            do i = 1, size-1
+                dest = i
+                call MPI_SEND(flag_solver, 1, MPI_INTEGER,dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(x, neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+            enddo
+        endif
+
+        n=nsize
+        ! read out x 
+        k=n
+        do i=1,n                     
+            xsol(i) = x(i)        ! volume fraction solvent
+            psi(i)  = x(i+k)      ! potential
+        enddo           
+             
+        !  .. assign global and local polymer density 
+
+        do t=1,nsegtypes
+            do i=1,n
+                rhopol(i,t)=0.0_dp 
+                local_rhopol(i,t)=0.0_dp
+            enddo    
+        enddo    
+       
+        do i=1,n                  ! init volume fractions
+            xpol(i)    = 0.0_dp                                   ! volume fraction polymer
+            rhoqpol(i) = 0.0_dp                                   ! charge density AA monomoer
+            xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-psi(i)*zNa) ! Na+ volume fraction 
+            xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-psi(i)*zCl) ! Cl- volume fraction
+            xHplus(i)  = expmu%Hplus*(xsol(i))*exp(-psi(i))       ! H+  volume fraction
+            xOHmin(i)  = expmu%OHmin*(xsol(i))*exp(+psi(i))       ! OH- volume fraction
+            xRb(i)     = expmu%Rb*(xsol(i)**vRb)*exp(-psi(i)*zRb) ! Rb+ volume fraction
+            xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
+            xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
+            xNaCl(i)   = expmu%NaCl*(xsol(i)**vNaCl)
+            xpro(i)    = expmu%pro*(xsol(i)**vpro)
+        enddo
+
+        !  fdis(i,t) is assocaited with fraction of monomer of type t at i in state 2 
+        !  acid : AH  <=> A- +H+
+        !  base : BH+ <=> B + H+
+
+        do t=1,nsegtypes
+            if(ismonomer_chargeable(t)) then
+                do i=1,n                                         
+                    fdis(i,t)  = 1.0_dp/(1.0_dp+xHplus(i)/(K0a(t)*xsol(i)))      
+                    !exppi(i,t) = (xsol(i)**vpol(t))*exp(-zpol(t,2)*psi(i) )/fdis(i,t)   
+
+                    lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i) -log(fdis(i,t))   ! auxilary variable palpha
+
+                enddo  
+            else
+                do i=1,n
+                    fdis(i,t)  = 0.0_dp
+                    lnexppi(i,t) = log(xsol(i))*vpol(t)
+                enddo  
+            endif   
+        enddo      
+              
+        !  .. computation polymer volume fraction      
+
+        local_q = 0.0_dp    ! init q             
+        lnpro=0.0_dp
+
+        do c=1,cuantas         ! loop over cuantas
+            lnpro=lnpro -VdWscale%val*energychain(c)        ! internal energy
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro +lnexppi(k,t)
+            enddo   
+        enddo
+
+        locallnproshift(1)=lnpro/cuantas
+        locallnproshift(2)=rank   
+    
+        call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
+        call MPI_ALLREDUCE(locallnproshift, globallnproshift, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
+               
+        lnproshift=globallnproshift(1)
+          
+        do c=1,cuantas         ! loop over cuantas
+            lnpro=0.0_dp -VdWscale%val*energychain(c)     ! initial weight conformation (1 or 0)
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro +lnexppi(k,t)
+            enddo
+            pro=exp(lnpro-lnproshift)    
+            local_q = local_q+pro
+            do s=1,nseg
+                k=indexchain(s,c) 
+                t=type_of_monomer(s)
+                local_rhopol(k,t)=local_rhopol(k,t)+pro ! unnormed polymer density at k given that the 'beginning'of chain is at l
+            enddo
+        enddo
+         
+        !   .. import results 
+
+        if (rank==0) then 
+          
+            do t=1,nsegtypes
+                do i=1,n
+                    rhopol(i,t)=local_rhopol(i,t) ! polymer density 
+                enddo
+            enddo
+    
+            q=local_q
+
+            do t=1,nsegtypes
+                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
+            enddo
+             
+            do i=1, size-1
+                source = i
+                call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
+                q=q+local_q
+            enddo                 
+
+            !     .. construction of fcn and volume fraction polymer             
+            rhopol0=(1.0_dp/volcell)/q  ! volume polymer segment per volume cell
+
+            do t=1, nsegtypes
+                do i=1,n
+                    rhopol(i,t) = rhopol0 * rhopol(i,t)       ! density polymer of type t  
+
+                    xpol(i)     = xpol(i) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
+                    if(ismonomer_chargeable(t)) then 
+                        rhoqpol(i)  = rhoqpol(i) + (zpol(t,2)*fdis(i,t)+zpol(t,1)*(1.0_dp-fdis(i,t)))*rhopol(i,t)*vsol ! charge density polymer
+                    endif    
+        
+                enddo
+            enddo        
+
+            do i=1,n
+                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) +xpro(i) -1.0_dp
+                rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
+                    zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
+            !   print*,i,rhoq(i)
+            enddo
+          
+            !     .. end computation polymer density and charge density  
+
+            ! .. electrostatics 
+
+            call Poisson_Equation(f,psi,rhoq)  
+          
+
+            norm=l2norm(f,neqint)
+            iter=iter+1
+
+            print*,'iter=', iter ,'norm=',norm
+
+        else                      ! Export results 
+            
+            dest = 0 
+           
+            do t=1,nsegtypes
+                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
+                    MPI_COMM_WORLD, ierr)
+            enddo
+
+            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+         
+        endif
+
+
+    end subroutine fcnelectbrushmultinoVdW
+
     ! brush of ssdna polymers
     ! with ion charegeable group being on one acid (tA) with counterion binding etc 
 
@@ -331,7 +540,6 @@ contains
             xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! crowder volume fraction  
         enddo
 
-
         !  acid in five chargeable state 
         !  AH   <=> A- + H+  
         !  ANa  <=> A- + Na+ 
@@ -390,8 +598,7 @@ contains
         endif 
 
         !  .. computation polymer volume fraction      
-
-        
+ 
         local_q = 0.0_dp    ! init q
          
         do c=1,cuantas         ! loop over cuantas
@@ -409,7 +616,6 @@ contains
             enddo
         enddo
 
-         
         !   .. import results 
 
         if (rank==0) then 
@@ -662,8 +868,6 @@ contains
             enddo
         enddo
 
-    
-         
         !   .. import results 
 
         if (rank==0) then 
@@ -1569,11 +1773,11 @@ end subroutine fcnneutral
 
         local_q = 0.0_dp    ! init q
              
-       
         lnpro=0.0_dp
+        
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro!-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -1594,9 +1798,6 @@ end subroutine fcnneutral
         !endif            
 
         lnproshift=globallnproshift(1)
-
-        !lnproshift =log(xbulk%sol)*vpol(1)*nseg ! guess 
-            
 
         do c=1,cuantas         ! loop over cuantas
 
@@ -1761,33 +1962,26 @@ end subroutine fcnneutral
             
         real(dp), intent(inout):: constr(:)
 
-        integer :: i, neqint ,neq_bc
+        integer :: i, neqint 
 
         neqint=int(neq,kind(neqint))     ! explict conversion from integer(8) to integer
-        
-        neq_bc=0 
-        if(bcflag(LEFT)/="cc") neq_bc=neq_bc+nx*ny
-        if(bcflag(RIGHT)/="cc") neq_bc=neq_bc+nx*ny
     
         select case (systype)
             case ("brush_mul","brushssdna")                 ! multi copolymer:
-                constr=1.0_dp
+                do i=1,neqint
+                    constr(i)=1.0_dp
+                enddo
                 do i=1,nsize                    
                     constr(i+nsize)=0.0_dp     ! electrostatic potential 
                 enddo  
-                do i=1,neq_bc                  ! surface electrostatic potential if bcflag/=cc
-                    constr(neq-i+1)=0.0_dp
-                enddo    
-
                
             case ("brushborn")                 
-                constr=1.0_dp
+                do i=1,neqint
+                    constr(i)=1.0_dp
+                enddo
                 do i=1,nsize                    
                     constr(i+nsize)=0.0_dp     ! electrostatic potential 
-                enddo  
-                do i=1,neq_bc                  ! surface electrostatic potential if bcflag/=cc
-                    constr(neq-i+1)=0.0_dp
-                enddo    
+                enddo     
 
             case ("elect")                     ! AB copolymer: weak acid A weak acid B
 
@@ -1797,15 +1991,21 @@ end subroutine fcnneutral
                     constr(i+2*nsize)=1.0_dp   ! number density A
                     constr(i+3*nsize)=1.0_dp   ! number density B 
                 enddo  
-                do i=1,neq_bc                  ! surface electrostatic potential if bcflag/=cc
-                    constr(i+4*nsize)=0.0_dp
-                enddo   
+
             case ("neutral","neutralnoVdW")                 ! neutral polymers
             
                 do i=1,nsize
                     constr(i)=1.0_dp
                 enddo 
-              
+            
+            case ("brush_mulnoVdW")                 ! multi copolymer:
+                do i=1,neqint
+                    constr(i)=1.0_dp
+                enddo
+                do i=1,nsize                    
+                    constr(i+nsize)=0.0_dp     ! electrostatic potential 
+                enddo  
+            
             case default
 
                 do i=1,neqint
@@ -1817,7 +2017,7 @@ end subroutine fcnneutral
     end subroutine set_contraints
 
 
- ! selects correct fcn function 
+    ! selects correct fcn function 
 
     subroutine set_fcn
 
@@ -1827,6 +2027,8 @@ end subroutine fcnneutral
         select case (systype) 
         case ("brush_mul")
             fcnptr => fcnelectbrushmulti ! acid and base : no counterion binding VdW
+        case ("brush_mulnoVdW")
+            fcnptr => fcnelectbrushmultinoVdW ! acid and base : no counterion binding VdW
         case ("brushssdna")
             fcnptr => fcnbrushssdna   
         case ("brushborn")

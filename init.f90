@@ -66,6 +66,8 @@ subroutine init_guess(x, xguess)
             call init_guess_neutralnoVdW(x,xguess)
         case ("brush_mul")  
             call init_guess_multi(x,xguess)
+        case ("brush_mulnoVdW")  
+            call init_guess_multinoVdW(x,xguess)
         case ("brushssdna")  
             call init_guess_multi(x,xguess)
         case ("brushborn") 
@@ -348,6 +350,79 @@ subroutine init_guess_multi(x, xguess)
 end subroutine init_guess_multi
 
 
+subroutine init_guess_multinoVdW(x, xguess)
+
+    use globals, only : neq,bcflag,LEFT,RIGHT,nsize,neqint
+    use volume, only : nsurf
+    use field, only : xsol,psi
+    use surface, only : psisurfL, psisurfR 
+    use parameters, only : xbulk, infile
+    use myutils, only : newunit
+  
+    real(dp) :: x(:)       ! volume fraction solvent iteration vector 
+    real(dp) :: xguess(:)  ! guess fraction  solvent 
+  
+    !     ..local variables 
+    integer :: n, i, t
+    character(len=8) :: fname(2)
+    integer :: ios,un_file(2)
+  
+    ! .. init guess all xbulk     
+
+    do i=1,neqint
+        x(i)=0.0_dp    
+    enddo
+
+    do i=1,nsize
+        x(i)=xbulk%sol
+    enddo
+
+    if (infile.eq.1) then   ! infile is read in from file/stdio  
+    
+        write(fname(1),'(A7)')'xsol.in'
+        write(fname(2),'(A6)')'psi.in'
+     
+        do i=1,2 ! loop files
+            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
+            if(ios >0 ) then    
+                print*, 'file num ber =',un_file(i),' file name =',fname(i)
+                print*, 'Error opening file : iostat =', ios
+                stop
+            endif
+        enddo
+        if(bcflag(LEFT)/="cc") then 
+            do i=1,nsurf
+                read(un_file(2),*)psisurfL(i)
+            enddo
+        endif            
+        do i=1,nsize
+            read(un_file(1),*)xsol(i)    ! solvent
+            read(un_file(2),*)psi(i)     ! potential
+        
+            x(i)         = xsol(i)    ! placing xsol in vector x
+            x(i+nsize)   = psi(i)     ! placing psi in vector x
+                  
+        enddo
+    
+        if(bcflag(RIGHT)/="cc") then
+            do i=1,nsurf 
+                read(un_file(2),*)psisurfR(i)
+            enddo
+        endif            
+       
+         do i=1,3
+            close(un_file(i))
+        enddo
+
+    endif
+    !     .. end init from file 
+  
+    do i=1,neq
+        xguess(i)=x(i)
+    enddo
+
+end subroutine init_guess_multinoVdW
+
 
 ! .. copy solution of previous solution ( distance ) to create new guess
 ! .. data x=(pi,psi) and pi and psi order and split into  blocks
@@ -416,7 +491,14 @@ subroutine make_guess_from_xstored(xguess,xstored)
                 xguess(i+k)=xstored(i+k+(t+1)*nsurf*nzstep)                             
             enddo
         enddo    
-             
+    
+    case ("brush_mulnoVdw")       
+        
+        do i=1,nsize
+            xguess(i)=xstored(i)                                ! volume fraction solvent 
+            xguess(i+  nsize)=xstored(i+   nsize+nsurf*nzstep)       ! potential
+        enddo
+
     case ("neutralnoVdW") 
         do i=1,nsize/2
             xguess(i)=xstored(i)                                ! volume fraction solvent 

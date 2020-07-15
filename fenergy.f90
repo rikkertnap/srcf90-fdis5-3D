@@ -61,7 +61,7 @@ contains
         character(len=lenText) :: text 
 
         select case (systype) 
-        case ("brush_mul","brushssdna")
+        case ("brush_mul","brush_mulnoVdW","more brushssdna")
         
             call fcnenergy_electbrush_mul() 
             call fcnenergy_elect_alternative()
@@ -253,6 +253,8 @@ contains
          ! .. chemical and binding contribution
         if(systype=="brush_mul") then 
             FEchem = FEchem_react_multi()
+        else  if(systype=="brush_mulnoVdW") then 
+            FEchem = FEchem_react_multi()
         else if(systype=="brushssdna") then
             FEchem = FEchem_react_multi()
         else
@@ -263,7 +265,7 @@ contains
         if(isVdW) FEalt = FEalt-FEVdW ! add Van der Waals
             
         FEalt = FEalt + FEconf + FEchem 
-        FEalt = FEalt- FEel !+ FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurfalt(RIGHT)+FEchemSurfalt(LEFT) 
+        FEalt = FEalt- FEel +Econf   !+ FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurfalt(RIGHT)+FEchemSurfalt(LEFT) 
 
         ! .. delta translational entropy
 
@@ -430,21 +432,23 @@ contains
 
         !  .. calcium and magnesium binding contribution to minimized free energy  
 
-        if(systype/="brush_mul") then 
+        if(systype/="brush_mul".and.systype/="brush_mulnoVdW") then 
             do i=1,nsize
                 FEbind = FEbind + (fdisA(i,5)+fdisA(i,7))*rhopol(i,tA)
             enddo                
             FEbind = volcell*FEbind /2.0_dp                                 
         endif      
 
-        
         ! .. calcualtion of FEq
         FEq=-log(q)  
-        
 
+        ! Shift in palpha  i.e q 
+        Eshift=lnproshift 
+
+        
         ! .. total free energy per area of surface 
 
-        FE = FEq  + FEpi + FErho + FEel + FEVdW + FEbind
+        FE = FEq  + FEpi + FErho + FEel + FEVdW + FEbind -Eshift
         
         ! .. print*,"FE = " ,FE
         
@@ -602,7 +606,7 @@ contains
         use globals, only : nsize
         use parameters, only : vsol 
         use volume, only : volcell
-        implicit none
+        use field, only : xpol,xsol
 
         real(dp), intent(in) :: xvol(nsize)
         real(dp), intent(in) :: xvolbulk 
@@ -623,8 +627,8 @@ contains
                 enddo 
                 FEtrans_entropy = volcell*FEtrans_entropy/vol
             else 
-                do i=1,nsize
-                    FEtrans_entropy = FEtrans_entropy + xvol(i)*(log(xvol(i)/vol)-1.0_dp)
+                do i=1,nsize 
+                    if(xvol(i)>0.0_dp) FEtrans_entropy = FEtrans_entropy + xvol(i)*(log(xvol(i)/vol)-1.0_dp) 
                 enddo
                 FEtrans_entropy = volcell*FEtrans_entropy/(vol*vsol)
             endif
@@ -830,7 +834,7 @@ contains
         FEchem_react = 0.0_dp
 
         select case (systype)
-        case("brush_mul") 
+        case("brush_mul","brush_mulnoVdW") 
         
             do t=1,nsegtypes
                 if(ismonomer_chargeable(t)) then

@@ -172,7 +172,7 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) maxnchainsrotations  
                 isSet_maxnchains=.true.      
             case ('cuantas')
-                read(buffer,*,iostat=ios) cuantas
+                read(buffer,*,iostat=ios) max_confor
             case ('chainperiod')
                 read(buffer,*,iostat=ios) chainperiod
             case('vpolfname')
@@ -324,7 +324,7 @@ subroutine check_value_systype(systype,info)
     character(len=15), intent(in) :: systype
     integer, intent(out),optional :: info
 
-    character(len=15) :: systypestr(7)
+    character(len=15) :: systypestr(8)
     integer :: i
     logical :: flag
 
@@ -332,15 +332,16 @@ subroutine check_value_systype(systype,info)
 
     systypestr(1)="elect"
     systypestr(2)="neutral"
-    systypestr(3)="brush_mul"
-    systypestr(4)="brushssdna"
-    systypestr(5)="brushborn"
-    systypestr(6)="bulk water"
-    systypestr(7)="neutralnoVdW"
+    systypestr(3)="brush_mul" 
+    systypestr(4)="brush_mulnoVdW"
+    systypestr(5)="brushssdna"
+    systypestr(6)="brushborn"
+    systypestr(7)="bulk water"
+    systypestr(8)="neutralnoVdW"
    
     flag=.FALSE.
 
-    do i=1,7
+    do i=1,8
         if(systype==systypestr(i)) flag=.TRUE.
     enddo
 
@@ -659,15 +660,17 @@ subroutine set_value_isVdW(systype, isVdW)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdW
 
-    character(len=15) :: systypestr(2) 
+    character(len=15) :: systypestr(3) 
     integer :: i
 
     ! permissible values of systype that involve VdW interaction 
     
     systypestr(1)="elect"
-    systypestr(2)="neutralnoVdW"   
+    systypestr(2)="neutralnoVdW" 
+    systypestr(3)="brush_mulnoVdW"  
     isVdW=.True.
-    do i=1,2     
+
+    do i=1,3     
         if(systype==systypestr(i)) isVdW=.FALSE.
     enddo    
 
@@ -680,15 +683,20 @@ subroutine set_value_isVdWintEne(systype, isVdWintEne)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdWintEne
 
-    character(len=15) :: systypestr(1) 
+    character(len=15) :: systypestr(2) 
     integer :: i
 
     ! permissible values of systype that involve internal VdW chain energy 
     
     systypestr(1)="neutralnoVdW"   
+    systypestr(2)="brush_mulnoVdW"  
+
     isVdWintEne=.False.
-    if(systype==systypestr(1)) isVdWintEne=.true.
-    
+   
+    do i=1,2
+        if(systype==systypestr(i)) isVdWintEne=.true.
+    enddo
+
 end subroutine
 
 ! changes value isVdW based on values of VdWeps parameter
@@ -789,7 +797,7 @@ subroutine output()
     case("neutral","neutralnoVdW") 
         call output_neutral
         call output_individualcontr_fe
-    case("brush_mul","brushssdna") 
+    case("brush_mul","brush_mulnoVdW","brushssdna") 
         call output_brush_mul  
         call output_individualcontr_fe  
     case default
@@ -1638,7 +1646,6 @@ subroutine output_individualcontr_fe
     use globals, only : LEFT,RIGHT, systype
     use energy
     use myutils, only : newunit
-!    use parameters, only : cNaCl,cCaCl2,pHbulk,VdWepsBB
     use volume, only : delta,nz,nzmax,nzmin
 
     ! local arguments
@@ -1765,7 +1772,7 @@ subroutine make_filename_label(fnamelabel)
         write(rstr,'(F5.3)')VdWscale%val
         fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
 
-    case("brush_mul","brushssdna","brushborn")  
+    case("brush_mul","brush_mulnoVdW","brushssdna","brushborn")  
         
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr)) 
@@ -1838,6 +1845,13 @@ subroutine copy_solution(x)
             xsol(i)= x(i)     
         enddo 
            
+    case ("brush_mulnoVdW")   
+
+        do i=1,nsize                   
+            xsol(i)= x(i)              
+            psi(i) = x(i+nsize)
+        enddo
+
     case default   
 
         print*,"Error: systype incorrect in copy_solution"
@@ -1872,7 +1886,7 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height) 
         call output()           ! writing of output
     
-    case ("brush_mul","brushssdna","brushborn")
+    case ("brush_mul","brush_mulnoVdW","brushssdna","brushborn")
 
         call fcnenergy()   
         call charge_polymer() 
@@ -1891,22 +1905,39 @@ end subroutine compute_vars_and_output
 
 subroutine write_chain_config()
 
+    use mpivars, only : rank
     use globals, only: nseg, nsegtypes
     use chains, only : type_of_monomer,type_of_monomer_char,isAmonomer
     use parameters, only : lseg,lsegAA,vpol, vsol
 
-    integer :: i
+    use myutils, only : newunit
 
-    print*,"lseg=",lseg
-    print*,"#nsegtypes   lsegAA    vpol"
-    do i=1,nsegtypes
-        print*,i,lsegAA(i),vpol(i)*vsol
-    enddo
-    print*,"#segment type_num  type_char  isAmonomer"
-    do i=1,nseg
-        print*,i,type_of_monomer(i),type_of_monomer_char(i),isAmonomer(i)
-    enddo 
-    print*,"######"   
+    character(len=100) :: fname 
+    integer :: i, un_cc
+    character(len=10) ::istr
+    
+    if(rank==0) then
+        write(istr,'(I4)')rank
+        fname='chain_config.'//trim(adjustl(istr))//'.log'
+        !     .. opening file        
+        open(unit=newunit(un_cc),file=fname) 
+
+        write(un_cc,*)"chain configuration summary"
+        write(un_cc,*)"###"   
+        write(un_cc,*)"lseg=",lseg
+        write(un_cc,*)"#nsegtypes   lsegAA    vpol"
+        do i=1,nsegtypes
+            write(un_cc,*)i,lsegAA(i),vpol(i)*vsol
+        enddo
+        write(un_cc,*)"#segment type_num  type_char  isAmonomer"
+        do i=1,nseg
+            write(un_cc,*)i,type_of_monomer(i),type_of_monomer_char(i),isAmonomer(i)
+        enddo 
+        write(un_cc,*)"###"  
+        close(un_cc)
+
+    endif    
+
 
 end subroutine write_chain_config
 

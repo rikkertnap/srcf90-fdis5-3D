@@ -36,6 +36,8 @@ contains
             call FEconf_neutral_noVdW(FEconf,Econf)
         case ("brush_mul","brushssdna")
             call FEconf_brush_mul(FEconf,Econf)
+        case ("brush_mulnoVdW")
+            call FEconf_brush_mulnoVdW(FEconf,Econf)
         case ("brushborn")
             print*,"FEconfig_entropy not implemented yet"
         case default
@@ -189,12 +191,6 @@ contains
                 lnexppi(i,t) = log(xsol(i))*vpol(t)
             enddo    
         enddo      
-       
-       ! if(isVdW) then 
-       !     do t=1,nsegtypes  
-       !         call VdW_contribution_exp(rhopol,exppi(:,t),t)
-       !     enddo
-       ! endif 
 
         !  .. computation polymer volume fraction      
        
@@ -348,6 +344,111 @@ contains
         endif
 
     end subroutine FEconf_brush_mul
+
+
+    subroutine FEconf_brush_mulnoVdW(FEconf,Econf)
+
+        !  .. variables and constant declaractions 
+
+        use globals, only : nseg, nsegtypes, nsize, cuantas
+        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, energychain
+        use field, only : xsol, psi, fdis, rhopol ,q ,lnproshift
+        use parameters
+        
+        real(dp), intent(out) :: FEconf,Econf
+        
+        ! .. declare local variables
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro
+        integer  :: i,t,g,gn,c,s,k       ! dummy indices
+        real(dp) :: FEconf_local
+        real(dp) :: Econf_local
+
+        ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
+
+        if(rank==0) then
+            do i = 1, size-1
+                dest = i
+                call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(psi , nsize+1 , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                do t=1,nsegtypes
+                    call MPI_SEND(fdis(:,t) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                    call MPI_SEND(rhopol(:,t) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                enddo
+            enddo
+        else
+            source = 0 
+            call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            call MPI_RECV(psi , nsize+1, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
+            do t=1,nsegtypes
+                call MPI_RECV(fdis(:,t) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
+                call MPI_RECV(rhopol(:,t) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            enddo
+        endif    
+
+        !     .. executable statements 
+
+        do t=1,nsegtypes
+            if(ismonomer_chargeable(t)) then
+                do i=1,nsize                                              
+                    lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i)-log(fdis(i,t))   ! auxilary variable palpha
+                enddo  
+            else
+                do i=1,nsize
+                     lnexppi(i,t) = log(xsol(i))*vpol(t)
+                enddo  
+            endif   
+        enddo      
+       
+        
+
+        !  .. computation polymer volume fraction      
+       
+        FEconf_local= 0.0_dp !init FEconf
+        Econf_local=0.0_dp ! init FEconf
+            
+        do c=1,cuantas         ! loop over cuantas
+            lnpro=0.0_dp-VdWscale%val*energychain(c)        ! internal energy  
+            do s=1,nseg        ! loop over segments                     
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro+ lnexppi(k,t)
+            enddo    
+            pro=exp(lnpro-lnproshift)
+            FEconf_local=FEconf_local+pro*log(pro)
+            Econf_local= Econf_local+pro*energychain(c)*VdWscale%val
+        enddo
+        
+        ! communicate FEconf
+
+        if(rank==0) then
+
+            FEconf=FEconf_local
+            Econf=Econf_local
+         
+
+            do i=1, size-1
+                source = i
+                call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                
+                FEconf=FEconf +FEconf_local
+                Econf =Econf+Econf_local                
+            enddo 
+        else     ! Export results
+            dest = 0
+            call MPI_SEND(FEconf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Econf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+        endif
+
+
+        if(rank==0) then
+            ! normalize
+            FEconf = FEconf/q-log(q)  
+            Econf = Econf/q  
+        endif
+
+    end subroutine FEconf_brush_mulnoVdW
 
 
     subroutine FEconf_elect(FEconf)

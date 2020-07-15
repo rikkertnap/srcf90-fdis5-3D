@@ -12,6 +12,8 @@ module chains
     logical, dimension(:,:), allocatable    :: ismonomer_of_type        ! ismomomer_of_type(s,t)= true if segment number "s" is of type "t" otherwise false 
     logical, dimension(:), allocatable      :: ismonomer_chargeable     ! ismonomer_chargeabl(s)=true if segment number type "t" is acid or base  
     real(dp), dimension(:), allocatable     :: energychain              ! energy chain   
+    real(dp), dimension(:), allocatable     :: energychain_init         ! energy chain   
+   
     logical, dimension(:),   allocatable    :: weightchain
 
     logical :: isHomopolymer
@@ -28,6 +30,7 @@ contains
         allocate(indexchain(nseg,cuantas+200))
         allocate(indexchain_init(nseg,cuantas+200))
         allocate(energychain(cuantas+200))
+        allocate(energychain_init(cuantas+200))
         allocate(weightchain(cuantas+200))
         allocate(isAmonomer(nseg)) 
         allocate(type_of_monomer(nseg)) 

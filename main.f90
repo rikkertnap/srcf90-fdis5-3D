@@ -98,6 +98,7 @@ program main
     call make_charge_table(ismonomer_chargeable,zpol,nsegtypes)
     call set_properties_chain(chainperiod,chaintype) 
     
+    
     if(isVdW) then 
         call make_VdWcoeff(info)
         if(info/=0) then
@@ -110,8 +111,10 @@ program main
     else
         call make_VdWeps(info)    
     endif  
+   
 
     call make_chains(chainmethod)   ! generate polymer configurations
+    call chain_filter()
     call allocate_field(nx,ny,nz,nsegtypes)
     call allocate_part_fnc()
     call init_field()
@@ -154,6 +157,7 @@ program main
             if(.not.allocated(fvec)) allocate(fvec(neq))
 
             call init_vars_input()  ! sets up chem potenitals
+            call make_chains(chainmethod)   ! generate polymer configura
             call chain_filter()
             call set_fcn()          ! why
 
