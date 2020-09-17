@@ -115,7 +115,7 @@ contains
             xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
             xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
             xNaCl(i)   = expmu%NaCl*(xsol(i)**vNaCl)
-            xpro(i)    = expmu%pro*(xsol(i)**vpro)
+            xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! protein or croder volumer fraction
         enddo
 
         !  fdis(i,t) is assocaited with fraction of monomer of type t at i in state 2 

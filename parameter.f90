@@ -109,6 +109,7 @@
     integer :: readinchains           ! nunmber of used/readin chains
     integer :: chainperiod            ! peridociy of repeat of A or B block 
     integer :: maxnchainsrotations    ! number of rotations read in from input.in, assigned to maxnchain in chaingenerator default 12  
+    integer :: maxnchainsrotationsxy  ! number of rotations read in from input.in, assigned to maxnctheta in chaingenerator default 1  
     integer :: tA                     ! segment number type of monomer type A  
     logical :: write_mc_chains        ! if true MC chain write of file
 
@@ -721,7 +722,7 @@ contains
         xbulk%sol=1.0_dp -xbulk%pro                   ! volume fraction solvent 
 
         expmu%pro   = xbulk%pro  /(xbulk%sol**vpro) 
-        print*,xbulk%pro,expmu%pro
+        ! print*,xbulk%pro,expmu%pro
 
     end subroutine init_expmu_neutral
 

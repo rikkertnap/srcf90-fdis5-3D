@@ -97,8 +97,7 @@ program main
     call make_sequence_chain(chainperiod,chaintype)
     call make_charge_table(ismonomer_chargeable,zpol,nsegtypes)
     call set_properties_chain(chainperiod,chaintype) 
-    
-    
+
     if(isVdW) then 
         call make_VdWcoeff(info)
         if(info/=0) then
@@ -111,7 +110,6 @@ program main
     else
         call make_VdWeps(info)    
     endif  
-   
 
     call make_chains(chainmethod)   ! generate polymer configurations
     call chain_filter()
@@ -134,7 +132,7 @@ program main
     allocate(x(neq))
     allocate(xguess(neq))
     allocate(fvec(neq))
- 
+
     
     if(runtype=="rangedist") then ! loop over distances
 
@@ -156,7 +154,7 @@ program main
             if(.not.allocated(xguess)) allocate(xguess(neq))
             if(.not.allocated(fvec)) allocate(fvec(neq))
 
-            call init_vars_input()  ! sets up chem potenitals
+            call init_vars_input()          ! sets up chem potenitals
             call make_chains(chainmethod)   ! generate polymer configura
             call chain_filter()
             call set_fcn()          ! why
@@ -250,12 +248,10 @@ program main
             
             
             call init_vars_input()  ! sets up chem potentials
-            !call chain_filter()      
-            !call set_fcn()
+            
             flag_solver = 0
 
             if(rank==0) then     ! node rank=0
-
                 call make_guess(x, xguess, isfirstguess)
                 call solver(x, xguess, tol_conv, fnorm, issolution)
                 call fcnptr(x, fvec, neq)

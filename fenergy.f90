@@ -48,7 +48,7 @@ module energy
     
 !   real(dp), parameter :: sigmaTOL = 0.00000001_dp     ! tolerance of surface coverage below no polymers 
 
-!    private :: sigmaTOL
+!   private :: sigmaTOL
 
 contains
 
@@ -61,7 +61,7 @@ contains
         character(len=lenText) :: text 
 
         select case (systype) 
-        case ("brush_mul","brush_mulnoVdW","more brushssdna")
+        case ("brush_mul","brush_mulnoVdW","brushssdna")
         
             call fcnenergy_electbrush_mul() 
             call fcnenergy_elect_alternative()

@@ -21,6 +21,11 @@ module myio
     integer, parameter ::  myio_err_chainsfile = 14 
     integer, parameter ::  myio_err_energyfile = 15
     integer, parameter ::  myio_err_dielect   = 16
+    integer, parameter ::  myio_err_graft     = 17
+    integer, parameter ::  myio_err_index     = 18
+    integer, parameter ::  myio_err_conf      = 19
+    integer, parameter ::  myio_err_nseg      = 20
+
 
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
@@ -37,9 +42,9 @@ module myio
     character(len=80), parameter  :: fmt6reals = "(6ES25.16E3)" 
     
     private
-    public :: read_inputfile, output_individualcontr_fe, output, compute_vars_and_output
-    public :: myio_err_chainsfile, myio_err_energyfile,write_chain_config
-
+    public :: read_inputfile, output_individualcontr_fe, output, compute_vars_and_output,write_chain_config
+    public :: myio_err_chainsfile, myio_err_energyfile, myio_err_chainmethod, myio_err_geometry
+    public :: myio_err_graft, myio_err_index, myio_err_conf, myio_err_nseg
     
 contains
 
@@ -61,7 +66,7 @@ subroutine read_inputfile(info)
     character(len=100) :: buffer, label
     integer :: pos
     integer :: line
-    logical :: isSet_maxnchains, isSet_precondition, isSet_savePalpha
+    logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha
 
     if (present(info)) info = 0
     
@@ -76,6 +81,7 @@ subroutine read_inputfile(info)
 
     ! defaults
     isSet_maxnchains  =.false.
+    isSet_maxnchainsxy=.false.  
     isSet_precondition=.false.
     isSet_savePalpha  =.false.  
     write_mc_chains   =.false.
@@ -171,6 +177,9 @@ subroutine read_inputfile(info)
             case ('maxnchains')    
                 read(buffer,*,iostat=ios) maxnchainsrotations  
                 isSet_maxnchains=.true.      
+            case ('maxnchainsxy')    
+                read(buffer,*,iostat=ios) maxnchainsrotationsXY
+                isSet_maxnchainsxy=.true.        
             case ('cuantas')
                 read(buffer,*,iostat=ios) max_confor
             case ('chainperiod')
@@ -203,6 +212,8 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) geometry
             case ('ngr_freq')
                 read(buffer,*,iostat=ios) ngr_freq 
+            case ('sgraft')
+                read(buffer,*,iostat=ios) sgraft    
             case ('gamma')
                 read(buffer,*,iostat=ios) gamma  
             case ('write_mc_chains')
@@ -301,7 +312,12 @@ subroutine read_inputfile(info)
     call set_value_isVdW(systype,isVdW)
     call set_value_isVdWintEne(systype, isVdWintEne)
     call set_value_nsegtypes(nsegtypes,chaintype,systype,info)
-    
+    call set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
+    call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
+    call set_value_precondition(precondition,isSet_precondition)
+
+
+    ! after set_value_isVdW
     call check_value_VdWeps(systype,isVdW,info_VdWeps)
     if (info_VdWeps == myio_err_VdWeps) then
         if (present(info)) info = info_VdWeps
@@ -776,6 +792,21 @@ subroutine set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
     endif
         
 end subroutine set_value_maxnchains
+
+
+    
+subroutine set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
+
+    integer, intent(inout) :: maxnchainsrotationsxy
+    logical, intent(in)  :: isSet_maxnchainsxy
+
+    if(.not.isSet_maxnchainsxy) then 
+        maxnchainsrotationsxy=1 ! default value
+    else
+        maxnchainsrotationsxy=abs(maxnchainsrotationsxy) !  make positive   
+    endif
+        
+end subroutine set_value_maxnchainsxy
 
 
 subroutine set_value_precondition(precondition,isSet_precondition)
@@ -1581,10 +1612,13 @@ subroutine output_neutral
         write(un_sys,*)'nseg        = ',nseg
         write(un_sys,*)'lseg        = ',lseg
         write(un_sys,*)'chainperiod = ',chainperiod
-        write(un_sys,*)'cuantas      = ',cuantas
+        write(un_sys,*)'cuantas     = ',cuantas
+        write(un_sys,*)'maxnchainsrot      = ',maxnchainsrotations     
+        write(un_sys,*)'maxnchainsrotxy    = ',maxnchainsrotationsxy  
         ! system description 
         write(un_sys,*)'systype     = ',systype
         write(un_sys,*)'delta       = ',delta  
+        write(un_sys,*)'nsize       = ',nsize  
         write(un_sys,*)'nx          = ',nx
         write(un_sys,*)'ny          = ',ny
         write(un_sys,*)'nzmax       = ',nzmax
@@ -1625,8 +1659,6 @@ subroutine output_neutral
     write(un_sys,*)'q           = ',q
     write(un_sys,*)'mu          = ',-log(q)
     write(un_sys,*)'height      = ',height
-    write(un_sys,*)'nsize       = ',nsize  
-    write(un_sys,*)'cuantas     = ',cuantas
     write(un_sys,*)'iterations  = ',iter
     
     ! .. closing files
@@ -1761,9 +1793,9 @@ subroutine make_filename_label(fnamelabel)
         
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr)) 
-        if(cCaCl2>=0.001) then 
+        if(cpro%val>=0.001) then 
             write(rstr,'(F5.3)')cpro%val
-        elseif(cCaCl2>0.0) then  
+        elseif(cpro%val>0.0) then  
             write(rstr,'(ES9.2E2)')cpro%val
         else 
             write(rstr,'(F3.1)')cpro%val
@@ -1882,7 +1914,7 @@ subroutine compute_vars_and_output()
     
     case ("neutral","neutralnoVdW")  
 
-        call fcnenergy()  
+        call fcnenergy() 
         call average_density_z(xpol,xpolz,height) 
         call output()           ! writing of output
     

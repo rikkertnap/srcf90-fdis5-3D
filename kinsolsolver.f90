@@ -75,7 +75,7 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
     !use ieee_arithmetic, only : ieee_is_nan    ! alternative for function isNaN in myutils
     use globals, only : nsize, neq, systype
     use kinsolvars
-    use parameters, only : iter
+    use parameters, only : iter, precondition
     use myutils
     use listfcn, only : set_contraints
 
@@ -182,9 +182,12 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
         stop
     endif
   
-    !     .. preconditioner  zero no preconditioner  
-    call fkinspilssetprec(0, ier) 
-
+    if(precondition) then
+        call fkinspilssetprec(1, ier) 
+    else     
+        !     .. preconditioner  zero no preconditioner  
+        call fkinspilssetprec(0, ier) 
+    endif    
     !     .. call solver
     call fkinsol(x, globalstrat, fscale, fscale, ier) 
     fnorm=rout(1) 

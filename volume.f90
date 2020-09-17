@@ -31,6 +31,7 @@ module volume
     real(dp) :: cos_two_beta        ! sqrt(cos(beta)**2 - sin(beta)**2)=cos(2beta) scales u and v coordinates 
     real(dp) :: sin_two_beta        ! sin(2beta)      
     integer  :: seed_graft          ! seed for graft points 
+    integer  :: sgraft              ! item number of graft point to which loop is attached 
     
     real(dp), dimension(:,:), allocatable :: position_graft
 

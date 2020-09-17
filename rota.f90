@@ -56,10 +56,10 @@ function rotation(xend,xendr,nseg)result(is_positive_z)
     is_positive_z=.true.
     i=2 
 
-    !do while((i.le.(nseg+1)).and.(is_positive_z)) 
-    !     if(xendr(1,i)<=0.0_dp) is_positive_z=.false.
-    !     i=i+1
-    !enddo
+    do while((i.le.(nseg+1)).and.(is_positive_z)) 
+        if(xendr(1,i)<=0.0_dp) is_positive_z=.false.
+        i=i+1
+    enddo
 
 end function rotation
 
