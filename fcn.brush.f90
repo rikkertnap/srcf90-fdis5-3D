@@ -165,30 +165,40 @@ contains
         !   .. import results 
 
         if (rank==0) then 
-          
+
+            do g=1,ngr
+                q(g)=0.0_dp
+            enddo    
+
+            g=1  
+            q(g)=local_q
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
                 enddo
             enddo
-    
-            q=local_q
-
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-            enddo
-             
+ 
             do i=1, size-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
-                q=q+local_q
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                q(g)=q(g)+local_q
             enddo 
-          
-            !call MPI_REDUCE(local_q, q, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)    
+           
+            do i=1, size-1
+                source = i
+                g =int(source/nset_per_graft)+1 
+                do t=1,nsegtypes
+                    call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                    do k=1,nsize
+                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                    enddo
+                enddo
+            enddo     
                 
 
             !     .. construction of fcn and volume fraction polymer             
-            rhopol0=(1.0_dp/volcell)/q  ! volume polymer segment per volume cell
+            rhopol0=(1.0_dp/volcell)  ! volume polymer segment per volume cell
 
             do t=1, nsegtypes
                 do i=1,n
@@ -231,13 +241,12 @@ contains
             
             dest = 0 
            
+            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+
             do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
-                    MPI_COMM_WORLD, ierr)
+                call MPI_SEND(local_rhopol(:,t),nsize, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
             enddo
 
-            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
-         
         endif
 
 
@@ -386,26 +395,38 @@ contains
 
         if (rank==0) then 
           
+            do g=1,ngr
+                q(g)=0.0_dp
+            enddo    
+
+            g=1  
+            q(g)=local_q
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
                 enddo
             enddo
-    
-            q=local_q
-
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-            enddo
-             
+ 
             do i=1, size-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
-                q=q+local_q
-            enddo                 
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                q(g)=q(g)+local_q
+            enddo 
+           
+            do i=1, size-1
+                source = i
+                g =int(source/nset_per_graft)+1 
+                do t=1,nsegtypes
+                    call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                    do k=1,nsize
+                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                    enddo
+                enddo
+            enddo     
 
             !     .. construction of fcn and volume fraction polymer             
-            rhopol0=(1.0_dp/volcell)/q  ! volume polymer segment per volume cell
+            rhopol0=(1.0_dp/volcell)  ! volume polymer segment per volume cell
 
             do t=1, nsegtypes
                 do i=1,n
@@ -442,13 +463,12 @@ contains
             
             dest = 0 
            
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
-                    MPI_COMM_WORLD, ierr)
-            enddo
-
             call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
-         
+
+            do t=1,nsegtypes
+                call MPI_SEND(local_rhopol(:,t),nsize, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+            enddo
+            
         endif
 
 
@@ -619,28 +639,40 @@ contains
         !   .. import results 
 
         if (rank==0) then 
+
+            do g=1,ngr
+                q(g)=0.0_dp
+            enddo    
           
+            g=1  
+            q(g)=local_q
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
                 enddo
             enddo
-
-            q=local_q
-        
-
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-            enddo
-             
+ 
             do i=1, size-1
                 source = i
-                call MPI_RECV(local_q, 1 , MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
-                q=q+local_q
+                call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                q(g)=q(g)+local_q
             enddo 
-          
+           
+            do i=1, size-1
+                source = i
+                g =int(source/nset_per_graft)+1 
+                do t=1,nsegtypes
+                    call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                    do k=1,nsize
+                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                    enddo
+                enddo
+            enddo     
+
+
             !     .. construction of fcn and volume fraction polymer             
-            rhopol0=(1.0_dp/volcell)/q ! volume polymer segment per volume cell
+            rhopol0=(1.0_dp/volcell)! volume polymer segment per volume cell
 
             do t=1, nsegtypes
                 if(ismonomer_chargeable(t)) then 
@@ -698,13 +730,13 @@ contains
             
             dest = 0 
            
+            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+
             do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
-                    MPI_COMM_WORLD, ierr)
+                call MPI_SEND(local_rhopol(:,t),nsize, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
             enddo
 
-            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
-         
+    
         endif
 
 
@@ -871,27 +903,37 @@ contains
         !   .. import results 
 
         if (rank==0) then 
-          
+
+            q=0.0_dp
             
+            g=1  
+            q(g)=local_q
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
                 enddo
             enddo
-
-            q=local_q
-
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-            enddo
-             
+ 
             do i=1, size-1
+                source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
-                q=q+local_q
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                q(g)=q(g)+local_q
             enddo 
-          
+           
+            do i=1, size-1
+                source = i
+                g =int(source/nset_per_graft)+1 
+                do t=1,nsegtypes
+                    call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                    do k=1,nsize
+                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                    enddo
+                enddo
+            enddo     
+
             !     .. construction of fcn and volume fraction polymer             
-            rhopol0=(1.0_dp/volcell)/q ! volume polymer segment per volume cell
+            rhopol0=(1.0_dp/volcell)! volume polymer segment per volume cell
 
             do t=1, nsegtypes
                 if(ismonomer_chargeable(t)) then 
@@ -947,12 +989,11 @@ contains
             
             dest = 0 
            
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
-                    MPI_COMM_WORLD, ierr)
-            enddo
+            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
 
-            call MPI_SEND(local_q, ngr_node , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+            do t=1,nsegtypes
+                call MPI_SEND(local_rhopol(:,t),nsize, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+            enddo
          
         endif
 
@@ -1204,27 +1245,38 @@ contains
         !   .. import results 
 
         if (rank==0) then 
-          
+
+            q=0.0_dp
+
+            g=1  
+            q(g)=local_q
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
                 enddo
             enddo
-
-            q=local_q
-
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-            enddo
-             
+ 
             do i=1, size-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
-                q=q+local_q
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                q(g)=q(g)+local_q
             enddo 
+           
+            do i=1, size-1
+                source = i
+                g =int(source/nset_per_graft)+1 
+                do t=1,nsegtypes
+                    call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                    do k=1,nsize
+                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                    enddo
+                enddo
+            enddo     
+
           
             !     .. construction of fcn and volume fraction polymer             
-            rhopol0=(1.0_dp/volcell)/q ! volume polymer segment per volume cell
+            rhopol0=(1.0_dp/volcell) ! volume polymer segment per volume cell
 
             do t=1, nsegtypes
                 if(ismonomer_chargeable(t)) then 
@@ -1290,13 +1342,12 @@ contains
             
             dest = 0 
            
+            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+
             do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
-                    MPI_COMM_WORLD, ierr)
+                call MPI_SEND(local_rhopol(:,t),nsize, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
             enddo
 
-            call MPI_SEND(local_q, ngr_node , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
-         
         endif
 
     end subroutine fcnbrushborn
@@ -1474,19 +1525,36 @@ contains
 
         if (rank==0) then
           
-            call MPI_REDUCE(rhopol_local(:,A), rhopol(:,A), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-            call MPI_REDUCE(rhopol_local(:,B), rhopol(:,B), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-    
-            q=q_local
-
+            g=1  
+            q(g)=q_local
+        
+            do i=1,n
+                rhopol(i,A)=rhopol_local(i,A)/q(g) ! polymer density 
+                rhopol(i,B)=rhopol_local(i,B)/q(g) ! polymer density 
+            enddo
+            
             do i=1, size-1
                 source = i
                 call MPI_RECV(q_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
-                q=q+q_local
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                q(g)=q(g)+q_local
             enddo 
+           
+            do i=1, size-1
+                source = i
+                g =int(source/nset_per_graft)+1 
+                
+                call MPI_RECV(rhopol_local(:,A), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(rhopol_local(:,B), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
 
+                do k=1,nsize
+                    rhopol(i,A)=rhopol(k,A)+rhopol_local(k,A)/q(g) ! polymer density 
+                    rhopol(i,B)=rhopol(k,B)+rhopol_local(k,B)/q(g) ! polymer
+                enddo
+            enddo
+    
             !   .. construction of fcn and volume fraction polymer        
-            rhopol0=(1.0_dp/volcell)/q ! volume polymer segment per volume cell
+            rhopol0=(1.0_dp/volcell)! volume polymer segment per volume cell
 
             do i=1,n
 
@@ -1534,9 +1602,10 @@ contains
         else          ! Export results
 
             dest = 0
-            call MPI_REDUCE(rhopol_local(:,A), rhopol(:,A), nsize, MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
-            call MPI_REDUCE(rhopol_local(:,B), rhopol(:,B), nsize, MPI_DOUBLE_PRECISION,MPI_SUM,0,MPI_COMM_WORLD,ierr)
             call MPI_SEND(q_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(rhopol_local(:,A), nsize, MPI_DOUBLE_PRECISION,dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(rhopol_local(:,B), nsize, MPI_DOUBLE_PRECISION,dest, tag, MPI_COMM_WORLD, ierr)
+           
 
         endif
 
@@ -1643,26 +1712,36 @@ contains
 
         if (rank==0) then 
           
+            q=0.0_dp
+
+            g=1  
+            q(g)=local_q
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
                 enddo
             enddo
-    
-            q=local_q
-
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-            enddo
-             
+ 
             do i=1, size-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
-                q=q+local_q
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                q(g)=q(g)+local_q
             enddo 
-          
+           
+            do i=1, size-1
+                source = i
+                g =int(source/nset_per_graft)+1 
+                do t=1,nsegtypes
+                    call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                    do k=1,nsize
+                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                    enddo
+                enddo
+            enddo     
+                
             !     .. construction of fcn and volume fraction polymer             
-            rhopol0=(1.0_dp/volcell)/q  ! volume polymer segment per volume cell
+            rhopol0=(1.0_dp/volcell) ! volume polymer segment per volume cell
 
             !rhopol0=0.0_dp
             do t=1, nsegtypes
@@ -1689,13 +1768,13 @@ contains
             
             dest = 0 
            
+            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+
             do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
-                    MPI_COMM_WORLD, ierr)
+                call MPI_SEND(local_rhopol(:,t),nsize, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
             enddo
 
-            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
-         
+
         endif
 
 end subroutine fcnneutral
@@ -1822,26 +1901,36 @@ end subroutine fcnneutral
 
         if (rank==0) then 
           
+            q=0.0_dp
+            g=1  
+            q(g)=local_q
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
                 enddo
             enddo
-    
-            q=local_q
-
-            do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, MPI_COMM_WORLD, ierr)
-            enddo
-             
+ 
             do i=1, size-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
-                q=q+local_q
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                q(g)=q(g)+local_q
             enddo 
-          
+           
+            do i=1, size-1
+                source = i
+                g =int(source/nset_per_graft)+1 
+                do t=1,nsegtypes
+                    call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                    do k=1,nsize
+                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                    enddo
+                enddo
+            enddo     
+                
+           
             !     .. construction of fcn and volume fraction polymer             
-            rhopol0=(1.0_dp/volcell)/q  ! volume polymer segment per volume cell
+            rhopol0=(1.0_dp/volcell)  ! volume polymer segment per volume cell
 
             !rhopol0=0.0_dp
             do t=1, nsegtypes
@@ -1866,13 +1955,12 @@ end subroutine fcnneutral
             
             dest = 0 
            
+            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+
             do t=1,nsegtypes
-                call MPI_REDUCE(local_rhopol(:,t), rhopol(:,t), nsize, MPI_DOUBLE_PRECISION, MPI_SUM,0, &
-                    MPI_COMM_WORLD, ierr)
+                call MPI_SEND(local_rhopol(:,t),nsize, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
             enddo
 
-            call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
-         
         endif
 
     end subroutine fcnneutralnoVdW

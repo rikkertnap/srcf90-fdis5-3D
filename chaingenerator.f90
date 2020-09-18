@@ -74,6 +74,7 @@ subroutine make_chains_mc()
     use volume, only : nx, ny, nz, delta
     use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
     use volume, only : ut, vt
+    use volume, only : position_graft, nset_per_graft
     use myutils
     use cadenas_linear
     use cadenas_sequence
@@ -144,7 +145,12 @@ subroutine make_chains_mc()
         if(write_mc_chains) call write_chain_lammps_trj(un_trj,chain,nchains)     
             
         if(geometry=="cubic") then
-            
+
+            g=int(rank/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+
+            xpt =  position_graft(g,1)  ! position of graft point
+            ypt =  position_graft(g,2)  
+
             do j=1,nchains   
             
                 do s=1,nseg                          !  transforming form real- to lattice coordinates
@@ -166,9 +172,9 @@ subroutine make_chains_mc()
                     do s=1,nseg
 
                         ! .. translation onto center box 
-                        x(s) = xpp(s) + xcm
-                        y(s) = ypp(s) + ycm
-                        z(s) = zp(s)  + zcm
+                        x(s) = xpp(s) + xpt
+                        y(s) = ypp(s) + ypt
+                        z(s) = zp(s)  
 
                         ! .. periodic boundary conditions in x-direction and y-direction 
                         chain_rot(2,s) = pbc(x(s),Lx)
@@ -301,12 +307,12 @@ end subroutine make_chains_mc
 subroutine read_chains_lammps_XYZ(info)
 
     !     .. variable and constant declaractions  
-    use mpivars, only : rank                                                                                     
+    use mpivars, only : rank, size                                                                                     
     use globals
     use chains
     use random
     use parameters
-    use volume
+    use volume, only : sgraft, nset_per_graft,position_graft
     use chain_rotation
     use myio, only : myio_err_chainsfile, myio_err_energyfile,myio_err_index,myio_err_conf
     use myutils,  only :  print_to_log, LogUnit, lenText, newunit
@@ -317,7 +323,7 @@ subroutine read_chains_lammps_XYZ(info)
 
     ! .. local variables
 
-    integer :: i,j,s,rot,g,gn      ! dummy indices
+    integer :: i,j,s,rot,g         ! dummy indices
     integer :: idx                 ! index label
     integer :: ix,iy,idxtmp,ntheta
     integer :: nchains              ! number of rotations
@@ -338,7 +344,7 @@ subroutine read_chains_lammps_XYZ(info)
     real(dp) :: xc,yc,zc          
     real(dp) :: energy                                               
     character(len=8) :: fname
-    integer :: ios 
+    integer :: ios ,rankfile
     character(len=30) :: str
     integer :: nchain, rotmax, maxattempts, idatom
     integer :: un    ! unit number
@@ -354,8 +360,9 @@ subroutine read_chains_lammps_XYZ(info)
     call read_graftpts_lammps_trj(info)
     if(info/=0) return
 
-    ! .. open file                                                                                              
-    write(istr,'(I4)')rank
+    ! .. open file 
+    rankfile=int(rank*nset_per_graft/size)                                                                                                  
+    write(istr,'(I4)')rankfile
     fname='traj.'//trim(adjustl(istr))//'.xyz'
     inquire(file=fname,exist=exist)
     if(exist) then
@@ -563,11 +570,11 @@ end subroutine read_chains_lammps_XYZ
 
 subroutine read_graftpts_lammps_trj(info)
 
-    use mpivars, only : rank
+    use mpivars, only : rank, size
     use parameters, only : unit_conv
     use myio, only : myio_err_chainsfile, myio_err_graft
     use myutils,  only : newunit
-    use volume, only : sgraft
+    use volume, only : sgraft,nset_per_graft,position_graft
 
     ! .. argument
 
@@ -576,7 +583,7 @@ subroutine read_graftpts_lammps_trj(info)
     ! .. local variables
 
     character(len=25) :: fname
-    integer :: ios 
+    integer :: ios, rankfile
     real(dp) :: xc,yc,zc          
     integer  :: ix,iy,iz,un,s, i,t
     integer  :: item,moltype,nsegfile,idatom
@@ -587,14 +594,15 @@ subroutine read_graftpts_lammps_trj(info)
     ! .. executable statements 
     info=0
 
-    !. . open file                                                                                              
-    write(istr,'(I4)')rank
+    !. . open file   
+    rankfile=int(rank*nset_per_graft/size)                                                                                                
+    write(istr,'(I4)')rankfile
     fname='traj-graft.'//trim(adjustl(istr))//'.lammpstrj'
     inquire(file=fname,exist=exist)
     if(exist) then
         open(unit=newunit(un),file=fname,status='old',iostat=ios)
     else
-        print*,'traj-graft.rank.lammostrj file does not exit'
+        print*,'traj-graft.rank.lammpstrj file does not exit'
         info = myio_err_chainsfile
         return
     endif
@@ -649,12 +657,12 @@ end subroutine
 subroutine read_chains_lammps_trj(info)
 
     !     .. variable and constant declaractions  
-    use mpivars, only : rank                                                                                    
+    use mpivars, only : rank,size                                                                                   
     use globals
     use chains
     use random
     use parameters
-    use volume
+    use volume,  only: position_graft, sgraft, nx, ny,nz, delta
     use chain_rotation, only : rotationXaxis
     use myio, only : myio_err_chainsfile, myio_err_energyfile, myio_err_index
     use myio, only : myio_err_conf, myio_err_nseg, myio_err_geometry
@@ -688,7 +696,7 @@ subroutine read_chains_lammps_trj(info)
     integer  :: xi,yi,zi         
     real(dp) :: energy, energy2                                              
     character(len=25) :: fname
-    integer :: ios 
+    integer :: ios, rankfile
     character(len=30) :: str
     real(dp) :: xbox0,xbox1,scalefactor
     integer :: nchain, rotmax, maxattempts, idatom, item, moltype, segcenter
@@ -705,8 +713,9 @@ subroutine read_chains_lammps_trj(info)
     call read_graftpts_lammps_trj(info)
     if(info/=0) return
 
-    ! .. open file                                                                                              
-    write(istr,'(I4)')rank
+    ! .. open file   
+    rankfile=int(rank*nset_per_graft/size)                                                                                         
+    write(istr,'(I4)')rankfile
     fname='traj.'//trim(adjustl(istr))//'.lammpstrj'
     
     inquire(file=fname,exist=exist)
@@ -802,13 +811,18 @@ subroutine read_chains_lammps_trj(info)
                     
                     if(geometry=="cubic") then 
 
+                        g=int(rank/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+
+                        xpt =  position_graft(g,1)  ! position of graft point
+                        ypt =  position_graft(g,2)  
+
                         do ntheta=1,maxntheta      ! .. rotation in xy-plane and translation to center of xy-plane
 
                             theta= ntheta * theta_angle
 
                             do s=1,nseg
-                                xp(s)=  chain_rot(1,s)*cos(theta)+chain_rot(2,s)*sin(theta) + xcm
-                                yp(s)= -chain_rot(1,s)*sin(theta)+chain_rot(2,s)*cos(theta) + ycm
+                                xp(s)=  chain_rot(1,s)*cos(theta)+chain_rot(2,s)*sin(theta) + xpt
+                                yp(s)= -chain_rot(1,s)*sin(theta)+chain_rot(2,s)*cos(theta) + ypt
                                 zp(s)=  chain_rot(3,s)   !+ zcm =  0                                 
                             enddo 
                        
@@ -847,14 +861,19 @@ subroutine read_chains_lammps_trj(info)
                             
                     else if(geometry=="prism") then
                     
+                        g=int(rank/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+
+                        xpt =  position_graft(g,1)  ! position of graft point
+                        ypt =  position_graft(g,2)  
+
 
                         do ntheta=1,maxntheta      ! .. rotation in xy-plane and translation to center of xy-plane
 
                             theta= ntheta * theta_angle
 
                             do s=1,nseg
-                                xp(s)=  chain_rot(1,s)*cos(theta)+chain_rot(2,s)*sin(theta) + xcm
-                                yp(s)= -chain_rot(1,s)*sin(theta)+chain_rot(2,s)*cos(theta) + ycm
+                                xp(s)=  chain_rot(1,s)*cos(theta)+chain_rot(2,s)*sin(theta) + xpt
+                                yp(s)= -chain_rot(1,s)*sin(theta)+chain_rot(2,s)*cos(theta) + ypt
                                 zp(s)=  chain_rot(3,s)   !+ zcm =  0                                 
                             enddo 
                        

@@ -59,6 +59,7 @@ contains
         use field, only : xsol, rhopol, q
         use parameters, only : vpol, isVdW, VdWscale
         use VdW, only : VdW_contribution_exp
+        use volume, only : ngr, nset_per_graft
 
         real(dp), intent(out) :: FEconf,Econf
         
@@ -68,6 +69,8 @@ contains
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
+        real(dp) :: FEconf_array(ngr)
+        real(dp) :: Econf_array(ngr)
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -104,7 +107,7 @@ contains
         !  .. computation polymer volume fraction      
        
         FEconf_local= 0.0_dp !init FEconf
-        Econf_local=0.0_dp ! init FEconf
+        Econf_local=0.0_dp ! init  Econf
             
         do c=1,cuantas         ! loop over cuantas
             pro=exp(-VdWscale%val*energychain(c))     
@@ -120,14 +123,24 @@ contains
         ! communicate FEconf
 
         if(rank==0) then
-            FEconf=FEconf_local
-            Econf=Econf_local
+
+            ! normalize
+            FEconf_array=0.0_dp
+            Econf_array=0.0_dp  
+
+            FEconf_array(1)=FEconf_local
+            Econf_array(1)=Econf_local
+            
             do i=1, size-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                FEconf=FEconf +FEconf_local
-                Econf =Econf+Econf_local
+                !FEconf=FEconf +FEconf_local
+                !Econf =Econf+Econf_local
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                FEconf_array(g)=FEconf_array(g)+FEconf_local
+                Econf_array(g) =Econf_array(g) +Econf_local
+                
             enddo 
         else     ! Export results
             dest = 0
@@ -137,9 +150,13 @@ contains
 
 
         if(rank==0) then
-            ! normalize
-            FEconf = FEconf/q-log(q)  
-            Econf = Econf/q  
+             ! normalize
+            FEconf=0.0_dp
+            Econf=0.0_dp
+            do g=1,ngr 
+                FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))  
+                Econf = Econf + Econf_array(g)/q(g)  
+            enddo      
         endif
 
     end subroutine FEconf_neutral
@@ -156,6 +173,7 @@ contains
         use field, only : xsol, rhopol, q, lnproshift
         use parameters, only : vpol, isVdW, VdWscale
         use VdW, only : VdW_contribution_exp
+        use volume, only : ngr, nset_per_graft
 
         real(dp), intent(out) :: FEconf,Econf
         
@@ -165,6 +183,8 @@ contains
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
+        real(dp) :: FEconf_array(ngr)
+        real(dp) :: Econf_array(ngr)
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -212,14 +232,22 @@ contains
         ! communicate FEconf
 
         if(rank==0) then
-            FEconf=FEconf_local
-            Econf=Econf_local
+            ! normalize
+            FEconf_array=0.0_dp
+            Econf_array=0.0_dp  
+
+            FEconf_array(1)=FEconf_local
+            Econf_array(1)=Econf_local
+
             do i=1, size-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                FEconf=FEconf +FEconf_local
-                Econf =Econf+Econf_local
+            
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                FEconf_array(g)=FEconf_array(g)+FEconf_local
+                Econf_array(g) =Econf_array(g) +Econf_local
+                
             enddo 
         else     ! Export results
             dest = 0
@@ -229,9 +257,13 @@ contains
 
 
         if(rank==0) then
-            ! normalize
-            FEconf = FEconf/q-log(q)  
-            Econf = Econf/q  
+             ! normalize
+            FEconf=0.0_dp
+            Econf=0.0_dp
+            do g=1,ngr 
+                FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))  
+                Econf = Econf + Econf_array(g)/q(g)  
+            enddo    
         endif
 
     end subroutine FEconf_neutral_noVdW
@@ -255,6 +287,8 @@ contains
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
+        real(dp) :: FEconf_array(ngr)
+        real(dp) :: Econf_array(ngr)
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -318,17 +352,21 @@ contains
 
         if(rank==0) then
 
-            FEconf=FEconf_local
-            Econf=Econf_local
-         
 
+             ! normalize
+            FEconf_array=0.0_dp
+            Econf_array=0.0_dp  
+
+            FEconf_array(1)=FEconf_local
+            Econf_array(1)=Econf_local
+            
             do i=1, size-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                
-                FEconf=FEconf +FEconf_local
-                Econf =Econf+Econf_local                
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                FEconf_array(g)=FEconf_array(g)+FEconf_local
+                Econf_array(g) =Econf_array(g) +Econf_local             
             enddo 
         else     ! Export results
             dest = 0
@@ -339,8 +377,8 @@ contains
 
         if(rank==0) then
             ! normalize
-            FEconf = FEconf/q-log(q)  
-            Econf = Econf/q  
+            FEconf = FEconf/q(1)-log(q(1))  
+            Econf = Econf/q(1)  
         endif
 
     end subroutine FEconf_brush_mul
@@ -354,6 +392,7 @@ contains
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, energychain
         use field, only : xsol, psi, fdis, rhopol ,q ,lnproshift
         use parameters
+        use volume, only : ngr, nset_per_graft
         
         real(dp), intent(out) :: FEconf,Econf
         
@@ -363,6 +402,8 @@ contains
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
+        real(dp) :: FEconf_array(ngr)
+        real(dp) :: Econf_array(ngr)
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -444,8 +485,8 @@ contains
 
         if(rank==0) then
             ! normalize
-            FEconf = FEconf/q-log(q)  
-            Econf = Econf/q  
+            FEconf = FEconf/q(1)-log(q(1))  
+            Econf = Econf/q(1)  
         endif
 
     end subroutine FEconf_brush_mulnoVdW
@@ -469,7 +510,8 @@ contains
         real(dp) :: pro
         real(dp) :: FEconf_local
         real(dp) :: q_local
-       
+        real(dp) :: FEconf_array(ngr)
+        real(dp) :: Econf_array(ngr)
         ! .. executable statements 
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
@@ -536,7 +578,7 @@ contains
 
         if(rank==0) then
             ! normalize
-            FEconf = FEconf/q-log(q)    
+            FEconf = FEconf/q(1)-log(q(1))    
         endif
 
     end subroutine FEconf_elect

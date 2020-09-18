@@ -31,9 +31,9 @@ module field
     real(dp), dimension(:,:), allocatable :: fdis   ! degree of dissociation of acid monomer
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
     real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
-     
-    real(dp), allocatable :: q        ! normalization partion fnc polymer 
-    real(dp), allocatable :: lnq      ! exponent of normalization partion fnc polymer 
+      
+    real(dp), dimension(:), allocatable :: q         ! normalization partion fnc polymer 
+    real(dp), dimension(:), allocatable :: lnq      ! exponent of normalization partion fnc polymer 
 
     real(dp) :: lnproshift ! shift in exponetn palpha
 
@@ -108,9 +108,12 @@ contains
     end subroutine deallocate_field
 
 
-    subroutine allocate_part_fnc()
+    subroutine allocate_part_fnc(N)
        
-        allocate(q)
+        integer, intent(in) :: N
+
+        allocate(lnq(N))
+        allocate(q(N))
 
     end subroutine allocate_part_fnc
 

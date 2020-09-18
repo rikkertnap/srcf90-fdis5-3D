@@ -160,7 +160,9 @@ contains
         FEbind = FEbindA+FEbindB
         
         ! .. calcualtion of FEq
-        FEq=-log(q)    
+        do g=1,ngr
+            FEq=FEq-log(q(g))    
+        enddo
             
         !     .. total free energy  
 
@@ -440,7 +442,10 @@ contains
         endif      
 
         ! .. calcualtion of FEq
-        FEq=-log(q)  
+        do g=1,ngr
+            FEq=FEq-log(q(g))    
+        enddo
+     
 
         ! Shift in palpha  i.e q 
         Eshift=lnproshift 
@@ -478,7 +483,7 @@ contains
 
         !     .. local arguments 
     
-        integer  :: i,j,t              ! dummy variables 
+        integer  :: i,j,t,g             ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
         integer  :: ier
         logical  :: alloc_fail
@@ -530,7 +535,10 @@ contains
         ! Shift in palpha  i.e q 
         Eshift=lnproshift 
 
-        FEq=-log(q)  
+        do g=1,ngr
+            FEq=FEq-log(q(g))    
+        enddo
+       
         
         !  .. total free energy 
 
