@@ -98,6 +98,8 @@ program main
     call make_charge_table(ismonomer_chargeable,zpol,nsegtypes)
     call set_properties_chain(chainperiod,chaintype) 
 
+    print*,"isVdW=",isVdW
+    
     if(isVdW) then 
         call make_VdWcoeff(info)
         if(info/=0) then

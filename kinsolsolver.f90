@@ -249,7 +249,6 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
     
     call fkinfree             ! free memory
     deallocate(pp)
-    return
   
 end subroutine kinsol_gmres_solver
 

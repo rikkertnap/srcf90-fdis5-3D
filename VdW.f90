@@ -25,8 +25,7 @@ module VdW
     integer, parameter :: Vdw_err_vdwcoeff_exist = 5 
     integer, parameter :: Vdw_err_vdwcoeff_not_exist = 6
 
-    private
-    public :: make_VdWcoeff,VdW_contribution_exp_diblock,VdW_contribution_exp_homo,VdW_contribution_exp
+    public :: make_VdWcoeff,VdW_contribution_exp_diblock,VdW_contribution_exp_homo,VdW_contribution_exp,VdW_contribution_lnexp
     public :: VdW_energy_homo,VdW_energy_diblock,VdW_energy,  make_VdWeps
 
 contains
@@ -483,6 +482,59 @@ subroutine VdW_contribution_exp(rhopol,exppi,segtype)
 
 end subroutine VdW_contribution_exp
 
+
+! this compute contribution to Palpha
+
+subroutine VdW_contribution_lnexp(rhopol,lnexppi,segtype)
+
+    use globals, only : nsize, nsegtypes
+    use volume, only : nx,ny,nz,coordinateFromLinearIndex,linearIndexFromCoordinate
+    use parameters, only : VdWeps
+
+    real(dp), intent(in) :: rhopol(:,:)
+    real(dp), intent(inout) :: lnexppi(:)
+    integer,  intent(in) :: segtype
+
+    integer :: id,ix,iy,iz, jx,jy,jz, ax,ay,az
+    real(dp) :: protemp
+    integer :: t
+    
+    !  assign rhopoltmp 
+    
+    do t=1, nsegtypes
+        do id=1,nsize
+            call coordinateFromLinearIndex(id, ix, iy, iz)
+            rhopoltmp(ix,iy,iz,t) = rhopol(id,t)     
+        enddo
+    enddo
+
+    do ix=1,nx
+        do iy=1,ny
+            do iz=1,nz
+                protemp= 0.0_dp
+                do ax = -range,range 
+                    jx = ix+ax
+                    jx = ipbc(jx,nx) ! mod(jx-1+5*dimx, dimx) + 1
+                    do ay = -range,range
+                        jy = iy+ay
+                        jy = ipbc(jy,ny) 
+                        do az = -range,range
+                            jz = iz+az
+                            jz = ipbc(jz,nz)
+                            do t=1,nsegtypes
+                                protemp = protemp + VdWeps(segtype,t) * VdWcoeff(ax,ay,az,segtype,t) &
+                                    * rhopoltmp(jx,jy,jz,t)
+                            enddo
+                        enddo
+                    enddo
+                enddo
+                call linearIndexFromCoordinate(ix,iy,iz,id)
+                lnexppi(id) = lnexppi(id) + protemp
+            enddo
+        enddo
+    enddo
+
+end subroutine VdW_contribution_lnexp
 
 
 function VdW_energy_homo(rhopol)result(EVdW)

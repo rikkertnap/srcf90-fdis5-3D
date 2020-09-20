@@ -410,7 +410,7 @@ subroutine init_guess_multinoVdW(x, xguess)
             enddo
         endif            
        
-         do i=1,3
+         do i=1,2
             close(un_file(i))
         enddo
 

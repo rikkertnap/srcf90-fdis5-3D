@@ -56,15 +56,15 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, energychain
-        use field, only : xsol, rhopol, q
+        use field, only : xsol, rhopol, q, lnproshift
         use parameters, only : vpol, isVdW, VdWscale
-        use VdW, only : VdW_contribution_exp
+        use VdW, only : VdW_contribution_lnexp
 
         real(dp), intent(out) :: FEconf,Econf
         
         ! .. declare local variables
-        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro, lnpro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
@@ -91,13 +91,13 @@ contains
 
         do t=1,nsegtypes
             do i=1,nsize
-                exppi(i,t) = xsol(i)**vpol(t)
+                lnexppi(i,t) = log(xsol(i))*vpol(t)
             enddo    
         enddo      
        
         if(isVdW) then 
             do t=1,nsegtypes  
-                call VdW_contribution_exp(rhopol,exppi(:,t),t)
+                call VdW_contribution_lnexp(rhopol,lnexppi(:,t),t)
             enddo
         endif 
 
@@ -107,12 +107,13 @@ contains
         Econf_local=0.0_dp ! init FEconf
             
         do c=1,cuantas         ! loop over cuantas
-            pro=exp(-VdWscale%val*energychain(c))     
+            lnpro=-VdWscale%val*energychain(c)     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro*exppi(k,t)
-            enddo    
+                lnpro = lnpro+lnexppi(k,t)
+            enddo  
+            pro=exp(lnpro-lnproshift)  
             FEconf_local=FEconf_local+pro*log(pro)
             Econf_local= Econf_local+pro*energychain(c)*VdWscale%val
         enddo
@@ -243,15 +244,15 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, energychain
-        use field, only : xsol,psi, fdis,rhopol,q
+        use field, only : xsol,psi, fdis,rhopol,q,lnproshift
         use parameters
-        use VdW, only : VdW_contribution_exp
+        use VdW, only : VdW_contribution_lnexp
 
         real(dp), intent(out) :: FEconf,Econf
         
         ! .. declare local variables
-        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro, lnpro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
@@ -283,18 +284,18 @@ contains
         do t=1,nsegtypes
             if(ismonomer_chargeable(t)) then
                 do i=1,nsize                                              
-                    exppi(i,t) = (xsol(i)**vpol(t))*exp(-zpol(t,2)*psi(i) )/fdis(i,t)   ! auxilary variable palpha
+                    lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i) -log(fdis(i,t))   ! auxilary variable palpha
                 enddo  
             else
                 do i=1,nsize
-                     exppi(i,t) = xsol(i)**vpol(t)
+                     lnexppi(i,t) = log(xsol(i))*vpol(t)
                 enddo  
             endif   
         enddo      
        
         if(isVdW) then 
             do t=1,nsegtypes  
-                call VdW_contribution_exp(rhopol,exppi(:,t),t)
+                call VdW_contribution_lnexp(rhopol,lnexppi(:,t),t)
             enddo
         endif 
 
@@ -304,12 +305,13 @@ contains
         Econf_local=0.0_dp ! init FEconf
             
         do c=1,cuantas         ! loop over cuantas
-            pro=exp(-energychain(c))     
-            do s=1,nseg        ! loop over segments                     
+            lnpro=-VdWscale%val*energychain(c)     
+            do s=1,nseg        ! lloop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro*exppi(k,t)
+                lnpro = lnpro+lnexppi(k,t)
             enddo    
+            pro=exp(lnpro-lnproshift)
             FEconf_local=FEconf_local+pro*log(pro)
             Econf_local= Econf_local+pro*energychain(c)
         enddo
