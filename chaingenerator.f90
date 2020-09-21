@@ -151,6 +151,7 @@ subroutine make_chains_mc()
             xpt =  position_graft(g,1)  ! position of graft point
             ypt =  position_graft(g,2)  
 
+
             do j=1,nchains   
             
                 do s=1,nseg                          !  transforming form real- to lattice coordinates
@@ -662,7 +663,7 @@ subroutine read_chains_lammps_trj(info)
     use chains
     use random
     use parameters
-    use volume,  only: position_graft, sgraft, nx, ny,nz, delta
+    use volume,  only: position_graft, sgraft, nx, ny,nz, delta, nset_per_graft
     use chain_rotation, only : rotationXaxis
     use myio, only : myio_err_chainsfile, myio_err_energyfile, myio_err_index
     use myio, only : myio_err_conf, myio_err_nseg, myio_err_geometry
@@ -749,7 +750,7 @@ subroutine read_chains_lammps_trj(info)
     ycm= Ly/2.0_dp
     zcm= 0.0_dp
 
-    weightchain=.true.
+    weightchain=.true. 
 
     do while ((conf<max_confor).and.(ios==0))
     
@@ -815,6 +816,7 @@ subroutine read_chains_lammps_trj(info)
 
                         xpt =  position_graft(g,1)  ! position of graft point
                         ypt =  position_graft(g,2)  
+                        print*,rank,g,xpt,ypt
 
                         do ntheta=1,maxntheta      ! .. rotation in xy-plane and translation to center of xy-plane
 

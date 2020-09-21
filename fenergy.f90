@@ -408,7 +408,7 @@ contains
             qres = qres + rhoq(i)
         enddo
 
-        checkphi=nseg
+        checkphi=nseg*ngr
         do t=1,nsegtypes
             sumphi(t)=0.0_dp
             do i=1,nsize    
@@ -512,7 +512,7 @@ contains
             FErho = FErho - xsol(i) -xpro(i)/vpro 
         enddo
 
-        checkphi=nseg
+        checkphi=nseg*ngr
         do t=1,nsegtypes
             sumphi(t)=0.0_dp
             do i=1,nsize    

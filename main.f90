@@ -134,6 +134,7 @@ program main
     allocate(fvec(neq))
 
     
+
     if(runtype=="rangedist") then ! loop over distances
 
         nz = nzmax
@@ -277,6 +278,7 @@ program main
 
             if(rank==0) then
 
+                call compute_vars_and_output()
                 if(isSolution) then
                     call compute_vars_and_output()
                     isfirstguess =.false.

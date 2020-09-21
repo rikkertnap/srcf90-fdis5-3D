@@ -44,7 +44,7 @@ contains
         use chains
         use field
         use vectornorm
-        use VdW 
+        use VdW, only : VdW_contribution_lnexp
         use surface
         use Poisson
 
@@ -61,12 +61,14 @@ contains
         
         real(dp) :: local_rhopol(nsize,nsegtypes)
         real(dp) :: local_q
-        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro
         integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
         real(dp) :: norm
         real(dp) :: rhopol0 !integra_q
         integer  :: noffset
+        real(dp) :: locallnproshift(2), globallnproshift(2)
+
 
         !     .. executable statements 
 
@@ -126,12 +128,12 @@ contains
             if(ismonomer_chargeable(t)) then
                 do i=1,n                                         
                     fdis(i,t)  = 1.0_dp/(1.0_dp+xHplus(i)/(K0a(t)*xsol(i)))      
-                    exppi(i,t) = (xsol(i)**vpol(t))*exp(-zpol(t,2)*psi(i) )/fdis(i,t)   ! auxilary variable palpha
+                    lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i) -log(fdis(i,t))   ! auxilary variable palpha
                 enddo  
             else
                 do i=1,n
                     fdis(i,t)  = 0.0_dp
-                    exppi(i,t) = xsol(i)**vpol(t)
+                    lnexppi(i,t) = log(xsol(i))*vpol(t)
                 enddo  
             endif   
         enddo      
@@ -139,21 +141,43 @@ contains
         ! Van der Waals   
         if(isVdW) then 
             do t=1,nsegtypes  
-                call VdW_contribution_exp(rhopolin,exppi(:,t),t)
+                call VdW_contribution_lnexp(rhopolin,lnexppi(:,t),t)
             enddo
         endif 
 
         !  .. computation polymer volume fraction      
 
         local_q = 0.0_dp    ! init q
-             
+        lnpro = 0.0_dp
+        
         do c=1,cuantas         ! loop over cuantas
-            pro=exp(-VdWscale%val*energychain(c))     ! initial weight conformation (1 or 0)
+
+            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro *exppi(k,t)
-            enddo    
+                lnpro = lnpro +lnexppi(k,t)
+            enddo   
+        enddo
+
+        locallnproshift(1)=lnpro/cuantas
+        locallnproshift(2)=rank  
+    
+        call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
+        call MPI_ALLREDUCE(locallnproshift, globallnproshift, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
+       
+        lnproshift=globallnproshift(1)
+             
+             
+        do c=1,cuantas         ! loop over cuantas
+            lnpro=-VdWscale%val*energychain(c)     ! initial weight conformation (1 or 0)
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro +lnexppi(k,t)
+            enddo   
+            pro=exp(lnpro-lnproshift) 
             local_q = local_q+pro
             do s=1,nseg
                 k=indexchain(s,c) 
@@ -264,7 +288,7 @@ contains
         use chains
         use field
         use vectornorm
-        use VdW 
+        use VdW, only : VdW_contribution_lnexp
         use surface
         use Poisson
 
@@ -280,13 +304,14 @@ contains
         !     .. local variables
         
         real(dp) :: local_rhopol(nsize,nsegtypes)
-        real(dp) :: local_q,locallnproshift(2),globallnproshift(2)
+        real(dp) :: local_q
         real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
         real(dp) :: pro,lnpro
         integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
         real(dp) :: norm
         real(dp) :: rhopol0 !integra_q
         integer  :: noffset
+        real(dp) :: locallnproshift(2), globallnproshift(2)
 
         !     .. executable statements 
 
@@ -486,7 +511,7 @@ contains
         use chains
         use field
         use vectornorm
-        use VdW 
+        use VdW, only : VdW_contribution_lnexp
         use surface
         use Poisson
 
@@ -503,13 +528,15 @@ contains
         
         real(dp) :: local_rhopol(nsize,nsegtypes)
         real(dp) :: local_q
-        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro
         integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
         real(dp) :: norm
         real(dp) :: rhopol0 
         real(dp) :: xA(7),sumxA, sgxA,qAD, constA, constACa, constAMg ! disociation variables 
         integer  :: noffset
+        real(dp) :: locallnproshift(2), globallnproshift(2)
+
 
         !     .. executable statements 
 
@@ -573,7 +600,7 @@ contains
                 if(t/=ta) then
                     do i=1,n                                         
                         fdis(i,t)  = 1.0_dp/(1.0_dp+xHplus(i)/(K0a(t)*xsol(i)))      
-                        exppi(i,t) = (xsol(i)**vpol(t))*exp(-zpol(t,2)*psi(i) )/fdis(i,t)   ! auxilary variable palpha
+                        lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i) -log(fdis(i,t))   ! auxilary variable palpha
                     enddo  
                 else
                 
@@ -598,14 +625,14 @@ contains
                         fdisA(i,6)  = fdisA(i,1)*xA(5)                       ! AMg+ 
                         fdisA(i,7)  = (fdisA(i,1)**2)*constAMg               ! A2Mg 
 
-                        exppi(i,t)  = (xsol(i)**vpol(t))*exp( psi(i) )/fdisA(i,1)   ! auxilary variable palpha
+                        lnexppi(i,t)  = log(xsol(i))*vpol(t)+psi(i)-log(fdisA(i,1))   ! auxilary variable palpha
                         fdis(i,t)   = fdisA(i,1) 
                     enddo  
                 endif
             else    
                 do i=1,n
                     fdis(i,t)  = 0.0_dp
-                    exppi(i,t)  = xsol(i)**vpol(t)
+                    lnexppi(i,t)  = log(xsol(i))*vpol(t)
                 enddo  
             endif   
         enddo      
@@ -613,21 +640,43 @@ contains
         ! Van der Waals   
         if(isVdW) then 
             do t=1,nsegtypes  
-                call VdW_contribution_exp(rhopolin,exppi(:,t),t)
+                call VdW_contribution_lnexp(rhopolin,lnexppi(:,t),t)
             enddo
         endif 
 
         !  .. computation polymer volume fraction      
  
         local_q = 0.0_dp    ! init q
-         
+        lnpro = 0.0_dp
+        
         do c=1,cuantas         ! loop over cuantas
-            pro=exp(-energychain(c)) 
+
+            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro *exppi(k,t)
-            enddo    
+                lnpro = lnpro +lnexppi(k,t)
+            enddo   
+        enddo
+
+        locallnproshift(1)=lnpro/cuantas
+        locallnproshift(2)=rank  
+    
+        call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
+        call MPI_ALLREDUCE(locallnproshift, globallnproshift, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
+       
+        lnproshift=globallnproshift(1)
+             
+         
+        do c=1,cuantas         ! loop over cuantas
+            lnpro=-energychain(c) 
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro +lnexppi(k,t)
+            enddo 
+            pro=exp(lnpro-lnproshift)   
             local_q = local_q+pro
             do s=1,nseg
                 k=indexchain(s,c) 
@@ -756,7 +805,7 @@ contains
         use chains
         use field
         use vectornorm
-        use VdW 
+        use VdW, only : VdW_contribution_lnexp
         use surface
         use Poisson
 
@@ -773,13 +822,15 @@ contains
         
         real(dp) :: local_rhopol(nsize,nsegtypes)
         real(dp) :: local_q
-        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro
         integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
         real(dp) :: norm
         real(dp) :: rhopol0 
         real(dp) :: xA(7),sumxA, sgxA,qAD, constA, constACa, constAMg ! disociation variables 
         integer  :: noffset
+        real(dp) :: locallnproshift(2), globallnproshift(2)
+
 
         !     .. executable statements 
 
@@ -861,13 +912,13 @@ contains
                     fdisA(i,6)  = fdisA(i,1)*xA(5)                       ! AMg+ 
                     fdisA(i,7)  = (fdisA(i,1)**2)*constAMg               ! A2Mg 
 
-                    exppi(i,t)  = (xsol(i)**vpol(t))*exp( psi(i) )/fdisA(i,1)   ! auxilary variable palpha
+                    lnexppi(i,t)  = log(xsol(i))*vpol(t)+psi(i)-log(fdisA(i,1))   ! auxilary variable palpha
                     fdis(i,t)   = fdisA(i,1) 
                 enddo  
             else
                 do i=1,n
                     fdis(i,t)  = 0.0_dp
-                    exppi(i,t)  = xsol(i)**vpol(t)
+                    lnexppi(i,t)  = log(xsol(i))*vpol(t)
                 enddo  
             endif   
         enddo      
@@ -876,22 +927,44 @@ contains
         ! Van der Waals   
         if(isVdW) then 
             do t=1,nsegtypes  
-                call VdW_contribution_exp(rhopolin,exppi(:,t),t)
+                call VdW_contribution_lnexp(rhopolin,lnexppi(:,t),t)
             enddo
         endif 
 
         !  .. computation polymer volume fraction      
 
         local_q = 0.0_dp    ! init q
-         
+        lnpro = 0.0_dp
+        
         do c=1,cuantas         ! loop over cuantas
-            !pro=1.0_dp         ! initial weight conformation (1 or 0)
-            pro=exp(-energychain(c)) 
+
+            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro *exppi(k,t)
-            enddo    
+                lnpro = lnpro +lnexppi(k,t)
+            enddo   
+        enddo
+
+        locallnproshift(1)=lnpro/cuantas
+        locallnproshift(2)=rank  
+    
+        call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
+        call MPI_ALLREDUCE(locallnproshift, globallnproshift, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
+       
+
+        lnproshift=globallnproshift(1)
+              
+        do c=1,cuantas         ! loop over cuantas
+            !pro=1.0_dp         ! initial weight conformation (1 or 0)
+            lnpro=-energychain(c) 
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro+lnexppi(k,t)
+            enddo 
+            pro=exp(lnpro-lnproshift)   
             local_q = local_q+pro
             do s=1,nseg
                 k=indexchain(s,c) 
@@ -1009,7 +1082,7 @@ contains
         use chains, only : indexchain, type_of_monomer,energychain, ismonomer_chargeable
         use field
         use vectornorm
-        use VdW, only : VdW_contribution_exp
+        use VdW, only : VdW_contribution_lnexp
         use dielectric_const, only : dielectfcn, born
         use surface
         use Poisson, only : Poisson_Equation_Eps, Poisson_Equation_Surface_Eps, grad_pot_sqr_eps_cubic
@@ -1027,9 +1100,9 @@ contains
         
         real(dp) :: local_rhopol(nsize,nsegtypes)
         real(dp) :: local_q
-        real(dp) :: exppi(nsize,nsegtypes)         ! auxilairy variable for computing P(\alpha) 
+        real(dp) :: lnexppi(nsize,nsegtypes)         ! auxilairy variable for computing P(\alpha) 
         real(dp) :: phi(nsize)                     ! phi=1-xsol-sum_ix_i 
-        real(dp) :: pro
+        real(dp) :: pro,lnpro
         real(dp) :: lbr,expborn,avgvol,Etotself,expsqrgrad, Eself
         real(dp) :: expsqrgradpsi(nsize),expdeltaGAA(nsize,6),expEtotself(nsize)
         integer  :: n,i,j,k,l,c,s,ln,t,g,gn,k1,k2,k3,k4,k5          !indices
@@ -1040,7 +1113,7 @@ contains
         integer  :: count_sc
         real(dp) :: rhopolAA(nsize),rhopolACa(nsize),rhopolAMg(nsize)
                     ! AA because  conflict with definition rhopolA in field.f90
-
+        real(dp) :: locallnproshift(2), globallnproshift(2)
         !     .. executable statements 
 
         !     .. communication between processors 
@@ -1201,7 +1274,9 @@ contains
                     lbr=lb/epsfcn(i)
                     expborn    = -born(lbr,bornrad%pol,-1)+ expEtotself(i)*vpolAA(1)*vsol 
                     expsqrgrad = expsqrgradpsi(i)*vpolAA(1)      ! no mutipilcation with vsol because defintion constqE
-                    exppi(i,t) = (xsol(i)**vpolAA(1))*exp(psi(i)+expsqrgrad+expborn) /fdisA(i,1)   ! auxilary variable palpha
+                    !exppi(i,t) = (xsol(i)**vpolAA(1))*exp(psi(i)+expsqrgrad+expborn) /fdisA(i,1)   ! auxilary variable palpha
+                    lnexppi(i,t) = log(xsol(i))*vpolAA(1)+psi(i)+expsqrgrad+expborn -log(fdisA(i,1))   ! auxilary variable palpha
+                    
                     fdis(i,t)  = fdisA(i,1) 
                 enddo  
             else
@@ -1209,7 +1284,9 @@ contains
                 do i=1,n
                     expborn    = expEtotself(i)*vpol(t)*vsol 
                     expsqrgrad = expsqrgradpsi(i)*vpol(t)
-                    exppi(i,t) = (xsol(i)**vpol(t))*exp(expsqrgrad+expborn)
+                    !exppi(i,t) = (xsol(i)**vpol(t))*exp(expsqrgrad+expborn)
+                    lnexppi(i,t) = log(xsol(i))*vpol(t)+expsqrgrad+expborn
+                    
                     fdis(i,t)  = 0.0_dp
                 enddo  
             endif   
@@ -1218,21 +1295,42 @@ contains
         ! Van der Waals   
         if(isVdW) then 
             do t=1,nsegtypes  
-                if(isrhoselfconsistent(t)) call VdW_contribution_exp(rhopolin,exppi(:,t),t)
+                if(isrhoselfconsistent(t)) call VdW_contribution_lnexp(rhopolin,lnexppi(:,t),t)
             enddo
         endif 
 
         !  .. computation polymer volume fraction      
         local_q = 0.0_dp    ! init q
-             
+        lnpro = 0.0_dp
+        
         do c=1,cuantas         ! loop over cuantas
-            !pro=1.0_dp         ! initial weight conformation (1 or 0)
-            pro=exp(-energychain(c)) 
+
+            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro *exppi(k,t)
+                lnpro = lnpro +lnexppi(k,t)
+            enddo   
+        enddo
+
+        locallnproshift(1)=lnpro/cuantas
+        locallnproshift(2)=rank  
+    
+        call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
+        call MPI_ALLREDUCE(locallnproshift, globallnproshift, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
+       
+        lnproshift=globallnproshift(1)
+             
+        do c=1,cuantas         ! loop over cuantas
+            !pro=1.0_dp         ! initial weight conformation (1 or 0)
+            lnpro=-energychain(c) 
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro +lnexppi(k,t)
             enddo    
+            pro=exp(lnpro-lnproshift)
             local_q = local_q+pro
             do s=1,nseg
                 k=indexchain(s,c) 
@@ -1376,13 +1474,13 @@ contains
 
         !     .. declare local variables
 
-        real(dp) :: exppiA(nsize),exppiB(nsize)  ! auxilairy variable for computing P(\alpha) 
+        real(dp) :: lnexppiA(nsize),lnexppiB(nsize)  ! auxilairy variable for computing P(\alpha) 
         real(dp) :: rhopolAin(nsize,2)   
         real(dp) :: rhopol_local(nsize,2)
         real(dp) :: q_local
         real(dp) :: xA(3),xB(3),sumxA,sumxB, sgxA, sgxB, qAD, qBD 
         real(dp) :: constA,constB
-        real(dp) :: pro,rhopol0
+        real(dp) :: pro,rhopol0,lnpro
         integer :: n,ix,iy,iz,neq_bc                  
         integer :: i,j,k,kL,kR,c,s,g,gn        ! dummy indices
         real(dp) :: norm
@@ -1390,6 +1488,7 @@ contains
         real(dp) :: cn                ! auxilary variable for Poisson Eq
         character(len=lenText) :: text, istr, rstr
         integer,  parameter  :: A=1, B=2
+        real(dp) :: locallnproshift(2), globallnproshift(2)
         
         !     .. executable statements 
         !     .. communication between processors
@@ -1472,8 +1571,8 @@ contains
        
             ! use A^- reference state
 
-            exppiA(i)=(xsol(i)**vpolA(1))*exp(-zpolA(1)*psi(i))/fdisA(i,1) ! auxiliary variable
-            exppiB(i)=(xsol(i)**vpolB(1))*exp(-zpolB(1)*psi(i))/fdisB(i,1) ! auxiliary variable
+            lnexppiA(i)=log(xsol(i))*vpolA(1)-zpolA(1)*psi(i)-log(fdisA(i,1)) ! auxiliary variable
+            lnexppiB(i)=log(xsol(i))*vpolB(1)-zpolB(1)*psi(i)-log(fdisB(i,1)) ! auxiliary variable
 
         enddo
 
@@ -1490,21 +1589,46 @@ contains
 
         !     .. computation polymer volume fraction 
        
-        q_local=0.0_dp       ! init qB
+        q_local=0.0_dp       ! init q
+        lnpro = 0.0_dp
+        
+        do c=1,cuantas         ! loop over cuantas
+
+            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                if(isAmonomer(s)) then ! A segment 
+                    lnpro = lnpro+lnexppiA(k)      
+                else
+                    lnpro = lnpro+lnexppiB(k)
+                endif
+
+            enddo   
+        enddo
+
+        locallnproshift(1)=lnpro/cuantas
+        locallnproshift(2)=rank  
+    
+        call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
+        call MPI_ALLREDUCE(locallnproshift, globallnproshift, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
        
+        lnproshift=globallnproshift(1)
+
         do c=1,cuantas               ! loop over cuantas
             
-            pro=1.0_dp
+            lnpro=0.0_dp
 
             do s=1,nseg              ! loop over segments 
                 k=indexchain(s,c)           
                 if(isAmonomer(s)) then ! A segment 
-                    pro = pro*exppiA(k)
+                    lnpro = lnpro+lnexppiA(k)
                 else
-                    pro = pro*exppiB(k)
+                    lnpro = lnpro+lnexppiB(k)
                 endif
             enddo
 
+            pro=exp(lnpro-lnproshift)
             q_local = q_local+pro
 
             do s=1,nseg
@@ -1622,7 +1746,7 @@ contains
         use chains
         use field
         use vectornorm
-        use VdW 
+        use VdW, only : VdW_contribution_lnexp
        
         !     .. scalar arguments
 
@@ -1637,12 +1761,13 @@ contains
         
         real(dp) :: local_rhopol(nsize,nsegtypes)
         real(dp) :: local_q
-        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro
         integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
         real(dp) :: norm
         real(dp) :: rhopol0 !integra_q
         integer  :: noffset
+        real(dp) :: locallnproshift(2), globallnproshift(2)
 
         !     .. executable statements 
 
@@ -1678,28 +1803,49 @@ contains
         do t=1,nsegtypes
             do i=1,n
                 fdis(i,t)  = 0.0_dp
-                exppi(i,t) = xsol(i)**vpol(t)  
+                lnexppi(i,t) = log(xsol(i))*vpol(t)  
             enddo
         enddo      
        
         ! Van der Waals   
         if(isVdW) then 
             do t=1,nsegtypes  
-                call VdW_contribution_exp(rhopolin,exppi(:,t),t)
+                call VdW_contribution_lnexp(rhopolin,lnexppi(:,t),t)
             enddo
         endif 
 
         !  .. computation polymer volume fraction      
 
         local_q = 0.0_dp    ! init q
-             
+        lnpro = 0.0_dp
+        
         do c=1,cuantas         ! loop over cuantas
-            pro=exp(-VdWscale%val*energychain(c))        ! initial weight conformation (1 or 0)
+
+            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro *exppi(k,t)
+                lnpro = lnpro +lnexppi(k,t)
+            enddo   
+        enddo
+
+        locallnproshift(1)=lnpro/cuantas
+        locallnproshift(2)=rank  
+    
+        call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
+        call MPI_ALLREDUCE(locallnproshift, globallnproshift, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
+       
+        lnproshift=globallnproshift(1)
+             
+        do c=1,cuantas         ! loop over cuantas
+            lnpro=-VdWscale%val*energychain(c)        ! initial weight conformation (1 or 0)
+            do s=1,nseg        ! loop over segments 
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro +lnexppi(k,t)
             enddo    
+            pro=exp(lnpro-lnproshift)
             local_q = local_q+pro
             do s=1,nseg
                 k=indexchain(s,c) 
@@ -1777,10 +1923,10 @@ contains
 
         endif
 
-end subroutine fcnneutral
+    end subroutine fcnneutral
 
 
- subroutine fcnneutralnoVdW(x,f,nn)
+    subroutine fcnneutralnoVdW(x,f,nn)
 
         use mpivars
         use globals
@@ -1789,7 +1935,6 @@ end subroutine fcnneutral
         use chains
         use field, only : xpol, xsol ,xpro, rhopol, q, lnproshift
         use vectornorm
-        use VdW 
        
         !     .. scalar arguments
 
@@ -1866,15 +2011,16 @@ end subroutine fcnneutral
         enddo
 
         locallnproshift(1)=lnpro/cuantas
-        locallnproshift(2)=rank   
-        !print*,"rank ",rank ," has local lnproshift value of", locallnproshift(1)
+        locallnproshift(2)=rank
+    
+        print*,"rank ",rank ," has local lnproshift value of", locallnproshift(1)
     
         call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
         call MPI_ALLREDUCE(locallnproshift, globallnproshift, 1, MPI_2DOUBLE_PRECISION, MPI_MINLOC, MPI_COMM_WORLD,ierr)
     
-        !if (rank == 0) then  
-        !    print*,"Rank ",globallnproshift(2)," has lowest value of", globallnproshift(1)  
-        !endif            
+        if (rank == 0) then  
+             print*,"Rank ",globallnproshift(2)," has lowest value of", globallnproshift(1)  
+        endif            
 
         lnproshift=globallnproshift(1)
 
@@ -1904,19 +2050,24 @@ end subroutine fcnneutral
             q=0.0_dp
             g=1  
             q(g)=local_q
-            do t=1,nsegtypes
-                do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
-                enddo
-            enddo
+            print*,"1:q=",q
  
             do i=1, size-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
                 q(g)=q(g)+local_q
+                print*,"rank=",rank," g=",g," source=",source
+                print*,"2: q=",q
             enddo 
            
+           ! first graft point 
+            do t=1,nsegtypes
+                do i=1,n
+                    rhopol(i,t)=local_rhopol(i,t)/q(1) ! polymer density 
+                enddo
+            enddo
+
             do i=1, size-1
                 source = i
                 g =int(source/nset_per_graft)+1 
@@ -1954,7 +2105,7 @@ end subroutine fcnneutral
         else                      ! Export results 
             
             dest = 0 
-           
+            print*,"rank=",rank,"local_q",local_q
             call MPI_SEND(local_q, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
 
             do t=1,nsegtypes
@@ -1962,6 +2113,8 @@ end subroutine fcnneutral
             enddo
 
         endif
+
+
 
     end subroutine fcnneutralnoVdW
 

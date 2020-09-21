@@ -213,7 +213,9 @@ subroutine read_inputfile(info)
             case ('ngr_freq')
                 read(buffer,*,iostat=ios) ngr_freq 
             case ('sgraft')
-                read(buffer,*,iostat=ios) sgraft    
+                read(buffer,*,iostat=ios) sgraft
+            case ('nset_per_graft')
+                read(buffer,*,iostat=ios) nset_per_graft      
             case ('gamma')
                 read(buffer,*,iostat=ios) gamma  
             case ('write_mc_chains')
@@ -1632,7 +1634,7 @@ subroutine output_neutral
         write(un_sys,*)'vpol        = ',(vpol(t)*vsol,t=1,nsegtypes)
         write(un_sys,*)'vpro        = ',vpro
         write(un_sys,*)'cpro        = ',cpro%val
-                
+        write(un_sys,*)'isVdW       = ',isVdW
         
         write(un_sys,*)'===end distance independent settings=='
     endif
@@ -1757,8 +1759,8 @@ end subroutine output_individualcontr_fe
 
 subroutine make_filename_label(fnamelabel)
  
-    use globals, only : LEFT,RIGHT, systype
-    use parameters, only : cNaCl,cCaCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale
+    use globals, only : LEFT,RIGHT, systype, runtype
+    use parameters, only : cNaCl,cCaCl2,cMgCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale
 
     character(len=*), intent(inout) :: fnamelabel    
 
@@ -1810,6 +1812,7 @@ subroutine make_filename_label(fnamelabel)
         fnamelabel="phi"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
+        
         if(cCaCl2>=0.001) then 
             write(rstr,'(F5.3)')cCaCl2
         elseif(cCaCl2>0.0) then  
@@ -1818,8 +1821,25 @@ subroutine make_filename_label(fnamelabel)
             write(rstr,'(F3.1)')cCaCl2
         endif 
         fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
+    
+        if(cMgCl2>=0.001) then 
+            write(rstr,'(F5.3)')cMgCl2
+        elseif(cMgCl2>0.0) then  
+            write(rstr,'(ES9.2E2)')cMgCl2
+        else 
+            write(rstr,'(F3.1)')cMgCl2
+        endif 
+        fnamelabel=trim(fnamelabel)//"cMgCl2"//trim(adjustl(rstr))
+    
         write(rstr,'(F7.3)')pHbulk
-        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
+        fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))
+        if(runtype=="rangeVdWeps")then
+            write(rstr,'(F5.3)')VdWscale%val
+            fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
+        else
+            fnamelabel=trim(fnamelabel)//".dat"
+        endif
+
 
     case default
         print*,"Error in output_individualcontr_fe subroutine"
