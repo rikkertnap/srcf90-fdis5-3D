@@ -1623,6 +1623,8 @@ subroutine output_neutral
         write(un_sys,*)'nsize       = ',nsize  
         write(un_sys,*)'nx          = ',nx
         write(un_sys,*)'ny          = ',ny
+        write(un_sys,*)'ngr_freq    = ',ngr_freq
+        write(un_sys,*)'ngr         = ',ngr
         write(un_sys,*)'nzmax       = ',nzmax
         write(un_sys,*)'nzmin       = ',nzmin
         write(un_sys,*)'nzstep      = ',nzstep

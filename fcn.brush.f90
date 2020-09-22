@@ -215,7 +215,7 @@ contains
                 do t=1,nsegtypes
                     call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
                     do k=1,nsize
-                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                        rhopol(k,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
                     enddo
                 enddo
             enddo     
@@ -445,7 +445,7 @@ contains
                 do t=1,nsegtypes
                     call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
                     do k=1,nsize
-                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                        rhopol(k,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
                     enddo
                 enddo
             enddo     
@@ -714,7 +714,7 @@ contains
                 do t=1,nsegtypes
                     call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
                     do k=1,nsize
-                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                        rhopol(k,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
                     enddo
                 enddo
             enddo     
@@ -1000,7 +1000,7 @@ contains
                 do t=1,nsegtypes
                     call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
                     do k=1,nsize
-                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                        rhopol(k,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
                     enddo
                 enddo
             enddo     
@@ -1367,7 +1367,7 @@ contains
                 do t=1,nsegtypes
                     call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
                     do k=1,nsize
-                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                        rhopol(k,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
                     enddo
                 enddo
             enddo     
@@ -1672,8 +1672,8 @@ contains
                 call MPI_RECV(rhopol_local(:,B), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
 
                 do k=1,nsize
-                    rhopol(i,A)=rhopol(k,A)+rhopol_local(k,A)/q(g) ! polymer density 
-                    rhopol(i,B)=rhopol(k,B)+rhopol_local(k,B)/q(g) ! polymer
+                    rhopol(k,A)=rhopol(k,A)+rhopol_local(k,A)/q(g) ! polymer density 
+                    rhopol(k,B)=rhopol(k,B)+rhopol_local(k,B)/q(g) ! polymer
                 enddo
             enddo
     
@@ -1881,7 +1881,7 @@ contains
                 do t=1,nsegtypes
                     call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
                     do k=1,nsize
-                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                        rhopol(k,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
                     enddo
                 enddo
             enddo     
@@ -2074,7 +2074,7 @@ contains
                 do t=1,nsegtypes
                     call MPI_RECV(local_rhopol(:,t), nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
                     do k=1,nsize
-                        rhopol(i,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
+                        rhopol(k,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
                     enddo
                 enddo
             enddo     
