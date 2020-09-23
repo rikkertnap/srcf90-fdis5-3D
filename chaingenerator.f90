@@ -816,7 +816,6 @@ subroutine read_chains_lammps_trj(info)
 
                         xpt =  position_graft(g,1)  ! position of graft point
                         ypt =  position_graft(g,2)  
-                        print*,rank,g,xpt,ypt
 
                         do ntheta=1,maxntheta      ! .. rotation in xy-plane and translation to center of xy-plane
 

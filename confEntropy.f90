@@ -28,8 +28,7 @@ contains
 
         select case (systype) 
         case ("elect")
-            call FEconf_elect(FEconf)
-            Econf=0.0_dp
+            call FEconf_elect(FEconf,Econf)
         case ("neutral")
             call FEconf_neutral(FEconf,Econf)
         case ("neutralnoVdW")
@@ -56,16 +55,16 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, energychain
-        use field, only : xsol, rhopol, q
+        use field, only : xsol, rhopol, q, lnproshift
         use parameters, only : vpol, isVdW, VdWscale
-        use VdW, only : VdW_contribution_exp
+        use VdW, only : VdW_contribution_lnexp
         use volume, only : ngr, nset_per_graft
 
         real(dp), intent(out) :: FEconf,Econf
         
         ! .. declare local variables
-        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
@@ -94,13 +93,13 @@ contains
 
         do t=1,nsegtypes
             do i=1,nsize
-                exppi(i,t) = xsol(i)**vpol(t)
+                lnexppi(i,t) = log(xsol(i))*vpol(t)
             enddo    
         enddo      
        
         if(isVdW) then 
             do t=1,nsegtypes  
-                call VdW_contribution_exp(rhopol,exppi(:,t),t)
+                call VdW_contribution_lnexp(rhopol,lnexppi(:,t),t)
             enddo
         endif 
 
@@ -114,8 +113,9 @@ contains
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro*exppi(k,t)
-            enddo    
+                lnpro = lnpro+lnexppi(k,t)
+            enddo  
+            pro=exp(lnpro-lnproshift)   
             FEconf_local=FEconf_local+pro*log(pro)
             Econf_local= Econf_local+pro*energychain(c)*VdWscale%val
         enddo
@@ -192,16 +192,16 @@ contains
             do i = 1, size-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-                do t=1,nsegtypes
-                    call MPI_SEND(rhopol(:,t) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-                enddo
+                !do t=1,nsegtypes
+                !    call MPI_SEND(rhopol(:,t) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                !enddo
             enddo
         else
             source = 0 
             call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
-            do t=1,nsegtypes
-                call MPI_RECV(rhopol(:,t) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
-            enddo
+            !do t=1,nsegtypes
+            !    call MPI_RECV(rhopol(:,t) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            !enddo
         endif    
 
         !     .. executable statements 
@@ -275,15 +275,15 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, energychain
-        use field, only : xsol,psi, fdis,rhopol,q
+        use field, only : xsol,psi, fdis,rhopol,q, lnproshift
         use parameters
-        use VdW, only : VdW_contribution_exp
+        use VdW, only : VdW_contribution_lnexp
 
         real(dp), intent(out) :: FEconf,Econf
         
         ! .. declare local variables
-        real(dp) :: exppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
-        real(dp) :: pro
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
@@ -317,18 +317,18 @@ contains
         do t=1,nsegtypes
             if(ismonomer_chargeable(t)) then
                 do i=1,nsize                                              
-                    exppi(i,t) = (xsol(i)**vpol(t))*exp(-zpol(t,2)*psi(i) )/fdis(i,t)   ! auxilary variable palpha
+                    lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i)-log(fdis(i,t))   ! auxilary variable palpha
                 enddo  
             else
                 do i=1,nsize
-                     exppi(i,t) = xsol(i)**vpol(t)
+                     lnexppi(i,t) = log(xsol(i))*vpol(t)
                 enddo  
             endif   
         enddo      
        
         if(isVdW) then 
             do t=1,nsegtypes  
-                call VdW_contribution_exp(rhopol,exppi(:,t),t)
+                call VdW_contribution_lnexp(rhopol,lnexppi(:,t),t)
             enddo
         endif 
 
@@ -336,22 +336,22 @@ contains
        
         FEconf_local= 0.0_dp !init FEconf
         Econf_local=0.0_dp ! init FEconf
-            
+         
         do c=1,cuantas         ! loop over cuantas
-            pro=exp(-energychain(c))     
+            lnpro=-VdWscale%val*energychain(c)     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
-                pro = pro*exppi(k,t)
-            enddo    
+                lnpro = lnpro+lnexppi(k,t)
+            enddo 
+            pro=exp(lnpro-lnproshift)      
             FEconf_local=FEconf_local+pro*log(pro)
-            Econf_local= Econf_local+pro*energychain(c)
+            Econf_local= Econf_local+pro*VdWscale%val*energychain(c)
         enddo
         
         ! communicate FEconf
 
         if(rank==0) then
-
 
              ! normalize
             FEconf_array=0.0_dp
@@ -377,8 +377,12 @@ contains
 
         if(rank==0) then
             ! normalize
-            FEconf = FEconf/q(1)-log(q(1))  
-            Econf = Econf/q(1)  
+            FEconf=0.0_dp
+            Econf=0.0_dp
+            do g=1,ngr 
+                FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))  
+                Econf = Econf + Econf_array(g)/q(g)  
+            enddo    
         endif
 
     end subroutine FEconf_brush_mul
@@ -390,7 +394,7 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, energychain
-        use field, only : xsol, psi, fdis, rhopol ,q ,lnproshift
+        use field, only : xsol, psi, fdis, rhopol, q ,lnproshift
         use parameters
         use volume, only : ngr, nset_per_graft
         
@@ -463,18 +467,20 @@ contains
         ! communicate FEconf
 
         if(rank==0) then
+            ! normalize
+            FEconf_array=0.0_dp
+            Econf_array=0.0_dp  
 
-            FEconf=FEconf_local
-            Econf=Econf_local
-         
-
+            FEconf_array(1)=FEconf_local
+            Econf_array(1)=Econf_local
+            
             do i=1, size-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                
-                FEconf=FEconf +FEconf_local
-                Econf =Econf+Econf_local                
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                FEconf_array(g)=FEconf_array(g)+FEconf_local
+                Econf_array(g) =Econf_array(g) +Econf_local             
             enddo 
         else     ! Export results
             dest = 0
@@ -485,29 +491,35 @@ contains
 
         if(rank==0) then
             ! normalize
-            FEconf = FEconf/q(1)-log(q(1))  
-            Econf = Econf/q(1)  
+            FEconf=0.0_dp
+            Econf=0.0_dp
+            do g=1,ngr 
+                FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))  
+                Econf = Econf + Econf_array(g)/q(g)  
+            enddo    
+           
         endif
 
     end subroutine FEconf_brush_mulnoVdW
 
 
-    subroutine FEconf_elect(FEconf)
+    subroutine FEconf_elect(FEconf,Econf)
 
         !  .. variables and constant declaractions 
 
-        use globals
-        use volume
-        use chains
-        use field
+        use globals, only : nseg, nsegtypes, nsize, cuantas
+        use volume, only : ngr, nset_per_graft
+        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, energychain, isAmonomer
+        use field,  only : xsol, psi, fdisA,fdisB, rhopol, q ,lnproshift
         use parameters
 
         real(dp), intent(out) :: FEconf
+        real(dp), intent(out) :: Econf
         
         !     .. declare local variables
-        real(dp) :: exppiA(nsize),exppiB(nsize)    ! auxilairy variable for computing P(\alpha) 
+        real(dp) :: lnexppiA(nsize),lnexppiB(nsize)    ! auxilairy variable for computing P(\alpha) 
         integer  :: i,k,c,s,g,gn         ! dummy indices
-        real(dp) :: pro
+        real(dp) :: pro,lnpro
         real(dp) :: FEconf_local
         real(dp) :: q_local
         real(dp) :: FEconf_array(ngr)
@@ -533,8 +545,8 @@ contains
         endif
             
         do i=1,nsize
-              exppiA(i)=(xsol(i)**vpolA(1))*exp(-zpolA(1)*psi(i))/fdisA(i,1) ! auxiliary variable
-              exppiB(i)=(xsol(i)**vpolB(1))*exp(-zpolB(1)*psi(i))/fdisB(i,1) ! auxiliary variable
+              lnexppiA(i)=log(xsol(i))*vpolA(1)-zpolA(1)*psi(i)-log(fdisA(i,1)) ! auxiliary variable
+              lnexppiB(i)=log(xsol(i))*vpolB(1)-zpolB(1)*psi(i)-log(fdisB(i,1)) ! auxiliary variable
         enddo
        
         FEconf=0.0_dp
@@ -543,32 +555,33 @@ contains
 
         do c=1,cuantas             ! loop over cuantas
         
-            pro=1.0_dp                ! initial weight conformation 
-            
-            
+            lnpro=0.0_dp                ! initial weight conformation 
             do s=1,nseg              ! loop over segments 
                 k=indexchain(s,c)         
                 if(isAmonomer(s)) then ! A segment 
-                    pro = pro*exppiA(k)
+                    lnpro = lnpro+lnexppiA(k)
                 else
-                    pro = pro*exppiB(k)
+                    lnpro = lnpro+lnexppiB(k)
                 endif
             enddo
-
-           FEconf_local=FEconf_local+pro*log(pro)
+            pro=exp(lnpro-lnproshift)
+            FEconf_local=FEconf_local+pro*log(pro)
                   
         enddo  
 
-        ! communicate FEconfABL and FEcopnd_ABR
+
+        ! communicate FEconf
 
         if(rank==0) then
-
-            FEconf=FEconf_local
+            ! normalize
+            FEconf_array=0.0_dp
+            FEconf_array(1)=FEconf_local
             
             do i=1, size-1
                 source = i
-                call MPI_RECV(FEconf_local, 1 , MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                FEconf=FEconf+FEconf_local
+                call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                FEconf_array(g)=FEconf_array(g)+FEconf_local      
             enddo 
         else     ! Export results
             dest = 0
@@ -578,8 +591,13 @@ contains
 
         if(rank==0) then
             ! normalize
-            FEconf = FEconf/q(1)-log(q(1))    
+            FEconf=0.0_dp
+            do g=1,ngr 
+                FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))    
+            enddo     
         endif
+
+        Econf=0.0_dp
 
     end subroutine FEconf_elect
 

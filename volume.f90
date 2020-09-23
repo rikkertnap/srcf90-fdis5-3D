@@ -279,11 +279,9 @@ contains
         write(fname,'(A18)')'positiongraft-rank'
         write(istr,'(I4)')rank
         fname=trim(fname)//trim(adjustl(istr))//'.dat'
-        print*,fname
-        print*,istr
         open(unit=newunit(un_pgpt),file=fname,iostat=ios)
         if(ios >0 ) then
-             print*, 'Error opening postiongraftpt.dat file : iostat =', ios
+             print*, 'Error opening positiongraftpt.dat file : iostat =', ios
         else
 
             do ig=1,ngr          

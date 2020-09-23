@@ -452,8 +452,6 @@ contains
                 print*,"Failure to init pKaAA: info=",info
                 stop
             endif    
-
-
         endif
         
         do i=1,6
@@ -739,14 +737,17 @@ contains
         case ("elect")
             call init_expmu_elect()
             call set_VdWepsAAandBB() ! specail assigemnt of VdWepsAA etc  
+            if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)
         case ("neutral","neutralnoVdW")
             call init_expmu_neutral()   
             if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)
         case ("brush_mul","brush_mulnoVdW") 
-            call init_expmu_elect()      
+            call init_expmu_elect() 
+            if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)     
         case ("brushssdna") 
             call init_dna  
             call init_expmu_elect()
+            if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)
         case default   
             print*,"Error: systype incorrect at init_vars_input" 
             print*,"Wrong value systype : ", systype

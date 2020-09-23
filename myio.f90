@@ -30,7 +30,7 @@ module myio
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
     integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q
-    integer :: un_dip ,un_dielec,un_xpolABz, un_xpolz, un_xpol, un_fdis, un_xpro 
+    integer :: un_dip ,un_dielec,un_xpolABz, un_xpolz, un_xpol, un_fdis, un_xpro, un_fdisP
    
     ! format specifiers 
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
@@ -875,6 +875,7 @@ subroutine output_brush_mul
     character(len=90) :: xHplusfilename
     character(len=90) :: xOHminfilename
     character(len=90) :: densfracfilename
+    character(len=90) :: densfracPfilename
     character(len=90) :: qfilename
     character(len=90) :: densfracionpairfilename
     character(len=100) :: fnamelabel
@@ -906,6 +907,7 @@ subroutine output_brush_mul
         xHplusfilename='xHplus.'//trim(fnamelabel)
         xOHminfilename='xOHmin.'//trim(fnamelabel)
         densfracfilename='densityfrac.'//trim(fnamelabel)
+        densfracPfilename='densityfracP.'//trim(fnamelabel)
         densfracionpairfilename='densityfracionpair.'//trim(fnamelabel)
         qfilename='q.'//trim(fnamelabel)
        
@@ -917,6 +919,7 @@ subroutine output_brush_mul
          
         open(unit=newunit(un_xpol),file=xpolfilename)
         open(unit=newunit(un_fdis),file=densfracfilename)  
+        if(systype=="brushssdna") open(unit=newunit(un_fdisP),file=densfracPfilename) 
         open(unit=newunit(un_q),file=qfilename)        
         open(unit=newunit(un_xpolz),file=xpolzfilename)
         
@@ -950,6 +953,8 @@ subroutine output_brush_mul
     write(un_psi,*)'#D    = ',nz*delta
     write(un_xpol,*)'#D    = ',nz*delta 
     write(un_fdis,*)'#D    = ',nz*delta
+    if(systype=="brushssdna") write(un_fdisP,*)'#D    = ',nz*delta
+    
      
     if(verboseflag=="yes") then    
         write(un_xNa,*)'#D    = ',nz*delta 
@@ -983,10 +988,17 @@ subroutine output_brush_mul
         write(un_xpol,*)xpol(i),(rhopol(i,t),t=1,nsegtypes)
         write(un_fdis,*)(fdis(i,t),t=1,nsegtypes)
     enddo
+
     do i=1,nz
         write(un_xpolz,fmt1reals)xpolz(i)
     enddo     
     
+    if(systype=="brushssdna")then
+        do i=1,nsize
+            write(un_fdisP,*)(fdisA(i,k),k=1,7)
+        enddo    
+    endif 
+
     if(verboseflag=="yes") then 
         do i=1,nsize
             write(un_xNa,*)xNa(i)
@@ -1137,6 +1149,7 @@ subroutine output_brush_mul
         close(un_psi)
         close(un_xpol)
         close(un_fdis)
+        if(systype=="brushssdna") close(un_fdisP)
         close(un_xpolz)            
         close(un_q)
         if(verboseflag=="yes") then 

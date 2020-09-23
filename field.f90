@@ -314,6 +314,7 @@ contains
 
         integer, dimension(:), allocatable   :: npol
         integer :: i,s,t,k
+        real(dp) :: sumrhopolt ! average density of polymer of type t 
 
         allocate(npol(nsegtypes))
         
@@ -325,20 +326,25 @@ contains
         enddo   
 
         do t=1,nsegtypes
+            npol(t)=npol(t)*ngr
+        enddo
+            
+        do t=1,nsegtypes
             avfdis(t)=0.0_dp
+            sumrhopolt=npol(t)/volcell
             if(npol(t)/=0) then
                 if(t/=tA) then    
                     do i=1,nsize
                         avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
                     enddo
-                    avfdis(t)=avfdis(t)*volcell/(npol(t))        
+                    avfdis(t)=avfdis(t)/sumrhopolt        
                 else
                     do k=1,7
                         avfdisA(k)=0.0_dp
                         do i=1,nsize
                             avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopol(i,t)
                         enddo
-                        avfdisA(k)=avfdisA(k)*volcell/(npol(t))
+                        avfdisA(k)=avfdisA(k)/sumrhopolt  
                     enddo
                     avfdis(t)=avfdisA(1)
                 endif       
@@ -358,6 +364,7 @@ contains
 
         integer, dimension(:), allocatable   :: npol
         integer :: i,s,t
+        real(dp) :: sumrhopolt ! average density of polymer of type t 
 
         allocate(npol(nsegtypes))
         
@@ -368,12 +375,17 @@ contains
         enddo   
 
         do t=1,nsegtypes
+            npol(t)=npol(t)*ngr
+        enddo
+
+        do t=1,nsegtypes
+            sumrhopolt=npol(t)/volcell
             if(npol(t)/=0) then
                 avfdis(t)=0.0_dp
                 do i=1,nsize
                     avfdis(t)=avfdis(t)+((1.0_dp-fdis(i,t))*zpol(t,1)+fdis(i,t)*zpol(t,2))*rhopol(i,t)
                 enddo
-                avfdis(t)=avfdis(t)*volcell/npol(t)        
+                avfdis(t)=avfdis(t)/sumrhopolt       
             else
                 avfdis(t)=0.0_dp
             endif
@@ -394,7 +406,7 @@ contains
         integer :: i,s,k
         integer   :: npolA,npolB
         integer, parameter :: A=1, B=2
-
+        real(dp) :: sumrhopolA, sumrhopolB ! average density of polymer of type A and B
         ! .. number of A and B monomors 
         npolA=0
         do s=1,nseg
@@ -403,6 +415,8 @@ contains
            endif
         enddo
         npolB=nseg-npolA
+        sumrhopolA=npolA/volcell
+        sumrhopolB=npolB/volcell
           
 
         if(npolA/=0) then
@@ -411,7 +425,7 @@ contains
               do i=1,nsize
                  avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopol(i,A)
               enddo
-              avfdisA(k)=avfdisA(k)*volcell/npolA
+              avfdisA(k)=avfdisA(k)/sumrhopolA
            enddo
         else
            avfdisA=0.0_dp
@@ -423,7 +437,7 @@ contains
               do i=1,nsize
                  avfdisB(k)=avfdisB(k)+fdisB(i,k)*rhopol(i,B)
               enddo
-              avfdisB(k)=avfdisB(k)*volcell/npolB
+              avfdisB(k)=avfdisB(k)/sumrhopolB
            enddo
         else
            do k=1,5
