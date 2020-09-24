@@ -92,7 +92,7 @@ program main
     call make_geometry()            ! generate volume elements lattice
     call allocate_chain_parameters()  
     call init_matrices()            ! init matrices for chain generation
-    call allocate_chains(cuantas,nseg,nsegtypes,ngr_node)
+    call allocate_chains(cuantas,nseg,nsegtypes,maxnchainsrotations,maxnchainsrotationsxy)
     call init_chain_parameters      ! chain volume, charges, pKa etc
     call make_sequence_chain(chainperiod,chaintype)
     call make_charge_table(ismonomer_chargeable,zpol,nsegtypes)

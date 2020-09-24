@@ -21,17 +21,21 @@ module chains
 
 
 contains
-  
-    subroutine allocate_chains(cuantas,nseg,nsegtypes,ngr_node)
 
-        integer, intent(in) :: cuantas,nseg,nsegtypes,ngr_node
+
+    subroutine allocate_chains(cuantas,nseg,nsegtypes,maxnchains,maxnchainsxy)
+
+        integer, intent(in) :: cuantas,nseg,nsegtypes
+        integer, intent(in) :: maxnchains,maxnchainsxy
+
+        integer :: maxcuantas
     
-        !     .. extra 100 in index because of  nchain rotations
-        allocate(indexchain(nseg,cuantas+200))
-        allocate(indexchain_init(nseg,cuantas+200))
-        allocate(energychain(cuantas+200))
-        allocate(energychain_init(cuantas+200))
-        allocate(weightchain(cuantas+200))
+        maxcuantas=cuantas+maxnchains*maxnchainsxy     ! .. extra  because of  nchain rotations
+        allocate(indexchain(nseg,maxcuantas))
+        allocate(indexchain_init(nseg,maxcuantas))
+        allocate(energychain(maxcuantas))
+        allocate(energychain_init(maxcuantas))
+        allocate(weightchain(maxcuantas))
         allocate(isAmonomer(nseg)) 
         allocate(type_of_monomer(nseg)) 
         allocate(type_of_monomer_char(nseg))

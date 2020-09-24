@@ -435,9 +435,10 @@ subroutine read_chains_lammps_XYZ(info)
             do rot=1,rotmax        
                  
                 nchain=1
-                is_positive_rot=.true.
+        
+                is_positive_rot=.false.
 
-                do while (nchain.lt.maxattempts)
+                do while (nchain.lt.maxattempts.and..not.is_positive_rot)
                     is_positive_rot=rotationXaxis(chain,chain_rot,nseg-1)
                     nchain=nchain+1
                 enddo
@@ -635,8 +636,8 @@ subroutine read_graftpts_lammps_trj(info)
             t=2
         endif    
         xgraftloop(1,t)=xc*scalefactor
-        xgraftloop(2,t)=zc*scalefactor
-        xgraftloop(3,t)=yc*scalefactor    
+        xgraftloop(2,t)=yc*scalefactor
+        xgraftloop(3,t)=zc*scalefactor    
     enddo
     
     close(un)
@@ -781,8 +782,8 @@ subroutine read_chains_lammps_trj(info)
         do s=1,nseg              ! .. read form  trajecotory file
             read(un,*,iostat=ios)item,idatom,moltype,xc,yc,zc,ix,iy,iz
             xseg(1,item) = xc*scalefactor 
-            xseg(2,item) = zc*scalefactor  !
-            xseg(3,item) = yc*scalefactor  ! permutated y and z 
+            xseg(2,item) = yc*scalefactor  !
+            xseg(3,item) = zc*scalefactor  ! permutated y and z 
         enddo
      
         if(ios==0) then ! read was succesfull 
@@ -800,9 +801,9 @@ subroutine read_chains_lammps_trj(info)
             do rot=1,rotmax        
                  
                 nchain=1
-                is_positive_rot=.true.
+                is_positive_rot=.false.
 
-                do while (nchain.lt.maxattempts)
+                do while (nchain.lt.maxattempts.and..not.is_positive_rot)
                     is_positive_rot=rotationXaxis(chain,chain_rot,nseg-1)
                     nchain=nchain+1
                 enddo
