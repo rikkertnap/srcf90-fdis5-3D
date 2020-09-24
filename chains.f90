@@ -29,9 +29,8 @@ contains
 
         integer :: maxcuantas
     
-        maxcuantas=cuantas+maxnchains*maxnchainsxy
-        print*,"maxcuantas=",maxcuantas
-        !     .. extra 100 in index because of  nchain rotations
+        maxcuantas=cuantas+maxnchains*maxnchainsxy   !   .. extra  in index because of  nchain rotations
+        
         allocate(indexchain(nseg,maxcuantas))
         allocate(indexchain_init(nseg,maxcuantas))
         allocate(energychain(maxcuantas))

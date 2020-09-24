@@ -427,7 +427,7 @@ subroutine read_chains_lammps_XYZ(info)
             do rot=1,rotmax        
                  
                 nchain=1
-                is_positive_rot=.true.
+                is_positive_rot=.false.
 
                 do while (nchain.lt.maxattempts.and..not.is_positive_rot)
                     is_positive_rot=rotationXaxis(chain,chain_rot,nseg-1)
