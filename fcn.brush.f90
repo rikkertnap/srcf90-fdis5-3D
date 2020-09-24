@@ -633,7 +633,7 @@ contains
 
         do c=1,cuantas         ! loop over cuantas
             ! lnpro=lnpro -energychain(c)        ! internal energy
-            lnpro=lnpro-VdWscale%val*energychain(c)    
+            lnpro=lnpro  -VdWscale%val*energychain(c)    
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
