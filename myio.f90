@@ -217,7 +217,11 @@ subroutine read_inputfile(info)
             case ('nset_per_graft')
                 read(buffer,*,iostat=ios) nset_per_graft      
             case ('gamma')
-                read(buffer,*,iostat=ios) gamma  
+                read(buffer,*,iostat=ios) gamma 
+            case ('isRandom_pos_graft')
+                read(buffer,*,iostat=ios) isRandom_pos_graft  
+            case ('seed_graft')
+                read(buffer,*,iostat=ios) seed_graft  
             case ('write_mc_chains')
                 read(buffer,*,iostat=ios) write_mc_chains        
             case ('precondition')    

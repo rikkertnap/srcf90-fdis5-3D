@@ -268,9 +268,9 @@ contains
             seed=seed_graft         ! randomize
 
             do ig=1,ngr          
-                rnd = (rands(seed)-0.5_dp)*1.5_dp
+                rnd = (rands(seed)-0.5_dp)*ngr_freq/2.0_dp 
                 position_graft(ig,1) = position_graft(ig,1) + delta*rnd
-                rnd = (rands(seed)-0.5_dp)*1.5_dp
+                rnd = (rands(seed)-0.5_dp)*ngr_freq/2.0_dp
                 position_graft(ig,2) = position_graft(ig,2) + delta*rnd
             enddo
         
