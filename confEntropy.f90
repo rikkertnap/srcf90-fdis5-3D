@@ -56,7 +56,7 @@ contains
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, energychain
         use field, only : xsol, rhopol, q, lnproshift
-        use parameters, only : vpol, isVdW, VdWscale
+        use parameters, only : vpol, isVdW
         use VdW, only : VdW_contribution_lnexp
         use volume, only : ngr, nset_per_graft
 
@@ -109,7 +109,7 @@ contains
         Econf_local=0.0_dp ! init  Econf
             
         do c=1,cuantas         ! loop over cuantas
-            pro=exp(-VdWscale%val*energychain(c))     
+            lnpro=-energychain(c)     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -117,7 +117,7 @@ contains
             enddo  
             pro=exp(lnpro-lnproshift)   
             FEconf_local=FEconf_local+pro*log(pro)
-            Econf_local= Econf_local+pro*energychain(c)*VdWscale%val
+            Econf_local= Econf_local+pro*energychain(c)
         enddo
         
         ! communicate FEconf
@@ -171,7 +171,7 @@ contains
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, energychain
         use field, only : xsol, rhopol, q, lnproshift
-        use parameters, only : vpol, isVdW, VdWscale
+        use parameters, only : vpol, isVdW
         use VdW, only : VdW_contribution_exp
         use volume, only : ngr, nset_per_graft
 
@@ -218,7 +218,7 @@ contains
         Econf_local=0.0_dp ! init FEconf
             
         do c=1,cuantas         ! loop over cuantas
-            lnpro=0.0_dp-VdWscale%val*energychain(c)        ! internal energy  
+            lnpro=-energychain(c)        ! internal energy  
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -226,7 +226,7 @@ contains
             enddo    
             pro=exp(lnpro-lnproshift)
             FEconf_local=FEconf_local+pro*log(pro)
-            Econf_local= Econf_local+pro*energychain(c)*VdWscale%val
+            Econf_local= Econf_local+pro*energychain(c)
         enddo
         
         ! communicate FEconf
@@ -338,7 +338,7 @@ contains
         Econf_local=0.0_dp ! init FEconf
          
         do c=1,cuantas         ! loop over cuantas
-            lnpro=-VdWscale%val*energychain(c)     
+            lnpro=-energychain(c)     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -346,7 +346,7 @@ contains
             enddo 
             pro=exp(lnpro-lnproshift)      
             FEconf_local=FEconf_local+pro*log(pro)
-            Econf_local= Econf_local+pro*VdWscale%val*energychain(c)
+            Econf_local= Econf_local+pro*energychain(c)
         enddo
         
         ! communicate FEconf
@@ -453,7 +453,7 @@ contains
         Econf_local=0.0_dp ! init FEconf
             
         do c=1,cuantas         ! loop over cuantas
-            lnpro=0.0_dp-VdWscale%val*energychain(c)        ! internal energy  
+            lnpro=-energychain(c)        ! internal energy  
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -461,7 +461,7 @@ contains
             enddo    
             pro=exp(lnpro-lnproshift)
             FEconf_local=FEconf_local+pro*log(pro)
-            Econf_local= Econf_local+pro*energychain(c)*VdWscale%val
+            Econf_local= Econf_local+pro*energychain(c)
         enddo
         
         ! communicate FEconf
@@ -520,7 +520,7 @@ contains
         real(dp) :: lnexppiA(nsize),lnexppiB(nsize)    ! auxilairy variable for computing P(\alpha) 
         integer  :: i,k,c,s,g,gn         ! dummy indices
         real(dp) :: pro,lnpro
-        real(dp) :: FEconf_local
+        real(dp) :: FEconf_local, Econf_local
         real(dp) :: q_local
         real(dp) :: FEconf_array(ngr)
         real(dp) :: Econf_array(ngr)
@@ -555,7 +555,8 @@ contains
 
         do c=1,cuantas             ! loop over cuantas
         
-            lnpro=0.0_dp                ! initial weight conformation 
+            lnpro=-energychain(c)                ! initial weight conformation 
+             
             do s=1,nseg              ! loop over segments 
                 k=indexchain(s,c)         
                 if(isAmonomer(s)) then ! A segment 
@@ -566,6 +567,7 @@ contains
             enddo
             pro=exp(lnpro-lnproshift)
             FEconf_local=FEconf_local+pro*log(pro)
+            Econf_local= Econf_local+pro*energychain(c)
                   
         enddo  
 
@@ -576,28 +578,34 @@ contains
             ! normalize
             FEconf_array=0.0_dp
             FEconf_array(1)=FEconf_local
-            
+             Econf_array(1)=Econf_local
+
             do i=1, size-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                call MPI_RECV(Econf_local,  1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
                 FEconf_array(g)=FEconf_array(g)+FEconf_local      
+                Econf_array(g) =Econf_array(g) +Econf_local
             enddo 
         else     ! Export results
             dest = 0
             call MPI_SEND(FEconf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Econf_local,  1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            
         endif
 
 
         if(rank==0) then
             ! normalize
             FEconf=0.0_dp
+            Econf=0.0_dp
             do g=1,ngr 
-                FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))    
+                FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))  
+                Econf = Econf + Econf_array(g)/q(g)    
             enddo     
         endif
 
-        Econf=0.0_dp
 
     end subroutine FEconf_elect
 

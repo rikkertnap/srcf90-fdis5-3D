@@ -294,7 +294,7 @@ subroutine make_chains_mc()
         close(un_ene)
     endif   
 
-    if(.not.(isVdWintEne))energychain_init=0.0_dp
+    !if(.not.(isVdWintEne))energychain_init=0.0_dp
 
 end subroutine make_chains_mc
 
@@ -309,7 +309,7 @@ subroutine read_chains_lammps_XYZ(info)
 
     !     .. variable and constant declaractions  
     use mpivars, only : rank, size                                                                                     
-    use globals
+    use globals, only : nseg, max_confor
     use chains
     use random
     use parameters
@@ -348,7 +348,7 @@ subroutine read_chains_lammps_XYZ(info)
     integer :: ios ,rankfile
     character(len=30) :: str
     integer :: nchain, rotmax, maxattempts, idatom
-    integer :: un    ! unit number
+    integer :: un, un_ene    ! unit number
     logical :: is_positive_rot, exist ,saw
     character(len=lenText) :: text,istr 
 
@@ -376,6 +376,22 @@ subroutine read_chains_lammps_XYZ(info)
     if(ios >0 ) then
         print*, 'Error opening file : iostat =', ios
         info = myio_err_chainsfile
+        return
+    endif
+
+    ! tractory energy 
+    fname='traj.'//trim(adjustl(istr))//'.ene'
+    inquire(file=fname,exist=exist)
+    if(exist) then
+        open(unit=newunit(un_ene),file=fname,status='old',iostat=ios)
+    else
+        print*,'traj.ene file does not exit'
+        info = myio_err_energyfile
+        return
+    endif
+    if(ios >0 ) then
+        print*, 'Error opening file : iostat =', ios
+        info = myio_err_energyfile
         return
     endif
 
@@ -419,6 +435,9 @@ subroutine read_chains_lammps_XYZ(info)
             xseg(2,s) = yc/10.0_dp
             xseg(3,s) = zc/10.0_dp 
         enddo
+
+        read(un_ene,*,iostat=ios)energy
+
 
         if(ios==0) then ! read was succesfull 
 
@@ -483,7 +502,7 @@ subroutine read_chains_lammps_XYZ(info)
                                 
                             enddo
                             
-                            call VdWpotentialenergy(chain_rot,energy)  
+                            !call VdWpotentialenergy(chain_rot,energy)  
                             energychain_init(conf)=energy
 
                             conf=conf+1   
@@ -532,7 +551,7 @@ subroutine read_chains_lammps_XYZ(info)
                                 
                             enddo
                             
-                            call VdWpotentialenergy(chain_rot,energy)  
+                            !call VdWpotentialenergy(chain_rot,energy)  
                             energychain_init(conf)=energy
 
                             conf=conf+1   
@@ -562,10 +581,11 @@ subroutine read_chains_lammps_XYZ(info)
         readinchains=conffile
     endif
 
-    if(.not.(isVdWintEne))energychain_init=0.0_dp
+    !if(.not.(isVdWintEne))energychain_init=0.0_dp
 
 
     close(un)
+    close(un_ene)
 
 end subroutine read_chains_lammps_XYZ
 
@@ -660,11 +680,12 @@ subroutine read_chains_lammps_trj(info)
 
     !     .. variable and constant declaractions  
     use mpivars, only : rank,size                                                                                   
-    use globals
-    use chains
-    use random
-    use parameters
-    use volume,  only: position_graft, sgraft, nx, ny,nz, delta, nset_per_graft
+    use globals, only : pi, nseg, max_confor, cuantas, nsize
+    use chains, only : indexchain_init,energychain_init,weightchain
+    use random, only : seed
+    use parameters, only : unit_conv, geometry,maxnchainsrotations,maxnchainsrotationsxy,readinchains
+     use parameters, only : isVdWintEne  
+    use volume,  only: position_graft, sgraft, nx, ny,nz, delta, nset_per_graft, ut, vt, linearindexfromcoordinate
     use chain_rotation, only : rotationXaxis
     use myio, only : myio_err_chainsfile, myio_err_energyfile, myio_err_index
     use myio, only : myio_err_conf, myio_err_nseg, myio_err_geometry
@@ -702,7 +723,7 @@ subroutine read_chains_lammps_trj(info)
     character(len=30) :: str
     real(dp) :: xbox0,xbox1,scalefactor
     integer :: nchain, rotmax, maxattempts, idatom, item, moltype, segcenter
-    integer :: un,unw! unit number
+    integer :: un, un_ene! unit number
     logical :: is_positive_rot, exist
     character(len=lenText) :: text,istr
     logical :: saw
@@ -718,8 +739,7 @@ subroutine read_chains_lammps_trj(info)
     ! .. open file   
     rankfile=int(rank*nset_per_graft/size)                                                                                         
     write(istr,'(I4)')rankfile
-    fname='traj.'//trim(adjustl(istr))//'.lammpstrj'
-    
+    fname='traj.'//trim(adjustl(istr))//'.lammpstrj' 
     inquire(file=fname,exist=exist)
     if(exist) then
         open(unit=newunit(un),file=fname,status='old',iostat=ios)
@@ -731,6 +751,22 @@ subroutine read_chains_lammps_trj(info)
     if(ios >0 ) then
         print*, 'Error opening file : iostat =', ios
         info = myio_err_chainsfile
+        return
+    endif
+
+     ! tractory energy 
+    fname='traj.'//trim(adjustl(istr))//'.ene'
+    inquire(file=fname,exist=exist)
+    if(exist) then
+        open(unit=newunit(un_ene),file=fname,status='old',iostat=ios)
+    else
+        print*,'traj.ene file does not exit'
+        info = myio_err_energyfile
+        return
+    endif
+    if(ios >0 ) then
+        print*, 'Error opening file : iostat =', ios
+        info = myio_err_energyfile
         return
     endif
 
@@ -785,6 +821,8 @@ subroutine read_chains_lammps_trj(info)
             xseg(2,item) = yc*scalefactor  !
             xseg(3,item) = zc*scalefactor  ! permutated y and z 
         enddo
+
+        read(un_ene,*,iostat=ios)energy
      
         if(ios==0) then ! read was succesfull 
 
@@ -854,7 +892,7 @@ subroutine read_chains_lammps_trj(info)
                                 
                             enddo
                             
-                            call VdWpotentialenergy(chain_rot,energy)  
+                            !call VdWpotentialenergy(chain_rot,energy)  
                             energychain_init(conf)=energy
 
                             conf=conf+1   
@@ -909,7 +947,7 @@ subroutine read_chains_lammps_trj(info)
                                 
                             enddo
                             
-                            call VdWpotentialenergy(chain_rot,energy)  
+                            !call VdWpotentialenergy(chain_rot,energy)  
                             energychain_init(conf)=energy
 
                             conf=conf+1   
@@ -950,9 +988,10 @@ subroutine read_chains_lammps_trj(info)
     text="isVdWintEne = "//trim(adjustl(istr))
     call print_to_log(LogUnit,text)
 
-    if(.not.(isVdWintEne))energychain_init=0.0_dp
+    !if(.not.(isVdWintEne))energychain_init=0.0_dp
 
     close(un)
+    close(un_ene)
 
 end subroutine read_chains_lammps_trj
 

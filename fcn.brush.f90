@@ -152,7 +152,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro-energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -171,7 +171,7 @@ contains
              
              
         do c=1,cuantas         ! loop over cuantas
-            lnpro=-VdWscale%val*energychain(c)     ! initial weight conformation (1 or 0)
+            lnpro=-energychain(c)     ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -381,7 +381,7 @@ contains
         lnpro=0.0_dp
 
         do c=1,cuantas         ! loop over cuantas
-            lnpro=lnpro -VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro -energychain(c)        ! internal energy
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -398,7 +398,7 @@ contains
         lnproshift=globallnproshift(1)
           
         do c=1,cuantas         ! loop over cuantas
-            lnpro=0.0_dp -VdWscale%val*energychain(c)     ! initial weight conformation (1 or 0)
+            lnpro=0.0_dp -energychain(c)     ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -646,7 +646,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro-energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -931,7 +931,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro-energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -1298,7 +1298,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro-energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -1587,7 +1587,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro-energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -1610,7 +1610,7 @@ contains
 
         do c=1,cuantas               ! loop over cuantas
             
-            lnpro=0.0_dp
+            lnpro=-energychain(c) 
 
             do s=1,nseg              ! loop over segments 
                 k=indexchain(s,c)           
@@ -1815,7 +1815,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro-energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -1833,7 +1833,7 @@ contains
         lnproshift=globallnproshift(1)
              
         do c=1,cuantas         ! loop over cuantas
-            lnpro=-VdWscale%val*energychain(c)        ! initial weight conformation (1 or 0)
+            lnpro=-energychain(c)        ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -1994,7 +1994,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro-energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -2019,7 +2019,7 @@ contains
 
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=0.0_dp-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=-energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)

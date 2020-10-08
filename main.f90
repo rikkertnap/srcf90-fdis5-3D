@@ -126,6 +126,7 @@ program main
     call set_dielect_fcn(dielect_env)
     call write_chain_config()
 
+    
     !  .. computation starts
 
     allocate(xstored(neq))
