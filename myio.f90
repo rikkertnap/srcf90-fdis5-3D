@@ -35,7 +35,7 @@ module myio
     ! format specifiers 
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
     character(len=80), parameter  :: fmt1reals = "(ES25.16E3)"   
-    character(len=80), parameter  :: fmt2reals = "(2ES25.16E3)"   
+    character(len=8), parameter  :: fmt2reals = "(2ES25.16E3)"   
     character(len=80), parameter  :: fmt3reals = "(3ES25.16E3)"  
     character(len=80), parameter  :: fmt4reals = "(4ES25.16E3)" 
     character(len=80), parameter  :: fmt5reals = "(5ES25.16E3)"
@@ -713,10 +713,10 @@ subroutine set_value_isVdWintEne(systype, isVdWintEne)
     systypestr(1)="neutralnoVdW"   
     systypestr(2)="brush_mulnoVdW"  
 
-    isVdWintEne=.False.
+    isVdWintEne=.true.
    
     do i=1,2
-        if(systype==systypestr(i)) isVdWintEne=.true.
+        if(systype==systypestr(i)) isVdWintEne=.false.
     enddo
 
 end subroutine

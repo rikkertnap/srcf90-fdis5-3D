@@ -294,7 +294,7 @@ subroutine make_chains_mc()
         close(un_ene)
     endif   
 
-    if(.not.(isVdWintEne))energychain_init=0.0_dp
+    if(.not.(isVdWintEne))energychain_init=0.0_dp ! no internal energy 
 
 end subroutine make_chains_mc
 
