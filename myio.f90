@@ -35,7 +35,7 @@ module myio
     ! format specifiers 
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
     character(len=80), parameter  :: fmt1reals = "(ES25.16E3)"   
-    character(len=8), parameter  :: fmt2reals = "(2ES25.16E3)"   
+    character(len=80), parameter  :: fmt2reals = "(2ES25.16E3)"   
     character(len=80), parameter  :: fmt3reals = "(3ES25.16E3)"  
     character(len=80), parameter  :: fmt4reals = "(4ES25.16E3)" 
     character(len=80), parameter  :: fmt5reals = "(5ES25.16E3)"
