@@ -109,7 +109,7 @@ contains
         Econf_local=0.0_dp ! init  Econf
             
         do c=1,cuantas         ! loop over cuantas
-            pro=exp(-VdWscale%val*energychain(c))     
+            lnpro=-VdWscale%val*energychain(c)     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
