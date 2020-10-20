@@ -17,7 +17,7 @@ module chaingenerator
     private :: lenfname, conf_write
     private :: pbc 
     private :: xgraftloop
-
+   
 contains
 
 
@@ -26,11 +26,14 @@ subroutine make_chains(chainmethod)
     use mpivars, only : ierr
     use myutils, only : print_to_log, LogUnit, lenText
     use myio, only : myio_err_chainmethod
+    use chains, only : isEnergyShift
 
     character(len=15), intent(in)  :: chainmethod
 
     integer :: i, info
     character(len=lenText) :: text, istr
+
+    isEnergyShift=.false.
 
     info=0
 
@@ -1138,11 +1141,10 @@ function minimum_chainenergy() result(min_chainenergy)
 
     real(dp) :: min_chainenergy
 
-    integer :: conf, unitno
+    integer :: conf
     
-    unitno=10*rank+100
     min_chainenergy =0.0_dp
-    do conf=1,cuantas        
+    do conf=1,cuantas      
         if(min_chainenergy > energychain(conf)) min_chainenergy=energychain(conf)
     enddo
    
@@ -1153,7 +1155,7 @@ subroutine global_minimum_chainenergy()
 
     use  mpivars
     use  globals, only : cuantas
-    use  chains, only : energychain
+    use  chains, only : energychain, energychain_min ,isEnergyShift
 
     real(dp) :: localmin(2), globalmin(2)
     integer :: i
@@ -1168,9 +1170,13 @@ subroutine global_minimum_chainenergy()
     if (rank == 0) then  
         print*,"Rank ",globalmin(2)," has lowest value of", globalmin(1)  
     endif
+    
+    energychain_min =globalmin(1)
 
-    call shift_energy_chain(globalmin(1))
-
+    if(isEnergyShift) then        
+        call shift_energy_chain(globalmin(1))
+        print*,"Shift minimum by :",energychain_min 
+    endif
 end subroutine
 
 
@@ -1739,6 +1745,7 @@ end subroutine VdWpotentialenergySaw
  
 ! pre : chain conformation 
 ! post: VdW of conformation 
+! Warning: need to to add VdWcutoff
 
 subroutine VdWpotentialenergy(chain,Energy)
 
@@ -1749,12 +1756,14 @@ subroutine VdWpotentialenergy(chain,Energy)
     real(dp), intent(in)  :: chain(:,:)
     real(dp), intent(out) :: Energy
     
-    real(dp) :: Ene,sqrlseg,sqrdist
+    real(dp) :: Ene,sqrlseg,sqrdist !,maxdist
     integer ::  i,j,s,t
     real(dp) :: xi,xj,yi,yj,zi,zj
     
     Ene=0.0_dp 
 
+    !maxdist=VdWcutoff*delta 
+   
     do i=1,nseg
         do j=i+1,nseg
 

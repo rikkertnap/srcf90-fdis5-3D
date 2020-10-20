@@ -163,10 +163,13 @@ contains
         do g=1,ngr
             FEq=FEq-log(q(g))    
         enddo
-            
-        !     .. total free energy  
+         
+        ! .. Shift in palpha  i.e q 
+        Eshift=lnproshift*ngr  
 
-        FE = FEq  + FEpi + FErho + FEel + FEVdW + FEbind
+        !  .. total free energy  
+
+        FE = FEq  + FEpi + FErho + FEel + FEVdW + FEbind -Eshift
         
     
         qres = qres + (qsurf(RIGHT)+qsurf(LEFT))  ! total residual charge 
@@ -452,11 +455,10 @@ contains
             FEq=FEq-log(q(g))    
         enddo
      
-
         ! Shift in palpha  i.e q 
         Eshift=lnproshift*ngr
 
-        
+       
         ! .. total free energy per area of surface 
 
         FE = FEq  + FEpi + FErho + FEel + FEVdW + FEbind -Eshift
@@ -472,7 +474,6 @@ contains
         deltaFE = FE - FEbulk
     
     end subroutine fcnenergy_electbrush_mul
-
 
 
 
@@ -538,14 +539,13 @@ contains
             FEVdW=0.0_dp
         endif
 
-        ! Shift in palpha  i.e q 
+        ! .. shift in palpha  i.e q 
         Eshift=lnproshift*ngr 
 
         do g=1,ngr
             FEq=FEq-log(q(g))    
         enddo
        
-        
         !  .. total free energy 
 
         FE = FEq + FEpi + FErho + FEVdW -Eshift

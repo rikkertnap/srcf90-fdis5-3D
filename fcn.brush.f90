@@ -245,13 +245,7 @@ contains
 
             ! .. electrostatics 
 
-            call Poisson_Equation(f,psi,rhoq)  
-          
-            ! if(rank==0) then 
-            !     do i=1,nsize
-            !         write(100,*)i,f(i),xpol(i),(rhopol(i,t),t=1,nsegtypes)
-            !     enddo    
-            ! endif    
+            call Poisson_Equation(f,psi,rhoq)    
 
             norm=l2norm(f,neqint)
             iter=iter+1
@@ -398,7 +392,7 @@ contains
         lnproshift=globallnproshift(1)
           
         do c=1,cuantas         ! loop over cuantas
-            lnpro=0.0_dp -VdWscale%val*energychain(c)     ! initial weight conformation (1 or 0)
+            lnpro=-VdWscale%val*energychain(c)     ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -464,16 +458,14 @@ contains
                 f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) +xpro(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                     zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
-            !   print*,i,rhoq(i)
             enddo
           
-            !     .. end computation polymer density and charge density  
+            !  .. end computation polymer density and charge density  
 
             ! .. electrostatics 
 
             call Poisson_Equation(f,psi,rhoq)  
           
-
             norm=l2norm(f,neqint)
             iter=iter+1
 
@@ -786,7 +778,7 @@ contains
 
 
 
-      ! brush of multiblock copolymers
+    ! brush of multiblock copolymers
     ! with ion charegeable group being an acid with counterion binding etc 
 
     subroutine fcnbrush(x,f,nn)
@@ -950,8 +942,7 @@ contains
         lnproshift=globallnproshift(1)
               
         do c=1,cuantas         ! loop over cuantas
-            !pro=1.0_dp         ! initial weight conformation (1 or 0)
-            lnpro=-energychain(c) 
+            lnpro=-VdWscale%val*energychain(c)  ! initial weight conformation
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -1317,7 +1308,7 @@ contains
              
         do c=1,cuantas         ! loop over cuantas
             !pro=1.0_dp         ! initial weight conformation (1 or 0)
-            lnpro=-energychain(c) 
+            lnpro=-VdWscale%val*energychain(c) 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -1610,7 +1601,7 @@ contains
 
         do c=1,cuantas               ! loop over cuantas
             
-            lnpro=0.0_dp
+            lnpro=-VdWscale%val*energychain(c)  
 
             do s=1,nseg              ! loop over segments 
                 k=indexchain(s,c)           
@@ -2019,7 +2010,7 @@ contains
 
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=0.0_dp-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=-VdWscale%val*energychain(c)        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)

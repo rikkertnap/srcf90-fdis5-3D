@@ -318,6 +318,7 @@ subroutine read_inputfile(info)
     call set_value_isVdW(systype,isVdW)
     call set_value_isVdWintEne(systype, isVdWintEne)
     call set_value_nsegtypes(nsegtypes,chaintype,systype,info)
+
     call set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
     call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
     call set_value_precondition(precondition,isSet_precondition)
@@ -685,12 +686,13 @@ subroutine set_value_isVdW(systype, isVdW)
     character(len=15) :: systypestr(3) 
     integer :: i
 
-    ! permissible values of systype that involve VdW interaction 
+     isVdW=.True.
+
+    ! systype that NOT involve VdW interactions 
     
     systypestr(1)="elect"
     systypestr(2)="neutralnoVdW" 
     systypestr(3)="brush_mulnoVdW"  
-    isVdW=.True.
 
     do i=1,3     
         if(systype==systypestr(i)) isVdW=.FALSE.
@@ -698,7 +700,8 @@ subroutine set_value_isVdW(systype, isVdW)
 
 end subroutine
 
-! isVdWintEne = .true. then  compute internal VdW energy chain 
+! isVdWintEne = .true. compute internal VdW energy chain  
+! allways true
 
 subroutine set_value_isVdWintEne(systype, isVdWintEne)
 
@@ -708,16 +711,9 @@ subroutine set_value_isVdWintEne(systype, isVdWintEne)
     character(len=15) :: systypestr(2) 
     integer :: i
 
-    ! permissible values of systype that involve internal VdW chain energy 
-    
-    systypestr(1)="neutralnoVdW"   
-    systypestr(2)="brush_mulnoVdW"  
-
-    isVdWintEne=.true.
-   
-    do i=1,2
-        if(systype==systypestr(i)) isVdWintEne=.false.
-    enddo
+    ! all systype that involve internal VdW chain energy
+      
+    isVdWintEne=.true.  
 
 end subroutine
 
@@ -1144,7 +1140,10 @@ subroutine output_brush_mul
     write(un_sys,*)'nsize       = ',nsize  
     write(un_sys,*)'cuantas     = ',cuantas
     write(un_sys,*)'iterations  = ',iter
+    write(un_sys,*)'pH%val      = ',pH%val
+    write(un_sys,*)'VdWscale%val= ',VdWscale%val
    
+
     ! .. closing files
 
     if(nz==nzmin) then 
@@ -1497,6 +1496,8 @@ subroutine output_elect
     write(un_sys,*)'nsize       = ',nsize  
     write(un_sys,*)'cuantas     = ',cuantas
     write(un_sys,*)'iterations  = ',iter
+    write(un_sys,*)'pH%val      = ',pH%val
+    write(un_sys,*)'VdWscale%val= ',VdWscale%val
    
     ! .. closing files
 
@@ -1681,6 +1682,7 @@ subroutine output_neutral
     write(un_sys,*)'mu          = ',-log(q)
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'iterations  = ',iter
+    write(un_sys,*)'VdWscale%val= ',VdWscale%val
     
     ! .. closing files
     if(nz.eq.nzmin) then 
@@ -1700,6 +1702,7 @@ subroutine output_individualcontr_fe
     use energy
     use myutils, only : newunit
     use volume, only : delta,nz,nzmax,nzmin
+    use chains, only : isEnergyShift,energychain_min    
 
     ! local arguments
 
@@ -1736,7 +1739,8 @@ subroutine output_individualcontr_fe
     write(un_fe,*)'FEconf          = ',FEconf
     write(un_fe,*)'Econf           = ',Econf
     write(un_fe,*)'Eshift          = ',Eshift
-    
+    write(un_fe,*)'isEnergyShift   = ',isEnergyShift
+    write(un_fe,*)'Emin            = ',energychain_min    
     
     write(un_fe,*)"FEtrans%sol     = ",FEtrans%sol   
     write(un_fe,*)"FEtrans%Na      = ",FEtrans%Na  

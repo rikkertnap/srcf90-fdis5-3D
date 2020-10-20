@@ -13,9 +13,9 @@ module chains
     logical, dimension(:), allocatable      :: ismonomer_chargeable     ! ismonomer_chargeabl(s)=true if segment number type "t" is acid or base  
     real(dp), dimension(:), allocatable     :: energychain              ! energy chain   
     real(dp), dimension(:), allocatable     :: energychain_init         ! energy chain   
-   
+    real(dp) :: energychain_min          ! mimimum energy chain
+    logical  :: isEnergyShift            ! if true energychain is shifted by energychain_min 
     logical, dimension(:),   allocatable    :: weightchain
-
     logical :: isHomopolymer
     double precision, dimension(:),allocatable :: lsegseq  ! only needed for copolymer
 
