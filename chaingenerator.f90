@@ -26,14 +26,11 @@ subroutine make_chains(chainmethod)
     use mpivars, only : ierr
     use myutils, only : print_to_log, LogUnit, lenText
     use myio, only : myio_err_chainmethod
-    use chains, only : isEnergyShift
 
     character(len=15), intent(in)  :: chainmethod
 
     integer :: i, info
     character(len=lenText) :: text, istr
-
-    isEnergyShift=.false.
 
     info=0
 
@@ -1155,7 +1152,8 @@ subroutine global_minimum_chainenergy()
 
     use  mpivars
     use  globals, only : cuantas
-    use  chains, only : energychain, energychain_min ,isEnergyShift
+    use  chains, only : energychain, energychain_min
+    use  parameters, only: isEnergyShift
 
     real(dp) :: localmin(2), globalmin(2)
     integer :: i

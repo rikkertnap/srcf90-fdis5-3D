@@ -66,7 +66,7 @@ subroutine read_inputfile(info)
     character(len=100) :: buffer, label
     integer :: pos
     integer :: line
-    logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha
+    logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha,  isSet_EnergyShift
 
     if (present(info)) info = 0
     
@@ -85,6 +85,7 @@ subroutine read_inputfile(info)
     isSet_precondition=.false.
     isSet_savePalpha  =.false.  
     write_mc_chains   =.false.
+    isSet_EnergyShift =.false.
 
     ! defailt concentrations
     cKCl=0.0_dp
@@ -128,6 +129,9 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) chainmethod
             case ('chaintype')
                 read(buffer,*,iostat=ios) chaintype
+            case ('isEnergyShift')    
+                read(buffer,*,iostat=ios) isEnergyShift
+                isSet_EnergyShift=.true.    
             case ('tolerance')
                 read(buffer,*,iostat=ios) tol_conv           
             case ('infile')
@@ -322,6 +326,7 @@ subroutine read_inputfile(info)
     call set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
     call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
     call set_value_precondition(precondition,isSet_precondition)
+    call set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
 
 
     ! after set_value_isVdW
@@ -819,6 +824,17 @@ subroutine set_value_precondition(precondition,isSet_precondition)
     if(.not.isSet_precondition) precondition=.false. ! default value
    
 end subroutine set_value_precondition
+
+
+subroutine set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
+
+    logical, intent(inout) :: isEnergyShift
+    logical, intent(in)  :: isSet_EnergyShift
+
+    if(.not.isSet_EnergyShift) isEnergyShift=.false. ! default value
+   
+end subroutine set_value_isEnergyShift
+
 
 subroutine output()
 
@@ -1702,7 +1718,8 @@ subroutine output_individualcontr_fe
     use energy
     use myutils, only : newunit
     use volume, only : delta,nz,nzmax,nzmin
-    use chains, only : isEnergyShift,energychain_min    
+    use parameters, only : isEnergyShift
+    use chains, only : energychain_min    
 
     ! local arguments
 
