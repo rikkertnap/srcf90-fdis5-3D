@@ -133,8 +133,9 @@ ifdef is_theta
 
 FFLAGS=  -cpp -DVERSION=\"$(GIT_VERSION)\" -O3
 
-LDFLAGS= -lm /usr/lib64/librt.a -L/lus/theta-fs0/projects/FDTD_Cancer_2/sundials/sundial-2.6.1/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/lus/theta-fs0/projects/FDTD_Cancer_2/sundials/sundial-2.6.1/lib
+#LDFLAGS= -lm /usr/lib64/librt.a -L/lus/theta-fs0/projects/FDTD_Cancer_2/sundials/sundial-2.6.1/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/lus/theta-fs0/projects/FDTD_Cancer_2/sundials/sundial-2.6.1/lib
 
+LDFLAGS= -lm /usr/lib64/librt.a -L/lus/theta-fs0/projects/FDTD_Cancer_2/sundials/sundial-2.6.1-sep-2020/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/lus/theta-fs0/projects/FDTD_Cancer_2/sundials/sundial-2.6.1-sep-2020/lib
 
 LFFLAGS=$(LDFLAGS)
 
