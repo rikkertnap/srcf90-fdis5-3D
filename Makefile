@@ -20,6 +20,19 @@ LFFLAGS=$(LDFLAGS)
 
 FF= mpif90
 
+else($(shell hostname),ensalada)
+
+FFLAGS=  -cpp -DVERSION=\"$(GIT_VERSION)\" -fbounds-check  -Warray-bounds #-O3
+
+LDFLAGS= -O3 -lm /usr/lib/x86_64-linux-gnu/librt.so -L/opt/local/sundials-2.6.1/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/opt/local/sundials-2.6.1/lib
+
+
+
+LFFLAGS=$(LDFLAGS)
+
+FF= mpif90
+
+
 
 else ifeq ($(shell hostname),master)
 
