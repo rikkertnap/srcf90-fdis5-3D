@@ -109,6 +109,21 @@ else ifeq ($(shell hostname),thetalogin6)
 
         is_theta = yes
 
+else ifeq ($(shell hostname),cooleylogin1)
+
+        is_cooley = yes
+
+else ifeq ($(shell hostname),cooleylogin2)
+
+        is_cooley = yes
+
+else ifeq ($(shell hostname),cooleylogin3)
+
+        is_cooley = yes
+
+else ifeq ($(shell hostname),cooleylogin4)
+
+        is_cooley = yes
 
 else 
 
@@ -156,6 +171,21 @@ FF= mpif90
 
 endif
 
+
+ifdef is_cooley
+
+FFLAGS=  -cpp -DVERSION=\"$(GIT_VERSION)\" -O3
+
+LDFLAGS= -O3 -lm /usr/lib64/librt.so -L/lus/theta-fs0/projects/FDTD_Cancer_2/sundials/sundial-2.6.1-cooley/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial  -Wl,-rpath,/lus/theta-fs0/projects/FDTD_Cancer_2/sundials/sundial-2.6.1-cooley/lib
+
+LFFLAGS=$(LDFLAGS)
+
+FF= mpif90
+
+endif
+
+
+
 all:	$(TARGET)
 
 $(TARGET): $(SRC:.f90=.o)
@@ -169,7 +199,12 @@ $(TARGET): $(SRC:.f90=.o)
 	${FF} ${FFLAGS} -c $(SRC)
 
 install: all
+ifdef is_cooley        
+	cp $(TARGET) ~/bincooley
+else 
 	cp $(TARGET) ~/bin
+endif
+
 
 
 clean:	
@@ -184,43 +219,6 @@ depend dep:
 ifeq (.depend, $(wildcard .depend))
 include .depend
 endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
