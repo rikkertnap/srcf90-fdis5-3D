@@ -25,8 +25,8 @@ module field
     real(dp), dimension(:), allocatable :: xOHmin  ! volume fraction of OHmin 
     real(dp), dimension(:), allocatable :: xpro    ! volume fraction of crowder 
     real(dp), dimension(:), allocatable :: rhoq    ! total free charge density in units of vsol  
-    real(dp),dimension(:), allocatable :: epsfcn   ! dielectric constant 
-    real(dp),dimension(:), allocatable :: Depsfcn  ! derivative dielectric constant
+    real(dp), dimension(:), allocatable :: epsfcn   ! dielectric constant 
+    real(dp), dimension(:), allocatable :: Depsfcn  ! derivative dielectric constant
 
     real(dp), dimension(:,:), allocatable :: fdis   ! degree of dissociation of acid monomer
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
@@ -68,7 +68,7 @@ contains
         allocate(xOHmin(N),stat=ier)
         allocate(rhoq(N),stat=ier)
         allocate(fdis(N,nsegtypes),stat=ier)
-        allocate(fdisA(N,7),stat=ier)
+        allocate(fdisA(N,8),stat=ier)
         allocate(fdisB(N,5),stat=ier)
         allocate(epsfcn(N),stat=ier)    ! relative dielectric constant
         allocate(Depsfcn(N),stat=ier)   ! derivate relative dielectric constan

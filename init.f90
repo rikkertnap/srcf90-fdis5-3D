@@ -81,8 +81,6 @@ end subroutine init_guess
          
 
 
-
-
 !     purpose: initalize x and xguess
 
 subroutine init_guess_elect(x, xguess)

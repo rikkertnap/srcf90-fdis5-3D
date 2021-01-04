@@ -19,7 +19,7 @@
     real(dp) :: vsol                 ! volume of solvent  in nm^3       
     real(dp) :: vpolA(5),deltavA(4)  ! volume of one polymer segment, vpol  in units of vsol
     real(dp) :: vpolB(5),deltavB(4)
-    real(dp) :: vpolAA(7),deltavAA(6)
+    real(dp) :: vpolAA(8),deltavAA(7)
     real(dp), dimension(:), allocatable :: vpol  ! volume of polymer segment of given type, vpol in units of vsol
     
     real(dp) :: vNa                ! volume positive ion in units of vsol
@@ -54,7 +54,7 @@
     type(looplist), target :: VdWscale ! scale factor in VdW interaction
 
     !    .. charges 
-    integer :: zpolAA(7)
+    integer :: zpolAA(8)
     integer, dimension(:,:), allocatable :: zpol          ! valence charge polymer
     integer :: zpolA(5)          ! valence charge polymer
     integer :: zpolB(5)          ! valence charge polymer
@@ -123,7 +123,7 @@
   
     real(dp), dimension(:), allocatable :: qpol                ! charge poly of layer 
     real(dp), dimension(:), allocatable :: avfdis              ! average degree of dissociation
-    real(dp) :: avfdisA(7)         ! average degree of dissociation 
+    real(dp) :: avfdisA(8)         ! average degree of dissociation 
     real(dp) :: avfdisB(5)         ! average degree of dissociation
 
     !  .. weak polyelectrolyte variables 
@@ -134,7 +134,7 @@
     
     real(dp) :: KaA(4),K0aA(4),pKaA(4)     !  ... constant for  acid 
     real(dp) :: KaB(4),K0aB(4),pKaB(4)   
-    real(dp) :: KaAA(6),K0aAA(6),pKaAA(6)    
+    real(dp) :: KaAA(7),K0aAA(7),pKaAA(7)    
       
      ! water equilibruim constant pKw= -log[Kw] ,Kw=[H+][OH-]   
     real(dp) :: pKw                 
@@ -283,6 +283,8 @@ contains
         zpolAA(5)= 0 ! A2Ca
         zpolAA(6)= 1 ! AMg+
         zpolAA(7)= 0 ! A2Mg
+        zpolAA(8)= 0 ! AK
+
 
         !  .. radii
         !  .. ionic radii
@@ -352,6 +354,7 @@ contains
         pKaA(2) = -0.4_dp
         pKaA(3) =  1.0_dp
         pKaA(4) =  4.0_dp
+
         pKaB(1) = -2.0_dp
         pKaB(2) = -0.42_dp
         pKaB(3) = -0.72243_dp
@@ -417,7 +420,7 @@ contains
         use chains, only : type_of_monomer_char,type_of_monomer,ismonomer_chargeable
         use physconst, only : Na
 
-        real(dp) :: KAA(6)
+        real(dp) :: KAA(7)
         real(dp) :: vA    
         integer  :: tAA,i,tt,s,flag_one
         logical  :: isOandNpresent,  isApresent
@@ -448,6 +451,7 @@ contains
                 pKaAA(4)=4.0_dp
                 pKaAA(5)=1.0_dp
                 pKaAA(6)=4.0_dp
+                pKaAA(7)=-0.4_dp
             else ! errro
                 print*,"Error in init_dna:"
                 print*,"Failure to init pKaAA: info=",info
@@ -455,7 +459,7 @@ contains
             endif    
         endif
         
-        do i=1,6
+        do i=1,7
             KaAA(i)=10.0_dp**(-pKaAA(i))  
             K0aAA(i) = KaAA(i)*(vsol*Na/1.0e24_dp)
         enddo
@@ -472,14 +476,17 @@ contains
         vpolAA(4)= vA+vCa          ! vACa
         vpolAA(5)= 2.0_dp*vA+vCa   ! vA2Ca 
         vpolAA(6)= vA+vMg          ! vAMg       
-        vpolAA(7)= 2.0_dp*vA+vMg   ! vA2Mg        
+        vpolAA(7)= 2.0_dp*vA+vMg   ! vA2Mg 
+        vpolAA(8)= vA+vK           ! vAK 
+
 
         deltavAA(1)=vpolAA(1)+1.0_dp-vpolAA(2) ! vA- + vH+ - vAH
-        deltavAA(2)=vpolAA(1)+vNa-vpolAA(3)    ! vA- + vNa+ - vANa+
+        deltavAA(2)=vpolAA(1)+vNa-vpolAA(3)    ! vA- + vNa+ - vANa
         deltavAA(3)=vpolAA(1)+vCa-vpolAA(4)    ! vA- + vCa2+ - vACa+
         deltavAA(4)=2.0_dp*vpolAA(1)+vCa-vpolAA(5) ! 2vA- + vCa2+ -vA2Ca 
         deltavAA(5)=vpolAA(1)+vMg-vpolAA(6)    ! vA- + vMg2+ - vAMg+
-        deltavAA(6)=2.0_dp*vpolAA(1)+vMg-vpolAA(7) ! 2vA- + vMg2+ -vA2Mg     
+        deltavAA(6)=2.0_dp*vpolAA(1)+vMg-vpolAA(7) ! 2vA- + vMg2+ -vA2Mg
+        deltavAA(7)=vpolAA(1)+vK-vpolAA(8)    ! vA- + vK+ - vAK
 
 
         ! determine if there is only one seg type is chargeable

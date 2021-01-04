@@ -28,7 +28,7 @@ module myio
 
 
     ! unit number 
-    integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xNaCl,un_xKCl
+    integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xMg,un_xNaCl,un_xKCl
     integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q
     integer :: un_dip ,un_dielec,un_xpolABz, un_xpolz, un_xpol, un_fdis, un_xpro, un_fdisP
    
@@ -883,6 +883,7 @@ subroutine output_brush_mul
     character(len=90) :: xNafilename
     character(len=90) :: xKfilename
     character(len=90) :: xCafilename
+    character(len=90) :: xMgfilename
     character(len=90) :: xNaClfilename
     character(len=90) :: xKClfilename
     character(len=90) :: xClfilename
@@ -915,6 +916,7 @@ subroutine output_brush_mul
         xNafilename='xNaions.'//trim(fnamelabel)
         xKfilename='xKions.'//trim(fnamelabel)
         xCafilename='xCaions.'//trim(fnamelabel)
+        xMgfilename='xMGions.'//trim(fnamelabel)
         xNaClfilename='xNaClionpair.'//trim(fnamelabel)
         xKClfilename='xKClionpair.'//trim(fnamelabel)
         xClfilename='xClions.'//trim(fnamelabel)
@@ -944,6 +946,7 @@ subroutine output_brush_mul
             open(unit=newunit(un_xNa),file=xNafilename)
             open(unit=newunit(un_xK),file=xKfilename)
             open(unit=newunit(un_xCa),file=xCafilename)
+            open(unit=newunit(un_xMg),file=xMgfilename)
             open(unit=newunit(un_xNaCl),file=xNaClfilename)
             open(unit=newunit(un_xKCl),file=xKClfilename)
             open(unit=newunit(un_xpair),file=densfracionpairfilename)
@@ -976,6 +979,7 @@ subroutine output_brush_mul
         write(un_xNa,*)'#D    = ',nz*delta 
         write(un_xK,*)'#D    = ',nz*delta 
         write(un_xCa,*)'#D    = ',nz*delta 
+        write(un_xMg,*)'#D    = ',nz*delta 
         write(un_xNaCl,*)'#D    = ',nz*delta 
         write(un_xKCl,*)'#D    = ',nz*delta 
         write(un_xpair,*)'#D    = ',nz*delta 
@@ -1019,7 +1023,7 @@ subroutine output_brush_mul
         do i=1,nsize
             write(un_xNa,*)xNa(i)
             write(un_xK,*)xK(i)
-            write(un_xCa,*)xCa(i)
+            write(un_xCa,*)xMg(i)
             write(un_xNaCl,*)xNaCl(i)
             write(un_xKCl,*)xKCl(i)
             write(un_xpair,*)(xNaCl(i)/vNaCl)/(xNa(i)/vNa+xCl(i)/vCl+xNaCl(i)/vNaCl)
@@ -1092,6 +1096,7 @@ subroutine output_brush_mul
         enddo
         write(un_sys,*)'zNa         = ',zNa
         write(un_sys,*)'zCa         = ',zCa
+        write(un_sys,*)'zMG         = ',zMg
         write(un_sys,*)'zK          = ',zK
         write(un_sys,*)'zCl         = ',zCl 
          ! volume  
@@ -1100,6 +1105,7 @@ subroutine output_brush_mul
         write(un_sys,*)'vNa         = ',vNa*vsol
         write(un_sys,*)'vCl         = ',vCl*vsol
         write(un_sys,*)'vCa         = ',vCa*vsol
+        write(un_sys,*)'vMg         = ',vMg*vsol
         write(un_sys,*)'vK          = ',vK*vsol
         write(un_sys,*)'vNaCl       = ',vNaCl*vsol
         write(un_sys,*)'vKCl        = ',vKCl*vsol
@@ -1132,7 +1138,7 @@ subroutine output_brush_mul
     write(un_sys,*)'qpoltot     = ',qpol_tot
     write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
     if(systype=="brushssdna")then
-        write(un_sys,*)'avfdisA      = ',(avfdisA(k),k=1,7)
+        write(un_sys,'(A14,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
     endif    
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
@@ -1175,6 +1181,7 @@ subroutine output_brush_mul
             close(un_xNa)   
             close(un_xK)
             close(un_xCa)
+            close(un_xMg)
             close(un_xNaCl)
             close(un_xKCl)
             close(un_xpair)
@@ -1212,6 +1219,7 @@ subroutine output_elect
     character(len=90) :: xNafilename
     character(len=90) :: xKfilename
     character(len=90) :: xCafilename
+    character(len=90) :: xMgfilename
     character(len=90) :: xNaClfilename
     character(len=90) :: xKClfilename
     character(len=90) :: xClfilename
@@ -1247,6 +1255,7 @@ subroutine output_elect
         xNafilename='xNaions.'//trim(fnamelabel)
         xKfilename='xKions.'//trim(fnamelabel)
         xCafilename='xCaions.'//trim(fnamelabel)
+        xMgfilename='xMgions.'//trim(fnamelabel)
         xNaClfilename='xNaClionpair.'//trim(fnamelabel)
         xKClfilename='xKClionpair.'//trim(fnamelabel)
         xClfilename='xClions.'//trim(fnamelabel)
@@ -1276,6 +1285,7 @@ subroutine output_elect
             open(unit=newunit(un_xNa),file=xNafilename)
             open(unit=newunit(un_xK),file=xKfilename)
             open(unit=newunit(un_xCa),file=xCafilename)
+            open(unit=newunit(un_xMg),file=xMgfilename)
             open(unit=newunit(un_xNaCl),file=xNaClfilename)
             open(unit=newunit(un_xKCl),file=xKClfilename)
             open(unit=newunit(un_xpair),file=densfracionpairfilename)
@@ -1307,6 +1317,7 @@ subroutine output_elect
         write(un_xNa,*)'#D    = ',nz*delta 
         write(un_xK,*)'#D    = ',nz*delta 
         write(un_xCa,*)'#D    = ',nz*delta 
+        write(un_xMg,*)'#D    = ',nz*delta 
         write(un_xNaCl,*)'#D    = ',nz*delta 
         write(un_xKCl,*)'#D    = ',nz*delta 
         write(un_xpair,*)'#D    = ',nz*delta 

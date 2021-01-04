@@ -918,7 +918,7 @@ contains
                             rhopolq=rhopolq+ zpolAA(6)*fdisA(i,6)*rhopol(i,t)
                             xpol = xpol +rhopol(i,t)*(fdisA(i,5)*vpolAA(5)*vsol/2.0_dp +&
                                                       fdisA(i,6)*vpolAA(6)*vsol +&
-                                                      fdisA(i,7)*vpolAA(7)*vsol/2.0_dp)
+                                                      fdisA(i,7)*vpolAA(7)*vsol/2.0_dp+ fdisA(i,8)*vpolAA(8)*vsol)
 
                 
                             FEchem_react = FEchem_react + ( -rhopol(i,t)*lambda &

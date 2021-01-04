@@ -110,6 +110,7 @@ contains
             xpol(i)    = 0.0_dp                                   ! volume fraction polymer
             rhoqpol(i) = 0.0_dp                                   ! charge density AA monomoer
             xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-psi(i)*zNa) ! Na+ volume fraction 
+            xK(i)      = expmu%K*(xsol(i)**vK)*exp(-psi(i)*zK) ! Na+ volume fraction 
             xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-psi(i)*zCl) ! Cl- volume fraction
             xHplus(i)  = expmu%Hplus*(xsol(i))*exp(-psi(i))       ! H+  volume fraction
             xOHmin(i)  = expmu%OHmin*(xsol(i))*exp(+psi(i))       ! OH- volume fraction
@@ -201,9 +202,10 @@ contains
                 q(g)=q(g)+local_q
             enddo 
            
+            ! first graft point 
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(1) ! polymer density 
                 enddo
             enddo
            
@@ -235,9 +237,9 @@ contains
             enddo        
 
             do i=1,n
-                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) +xpro(i) -1.0_dp
+                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) +xK(i)+xpro(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
-                    zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
+                    zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb +zK*xK(i)/vK! total charge density in units of vsol  
             !   print*,i,rhoq(i)
             enddo
           
@@ -338,6 +340,7 @@ contains
             xpol(i)    = 0.0_dp                                   ! volume fraction polymer
             rhoqpol(i) = 0.0_dp                                   ! charge density AA monomoer
             xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-psi(i)*zNa) ! Na+ volume fraction 
+            xK(i)      = expmu%K*(xsol(i)**vK)*exp(-psi(i)*zK)    ! K+ volume fraction 
             xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-psi(i)*zCl) ! Cl- volume fraction
             xHplus(i)  = expmu%Hplus*(xsol(i))*exp(-psi(i))       ! H+  volume fraction
             xOHmin(i)  = expmu%OHmin*(xsol(i))*exp(+psi(i))       ! OH- volume fraction
@@ -422,9 +425,10 @@ contains
                 q(g)=q(g)+local_q
             enddo 
 
+            ! first graft point 
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(1) ! polymer density 
                 enddo
             enddo
            
@@ -455,9 +459,9 @@ contains
             enddo        
 
             do i=1,n
-                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) +xpro(i) -1.0_dp
+                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xNaCl(i) +xK(i)+xpro(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
-                    zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
+                    zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb +zK*xK(i)/vK! total charge density in units of vsol  
             enddo
           
             !  .. end computation polymer density and charge density  
@@ -565,6 +569,7 @@ contains
             xpol(i)    = 0.0_dp                                   ! volume fraction polymer
             rhoqpol(i) = 0.0_dp                                   ! charge density AA monomoer
             xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-psi(i)*zNa) ! Na+ volume fraction
+            xK(i)      = expmu%K*(xsol(i)**vK)*exp(-psi(i)*zK)    ! K+ volume fraction
             xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-psi(i)*zCl) ! Cl- volume fraction
             xHplus(i)  = expmu%Hplus*(xsol(i))*exp(-psi(i))       ! H+  volume fraction
             xOHmin(i)  = expmu%OHmin*(xsol(i))*exp(+psi(i))       ! OH- volume fraction
@@ -581,6 +586,7 @@ contains
         !  A2Ca <=> 2A- +Ca++ 
         !  AMg+ <=> A- + Mg++  
         !  A2Mg <=> 2A- +Mg++  
+        !  AK   <=> A- + K+ 
 
         do t=1,nsegtypes
             if(ismonomer_chargeable(t)) then
@@ -596,8 +602,9 @@ contains
                         xA(2)= (xNa(i)/vNa)/(K0aAA(2)*(xsol(i)**deltavAA(2)))   ! ANa/A-
                         xA(3)= (xCa(i)/vCa)/(K0aAA(3)*(xsol(i)**deltavAA(3)))   ! ACa+/A-
                         xA(5)= (xMg(i)/vMg)/(K0aAA(5)*(xsol(i)**deltavAA(5)))   ! AMg+/A-
+                        xA(7)= (xK(i)/vK)/(K0aAA(7)*(xsol(i)**deltavAA(7)))     ! AK/A-
            
-                        sgxA=1.0_dp+xA(1)+xA(2)+xA(3)+xA(5)                                                         
+                        sgxA=1.0_dp+xA(1)+xA(2)+xA(3)+xA(5) +xA(7)                                                           
                         constACa=(2.0_dp*(rhopolin(i,t)*vsol)*(xCa(i)/vCa))/(K0aAA(4)*(xsol(i)**deltavAA(4))) 
                         constAMg=(2.0_dp*(rhopolin(i,t)*vsol)*(xMg(i)/vMg))/(K0aAA(6)*(xsol(i)**deltavAA(6))) 
                         constA=constACa+constAMg
@@ -611,6 +618,7 @@ contains
                         fdisA(i,5)  = (fdisA(i,1)**2)*constACa               ! A2Ca 
                         fdisA(i,6)  = fdisA(i,1)*xA(5)                       ! AMg+ 
                         fdisA(i,7)  = (fdisA(i,1)**2)*constAMg               ! A2Mg 
+                        fdisA(i,8)  = fdisA(i,1)*xA(7)                       ! AK
 
                         lnexppi(i,t)  = log(xsol(i))*vpol(t)+psi(i)-log(fdisA(i,1))   ! auxilary variable palpha
                         fdis(i,t)   = fdisA(i,1) 
@@ -687,9 +695,10 @@ contains
                 q(g)=q(g)+local_q
             enddo
 
+            ! first graft point 
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(1) ! polymer density 
                 enddo
             enddo
            
@@ -730,7 +739,7 @@ contains
                             enddo
                             xpol(i)=xpol(i)+rhopol(i,t)*(fdisA(i,5)*vpolAA(5)/2.0_dp + &
                                                      fdisA(i,6)*vpolAA(6) + &
-                                                     fdisA(i,7)*vpolAA(7)/2.0_dp)*vsol
+                                                     fdisA(i,7)*vpolAA(7)/2.0_dp +fdisA(i,8)*vpolAA(8) )*vsol 
                         
                         enddo
                     endif    
@@ -744,9 +753,9 @@ contains
             enddo    
 
             do i=1,n
-                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xpro(i) -1.0_dp
+                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xK(i)+xpro(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
-                    zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
+                    zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb +zK*xK(i)/vK ! total charge density in units of vsol  
             enddo
           
             ! .. end computation polymer density and charge density  
@@ -856,6 +865,7 @@ contains
             xpol(i)    = 0.0_dp                                   ! volume fraction polymer
             rhoqpol(i) = 0.0_dp                                   ! charge density AA monomoer
             xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-psi(i)*zNa) ! Na+ volume fraction 
+            xK(i)      = expmu%K*(xsol(i)**vK)*exp(-psi(i)*zK)    ! K+ volume fraction
             xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-psi(i)*zCl) ! Cl- volume fraction
             xHplus(i)  = expmu%Hplus*(xsol(i))*exp(-psi(i))       ! H+  volume fraction
             xOHmin(i)  = expmu%OHmin*(xsol(i))*exp(+psi(i))       ! OH- volume fraction
@@ -881,8 +891,9 @@ contains
                     xA(2)= (xNa(i)/vNa)/(K0aAA(2)*(xsol(i)**deltavAA(2)))   ! ANa/A-
                     xA(3)= (xCa(i)/vCa)/(K0aAA(3)*(xsol(i)**deltavAA(3)))   ! ACa+/A-
                     xA(5)= (xMg(i)/vMg)/(K0aAA(5)*(xsol(i)**deltavAA(5)))   ! AMg+/A-
+                    xA(7)= (xK(i)/vK)/(K0aAA(7)*(xsol(i)**deltavAA(7)))     ! AK/A-
        
-                    sgxA=1.0_dp+xA(1)+xA(2)+xA(3)+xA(5)                                                         
+                    sgxA=1.0_dp+xA(1)+xA(2)+xA(3)+xA(5)+xA(7)                                                        
                     constACa=(2.0_dp*(rhopolin(i,t)*vsol)*(xCa(i)/vCa))/(K0aAA(4)*(xsol(i)**deltavAA(4))) 
                     constAMg=(2.0_dp*(rhopolin(i,t)*vsol)*(xMg(i)/vMg))/(K0aAA(6)*(xsol(i)**deltavAA(6))) 
                     constA=constACa+constAMg
@@ -896,7 +907,8 @@ contains
                     fdisA(i,5)  = (fdisA(i,1)**2)*constACa               ! A2Ca 
                     fdisA(i,6)  = fdisA(i,1)*xA(5)                       ! AMg+ 
                     fdisA(i,7)  = (fdisA(i,1)**2)*constAMg               ! A2Mg 
-
+                    fdisA(i,8)  = fdisA(i,1)*xA(7)                       ! AK 
+                    
                     lnexppi(i,t)  = log(xsol(i))*vpol(t)+psi(i)-log(fdisA(i,1))   ! auxilary variable palpha
                     fdis(i,t)   = fdisA(i,1) 
                 enddo  
@@ -972,9 +984,11 @@ contains
                 q(g)=q(g)+local_q
             enddo 
 
+            ! first graft point 
+
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(1) ! polymer density 
                 enddo
             enddo
            
@@ -1004,7 +1018,7 @@ contains
                         enddo
                         xpol(i)=xpol(i)+rhopol(i,t)*(fdisA(i,5)*vpolAA(5)/2.0_dp + &
                                                  fdisA(i,6)*vpolAA(6) + &
-                                                 fdisA(i,7)*vpolAA(7)/2.0_dp)*vsol
+                                                 fdisA(i,7)*vpolAA(7)/2.0_dp + fdisA(i,8)*vpolAA(8) )*vsol
                     
                     enddo
                 else  
@@ -1017,9 +1031,9 @@ contains
             enddo    
 
             do i=1,n
-                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xpro(i) -1.0_dp
+                f(i) = xpol(i)+xsol(i)+xNa(i)+xCl(i)+xHplus(i)+xOHmin(i)+xRb(i)+xCa(i)+xMg(i)+xK(i)+xpro(i) -1.0_dp
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
-                    zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb ! total charge density in units of vsol  
+                    zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb +zK*xK(i)/vK! total charge density in units of vsol  
             enddo
           
             !     .. end computation polymer density and charge density  
@@ -1177,14 +1191,19 @@ contains
         do i=1,n                  ! init volume fractions
             xpol(i)    = 0.0_dp                                   ! volume fraction polymer
             rhoqpol(i) = 0.0_dp                                   ! charge density AA monomoer
-            xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-psi(i)*zNa) ! Na+ volume fraction 
-            xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-psi(i)*zCl) ! Cl- volume fraction
-            xHplus(i)  = expmu%Hplus*(xsol(i))*exp(-psi(i))       ! H+  volume fraction
-            xOHmin(i)  = expmu%OHmin*(xsol(i))*exp(+psi(i))       ! OH- volume fraction
-            xRb(i)     = expmu%Rb*(xsol(i)**vRb)*exp(-psi(i)*zRb) ! Rb+ volume fraction
-            xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
-            xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
+
+            xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-born(lbr,bornrad%Na,zNa)-psi(i)*zNa) ! Na+ volume fraction 
+            xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-born(lbr,bornrad%Cl,zCl)-psi(i)*zCl) ! Cl- volume fraction
+            xHplus(i)  = expmu%Hplus*(xsol(i))  *exp(-born(lbr,bornrad%Hplus,1)-psi(i))    ! H+  volume fraction
+            xOHmin(i)  = expmu%OHmin*(xsol(i))  *exp(-born(lbr,bornrad%OHmin,-1)+psi(i))   ! OH- volume fraction
+            xRb(i)     = expmu%Rb*(xsol(i)**vRb)*exp(-born(lbr,bornrad%Rb,zRb)-psi(i)*zRb) ! Rb+ volume fraction
+            xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-born(lbr,bornrad%Ca,zCa)-psi(i)*zCa) ! Ca++ volume fraction 
+            xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-born(lbr,bornrad%Mg,zMg)-psi(i)*zMg) ! Mg++ volume fraction 
+
             xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! crowder volume fraction  
+
+
+
             ! xNaCl(i)   = expmu%NaCl*(xsol(i)**vNaCl) ! for this fcn KionNa=0 => xNaCl=0 
 
             lbr = lb/epsfcn(i)     ! local Bjerrum length
@@ -1339,9 +1358,10 @@ contains
                 q(g)=q(g)+local_q
             enddo 
 
+            ! first graft point 
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(1) ! polymer density 
                 enddo
             enddo
  
@@ -1523,7 +1543,7 @@ contains
             xCl(i)   = expmu%Cl*(xsol(i)**vCl)*exp(-psi(i)*zCl) ! ion neg volume fraction
             xHplus(i) = expmu%Hplus*(xsol(i))*exp(-psi(i))      ! H+  volume fraction
             xOHmin(i) = expmu%OHmin*(xsol(i))*exp(+psi(i))      ! OH-  volume fraction
-            xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! crowder volume fraction  
+            xpro(i)   = expmu%pro*(xsol(i)**vpro)                ! crowder volume fraction  
        
             xA(1)= xHplus(i)/(K0aA(1)*(xsol(i)**deltavA(1)))      ! AH/A-
             xA(2)= (xNa(i)/vNa)/(K0aA(2)*(xsol(i)**deltavA(2)))   ! ANa/A-
@@ -1644,9 +1664,10 @@ contains
                 q(g)=q(g)+q_local
             enddo 
         
+            ! first graft point 
             do i=1,n
-                rhopol(i,A)=rhopol_local(i,A)/q(g) ! polymer density 
-                rhopol(i,B)=rhopol_local(i,B)/q(g) ! polymer density 
+                rhopol(i,A)=rhopol_local(i,A)/q(1) ! polymer density 
+                rhopol(i,B)=rhopol_local(i,B)/q(1) ! polymer density 
             enddo
            
             do i=1, size-1
@@ -1854,9 +1875,10 @@ contains
                 q(g)=q(g)+local_q
             enddo 
 
+            ! first graft point 
             do t=1,nsegtypes
                 do i=1,n
-                    rhopol(i,t)=local_rhopol(i,t)/q(g) ! polymer density 
+                    rhopol(i,t)=local_rhopol(i,t)/q(1) ! polymer density 
                 enddo
             enddo
            
