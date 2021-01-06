@@ -842,16 +842,24 @@ subroutine output()
 
     select case (systype)
     case ("elect")
+
         call output_elect  
+    
     case("neutral","neutralnoVdW") 
+    
         call output_neutral
         call output_individualcontr_fe
-    case("brush_mul","brush_mulnoVdW","brushssdna") 
+    
+    case("brush_mul","brush_mulnoVdW","brushssdna","brushborn") 
+    
         call output_brush_mul  
         call output_individualcontr_fe  
+   
     case default
+   
         print*,"Error in output subroutine"
         print*,"Wrong value systype : ", systype
+   
     end select     
 
 end subroutine output
@@ -967,27 +975,33 @@ subroutine output_brush_mul
 
     !   .. writting files
     !   .. this line seperates different distances 
-      
-    write(un_xsol,*)'#D    = ',nz*delta 
-    write(un_psi,*)'#D    = ',nz*delta
-    write(un_xpol,*)'#D    = ',nz*delta 
-    write(un_fdis,*)'#D    = ',nz*delta
-    if(systype=="brushssdna") write(un_fdisP,*)'#D    = ',nz*delta
+    !   .. only for loop over distances i.e runtype =="rangedis"
+
+    if(runtype=="rangedist") then 
+        
+        write(un_xsol,*)'#D    = ',nz*delta 
+        write(un_psi,*)'#D    = ',nz*delta
+        write(un_xpol,*)'#D    = ',nz*delta 
+        write(un_fdis,*)'#D    = ',nz*delta
+
+        if(systype=="brushssdna") write(un_fdisP,*)'#D    = ',nz*delta
     
      
-    if(verboseflag=="yes") then    
-        write(un_xNa,*)'#D    = ',nz*delta 
-        write(un_xK,*)'#D    = ',nz*delta 
-        write(un_xCa,*)'#D    = ',nz*delta 
-        write(un_xMg,*)'#D    = ',nz*delta 
-        write(un_xNaCl,*)'#D    = ',nz*delta 
-        write(un_xKCl,*)'#D    = ',nz*delta 
-        write(un_xpair,*)'#D    = ',nz*delta 
-        write(un_charge,*)'#D    = ',nz*delta 
-        write(un_xCl,*)'#D    = ',nz*delta 
-        write(un_xHplus,*)'#D    = ',nz*delta 
-        write(un_xOHMin,*)'#D    = ',nz*delta 
-    endif
+        if(verboseflag=="yes") then    
+            write(un_xNa,*)'#D    = ',nz*delta 
+            write(un_xK,*)'#D    = ',nz*delta 
+            write(un_xCa,*)'#D    = ',nz*delta 
+            write(un_xMg,*)'#D    = ',nz*delta 
+            write(un_xNaCl,*)'#D    = ',nz*delta 
+            write(un_xKCl,*)'#D    = ',nz*delta 
+            write(un_xpair,*)'#D    = ',nz*delta 
+            write(un_charge,*)'#D    = ',nz*delta 
+            write(un_xCl,*)'#D    = ',nz*delta 
+            write(un_xHplus,*)'#D    = ',nz*delta 
+            write(un_xOHMin,*)'#D    = ',nz*delta 
+        endif
+
+    endif    
 
 !    do i=1,nsurf
 !        write(un_psi,*)psiSurfL(i)
@@ -998,7 +1012,7 @@ subroutine output_brush_mul
         write(un_psi,*)psi(i)
     enddo    
 
-!~    do i=1,nsurf
+!    do i=1,nsurf
 !       write(un_psi,*)psiSurfR(i)
 !    enddo         
 
@@ -1138,7 +1152,7 @@ subroutine output_brush_mul
     write(un_sys,*)'qpoltot     = ',qpol_tot
     write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
     if(systype=="brushssdna")then
-        write(un_sys,'(A14,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
+        write(un_sys,'(A15,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
     endif    
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
@@ -1306,26 +1320,31 @@ subroutine output_elect
 
     !   .. writting files
     !   .. this line seperates different distances 
-      
-    write(un_xsol,*)'#D    = ',nz*delta 
-    write(un_psi,*)'#D    = ',nz*delta       
-    write(un_xpolAB,*)'#D    = ',nz*delta 
-    write(un_fdisA,*)'#D    = ',nz*delta
-    write(un_fdisB,*)'#D    = ',nz*delta
+
+    if(runtype=="rangedist") then 
+
+        write(un_xsol,*)'#D    = ',nz*delta 
+        write(un_psi,*)'#D    = ',nz*delta       
+        write(un_xpolAB,*)'#D    = ',nz*delta 
+        write(un_fdisA,*)'#D    = ',nz*delta
+        write(un_fdisB,*)'#D    = ',nz*delta
+        
+        if(verboseflag=="yes") then    
+            write(un_xNa,*)'#D    = ',nz*delta 
+            write(un_xK,*)'#D    = ',nz*delta 
+            write(un_xCa,*)'#D    = ',nz*delta 
+            write(un_xMg,*)'#D    = ',nz*delta 
+            write(un_xNaCl,*)'#D    = ',nz*delta 
+            write(un_xKCl,*)'#D    = ',nz*delta 
+            write(un_xpair,*)'#D    = ',nz*delta 
+            write(un_charge,*)'#D    = ',nz*delta 
+            write(un_xCl,*)'#D    = ',nz*delta 
+            write(un_xHplus,*)'#D    = ',nz*delta 
+            write(un_xOHMin,*)'#D    = ',nz*delta 
+        endif
     
-    if(verboseflag=="yes") then    
-        write(un_xNa,*)'#D    = ',nz*delta 
-        write(un_xK,*)'#D    = ',nz*delta 
-        write(un_xCa,*)'#D    = ',nz*delta 
-        write(un_xMg,*)'#D    = ',nz*delta 
-        write(un_xNaCl,*)'#D    = ',nz*delta 
-        write(un_xKCl,*)'#D    = ',nz*delta 
-        write(un_xpair,*)'#D    = ',nz*delta 
-        write(un_charge,*)'#D    = ',nz*delta 
-        write(un_xCl,*)'#D    = ',nz*delta 
-        write(un_xHplus,*)'#D    = ',nz*delta 
-        write(un_xOHMin,*)'#D    = ',nz*delta 
     endif
+        
 
     !do i=1,nsurf
     !    write(un_psi,*)psiSurfL(i)
@@ -1625,14 +1644,16 @@ subroutine output_neutral
         if(.not.isopen) write(*,*)"un_xpro is not open"
     endif    
         
-     !   .. writting files
+    !   .. writting files
     !   .. this line seperates different distances 
-      
-    write(un_xsol,*)'#D    = ',nz*delta 
-    write(un_xpol,*)'#D    = ',nz*delta       
-    write(un_xpro,*)'#D    = ',nz*delta 
-    write(un_xpolz,*)'#D    = ',nz*delta     
-
+    
+    if(runtype=="rangedist") then   
+        write(un_xsol,*)'#D    = ',nz*delta 
+        write(un_xpol,*)'#D    = ',nz*delta       
+        write(un_xpro,*)'#D    = ',nz*delta 
+        write(un_xpolz,*)'#D    = ',nz*delta     
+    endif
+    
     do i=1,nsize    
        write(un_xpol,fmt3reals)xpol(i),(rhopol(i,t),t=1,nsegtypes)
        write(un_xsol,fmt1reals)xsol(i)
@@ -1755,21 +1776,28 @@ subroutine output_individualcontr_fe
     write(un_fe,*)'deltaFEalt      = ',deltaFEalt
     write(un_fe,*)'deltadeltaFE    = ',deltaFE-deltaFEalt
     
-    write(un_fe,*)'FEq             = ',FEq  
-    write(un_fe,*)'FEpi            = ',FEpi
-    write(un_fe,*)'FErho           = ',FErho
-    write(un_fe,*)'FEel            = ',FEel
-    write(un_fe,*)'FEelsurf(LEFT)  = ',FEelsurf(LEFT)
-    write(un_fe,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT) 
-    write(un_fe,*)'FEbind          = ',FEbind 
-    write(un_fe,*)'FEchem          = ',FEchem
-    write(un_fe,*)'FEVdW           = ',FEVdW
+    write(un_fe,*)'FEq             = ',FEq 
     write(un_fe,*)'FEconf          = ',FEconf
     write(un_fe,*)'Econf           = ',Econf
     write(un_fe,*)'Eshift          = ',Eshift
     write(un_fe,*)'isEnergyShift   = ',isEnergyShift
     write(un_fe,*)'Emin            = ',energychain_min    
-    
+
+    write(un_fe,*)'FEpi            = ',FEpi
+    write(un_fe,*)'FErho           = ',FErho
+    write(un_fe,*)'FEel            = ',FEel
+    write(un_fe,*)'FEelsurf(LEFT)  = ',FEelsurf(LEFT)
+    write(un_fe,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT) 
+    write(un_fe,*)'FEelvar         = ',FEelvar
+    write(un_fe,*)'FEelvarborn     = ',FEelvarborn
+    write(un_fe,*)'FEborn          = ',FEborn
+    write(un_fe,*)'FEbornbulk      = ',FEbornbulk
+    write(un_fe,*)'deltaFEborn     = ',FEborn - FEbornbulk
+
+    write(un_fe,*)'FEbind          = ',FEbind 
+    write(un_fe,*)'FEchem          = ',FEchem
+    write(un_fe,*)'FEVdW           = ',FEVdW
+   
     write(un_fe,*)"FEtrans%sol     = ",FEtrans%sol   
     write(un_fe,*)"FEtrans%Na      = ",FEtrans%Na  
     write(un_fe,*)"FEtrans%Cl      = ",FEtrans%Cl  
@@ -1998,9 +2026,11 @@ subroutine compute_vars_and_output()
         call output()           ! writing of output
 
     case default   
+
         print*,"Error: systype incorrect in compute_vars_and_output"
         print*,"stopping program"
         stop
+    
     end select
          
 end subroutine compute_vars_and_output

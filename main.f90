@@ -278,13 +278,14 @@ program main
 
             if(rank==0) then
 
-                call compute_vars_and_output()
                 if(isSolution) then
+                
                     call compute_vars_and_output()
                     isfirstguess =.false.
                     loop%val=loop%val+loop%stepsize
 
                 else
+                
                     text="no solution: backstep"
                     call print_to_log(LogUnit,text)
                     loop%stepsize=loop%stepsize/2.0d0   ! decrease increment
@@ -292,6 +293,7 @@ program main
                     do i=1,neq
                         x(i)=xguess(i)
                     enddo
+                
                 endif
 
                 ! communicate new values of loop from master to compute nodes to advance while loop on compute nodes

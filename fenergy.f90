@@ -20,9 +20,10 @@ module energy
     real(dp) :: FEpi                ! sum over pi
     real(dp) :: FErho               ! sum over densities
     real(dp) :: FEel                ! electrostatics energy
-!    real(dp) :: FEelb               ! contrubution of bound charges to electrostatic energy
-
     real(dp) :: FEelsurf(2)         ! electrostatics energy from  surface
+    real(dp) :: FEelvar             ! electrostatics energy contrbution to total free energy from palpha due to varying dielectric 
+    real(dp) :: FEelvarborn         ! electrostatics energy contrbution to total free energy from palpha due to Born self-energy 
+    real(dp) :: FEborn             ! Born self-ßenergy  
     real(dp) :: FEchemsurf(2)       ! chemical free energy surface
     real(dp) :: FEchem
     real(dp) :: FEbind,FEbindA,FEbindB    ! complexation contribution
@@ -34,8 +35,10 @@ module energy
     real(dp) :: deltaFEalt          ! free energy difference delteFE=FE-FEbulk
     real(dp) :: Eshift              ! shift in energy for palpha for neutralnoVdW
 
+    real(dp) :: FEBornbulk          ! Born energy free energybulk
+
     real(dp) :: FEchemsurfalt(2)    ! chemical free energy surface
-    real(dp) :: diffFEchemsurf(2)   ! difference cheme
+    real(dp) :: diffFEchemsurf(2)   ! difference chem
 
     type(moleclist) :: FEtrans,FEchempot,FEtransbulk,FEchempotbulk
     type(moleclist) :: deltaFEtrans,deltaFEchempot
@@ -77,9 +80,9 @@ contains
             call fcnenergy_neutral_alternative()  
         
         case ("brushborn")
-             print*,"not there yet"   
-        !    call fcnenergy_electbrush_mul() 
-        !    call fcnenergy_elect_alternative()    
+            print*,"energy bonr not comnpleted yet "   
+            call fcnenergy_electbrush_mul() 
+            call fcnenergy_elect_alternative()    
 
         case default  
 
@@ -215,7 +218,7 @@ contains
         !     psiSurf(LEFT,s)     = psiSurfL(s)
         ! enddo    
 
-        !  .. computation ofalternative computation free energy
+        ! .. computation ofalternative computation free energy
 
         ! .. translational entropy 
 
@@ -255,6 +258,7 @@ contains
         FEalt = FEalt+FEchempot%sol +FEchempot%Na+ FEchempot%Cl +FEchempot%NaCl+FEchempot%Ca +FEchempot%Mg
         FEalt = FEalt+FEchempot%OHmin +FEchempot%Hplus+ FEchempot%K +FEchempot%K+FEchempot%KCl
         FEalt = FEalt+FEchempot%pro
+
         ! be vary carefull FE = -1/2 \int dz rho_q(z) psi(z)
 
          ! .. chemical and binding contribution
@@ -264,15 +268,21 @@ contains
             FEchem = FEchem_react_multi()
         else if(systype=="brushssdna") then
             FEchem = FEchem_react_multi()
+         else if(systype=="brushborn") then
+            FEchem = FEchem_react_multi()
         else
             FEchem = FEchem_react()
         endif    
 
-        print*,"isVdW in fcnenergy_elect_alternative=",isVdW
-        if(isVdW) FEalt = FEalt-FEVdW ! add Van der Waals
-            
-        FEalt = FEalt + FEconf + FEchem 
-        FEalt = FEalt- FEel +Econf   !+ FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurfalt(RIGHT)+FEchemSurfalt(LEFT) 
+        !  .. electrostatic Born self energy
+        FEborn=FE_selfenergy_brush()
+
+        if(isVdW) then 
+            FEalt = FEalt-FEVdW ! add Van der Waals
+        endif
+
+        FEalt = FEalt - FEel + FEconf + Econf + FEchem +FEborn     
+        !+ FEelSurf(RIGHT)+FEelSurf(LEFT)+FEchemSurfalt(RIGHT)+FEchemSurfalt(LEFT) 
 
         ! .. delta translational entropy
 
@@ -311,7 +321,16 @@ contains
         FEbulkalt = FEbulkalt+FEchempotbulk%Mg +FEchempotbulk%OHmin +FEchempotbulk%Hplus +FEchempotbulk%K +FEchempotbulk%KCl
         FEbulkalt = FEbulkalt+FEchempotbulk%pro
 
+        FEBornbulk = (  bornbulk%Na*xbulk%Na/vNa    + bornbulk%Cl*xbulk%Cl/vCl + &
+                        bornbulk%Ca*xbulk%Ca/vCa    + bornbulk%Mg*xbulk%Mg/vMg + &
+                        bornbulk%Rb*xbulk%Rb/vRb    + bornbulk%K*xbulk%K/vK    + &
+                        bornbulk%Hplus*xbulk%Hplus  + bornbulk%OHmin*xbulk%OHmin )/vsol  
+        
+        FEbulkalt = FEbulkalt+FEBornbulk
+
         FEbulkalt = volumelat*FEbulkalt
+
+        FEBornbulk = volumelat* FEBornbulk
 
         ! .. delta
 
@@ -370,25 +389,30 @@ contains
 
     subroutine fcnenergy_electbrush_mul()
 
-        use globals
+        use globals ! , only : systype, nsize,nsegtypes
         use volume
         use parameters
         use field
         use VdW
         use surface
+        use dielectric_const, only : born
+        use Poisson, only :  grad_pot_sqr_eps_cubic
 
         !  .. local arguments 
     
-        real(dp) :: sigmaq0,psi0
-       ! real(dp) :: qsurf(2)           ! total charge on surface 
+        ! real(dp) :: sigmaq0,psi0
+        ! real(dp) :: qsurf(2)           ! total charge on surface 
         !real(dp) :: qsurfg             ! total charge on grafting surface  
         integer  :: i,j,s,g,t          ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
-        integer  :: nzadius
+        !integer  :: nzadius
         !real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
         real(dp) :: FEchemSurftmp
         integer  :: ier
         logical  :: alloc_fail
+        real(dp) :: sqrgradpsi(nsize)
+        real(dp) :: Etotself,lbr
+
         
         if (.not. allocated(sumphi))  then 
             allocate(sumphi(nsegtypes),stat=ier)
@@ -450,26 +474,60 @@ contains
             FEbind = volcell*FEbind /2.0_dp                                 
         endif      
 
+        if(systype=="brushborn") then
+
+            ! .. scaled gradient potential contribution 
+            call grad_pot_sqr_eps_cubic(psi,epsfcn, Depsfcn,sqrgradpsi)
+
+            FEelvar = 0.0_dp           
+            do i=1,nsize
+                FEelvar=FEelvar + xpol(i)*sqrgradpsi(i)  
+            enddo 
+            FEelvar=FEelvar*volcell/vsol ! vsol divsion because of constqE definition in grad_pot_sqr_eps_cubic( 
+            
+            !  needs to  checked vocell  prefactor
+
+
+            FEelvarborn=0.0_dp
+
+            do i=1,nsize
+                lbr = lb/epsfcn(i)     ! local Bjerrum length
+                Etotself = &        ! total self energy  
+                    born(lbr,bornrad%pol  ,zpolAA(1))*fdisA(i,1)*rhopol(i,tA) + &
+                    born(lbr,bornrad%polCa,zpolAA(4))*fdisA(i,4)*rhopol(i,tA) + &
+                    born(lbr,bornrad%polMg,zpolAA(6))*fdisA(i,6)*rhopol(i,tA) + &
+                    born(lbr,bornrad%Na,zNa)*xNa(i)/(vNa*vsol)     + & 
+                    born(lbr,bornrad%Cl,zCl)*xCl(i)/(vCl*vsol)     + &
+                    born(lbr,bornrad%Rb,zRb)*xRb(i)/(vRb*vsol)     + & 
+                    born(lbr,bornrad%Ca,zCa)*xCa(i)/(vCa*vsol)     + &
+                    born(lbr,bornrad%Mg,zMg)*xMg(i)/(vMg*vsol)     + & 
+                    born(lbr,bornrad%Hplus,1 )*xHplus(i)/vsol      + &
+                    born(lbr,bornrad%OHmin,-1)*xOHmin(i)/vsol  
+
+                FEelvarborn=FEelvarborn+Etotself*(Depsfcn(i)/epsfcn(i))*xpol(i)*volcell
+            enddo     
+
+        endif    
+
         ! .. calcualtion of FEq
         do g=1,ngr
             FEq=FEq-log(q(g))    
         enddo
      
-        ! Shift in palpha  i.e q 
+        ! .. Shift in palpha  i.e q 
         Eshift=lnproshift*ngr
-
        
         ! .. total free energy per area of surface 
 
-        FE = FEq  + FEpi + FErho + FEel + FEVdW + FEbind -Eshift
+        FE = FEq + FEpi + FErho + FEel + FEVdW + FEbind + FEelvar + FEelvarborn - Eshift
         
-        ! .. print*,"FE = " ,FE
         
-        volumelat= volcell*nsize !nz*delta   ! volume lattice
+        volumelat= volcell*nsize   ! volume lattice
 
         FEbulk   = log(xbulk%sol)-(xbulk%sol+xbulk%Hplus +xbulk%OHmin+ xbulk%Na/vNa +&
             xbulk%Ca/vCa +xbulk%Mg/vMg +xbulk%Cl/vCl+ xbulk%K/vK + xbulk%NaCl/vNaCl +xbulk%KCl/vKCl )
-        FEbulk = volumelat*FEbulk/(vsol)
+        
+        FEbulk = volumelat*FEbulk/vsol
 
         deltaFE = FE - FEbulk
     
@@ -754,6 +812,7 @@ contains
         use volume, only : volcell
         use parameters, only : vpolA,vsol,zpolA,vpolB,zpolB
 
+
         integer :: i, k
         real(dp) :: lambdaA, lambdaB, rhopolAq, rhopolBq, xpolA, xpolB
         real(dp) :: betapi
@@ -832,18 +891,20 @@ contains
     function FEchem_react_multi()result(FEchem_react)
 
         use globals, only : systype,nsize,nsegtypes
-        use field, only : xsol,psi,rhopol,fdis,fdisA !, epsfcn,Depsfcn
+        use field, only : xsol,psi,rhopol,fdis,fdisA , epsfcn,Depsfcn
         use field, only : xNa,xCl,xHplus,xOHmin,xCa,xMg,xRb
         use volume, only : volcell
-        use parameters, only : vsol, vpol,zpol,vpolAA,zpolAA !, constqE, lb, bornrad
+        use parameters, only : vsol, vpol,zpol,vpolAA,zpolAA, lb, bornrad 
         use parameters, only : vNa,vCl,vRb,vCa,vMg,zNa,zCl,zRb,zCa,zMg, tA
         use chains, only : ismonomer_chargeable
-       ! use dielectric_const, only : born
+        use dielectric_const, only : born
+        use Poisson, only :  grad_pot_sqr_eps_cubic
 
         real(dp) :: FEchem_react
 
         integer :: i, k, t
         real(dp) :: lambda,  rhopolq, betapi, xpol, Eself ,bornene, lbr, Ebornself
+        real(dp) :: sqrgradpsi(nsize)
 
         FEchem_react = 0.0_dp
 
@@ -941,6 +1002,69 @@ contains
                         
                 endif        
             enddo
+
+        case("brushborn") 
+
+             ! .. scaled gradient potential contribution 
+            call grad_pot_sqr_eps_cubic(psi,epsfcn, Depsfcn,sqrgradpsi)
+
+            do t=1,nsegtypes
+        
+                if(ismonomer_chargeable(t)) then
+
+
+                    do i=1,nsize
+
+                        Eself = sqrgradpsi(i)/vsol ! vsol division because of constqE definition check this expresion !!!!!!!!   
+
+                        lbr = lb/epsfcn(i)     ! local Bjerrum length
+                        Ebornself = &          ! total self energy  
+                            born(lbr,bornrad%pol  ,zpolAA(1))*fdisA(i,1)*rhopol(i,t) + &
+                            born(lbr,bornrad%polCa,zpolAA(4))*fdisA(i,4)*rhopol(i,t) + &
+                            born(lbr,bornrad%polMg,zpolAA(6))*fdisA(i,6)*rhopol(i,t) + &
+                            born(lbr,bornrad%Na,zNa)*xNa(i)/(vNa*vsol)     + & 
+                            born(lbr,bornrad%Cl,zCl)*xCl(i)/(vCl*vsol)     + &
+                            born(lbr,bornrad%Rb,zRb)*xRb(i)/(vRb*vsol)     + & 
+                            born(lbr,bornrad%Ca,zCa)*xCa(i)/(vCa*vsol)     + &
+                            born(lbr,bornrad%Mg,zMg)*xMg(i)/(vMg*vsol)     + & 
+                            born(lbr,bornrad%Hplus,1 )*xHplus(i)/vsol      + &
+                            born(lbr,bornrad%OHmin,-1)*xOHmin(i)/vsol  
+
+                        Ebornself=Ebornself*Depsfcn(i)/epsfcn(i)
+            
+                        betapi=-log(xsol(i))/vsol
+                        
+                        !  Lagrange multiplier
+                        lambda=-log(fdisA(i,1)) -psi(i)*zpolAA(1)-betapi*vpolAA(1)*vsol +& 
+                            (Eself+Ebornself)*vpolAA(1)*vsol -born(lbr,bornrad%pol,zpolAA(1))                       
+        
+                       
+                        ! Born energy at i 
+                    
+                        bornene=(born(lbr,bornrad%pol,zpolAA(1)  )*fdisA(i,1) + &
+                                 born(lbr,bornrad%polCa,zpolAA(4))*fdisA(i,4) + &
+                                 born(lbr,bornrad%polMg,zpolAA(6))*fdisA(i,6) )*rhopol(i,t)
+                        
+                        rhopolq = 0.0_dp ! total poly charge at i
+                        xpol=0.0_dp      ! total poly volume fraction at i   carefully check wiht definition of xpol in module field
+                        do k=1,4 
+                            rhopolq=rhopolq+ zpolAA(k)*fdisA(i,k)*rhopol(i,t)
+                            xpol   =xpol + rhopol(i,t)*fdisA(i,k)*vpolAA(k)*vsol
+                        enddo   
+                        rhopolq=rhopolq+ zpolAA(6)*fdisA(i,6)*rhopol(i,t)
+                        xpol = xpol +rhopol(i,t)*vsol*&
+                            (fdisA(i,5)*vpolAA(5)/2.0_dp +fdisA(i,6)*vpolAA(6) +fdisA(i,7)*vpolAA(7)/2.0_dp)
+
+                        FEchem_react = FEchem_react + &
+                            ( - rhopol(i,t)*lambda -psi(i)*rhopolq +(-betapi+Eself+Ebornself)*xpol +& 
+                            (fdisA(i,5)+fdisA(i,7))*rhopol(i,t)/2.0_dp - bornene )
+                       
+                    enddo
+
+
+                endif        
+            enddo
+
 
         case default
             print*,"systype in FEchem_react_multi wrong"  
@@ -1094,6 +1218,47 @@ contains
         enddo
         
     end function
+
+
+    function FE_selfenergy_brush()result(FEborn)
+
+        use globals, only : systype, nsize
+        use field, only : fdisA,rhopol,xNa,xCl,xCa,xMg,xRb,xHplus,xOHmin,epsfcn
+        use volume, only : volcell
+        use parameters, only : vsol, vNa, vCl,vCa,vMg,vRb, zNa,zCl,zCa,zMg,zRb,zpolAA 
+        use parameters, only : bornrad, lb, tA
+        use dielectric_const, only : born
+
+        real(dp) :: FEborn
+
+        ! local variables
+        integer :: i
+        real(dp) :: Eself,Eborn, lbr
+
+        if(systype/="brushborn") then
+            FEborn=0.0_dp
+        else 
+            Eborn=0.0_dp
+            do i=1,nsize
+                lbr = lb/epsfcn(i)     ! local Bjerrum length
+                Eself = &        ! total self energy  
+                    born(lbr,bornrad%pol  ,zpolAA(1))*fdisA(i,1)*rhopol(i,tA) + &
+                    born(lbr,bornrad%polCa,zpolAA(4))*fdisA(i,4)*rhopol(i,tA) + &
+                    born(lbr,bornrad%polMg,zpolAA(6))*fdisA(i,6)*rhopol(i,tA) + &
+                    born(lbr,bornrad%Na,zNa)*xNa(i)/(vNa*vsol)       + & 
+                    born(lbr,bornrad%Cl,zCl)*xCl(i)/(vCl*vsol)       + &
+                    born(lbr,bornrad%Rb,zRb)*xRb(i)/(vRb*vsol)       + & 
+                    born(lbr,bornrad%Ca,zCa)*xCa(i)/(vCa*vsol)       + &
+                    born(lbr,bornrad%Mg,zMg)*xMg(i)/(vMg*vsol)       + &
+                    born(lbr,bornrad%Hplus,1)*xHplus(i)/vsol         + &
+                    born(lbr,bornrad%OHmin,-1)*xOHmin(i)/vsol  
+                Eborn=Eborn*Eself
+            enddo     
+            FEborn= Eborn*volcell   
+        endif  
+
+    end function FE_selfenergy_brush
+
 
 
 end module energy

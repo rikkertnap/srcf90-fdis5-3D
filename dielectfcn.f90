@@ -65,8 +65,8 @@ subroutine dielectfcnConst(phi,epsfcn,Depsfcn,dielectP,dielectW,n)
     integer :: i  
 
     do i=1,n  
-        epsfcn(i)=  1.0d0 ! dielectric function
-        Depsfcn(i)= 0.0d0 ! derivative dielectric function    
+        epsfcn(i)  = 1.0d0 ! dielectric function
+        Depsfcn(i) = 0.0d0 ! derivative dielectric function    
     enddo
                                 
 end subroutine
@@ -87,8 +87,8 @@ subroutine dielectfcnAV(phi,epsfcn,Depsfcn,dielectP,dielectW ,n)
     ratioeps = dielectP/dielectW 
    
     do i=1,n  
-        epsfcn(i)= 1.0_dp-phi(i) + ratioeps * phi(i) ! dieletric function
-        Depsfcn(i)= -1.0_dp+ratioeps ! derivative dieletric function    
+        epsfcn(i)  = 1.0_dp-phi(i) + ratioeps * phi(i) ! dieletric function
+        Depsfcn(i) = -1.0_dp+ratioeps ! derivative dieletric function    
     enddo
                                 
 end subroutine

@@ -414,7 +414,7 @@ contains
 
 
 
-    ! computes gradient electrostaic potential multiplied by (scaled) derivate of dielectric 
+    ! computes gradient electrostatic potential multiplied by (scaled) derivate of dielectric 
     ! with respect of volume fraction of polymer. Terms occur in PDF 
 
     subroutine grad_pot_sqr_eps_cubic(psi,eps,Deps,sqrDpsi)

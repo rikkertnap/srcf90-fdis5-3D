@@ -38,7 +38,7 @@ contains
         case ("brush_mulnoVdW")
             call FEconf_brush_mulnoVdW(FEconf,Econf)
         case ("brushborn")
-            print*,"FEconfig_entropy not implemented yet"
+            call FEconf_brush_born(FEconf,Econf) 
         case default
             text="FEconf_entropy: wrong systype: "//systype//"stopping program"
             call print_to_log(LogUnit,text)
@@ -605,6 +605,203 @@ contains
     end subroutine FEconf_elect
 
 
+
+    subroutine FEconf_brush_born(FEconf,Econf)
+
+        !  .. variables and constant declaractions 
+
+        use globals, only : nseg, nsegtypes, nsize, cuantas
+        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, energychain
+        use field, only : xsol,psi, fdis,rhopol,q, lnproshift, fdisA, epsfcn, Depsfcn
+        use field, only : xOHmin,xHplus,xNa,xCl,xMg,xCa,xRb
+        use parameters, only : bornrad, lb, VdWscale, tA, isrhoselfconsistent, isVdW
+        use parameters, only : vpolAA, vsol, vNa, vCl, vRb, vMg, vCa ,vpol
+        use parameters, only : zNa, zCl, zRb, zMg, zCa, zpolAA
+        use volume, only : ngr, nset_per_graft
+        use VdW, only : VdW_contribution_lnexp
+        use Poisson, only : Poisson_Equation_Eps, Poisson_Equation_Surface_Eps, grad_pot_sqr_eps_cubic
+        use dielectric_const, only : dielectfcn, born
+        
+        real(dp), intent(out) :: FEconf,Econf
+        
+        ! .. declare local variables
+        real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: pro,lnpro
+        integer  :: i,t,g,gn,c,s,k,tc       ! dummy indices
+        real(dp) :: FEconf_local
+        real(dp) :: Econf_local
+        real(dp) :: FEconf_array(ngr)
+        real(dp) :: Econf_array(ngr)
+        integer  :: tcfdis(3)
+        real(dp) :: rhopolAA(nsize),rhopolACa(nsize), rhopolAMg(nsize)
+        real(dp) :: lbr,expborn,Etotself,expsqrgrad, Eself
+        real(dp) :: expsqrgradpsi(nsize),expEtotself(nsize)
+
+        ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
+
+        tcfdis(1)=1
+        tcfdis(2)=4
+        tcfdis(3)=6
+        
+        if(rank==0) then
+            do i = 1, size-1
+                dest = i
+                call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(psi , nsize+1 , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(epsfcn, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(Depsfcn, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                do t=1,3
+                    tc=tcfdis(t)
+                    call MPI_SEND(fdisA(:,tc) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                enddo    
+                do t=1,nsegtypes
+                    call MPI_SEND(rhopol(:,t) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                enddo
+            enddo
+        else
+            source = 0 
+            call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            call MPI_RECV(psi , nsize+1, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
+            call MPI_RECV(epsfcn, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            call MPI_RECV(Depsfcn, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            do t=1,3
+                tc=tcfdis(t)
+                call MPI_RECV(fdisA(:,tc) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)    
+            enddo
+            do t=1,nsegtypes
+                call MPI_RECV(rhopol(:,t) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
+            enddo
+        endif    
+
+        !     .. executable statements 
+
+        ! gradient potential contribution to PDF
+        call grad_pot_sqr_eps_cubic(psi,epsfcn, Depsfcn,expsqrgradpsi)
+
+       
+        do i=1,nsize
+           
+            rhopolAA(i) =fdisA(i,1)*rhopol(i,tA)
+            rhopolACa(i)=fdisA(i,4)*rhopol(i,tA) 
+            rhopolAMg(i)=fdisA(i,6)*rhopol(i,tA) 
+
+
+            lbr = lb/epsfcn(i)     ! local Bjerrum length
+
+            !xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-born(lbr,bornrad%Na,zNa)-psi(i)*zNa) ! Na+ volume fraction 
+            !xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-born(lbr,bornrad%Cl,zCl)-psi(i)*zCl) ! Cl- volume fraction
+            !xHplus(i)  = expmu%Hplus*(xsol(i))  *exp(-born(lbr,bornrad%Hplus,1)-psi(i))    ! H+  volume fraction
+            !xOHmin(i)  = expmu%OHmin*(xsol(i))  *exp(-born(lbr,bornrad%OHmin,-1)+psi(i))   ! OH- volume fraction
+            !xRb(i)     = expmu%Rb*(xsol(i)**vRb)*exp(-born(lbr,bornrad%Rb,zRb)-psi(i)*zRb) ! Rb+ volume fraction
+            !xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-born(lbr,bornrad%Ca,zCa)-psi(i)*zCa) ! Ca++ volume fraction 
+            !xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-born(lbr,bornrad%Mg,zMg)-psi(i)*zMg) ! Mg++ volume fraction 
+
+
+
+            Etotself = &           ! total self energy    
+                born(lbr,bornrad%pol  ,zpolAA(1))*rhopolAA(i)  + & ! rhpolAA(i)  = fdisA(i,1)*rhopolin(i,tA)
+                born(lbr,bornrad%polCa,zpolAA(4))*rhopolACa(i) + & ! rhopolACa(i)= fdisA(i,4)*rhopolin(i,tA)
+                born(lbr,bornrad%polMg,zpolAA(6))*rhopolAMg(i) + & ! rhopolAMg(i)= fdisA(i,6)*rhopolin(i,tA)
+                born(lbr,bornrad%Na,zNa)*xNa(i)/(vNa*vsol)     + & 
+                born(lbr,bornrad%Cl,zCl)*xCl(i)/(vCl*vsol)     + &
+                born(lbr,bornrad%Rb,zRb)*xRb(i)/(vRb*vsol)     + & 
+                born(lbr,bornrad%Ca,zCa)*xCa(i)/(vCa*vsol)     + &
+                born(lbr,bornrad%Mg,zMg)*xMg(i)/(vMg*vsol)     + &
+                born(lbr,bornrad%Hplus,1 )*xHplus(i)/vsol      + &
+                born(lbr,bornrad%OHmin,-1)*xOHmin(i)/vsol
+
+            expEtotself(i) = Etotself*(Depsfcn(i)/epsfcn(i))  
+        
+        enddo 
+
+
+
+
+        do t=1,nsegtypes
+      
+            if(ismonomer_chargeable(t)) then    
+                do i=1,nsize  
+                    lbr=lb/epsfcn(i)
+                    expborn    = -born(lbr,bornrad%pol,-1)+ expEtotself(i)*vpolAA(1)*vsol 
+                    expsqrgrad = expsqrgradpsi(i)*vpolAA(1)      ! no mutipilcation with vsol because defintion constqE
+                    !exppi(i,t) = (xsol(i)**vpolAA(1))*exp(psi(i)+expsqrgrad+expborn) /fdisA(i,1)   ! auxilary variable palpha
+                    lnexppi(i,t) = log(xsol(i))*vpolAA(1)+psi(i)+expsqrgrad+expborn -log(fdisA(i,1))   ! auxilary variable palpha  
+    
+                enddo  
+            else
+
+                do i=1,nsize
+                    expborn    = expEtotself(i)*vpol(t)*vsol 
+                    expsqrgrad = expsqrgradpsi(i)*vpol(t)
+                    !exppi(i,t) = (xsol(i)**vpol(t))*exp(expsqrgrad+expborn)
+                    lnexppi(i,t) = log(xsol(i))*vpol(t)+expsqrgrad+expborn
+                    
+                enddo  
+            endif   
+        enddo      
+      
+        ! Van der Waals   
+        if(isVdW) then 
+            do t=1,nsegtypes  
+                if(isrhoselfconsistent(t)) call VdW_contribution_lnexp(rhopol,lnexppi(:,t),t)
+            enddo
+        endif 
+
+
+        !  .. computation polymer volume fraction      
+       
+        FEconf_local= 0.0_dp !init FEconf
+        Econf_local=0.0_dp ! init FEconf
+         
+        do c=1,cuantas         ! loop over cuantas
+            lnpro=-VdWscale%val*energychain(c)     
+            do s=1,nseg        ! loop over segments                     
+                k=indexchain(s,c)
+                t=type_of_monomer(s)                
+                lnpro = lnpro+lnexppi(k,t)
+            enddo 
+            pro=exp(lnpro-lnproshift)      
+            FEconf_local=FEconf_local+pro*log(pro)
+            Econf_local= Econf_local+pro*VdWscale%val*energychain(c)
+        enddo
+        
+        ! communicate FEconf
+
+        if(rank==0) then
+
+             ! normalize
+            FEconf_array=0.0_dp
+            Econf_array=0.0_dp  
+
+            FEconf_array(1)=FEconf_local
+            Econf_array(1)=Econf_local
+            
+            do i=1, size-1
+                source = i
+                call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                FEconf_array(g)=FEconf_array(g)+FEconf_local
+                Econf_array(g) =Econf_array(g) +Econf_local             
+            enddo 
+        else     ! Export results
+            dest = 0
+            call MPI_SEND(FEconf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Econf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+        endif
+
+
+        if(rank==0) then
+            ! normalize
+            FEconf=0.0_dp
+            Econf=0.0_dp
+            do g=1,ngr 
+                FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))  
+                Econf = Econf + Econf_array(g)/q(g)  
+            enddo    
+        endif
+
+    end subroutine FEconf_brush_born
 
 
 end module conform_entropy

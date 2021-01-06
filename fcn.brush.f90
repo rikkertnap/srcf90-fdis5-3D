@@ -665,7 +665,7 @@ contains
              
          
         do c=1,cuantas         ! loop over cuantas
-            lnpro=-energychain(c) 
+            lnpro=-VdWscale%val*energychain(c) 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -1192,6 +1192,8 @@ contains
             xpol(i)    = 0.0_dp                                   ! volume fraction polymer
             rhoqpol(i) = 0.0_dp                                   ! charge density AA monomoer
 
+            lbr = lb/epsfcn(i)     ! local Bjerrum length
+
             xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-born(lbr,bornrad%Na,zNa)-psi(i)*zNa) ! Na+ volume fraction 
             xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-born(lbr,bornrad%Cl,zCl)-psi(i)*zCl) ! Cl- volume fraction
             xHplus(i)  = expmu%Hplus*(xsol(i))  *exp(-born(lbr,bornrad%Hplus,1)-psi(i))    ! H+  volume fraction
@@ -1255,8 +1257,8 @@ contains
 
             sgxA=1.0_dp+xA(1)+xA(2)+xA(3)+xA(5)   
             
-            constACa=(2.0_dp*(rhopolin(i,t)*vsol)*(xCa(i)/vCa))/(K0aAA(4)*(xsol(i)**deltavAA(4))) 
-            constAMg=(2.0_dp*(rhopolin(i,t)*vsol)*(xMg(i)/vMg))/(K0aAA(6)*(xsol(i)**deltavAA(6))) 
+            constACa=(2.0_dp*(rhopolin(i,tA)*vsol)*(xCa(i)/vCa))/(K0aAA(4)*(xsol(i)**deltavAA(4))) 
+            constAMg=(2.0_dp*(rhopolin(i,tA)*vsol)*(xMg(i)/vMg))/(K0aAA(6)*(xsol(i)**deltavAA(6))) 
             constA=constACa+constAMg
             
             qAD = (sgxA+sqrt(sgxA*sgxA+4.0_dp*constA))/2.0_dp  ! remove minus
@@ -1439,6 +1441,7 @@ contains
             iter=iter+1
 
             print*,'iter=', iter ,'norm=',norm
+            
 
         else                      ! Export results 
             

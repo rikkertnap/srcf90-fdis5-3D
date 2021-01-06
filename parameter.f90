@@ -1,7 +1,5 @@
  module parameters
 
-    !use physconst
-    !use mathconst
     use volume
     use molecules
     use loopvar
@@ -22,12 +20,12 @@
     real(dp) :: vpolAA(8),deltavAA(7)
     real(dp), dimension(:), allocatable :: vpol  ! volume of polymer segment of given type, vpol in units of vsol
     
-    real(dp) :: vNa                ! volume positive ion in units of vsol
-    real(dp) :: vK                 ! volume positive ion in units of vsol
-    real(dp) :: vRb                 ! volume positive ion in units of vsol
-    real(dp) :: vCl                ! volume negative ion in units of vsol   
-    real(dp) :: vCa                ! volume positive divalent ion in units of vsol
-    real(dp) :: vMg                ! volume positive divalent ion in units of vsol
+    real(dp) :: vNa                ! volume Na+ ion in units of vsol
+    real(dp) :: vK                 ! volume K+  ion in units of vsol
+    real(dp) :: vRb                ! volume Rb+ ion in units of vsol
+    real(dp) :: vCl                ! volume Cl_ion in units of vsol   
+    real(dp) :: vCa                ! volume positive Ca2+ ion in units of vsol
+    real(dp) :: vMg                ! volume positive Mg2+ ion in units of vsol
     real(dp) :: vNaCl
     real(dp) :: vKCl
     real(dp) :: vpro
@@ -42,6 +40,18 @@
     real(dp) :: RMg
     real(dp) :: Rpro
 
+     !    .. charges 
+    integer :: zpolAA(8)
+    integer, dimension(:,:), allocatable :: zpol          ! valence charge polymer
+    integer :: zpolA(5)          ! valence charge polymer
+    integer :: zpolB(5)          ! valence charge polymer
+    integer :: zNa               ! valence charge positive ion 
+    integer :: zK                ! valence charge positive ion 
+    integer :: zRb               ! valence charge positive ion 
+    integer :: zCa               ! valence charge divalent positive ion 
+    integer :: zMg               ! valence charge divalent positive ion 
+    integer :: zCl               ! valence charge negative ion 
+  
     !  .. VdW variables
     real(dp), dimension(:,:), allocatable :: VdWeps, VdWepsin    ! strenght VdW interaction in units of kT
     real(dp) :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
@@ -53,18 +63,6 @@
     logical, dimension(:), allocatable :: isrhoselfconsistent
     type(looplist), target :: VdWscale ! scale factor in VdW interaction
 
-    !    .. charges 
-    integer :: zpolAA(8)
-    integer, dimension(:,:), allocatable :: zpol          ! valence charge polymer
-    integer :: zpolA(5)          ! valence charge polymer
-    integer :: zpolB(5)          ! valence charge polymer
-    integer :: zNa               ! valence charge positive ion 
-    integer :: zK                ! valence charge positive ion 
-    integer :: zRb               ! valence charge positive ion 
-    integer :: zCa               ! valence charge divalent positive ion 
-    integer :: zMg               ! valence charge divalent positive ion 
-    integer :: zCl               ! valence charge negative ion 
-    !integer :: zsurf             ! valence surface charge 
   
      !  .. input filenames select if chainmethod==file
     integer, parameter :: lenfname=40
@@ -112,7 +110,7 @@
     integer :: maxnchainsrotationsxy  ! number of rotations read in from input.in, assigned to maxnctheta in chaingenerator default 1  
     integer :: tA                     ! segment number type of monomer type A  
     logical :: write_mc_chains        ! if true MC chain write of file
-    logical  :: isEnergyShift         ! if true energychain is shifted by energychain_min see chaingenerator
+    logical :: isEnergyShift         ! if true energychain is shifted by energychain_min see chaingenerator
 
     ! ..average structural properties of layer
 
@@ -255,8 +253,7 @@ contains
         pi=acos(-1.0_dp)          ! pi = arccos(-1)
         itmax=2000                ! maximum number of iterations      
       
-        !     .. charges  
-       ! zsurf =-1                 ! valence surface charge 
+        !  .. charges  
         zNa   = 1                 ! valence positive charged ion
         zK    = 1                 ! valence positive charged ion
         zRb   = 1                 ! valence positive charged ion
@@ -297,7 +294,7 @@ contains
         RRb = 0.152_dp             ! radius of Rb+ in nm 
         RMg = 0.072_dp             ! radius of Mg2+ in nm 
         
-        !     .. volume
+        ! .. volume
         
         vsol = 0.030_dp              ! volume water solvent molecule in (nm)^3
 
@@ -311,17 +308,17 @@ contains
         vNaCl= (vNa+vCl)          ! contact ion pair
         vKCl = (vK+vCl)           ! contact ion pair
         
-        !      .. volume crowder/protein
+        ! .. volume crowder/protein
         vpro  = ((4.0_dp/3.0_dp)*pi*(Rpro)**3)/vsol 
 
-        !     .. volume polymer segments
-        !     .. all volume scaled by vsol
+        ! .. volume polymer segments
+        ! .. all volume scaled by vsol
         
         vAA  =  0.07448_dp/vsol ! volume based on VdW radii 
         vAMPS = 0.2134_dp/vsol
         vPEG  = 0.065_dp/vsol
 
-        !    .. volume AA and vAMPS
+        ! .. volume AA and vAMPS
 
         vA = vAA
         vB = vAMPS
@@ -360,24 +357,38 @@ contains
         pKaB(3) = -0.72243_dp
         pKaB(4) = -10.0_dp
 
-        !     .. other physical varaibles
+        ! .. other physical varaibles
         lsegPAA  = 0.36287_dp       ! segment length in nm
         lsegPAMPS = 0.545_dp        ! segment length in nm
         lsegPEG =  0.3_dp           ! segment length in nm 
               
-        lsegA=lsegPAA            
-        lsegB=lsegPAMPS 
+        lsegA = lsegPAA            
+        lsegB = lsegPAMPS 
 
-        ! ! see also subroutine set_chain_properties 
+        ! .. see also subroutine set_chain_properties 
 
-        pKw=14.0_dp                 ! water equilibruim constant
-        Tref=298.0_dp               ! temperature in Kelvin
+        pKw = 14.0_dp                 ! water equilibruim constant
+        Tref = 298.0_dp               ! temperature in Kelvin
         dielectW = 78.54_dp         ! dielectric constant water
-        dielectP =   2.0_dp 
+        dielectP = 2.0_dp 
 
-        seed  = 435672              ! seed for random number generator
+        seed = 435672              ! seed for random number generator
 
         call init_elect_constants(Tref)  
+
+        if(systype=="brushborn") then 
+            ! bornrad%pol, bonrrad%polCa and bornrad%polMg can not assign born radius of charge monomers yet, see init_dna
+
+            bornrad%Na  = RNa
+            bornrad%Cl  = RCl
+            bornrad%K   = RK 
+            bornrad%Ca  = RCa
+            bornrad%Mg  = RMg
+            bornrad%Hplus = radiussphere(vsol)
+            bornrad%OHmin = radiussphere(vsol)
+            bornrad%Rb = RRb
+            
+        endif    
 
         cuantas=max_confor
 
@@ -460,7 +471,7 @@ contains
         endif
         
         do i=1,7
-            KaAA(i)=10.0_dp**(-pKaAA(i))  
+            KaAA(i) = 10.0_dp**(-pKaAA(i))  
             K0aAA(i) = KaAA(i)*(vsol*Na/1.0e24_dp)
         enddo
 
@@ -470,23 +481,23 @@ contains
         ! set volumes 
          
         vA=vpol(tA) 
-        vpolAA(1)= vA              ! vA-
-        vpolAA(2)= vA              ! vAH
-        vpolAA(3)= vA+vNa          ! vANa
-        vpolAA(4)= vA+vCa          ! vACa
-        vpolAA(5)= 2.0_dp*vA+vCa   ! vA2Ca 
-        vpolAA(6)= vA+vMg          ! vAMg       
-        vpolAA(7)= 2.0_dp*vA+vMg   ! vA2Mg 
-        vpolAA(8)= vA+vK           ! vAK 
+        vpolAA(1) = vA              ! vA-
+        vpolAA(2) = vA              ! vAH
+        vpolAA(3) = vA+vNa          ! vANa
+        vpolAA(4) = vA+vCa          ! vACa
+        vpolAA(5) = 2.0_dp*vA+vCa   ! vA2Ca 
+        vpolAA(6) = vA+vMg          ! vAMg       
+        vpolAA(7) = 2.0_dp*vA+vMg   ! vA2Mg 
+        vpolAA(8) = vA+vK           ! vAK 
 
 
-        deltavAA(1)=vpolAA(1)+1.0_dp-vpolAA(2) ! vA- + vH+ - vAH
-        deltavAA(2)=vpolAA(1)+vNa-vpolAA(3)    ! vA- + vNa+ - vANa
-        deltavAA(3)=vpolAA(1)+vCa-vpolAA(4)    ! vA- + vCa2+ - vACa+
-        deltavAA(4)=2.0_dp*vpolAA(1)+vCa-vpolAA(5) ! 2vA- + vCa2+ -vA2Ca 
-        deltavAA(5)=vpolAA(1)+vMg-vpolAA(6)    ! vA- + vMg2+ - vAMg+
-        deltavAA(6)=2.0_dp*vpolAA(1)+vMg-vpolAA(7) ! 2vA- + vMg2+ -vA2Mg
-        deltavAA(7)=vpolAA(1)+vK-vpolAA(8)    ! vA- + vK+ - vAK
+        deltavAA(1) = vpolAA(1)+1.0_dp-vpolAA(2) ! vA- + vH+ - vAH
+        deltavAA(2) = vpolAA(1)+vNa-vpolAA(3)    ! vA- + vNa+ - vANa
+        deltavAA(3) = vpolAA(1)+vCa-vpolAA(4)    ! vA- + vCa2+ - vACa+
+        deltavAA(4) = 2.0_dp*vpolAA(1)+vCa-vpolAA(5) ! 2vA- + vCa2+ -vA2Ca 
+        deltavAA(5) = vpolAA(1)+vMg-vpolAA(6)    ! vA- + vMg2+ - vAMg+
+        deltavAA(6) = 2.0_dp*vpolAA(1)+vMg-vpolAA(7) ! 2vA- + vMg2+ -vA2Mg
+        deltavAA(7) = vpolAA(1)+vK-vpolAA(8)    ! vA- + vK+ - vAK
 
 
         ! determine if there is only one seg type is chargeable
@@ -545,6 +556,13 @@ contains
         lb=lb/1.0e-9_dp                           ! bjerrum length in water in nm
         constqW = delta*delta*(4.0_dp*pi*lb)/vsol ! multiplicative constant Poisson Eq. 
 
+        lb0=(elemcharge**2)/(4.0_dp*pi*dielect0*kBoltzmann*Temp) ! bjerrum length in vacum in m
+        lb0= lb0/1.0e-9_dp                          ! bjerrum length in vacum in nm
+        constq0 = delta*delta*(4.0_dp*pi*lb0)/vsol ! multiplicative constant Poisson Eq. 
+        constqE = 1.0_dp /( 8.0_dp *constqW)      ! factor in PDF
+
+        ! sigmaqSurf = sigmaqSurfin * 4.0_dp*pi*lb *delta ! dimensionless surface charge 
+
     end subroutine init_elect_constants
    
     ! compute number density density polymer
@@ -573,6 +591,9 @@ contains
  
         use globals
         use physconst, only : Na
+        use dielectric_const
+        use myutils, only : print_to_log,LogUnit,lenText
+        use mpivars
         
         !     .. local variable
         
@@ -581,6 +602,7 @@ contains
         integer :: i
         character(len=15) :: systype_old
         logical :: issolution
+        character(len=lenText) :: text
         
         real(dp) :: xNaClsalt          ! volume fraction of NaCl salt in bulk
         real(dp) :: xKClsalt           ! volume fraction of KCl salt in bulk
@@ -631,12 +653,21 @@ contains
 
         xbulk%pro = (cpro%val*Na/(1.0e24_dp))*(vpro*vsol)! volume fraction crowder/protein 
 
-        xbulk%NaCl=0.0_dp    ! no ion pairing
+        xbulk%NaCl=0.0_dp    ! no in pairing
         xbulk%KCl=0.0_dp     ! no ion pairing
         
         xbulk%sol=1.0_dp -xbulk%Hplus -xbulk%OHmin -xbulk%Cl -xbulk%Na -xbulk%K-xbulk%NaCl-xbulk%KCl & 
                 -xbulk%Ca -xbulk%Rb -xbulk%Mg -xbulk%pro
 
+
+        if(xbulk%sol<0) then
+            text="xsol%bulk negative : wrong pH and or salt concentration,stop program."
+            call print_to_log(LogUnit,text)
+            print*,text
+            call MPI_FINALIZE(ierr)
+            stop
+        endif   
+        
 
         !     .. if Kion == 0 ion pairing !
         !     .. intrinstic equilibruim constant acid        
@@ -698,19 +729,50 @@ contains
         Ka  = 10.0_dp**(-pKa) ! experimental equilibruim constant acid 
         K0a = (Ka*vsol)*(Na/1.0e24_dp) ! intrinstic equilibruim constant 
 
-        ! exp(beta mu_i) = (rhobulk_i v_i) / exp(- beta pibulk v_i) 
-        expmu%Na    = xbulk%Na   /(xbulk%sol**vNa) 
-        expmu%K     = xbulk%K    /(xbulk%sol**vK)
-        expmu%Rb    = xbulk%Rb   /(xbulk%sol**vRb)
-        expmu%Ca    = xbulk%Ca   /(xbulk%sol**vCa) 
-        expmu%Mg    = xbulk%Mg   /(xbulk%sol**vMg) 
-        expmu%Cl    = xbulk%Cl   /(xbulk%sol**vCl)
-        expmu%NaCl  = xbulk%NaCl /(xbulk%sol**vNaCl)
-        expmu%KCl   = xbulk%KCl  /(xbulk%sol**vKCl)
-        expmu%Hplus = xbulk%Hplus/xbulk%sol ! vsol = vHplus 
-        expmu%OHmin = xbulk%OHmin/xbulk%sol ! vsol = vOHmin 
-        expmu%pro   = xbulk%pro  /(xbulk%sol**vpro) 
-          
+
+        if(systype=="brushborn") then 
+
+            bornbulk%pol   = born(lb,bornrad%pol,-1)
+            bornbulk%polCa = born(lb,bornrad%polCa,1)
+            bornbulk%polMg = born(lb,bornrad%polMg,1)
+            
+            bornbulk%Hplus = born(lb,bornrad%Hplus,1)
+            bornbulk%Na    = born(lb,bornrad%Na,zNa)
+            bornbulk%K     = born(lb,bornrad%K,zK)
+            bornbulk%Ca    = born(lb,bornrad%Ca,zCa)
+            bornbulk%Mg    = born(lb,bornrad%Mg,zMg)
+            bornbulk%Cl    = born(lb,bornrad%Cl,zCl)
+            bornbulk%Rb    = born(lb,bornrad%Rb,zRb)
+            bornbulk%OHmin = born(lb,bornrad%OHmin,-1)
+
+            expmu%Na    = (xbulk%Na   /(xbulk%sol**vNa))*exp(bornbulk%Na) 
+            expmu%Cl    = (xbulk%Cl   /(xbulk%sol**vCl))*exp(bornbulk%Cl) 
+            expmu%K     = (xbulk%K    /(xbulk%sol**vK) )*exp(bornbulk%K) 
+            expmu%Ca    = (xbulk%Ca   /(xbulk%sol**vCa))*exp(bornbulk%Ca) 
+            expmu%Mg    = (xbulk%Mg   /(xbulk%sol**vMg))*exp(bornbulk%Mg) 
+            expmu%Rb    = (xbulk%Rb   /(xbulk%sol**vRb))*exp(bornbulk%Rb) 
+            expmu%Hplus = (xbulk%Hplus/xbulk%sol) *      exp(bornbulk%Hplus)  
+            expmu%OHmin = (xbulk%OHmin/xbulk%sol) *      exp(bornbulk%OHmin)  
+
+            expmu%pro   = xbulk%pro  /(xbulk%sol**vpro) 
+
+        else
+
+            ! exp(beta mu_i) = (rhobulk_i v_i) / exp(- beta pibulk v_i) 
+            expmu%Na    = xbulk%Na   /(xbulk%sol**vNa) 
+            expmu%K     = xbulk%K    /(xbulk%sol**vK)
+            expmu%Rb    = xbulk%Rb   /(xbulk%sol**vRb)
+            expmu%Ca    = xbulk%Ca   /(xbulk%sol**vCa) 
+            expmu%Mg    = xbulk%Mg   /(xbulk%sol**vMg) 
+            expmu%Cl    = xbulk%Cl   /(xbulk%sol**vCl)
+            expmu%NaCl  = xbulk%NaCl /(xbulk%sol**vNaCl)
+            expmu%KCl   = xbulk%KCl  /(xbulk%sol**vKCl)
+            expmu%Hplus = xbulk%Hplus/xbulk%sol ! vsol = vHplus 
+            expmu%OHmin = xbulk%OHmin/xbulk%sol ! vsol = vOHmin 
+            expmu%pro   = xbulk%pro  /(xbulk%sol**vpro) 
+
+        endif    
+              
         !     .. end init electrostatic part 
 
         deallocate(x)
@@ -745,17 +807,21 @@ contains
         case ("elect")
             call init_expmu_elect()
             call set_VdWepsAAandBB() ! specail assigemnt of VdWepsAA etc  
-            if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)
+            call set_VdWeps_scale(VdWscale)
         case ("neutral","neutralnoVdW")
             call init_expmu_neutral()   
-            if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)
+            call set_VdWeps_scale(VdWscale)
         case ("brush_mul","brush_mulnoVdW") 
             call init_expmu_elect() 
-            if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)     
+            call set_VdWeps_scale(VdWscale)     
         case ("brushssdna") 
             call init_dna  
             call init_expmu_elect()
-            if(runtype=="rangeVdWeps") call set_VdWeps_scale(VdWscale)
+            call set_VdWeps_scale(VdWscale)
+        case("brushborn") 
+            call init_dna
+            call init_expmu_elect()  
+            call set_VdWeps_scale(VdWscale)
         case default   
             print*,"Error: systype incorrect at init_vars_input" 
             print*,"Wrong value systype : ", systype
