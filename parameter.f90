@@ -57,6 +57,7 @@
     real(dp) :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
     logical :: isVdW              ! if true VdW energy 
     logical :: isVdWintEne        ! if true VdWpotentialenergy is used to compute internal VdW energy chain
+    logical :: isChainEnergyFile
     real(dp) :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
     real(dp) :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
     real(dp), parameter :: Vdwepsilon=1.0e-5_dp ! thresholds below which VdWeps is assumed to be zero
@@ -191,7 +192,7 @@ contains
                 neq = (2+nsegtypes) * nsize 
             case ("brush_mulnoVdW") 
                 neq = 2 * nsize     
-            case ("brushssdna") 
+            case ("brushdna") 
                 neq = (2+nsegtypes) * nsize 
             case ("brushborn")
                 numeq=0 
@@ -570,7 +571,7 @@ contains
     function init_denspol()result(denspol)
 
         use globals, only : nseg, nsize
-        use volume, only : delta
+        use volume, only : delta,ngr
 
         real(dp) :: denspol
 
@@ -578,7 +579,7 @@ contains
         real(dp) :: vol
 
         vol=nsize*(delta**3)
-        denspol= nseg*1.0_dp/vol   
+        denspol= ngr*nseg*1.0_dp/vol   
  
     end function
 
@@ -814,7 +815,7 @@ contains
         case ("brush_mul","brush_mulnoVdW") 
             call init_expmu_elect() 
             call set_VdWeps_scale(VdWscale)     
-        case ("brushssdna") 
+        case ("brushdna") 
             call init_dna  
             call init_expmu_elect()
             call set_VdWeps_scale(VdWscale)
@@ -1179,7 +1180,7 @@ contains
             VdWepsAA = VdWeps(1,1) 
             VdWepsAB = VdWeps(1,2) 
             VdWepsBB = VdWeps(2,1) 
-        case ("neutral","neutralnoVdW","brush_mul","brush_mulnoVdW","brushvarelec","brushborn","brushssdna")
+        case ("neutral","neutralnoVdW","brush_mul","brush_mulnoVdW","brushvarelec","brushborn","brushdna")
         case default
             print*,"Error: in set_VdWepsAAandBB, systype=",systype
             print*,"stopping program"

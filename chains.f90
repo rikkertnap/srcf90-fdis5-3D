@@ -14,7 +14,7 @@ module chains
     real(dp), dimension(:), allocatable     :: energychain              ! energy chain   
     real(dp), dimension(:), allocatable     :: energychain_init         ! energy chain   
     real(dp) :: energychain_min              ! mimimum energy chain
-    logical, dimension(:),   allocatable    :: weightchain
+    real(dp), dimension(:),   allocatable    :: weightchain
     logical :: isHomopolymer
     double precision, dimension(:),allocatable :: lsegseq  ! only needed for copolymer
 

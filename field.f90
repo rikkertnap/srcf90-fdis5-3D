@@ -199,7 +199,7 @@ contains
         select case (systype) 
         case ("brush_mul","brush_mulnoVdW")
             call charge_polymer_multi()
-        case ("brushssdna","brushborn")
+        case ("brushdna","brushborn")
             call charge_polymer_dna()
         case ("elect")  
             call charge_polymer_binary()
@@ -230,7 +230,7 @@ contains
                 enddo
             else
                 do i=1,nsize
-                    qpol(t)=qpol(t)+ (-fdisA(i,1)*rhopol(i,1)+fdisA(i,4)*rhopol(i,t))
+                    qpol(t)=qpol(t)+ (-fdisA(i,1)+fdisA(i,4)+fdisA(i,6))*rhopol(i,tA)
                 enddo
             endif    
 
@@ -292,7 +292,7 @@ contains
         select case (systype) 
         case ("brush_mul","brush_mulnoVdW")
             call average_charge_polymer_multi()
-        case ("brushssdna","brushborn")
+        case ("brushdna","brushborn")
             call average_charge_polymer_dna()
         case ("elect","electA","electVdWAB","electdouble")   
             call average_charge_polymer_binary()
@@ -339,7 +339,7 @@ contains
                     enddo
                     avfdis(t)=avfdis(t)/sumrhopolt        
                 else
-                    do k=1,7
+                    do k=1,8
                         avfdisA(k)=0.0_dp
                         do i=1,nsize
                             avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopol(i,t)

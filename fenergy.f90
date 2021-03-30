@@ -64,7 +64,7 @@ contains
         character(len=lenText) :: text 
 
         select case (systype) 
-        case ("brush_mul","brush_mulnoVdW","brushssdna")
+        case ("brush_mul","brush_mulnoVdW","brushdna")
         
             call fcnenergy_electbrush_mul() 
             call fcnenergy_elect_alternative()
@@ -80,7 +80,7 @@ contains
             call fcnenergy_neutral_alternative()  
         
         case ("brushborn")
-            print*,"energy bonr not comnpleted yet "   
+            print*,"energy born not comnpleted yet "   
             call fcnenergy_electbrush_mul() 
             call fcnenergy_elect_alternative()    
 
@@ -256,7 +256,7 @@ contains
         FEalt = FEtrans%sol +FEtrans%Na+ FEtrans%Cl +FEtrans%NaCl+FEtrans%Ca +FEtrans%Mg
         FEalt = FEalt+FEtrans%OHmin +FEtrans%Hplus +FEtrans%K +FEtrans%KCl +FEtrans%pro 
         FEalt = FEalt+FEchempot%sol +FEchempot%Na+ FEchempot%Cl +FEchempot%NaCl+FEchempot%Ca +FEchempot%Mg
-        FEalt = FEalt+FEchempot%OHmin +FEchempot%Hplus+ FEchempot%K +FEchempot%K+FEchempot%KCl
+        FEalt = FEalt+FEchempot%OHmin +FEchempot%Hplus+ FEchempot%K +FEchempot%KCl
         FEalt = FEalt+FEchempot%pro
 
         ! be vary carefull FE = -1/2 \int dz rho_q(z) psi(z)
@@ -266,7 +266,7 @@ contains
             FEchem = FEchem_react_multi()
         else  if(systype=="brush_mulnoVdW") then 
             FEchem = FEchem_react_multi()
-        else if(systype=="brushssdna") then
+        else if(systype=="brushdna") then
             FEchem = FEchem_react_multi()
          else if(systype=="brushborn") then
             FEchem = FEchem_react_multi()
@@ -497,6 +497,7 @@ contains
                     born(lbr,bornrad%polCa,zpolAA(4))*fdisA(i,4)*rhopol(i,tA) + &
                     born(lbr,bornrad%polMg,zpolAA(6))*fdisA(i,6)*rhopol(i,tA) + &
                     born(lbr,bornrad%Na,zNa)*xNa(i)/(vNa*vsol)     + & 
+                    born(lbr,bornrad%K,zK)*xK(i)/(vK*vsol)     + & 
                     born(lbr,bornrad%Cl,zCl)*xCl(i)/(vCl*vsol)     + &
                     born(lbr,bornrad%Rb,zRb)*xRb(i)/(vRb*vsol)     + & 
                     born(lbr,bornrad%Ca,zCa)*xCa(i)/(vCa*vsol)     + &
@@ -892,10 +893,10 @@ contains
 
         use globals, only : systype,nsize,nsegtypes
         use field, only : xsol,psi,rhopol,fdis,fdisA , epsfcn,Depsfcn
-        use field, only : xNa,xCl,xHplus,xOHmin,xCa,xMg,xRb
+        use field, only : xNa,xK,xCl,xHplus,xOHmin,xCa,xMg,xRb
         use volume, only : volcell
         use parameters, only : vsol, vpol,zpol,vpolAA,zpolAA, lb, bornrad 
-        use parameters, only : vNa,vCl,vRb,vCa,vMg,zNa,zCl,zRb,zCa,zMg, tA
+        use parameters, only : vNa,vCl,vRb,vCa, vK,vMg,zNa,zK,zCl,zRb,zCa,zMg, tA
         use chains, only : ismonomer_chargeable
         use dielectric_const, only : born
         use Poisson, only :  grad_pot_sqr_eps_cubic
@@ -945,7 +946,8 @@ contains
                         rhopolq=rhopolq+ zpolAA(6)*fdisA(i,6)*rhopol(i,t)
                         xpol = xpol +rhopol(i,t)*(fdisA(i,5)*vpolAA(5)*vsol/2.0_dp +&
                                                   fdisA(i,6)*vpolAA(6)*vsol +&
-                                                  fdisA(i,7)*vpolAA(7)*vsol/2.0_dp)
+                                                  fdisA(i,7)*vpolAA(7)*vsol/2.0_dp+&
+                                                  fdisA(i,8)*vpolAA(8)*vsol )
 
             
                         FEchem_react = FEchem_react + &
@@ -957,7 +959,7 @@ contains
             enddo
 
 
-        case("brushssdna") 
+        case("brushdna") 
             
             do t=1,nsegtypes
 
@@ -979,7 +981,8 @@ contains
                             rhopolq=rhopolq+ zpolAA(6)*fdisA(i,6)*rhopol(i,t)
                             xpol = xpol +rhopol(i,t)*(fdisA(i,5)*vpolAA(5)*vsol/2.0_dp +&
                                                       fdisA(i,6)*vpolAA(6)*vsol +&
-                                                      fdisA(i,7)*vpolAA(7)*vsol/2.0_dp+ fdisA(i,8)*vpolAA(8)*vsol)
+                                                      fdisA(i,7)*vpolAA(7)*vsol/2.0_dp+ &
+                                                      fdisA(i,8)*vpolAA(8)*vsol)
 
                 
                             FEchem_react = FEchem_react + ( -rhopol(i,t)*lambda &
@@ -1023,6 +1026,7 @@ contains
                             born(lbr,bornrad%polCa,zpolAA(4))*fdisA(i,4)*rhopol(i,t) + &
                             born(lbr,bornrad%polMg,zpolAA(6))*fdisA(i,6)*rhopol(i,t) + &
                             born(lbr,bornrad%Na,zNa)*xNa(i)/(vNa*vsol)     + & 
+                            born(lbr,bornrad%K,zK)*xK(i)/(vK*vsol)         + & 
                             born(lbr,bornrad%Cl,zCl)*xCl(i)/(vCl*vsol)     + &
                             born(lbr,bornrad%Rb,zRb)*xRb(i)/(vRb*vsol)     + & 
                             born(lbr,bornrad%Ca,zCa)*xCa(i)/(vCa*vsol)     + &
@@ -1053,7 +1057,7 @@ contains
                         enddo   
                         rhopolq=rhopolq+ zpolAA(6)*fdisA(i,6)*rhopol(i,t)
                         xpol = xpol +rhopol(i,t)*vsol*&
-                            (fdisA(i,5)*vpolAA(5)/2.0_dp +fdisA(i,6)*vpolAA(6) +fdisA(i,7)*vpolAA(7)/2.0_dp)
+                            (fdisA(i,5)*vpolAA(5)/2.0_dp +fdisA(i,6)*vpolAA(6) +fdisA(i,7)*vpolAA(7)/2.0_dp +fdisA(i,8)*vpolAA(8))
 
                         FEchem_react = FEchem_react + &
                             ( - rhopol(i,t)*lambda -psi(i)*rhopolq +(-betapi+Eself+Ebornself)*xpol +& 
@@ -1223,9 +1227,9 @@ contains
     function FE_selfenergy_brush()result(FEborn)
 
         use globals, only : systype, nsize
-        use field, only : fdisA,rhopol,xNa,xCl,xCa,xMg,xRb,xHplus,xOHmin,epsfcn
+        use field, only : fdisA,rhopol,xNa,xK,xCl,xCa,xMg,xRb,xHplus,xOHmin,epsfcn
         use volume, only : volcell
-        use parameters, only : vsol, vNa, vCl,vCa,vMg,vRb, zNa,zCl,zCa,zMg,zRb,zpolAA 
+        use parameters, only : vsol, vNa,vK, vCl,vCa,vMg,vRb, zNa,zK,zCl,zCa,zMg,zRb,zpolAA 
         use parameters, only : bornrad, lb, tA
         use dielectric_const, only : born
 
@@ -1246,6 +1250,7 @@ contains
                     born(lbr,bornrad%polCa,zpolAA(4))*fdisA(i,4)*rhopol(i,tA) + &
                     born(lbr,bornrad%polMg,zpolAA(6))*fdisA(i,6)*rhopol(i,tA) + &
                     born(lbr,bornrad%Na,zNa)*xNa(i)/(vNa*vsol)       + & 
+                    born(lbr,bornrad%K,zK)*xK(i)/(vK*vsol)           + & 
                     born(lbr,bornrad%Cl,zCl)*xCl(i)/(vCl*vsol)       + &
                     born(lbr,bornrad%Rb,zRb)*xRb(i)/(vRb*vsol)       + & 
                     born(lbr,bornrad%Ca,zCa)*xCa(i)/(vCa*vsol)       + &

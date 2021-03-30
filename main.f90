@@ -146,7 +146,8 @@ program main
         pH%val=pH%min
        
         iter = 0
-        
+
+
         do while (nz>=nzmin)        ! loop distances
 
             call set_size_neq()
@@ -156,9 +157,10 @@ program main
             if(.not.allocated(fvec)) allocate(fvec(neq))
 
             call init_vars_input()          ! sets up chem potenitals
-            call make_chains(chainmethod)   ! generate polymer configura
+            ! call make_chains(chainmethod)   ! generate polymer configurations
             call chain_filter()
-            call set_fcn()          ! why
+            call make_weightchains()
+            call set_fcn()           
 
             flag_solver = 0
 
@@ -242,7 +244,13 @@ program main
         endif
 
         call set_fcn()
-        call chain_filter()   
+        call chain_filter() 
+        call make_weightchains()
+         
+        ! free unused varaibles 
+        deallocate(energychain)
+        deallocate(energychain_init)
+        deallocate(indexchain_init) 
 
         do while (loop%min<=loop%val.and.loop%val<=loop%max.and.&
                 (abs(loop%stepsize)>=loop%delta))

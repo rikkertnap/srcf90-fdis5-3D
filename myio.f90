@@ -25,6 +25,8 @@ module myio
     integer, parameter ::  myio_err_index     = 18
     integer, parameter ::  myio_err_conf      = 19
     integer, parameter ::  myio_err_nseg      = 20
+    integer, parameter ::  myio_err_inputlabel = 21
+
 
 
     ! unit number 
@@ -246,7 +248,9 @@ subroutine read_inputfile(info)
             case default
                 if(pos>1) then 
                     print *, 'Invalid label at line', line  ! empty lines are skipped
-                endif
+                    if (present(info)) info = myio_err_inputlabel
+                    return
+                endif    
             end select
         end if
     end do
@@ -254,6 +258,7 @@ subroutine read_inputfile(info)
 
     if(ios >0 ) then
         print*, 'Error parsing file : iostat =', ios
+        print*, 'Read error at line =', line
         if (present(info)) info = myio_err_inputfile
         return
     endif
@@ -337,7 +342,7 @@ subroutine read_inputfile(info)
     endif
 
     ! overide certain input values
-    if(systype=="brushssdna".or.systype=="brushborn".or.systype=="brush_mul") then
+    if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_mul") then
         KionNa=0.0_dp 
         KionK=0.0_dp
         cpro%val =0.0_dp
@@ -362,7 +367,7 @@ subroutine check_value_systype(systype,info)
     systypestr(2)="neutral"
     systypestr(3)="brush_mul" 
     systypestr(4)="brush_mulnoVdW"
-    systypestr(5)="brushssdna"
+    systypestr(5)="brushdna"
     systypestr(6)="brushborn"
     systypestr(7)="bulk water"
     systypestr(8)="neutralnoVdW"
@@ -547,10 +552,11 @@ subroutine check_value_chainmethod(chainmethod,info)
     chainmethodstr(1)="MC"
     chainmethodstr(2)="FILE_lammps_xyz"
     chainmethodstr(3)="FILE_lammps_trj"
-       
+    chainmethodstr(3)="FILE_XYZ"   
+   
     flag=.FALSE.
 
-    do i=1,3
+    do i=1,4
         if(chainmethod==chainmethodstr(i)) flag=.TRUE.
     enddo
         
@@ -644,7 +650,7 @@ subroutine check_value_VdWeps(systype,isVdW,info)
      
         systypestr(1)="neutral"
         systypestr(2)="brush_mul"
-        systypestr(3)="brushssdna"
+        systypestr(3)="brushdna"
         systypestr(4)="brushborn"
        
         do i=1,4! sofar only electA works with VdW 
@@ -850,7 +856,7 @@ subroutine output()
         call output_neutral
         call output_individualcontr_fe
     
-    case("brush_mul","brush_mulnoVdW","brushssdna","brushborn") 
+    case("brush_mul","brush_mulnoVdW","brushdna","brushborn") 
     
         call output_brush_mul  
         call output_individualcontr_fe  
@@ -945,7 +951,7 @@ subroutine output_brush_mul
          
         open(unit=newunit(un_xpol),file=xpolfilename)
         open(unit=newunit(un_fdis),file=densfracfilename)  
-        if(systype=="brushssdna") open(unit=newunit(un_fdisP),file=densfracPfilename) 
+        if(systype=="brushdna") open(unit=newunit(un_fdisP),file=densfracPfilename) 
         open(unit=newunit(un_q),file=qfilename)        
         open(unit=newunit(un_xpolz),file=xpolzfilename)
         
@@ -984,7 +990,7 @@ subroutine output_brush_mul
         write(un_xpol,*)'#D    = ',nz*delta 
         write(un_fdis,*)'#D    = ',nz*delta
 
-        if(systype=="brushssdna") write(un_fdisP,*)'#D    = ',nz*delta
+        if(systype=="brushdna") write(un_fdisP,*)'#D    = ',nz*delta
     
      
         if(verboseflag=="yes") then    
@@ -1027,7 +1033,7 @@ subroutine output_brush_mul
         write(un_xpolz,fmt1reals)xpolz(i)
     enddo     
     
-    if(systype=="brushssdna")then
+    if(systype=="brushdna")then
         do i=1,nsize
             write(un_fdisP,*)(fdisA(i,k),k=1,7)
         enddo    
@@ -1150,9 +1156,10 @@ subroutine output_brush_mul
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
     write(un_sys,*)'qpoltot     = ',qpol_tot
-    write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
-    if(systype=="brushssdna")then
+    if(systype=="brushdna".or.systype=="brushborn")then
         write(un_sys,'(A15,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
+    else
+        write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
     endif    
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
@@ -1188,7 +1195,7 @@ subroutine output_brush_mul
         close(un_psi)
         close(un_xpol)
         close(un_fdis)
-        if(systype=="brushssdna") close(un_fdisP)
+        if(systype=="brushdna") close(un_fdisP)
         close(un_xpolz)            
         close(un_q)
         if(verboseflag=="yes") then 
@@ -1839,7 +1846,7 @@ end subroutine output_individualcontr_fe
 subroutine make_filename_label(fnamelabel)
  
     use globals, only : LEFT,RIGHT, systype, runtype
-    use parameters, only : cNaCl,cCaCl2,cMgCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale
+    use parameters, only : cNaCl,cKCl,cCaCl2,cMgCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale
 
     character(len=*), intent(inout) :: fnamelabel    
 
@@ -1859,6 +1866,17 @@ subroutine make_filename_label(fnamelabel)
         fnamelabel="phi"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
+
+        if(cKCl/=0.0_dp) then      
+            if(cKCl>=0.001_dp) then 
+                write(rstr,'(F5.3)')cKCl
+            else
+                write(rstr,'(ES9.2E2)')cKCl
+            endif       
+            fnamelabel=trim(fnamelabel)//"cKCl"//trim(adjustl(rstr))
+        endif
+
+
         if(cCaCl2>=0.001) then 
             write(rstr,'(F5.3)')cCaCl2
         elseif(cCaCl2>0.0) then  
@@ -1885,12 +1903,22 @@ subroutine make_filename_label(fnamelabel)
         write(rstr,'(F5.3)')VdWscale%val
         fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
 
-    case("brush_mul","brush_mulnoVdW","brushssdna","brushborn")  
+    case("brush_mul","brush_mulnoVdW","brushdna","brushborn")  
         
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
+
+        if(cKCl/=0.0_dp) then      
+            if(cKCl>=0.001_dp) then 
+                write(rstr,'(F5.3)')cKCl
+            else
+                write(rstr,'(ES9.2E2)')cKCl
+            endif       
+            fnamelabel=trim(fnamelabel)//"cKCl"//trim(adjustl(rstr))
+        endif
+
         
         if(cCaCl2>=0.001) then 
             write(rstr,'(F5.3)')cCaCl2
@@ -2017,7 +2045,7 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height) 
         call output()           ! writing of output
     
-    case ("brush_mul","brush_mulnoVdW","brushssdna","brushborn")
+    case ("brush_mul","brush_mulnoVdW","btushdna","brushborn")
 
         call fcnenergy()   
         call charge_polymer() 

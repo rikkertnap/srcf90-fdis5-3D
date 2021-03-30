@@ -68,7 +68,7 @@ subroutine init_guess(x, xguess)
             call init_guess_multi(x,xguess)
         case ("brush_mulnoVdW")  
             call init_guess_multinoVdW(x,xguess)
-        case ("brushssdna")  
+        case ("brushdna")  
             call init_guess_multi(x,xguess)
         case ("brushborn") 
             call init_guess_multi_born(x,xguess)
@@ -626,7 +626,7 @@ subroutine make_guess_from_xstored(xguess,xstored)
         do i=nsize/2+1,nsize  ! shift by nzstep
             xguess(i)=xstored(i+nsurf*nzstep)    
         enddo       
-    case ("brush_mul","brushssdna","brushborn")
+    case ("brush_mul","brushdna","brushborn")
         print*,"make_guess_from_xstored: this systyep not implemented"
 
     case default

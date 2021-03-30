@@ -248,7 +248,7 @@ contains
             noffset=2*nsize
         case("brush_mul") 
             noffset=(2+nsegtypes)*nsize    
-        case("brushssdna") 
+        case("brushdna") 
             noffset=(2+nsegtypes)*nsize    
         case default    
             print*,"error: systype wrong value for Poisson_equation_surface "    

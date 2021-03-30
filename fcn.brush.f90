@@ -153,7 +153,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro+log(energychain(c))        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -172,7 +172,7 @@ contains
              
              
         do c=1,cuantas         ! loop over cuantas
-            lnpro=-VdWscale%val*energychain(c)     ! initial weight conformation (1 or 0)
+            lnpro=log(weightchain(c))     ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -378,7 +378,7 @@ contains
         lnpro=0.0_dp
 
         do c=1,cuantas         ! loop over cuantas
-            lnpro=lnpro -VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro +log(weightchain(c))        ! internal energy
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -395,7 +395,7 @@ contains
         lnproshift=globallnproshift(1)
           
         do c=1,cuantas         ! loop over cuantas
-            lnpro=-VdWscale%val*energychain(c)     ! initial weight conformation (1 or 0)
+            lnpro=log(weightchain(c))     ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -493,7 +493,7 @@ contains
     ! brush of ssdna polymers
     ! with ion charegeable group being on one acid (tA) with counterion binding etc 
 
-    subroutine fcnbrushssdna(x,f,nn)
+    subroutine fcnbrushdna(x,f,nn)
 
         use mpivars
         use globals
@@ -646,7 +646,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro+log(weightchain(c))        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -665,7 +665,7 @@ contains
              
          
         do c=1,cuantas         ! loop over cuantas
-            lnpro=-VdWscale%val*energychain(c) 
+            lnpro=log(weightchain(c)) 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -783,7 +783,7 @@ contains
         endif
 
 
-    end subroutine fcnbrushssdna
+    end subroutine fcnbrushdna
 
 
 
@@ -935,7 +935,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro+log(weightchain(c))        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -954,7 +954,7 @@ contains
         lnproshift=globallnproshift(1)
               
         do c=1,cuantas         ! loop over cuantas
-            lnpro=-VdWscale%val*energychain(c)  ! initial weight conformation
+            lnpro=log(weightchain(c))  ! initial weight conformation
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -1077,7 +1077,7 @@ contains
         use globals
         use parameters
         use volume
-        use chains, only : indexchain, type_of_monomer,energychain, ismonomer_chargeable
+        use chains, only : indexchain, type_of_monomer,weightchain, ismonomer_chargeable
         use field
         use vectornorm
         use VdW, only : VdW_contribution_lnexp
@@ -1310,7 +1310,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro+log(weightchain(c))        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -1329,7 +1329,7 @@ contains
              
         do c=1,cuantas         ! loop over cuantas
             !pro=1.0_dp         ! initial weight conformation (1 or 0)
-            lnpro=-VdWscale%val*energychain(c) 
+            lnpro=log(weightchain(c))
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -1601,7 +1601,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro+log(weightchain(c))        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -1624,7 +1624,7 @@ contains
 
         do c=1,cuantas               ! loop over cuantas
             
-            lnpro=-VdWscale%val*energychain(c)  
+            lnpro=log(weightchain(c))  
 
             do s=1,nseg              ! loop over segments 
                 k=indexchain(s,c)           
@@ -1830,7 +1830,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro+log(weightchain(c))        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -1848,7 +1848,7 @@ contains
         lnproshift=globallnproshift(1)
              
         do c=1,cuantas         ! loop over cuantas
-            lnpro=-VdWscale%val*energychain(c)        ! initial weight conformation (1 or 0)
+            lnpro=log(weightchain(c))        ! initial weight conformation (1 or 0)
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -2010,7 +2010,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=lnpro+log(weightchain(c))        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -2035,7 +2035,7 @@ contains
 
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=-VdWscale%val*energychain(c)        ! internal energy
+            lnpro=log(weightchain(c))        ! internal energy
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -2210,7 +2210,7 @@ contains
         neqint=int(neq,kind(neqint))     ! explict conversion from integer(8) to integer
     
         select case (systype)
-            case ("brush_mul","brushssdna")                 ! multi copolymer:
+            case ("brush_mul","brushdna")                 ! multi copolymer:
                 do i=1,neqint
                     constr(i)=1.0_dp
                 enddo
@@ -2272,8 +2272,8 @@ contains
             fcnptr => fcnelectbrushmulti ! acid and base : no counterion binding VdW
         case ("brush_mulnoVdW")
             fcnptr => fcnelectbrushmultinoVdW ! acid and base : no counterion binding VdW
-        case ("brushssdna")
-            fcnptr => fcnbrushssdna   
+        case ("brushdna")
+            fcnptr => fcnbrushdna   
         case ("brushborn")
             fcnptr => fcnbrushborn    
         case ("elect")                  ! copolymer weak polyacid, no VdW
