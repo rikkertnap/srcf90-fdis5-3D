@@ -153,7 +153,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro+log(energychain(c))        ! internal energy
+            lnpro=lnpro+log(weightchain(c))        ! internal weight
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -378,7 +378,7 @@ contains
         lnpro=0.0_dp
 
         do c=1,cuantas         ! loop over cuantas
-            lnpro=lnpro +log(weightchain(c))        ! internal energy
+            lnpro=lnpro +log(weightchain(c))        ! internal weight
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
@@ -646,7 +646,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro+log(weightchain(c))        ! internal energy
+            lnpro=lnpro+log(weightchain(c))        ! internal weight
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)
@@ -935,7 +935,7 @@ contains
         
         do c=1,cuantas         ! loop over cuantas
 
-            lnpro=lnpro+log(weightchain(c))        ! internal energy
+            lnpro=lnpro+log(weightchain(c))        ! internal weight
 
             do s=1,nseg        ! loop over segments 
                 k=indexchain(s,c)

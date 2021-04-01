@@ -544,7 +544,7 @@ subroutine check_value_chainmethod(chainmethod,info)
     integer, intent(out),optional :: info
 
     logical :: flag
-    character(len=15) :: chainmethodstr(3) 
+    character(len=15) :: chainmethodstr(4) 
     integer :: i
 
     ! permissible values of chainmethod
@@ -1101,7 +1101,11 @@ subroutine output_brush_mul
 
         ! disociation constants 
         write(un_sys,*)'pKa         = ',(pKa(t),t=1,nsegtypes)      
-      
+        !
+        if(systype=="brushdna".or.systype=="brushborn") then
+           write(un_sys,*)'pKaAA       = ',(pKaAA(t),t=1,7)      
+        endif
+        
         write(un_sys,*)'KionNa      = ',KionNa
         write(un_sys,*)'KionK       = ',KionK
         write(un_sys,*)'K0ionNa     = ',K0ionNa
@@ -2045,7 +2049,7 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height) 
         call output()           ! writing of output
     
-    case ("brush_mul","brush_mulnoVdW","btushdna","brushborn")
+    case ("brush_mul","brush_mulnoVdW","brushdna","brushborn")
 
         call fcnenergy()   
         call charge_polymer() 

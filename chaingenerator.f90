@@ -1322,7 +1322,7 @@ subroutine read_graftpts_xyz_loop(info)
     close(un)
 
     if(.not.isGraftItem) then
-        print*,'Error read_graftpts_lammps_trj: sgraft not in traj file.'
+        print*,'Error read_graftpts_xyz_loop: sgraft not in traj file.'
         info = myio_err_graft
     endif
         

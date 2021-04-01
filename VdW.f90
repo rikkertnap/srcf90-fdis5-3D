@@ -836,7 +836,7 @@ subroutine write_VdWcoeff(lseg,VdWcoeff,info)
     
     inquire(file=fname,exist=exist)
 
-    print*,"Exist=",exist
+    !print*,"Exist=",exist
     if(.not.exist) then
         open(unit=newunit(un_VdW),file=fname,iostat=ios,status='new')
         if(ios >0 ) then
@@ -865,7 +865,7 @@ subroutine write_VdWcoeff(lseg,VdWcoeff,info)
         do iy = -range, range
             do iz = -range, range
                  write(un_VdW,*,iostat=ios)VdWcoeff(ix, iy, iz) 
-                 print*,ix,iy,iz,VdWcoeff(ix, iy, iz) 
+                 !print*,ix,iy,iz,VdWcoeff(ix, iy, iz) 
             enddo
         enddo
     enddo

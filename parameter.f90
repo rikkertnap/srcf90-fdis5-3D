@@ -1048,7 +1048,7 @@ contains
         
         line=0
         ios=0
-        !maxline=size(pKd)
+        maxline=7  !size(pKd)
         
         do while (line<maxline.and.ios==0)
             line=line+1
