@@ -62,8 +62,7 @@ subroutine make_chains(chainmethod)
 end subroutine make_chains
 
 
-!     purpose: init of cuantas polymer
-!     configurations of polymer chain anchored onto a spherical surface 
+!  init of cuantas polymer configurations of polymer chain anchored onto a flat surface 
 
 subroutine make_chains_mc()
   
@@ -120,8 +119,6 @@ subroutine make_chains_mc()
     zcm= 0.0_dp
    
     energy=0.0_dp
-
-    segcenter=1
             
     if(write_mc_chains) then 
         conf_write=0
@@ -143,22 +140,26 @@ subroutine make_chains_mc()
             call make_linear_seq_chains(chain,nchains,maxnchains,nseg) 
         endif  
 
-        if(write_mc_chains) call write_chain_lammps_trj(un_trj,chain,nchains)     
+        if(write_mc_chains) then 
+            energy=0.0_dp
+            write(un_ene,*)energy  
+            call write_chain_lammps_trj(un_trj,chain,nchains)  
+        endif    
+   
             
         if(geometry=="cubic") then
 
             g=int(rank/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
 
-            xpt =  position_graft(g,1)  ! position of graft point
+            xpt =  position_graft(g,1)    ! position of graft point
             ypt =  position_graft(g,2)  
-
 
             do j=1,nchains   
             
                 do s=1,nseg                          !  transforming form real- to lattice coordinates
-                    zp(s) = chain(1,s,j)-chain(1,segcenter,j)
-                    xp(s) = chain(2,s,j)-chain(2,segcenter,j)
-                    yp(s) = chain(3,s,j)-chain(3,segcenter,j)
+                    zp(s) = chain(1,s,j)
+                    xp(s) = chain(2,s,j)
+                    yp(s) = chain(3,s,j)
                 enddo
 
                 do ntheta=1,maxntheta                  ! rotation in xy-plane
@@ -193,9 +194,6 @@ subroutine make_chains_mc()
                         endif
                     enddo            
             
-                    energy=0.0_dp
-                    energychain_init(conf)=energy
-                    write(un_ene,*)energy  
                     conf = conf +1 
 
                 enddo         ! end loop over rotations
@@ -207,9 +205,9 @@ subroutine make_chains_mc()
             do j=1,nchains   
             
                 do s=1,nseg                     !  transforming form real- to lattice coordinates
-                    zp(s) = chain(1,s,j)-chain(1,segcenter,j)
-                    xp(s) = chain(2,s,j)-chain(2,segcenter,j)
-                    yp(s) = chain(3,s,j)-chain(3,segcenter,j)
+                    zp(s) = chain(1,s,j)
+                    xp(s) = chain(2,s,j)
+                    yp(s) = chain(3,s,j)
                 enddo
 
                 do ntheta=1,maxntheta            ! rotation in xy-plane
@@ -248,9 +246,6 @@ subroutine make_chains_mc()
                         
                     enddo         ! end loop over graft points
 
-                    energy=0.0_dp
-                    energychain_init(conf)=energy
-                    write(un_ene,*)energy  
                     conf = conf +1 
                 
                 enddo     
@@ -279,7 +274,7 @@ subroutine make_chains_mc()
         close(un_ene)
     endif   
 
-    if(.not.(isVdWintEne))energychain_init=0.0_dp ! no internal energy 
+    energychain_init=0.0_dp ! no internal energy 
 
 end subroutine make_chains_mc
 
@@ -302,8 +297,6 @@ subroutine read_chains_XYZ(info)
     !endif
 
 end subroutine
-
-
 
 
 ! Reads confomations from a file called traj.xyz
@@ -368,7 +361,7 @@ subroutine read_chains_lammps_XYZ(info)
     if(info/=0) return
 
     ! .. open file 
-    rankfile=int(rank*nset_per_graft/size)                                                                                                  
+    rankfile=mod(rank,nset_per_graft)                                                                                                 
     write(istr,'(I4)')rankfile
     fname='traj.'//trim(adjustl(istr))//'.xyz'
     inquire(file=fname,exist=exist)
@@ -600,8 +593,8 @@ subroutine read_graftpts_lammps_trj(info)
     ! .. executable statements 
     info=0
 
-    !. . open file   
-    rankfile=int(rank*nset_per_graft/size)                                                                                                
+    !. . open file     
+    rankfile=mod(rank,nset_per_graft)                                                                                               
     write(istr,'(I4)')rankfile
     fname='traj-graft.'//trim(adjustl(istr))//'.lammpstrj'
     inquire(file=fname,exist=exist)
@@ -720,7 +713,8 @@ subroutine read_chains_lammps_trj(info)
     if(info/=0) return
 
     ! .. open file   
-    rankfile=int(rank*nset_per_graft/size)                                                                                         
+    !rankfile=int(rank*nset_per_graft/size) 
+    rankfile=mod(rank,nset_per_graft)                                                                                         
     write(istr,'(I4)')rankfile
     fname='traj.'//trim(adjustl(istr))//'.lammpstrj'
     
@@ -962,7 +956,7 @@ end subroutine read_chains_lammps_trj
 
 ! Reads confomations from a file called traj.xyz
 ! Format repeated lammps trajectory file 
-! number of ATOMS much equal nseg+1 : 
+! number of ATOMS much equal nseg  
 
 subroutine read_chains_XYZ_loop(info)
 
@@ -1021,7 +1015,10 @@ subroutine read_chains_XYZ_loop(info)
     if(info/=0) return
 
     ! .. open file   
-    rankfile=int(rank*nset_per_graft/size)                                                                                         
+    ! rankfile=int(rank*nset_per_graft/size)
+
+    rankfile=mod(rank,nset_per_graft)                                                                                     
+    
     write(istr,'(I4)')rankfile
     fname='traj.'//trim(adjustl(istr))//'.xyz'
     
@@ -1040,7 +1037,7 @@ subroutine read_chains_XYZ_loop(info)
     endif
 
     if(isChainEnergyFile) then
-        write(istr,'(I4)')rank
+        write(istr,'(I4)')rankfile
         fname='energy.'//trim(adjustl(istr))//'.ene'
         inquire(file=fname,exist=exist)
         if(exist) then
@@ -1079,7 +1076,7 @@ subroutine read_chains_XYZ_loop(info)
     zcm= 0.0_dp
 
 
-    do while ((conf<max_confor).and.(ios==0))
+    do while ((conf<=max_confor).and.(ios==0))
     
         read(un,*,iostat=ios)nsegfile
         read(un,*,iostat=ios)str    
@@ -1100,7 +1097,7 @@ subroutine read_chains_XYZ_loop(info)
             xseg(3,s) = zc*scalefactor  
         enddo
      
-        if(isChainEnergyFile) read(un_ene,*,iostat=iosene)energy
+        if(isChainEnergyFile) read(un_ene,*,iostat=ios)energy
 
         if(ios==0) then ! read was succesfull 
 
@@ -1229,8 +1226,9 @@ subroutine read_chains_XYZ_loop(info)
     enddo       ! end while loop                                                                                                          
     !  .. end chains generation    
     
+    conf=conf-1  ! lower by one  
 
-    if(conf<=max_confor) then
+    if(conf<max_confor) then
         print*,"subroutine make_chains_XYZ_loop :" 
         print*,"conf     = ",conf," less then imposed max cuantas     = ",max_confor
         print*,"conffile = ",conffile
@@ -1255,7 +1253,6 @@ subroutine read_chains_XYZ_loop(info)
 
     if(isChainEnergyFile) close(un_ene)
 
-
 end subroutine read_chains_XYZ_loop
 
 
@@ -1265,7 +1262,7 @@ subroutine read_graftpts_xyz_loop(info)
     use parameters, only : unit_conv
     use myio, only : myio_err_chainsfile, myio_err_graft
     use myutils,  only : newunit
-    use volume, only : sgraft
+    use volume, only : sgraft,nset_per_graft  
 
     ! .. argument
 
@@ -1276,8 +1273,9 @@ subroutine read_graftpts_xyz_loop(info)
     character(len=25) :: fname
     integer :: ios 
     real(dp) :: xc,yc,zc          
-    integer  :: ix,iy,iz,un,s, i,t
-    integer  :: item,moltype,nsegfile,idatom
+    integer :: ix,iy,iz,un,s, i,t
+    integer :: rankfile
+    integer :: item,moltype,nsegfile,idatom
     character(len=30) :: istr,str
     real(dp) :: xbox0,xbox1,scalefactor
     logical :: exist, isGraftItem
@@ -1285,8 +1283,9 @@ subroutine read_graftpts_xyz_loop(info)
     ! .. executable statements 
     info=0
 
-    !. . open file                                                                                              
-    write(istr,'(I4)')rank
+    !. . open file    
+    rankfile=mod(rank,nset_per_graft)                                                                                            
+    write(istr,'(I4)')rankfile
     fname='traj-graft.'//trim(adjustl(istr))//'.xyz'
     inquire(file=fname,exist=exist)
     if(exist) then
@@ -1475,16 +1474,15 @@ end subroutine read_sequence_copoly_from_file
 
 
 ! select indexchain and energy that have a weightchain=.true.
-! return actaull number of conformations
-! adn substract lowest chain energy 
+! return actual number of conformations
 ! rational: need identical set of confors for loop of distance /volumesizes
-
+! Allows moding of brush compressesd by second surface at z=nz
  
 subroutine chain_filter()
     
-    use  globals, only : nseg, cuantas, max_confor
-    use  chains, only : indexchain,indexchain_init,energychain,energychain_init
-    use  volume, only : nz,coordinateFromLinearIndex
+    use globals, only : nseg, cuantas, max_confor
+    use chains, only : indexchain,indexchain_init,energychain,energychain_init
+    use volume, only : nz,coordinateFromLinearIndex
 
     integer :: conf, c, s,  count_seg
     integer :: indx, ix, iy, iz 
@@ -1510,41 +1508,49 @@ subroutine chain_filter()
 
     cuantas=c ! actual number of conformation   
 
+    call normed_weightchains()
+
 
 end subroutine  chain_filter
 
 
-! compute weight chain w=e^E/Tre^E
+! Compute weight chain w=e^E/Tre^E and normalize
+! layout conformations : there are nset_per_graft nset 
+! each graft point has nset of confomations thus total numberf of nodes= ngr*nset_per_graft
+! the confomation on different graft point are the same excpet for translation. 
+! Each graft point is idivual normalizes thus we need only normalize one set 
 
-subroutine make_weightchains()
+subroutine normed_weightchains()
 
-    use  mpivars
-    use  globals, only : cuantas
-    use  chains, only : energychain, weightchain
+    use mpivars
+    use globals, only : cuantas
+    use chains, only : energychain, logweightchain
+    use volume, only : nset_per_graft
+   
+    integer :: un, c, k
+    real(dp) :: localsum, totalsum, logtotalsum
 
-
-    !real(dp) :: convert_kJpermol_to_kT
-    integer :: num, c 
-    real(dp) :: localsum, totalsum
-
-    !convert_kJpermol_to_kT=2.479_dp*1000.0_dp/298.15_dp  ! energy converion Tsim=1000.0
-    !convert_kJpermol_to_kT =(2.5_dp*1000.0_dp/293.0_dp)
-
-    localsum=0.0_dp
-    do c=1,cuantas
-        weightchain(c)=exp(energychain(c))!/convert_kJpermol_to_kT)
-        localsum=localsum+weightchain(c)
+        
+    !    assymetric only use the first graft point to find normalization
+    localsum=0.0_dp    
+    do k=0,nset_per_graft-1   
+        if(k==rank) then    ! 
+            do c=1,cuantas
+                localsum=localsum+exp(energychain(c)) 
+            enddo   
+        endif
     enddo    
-    
+  
     call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
-    call MPI_ALLREDUCE(localsum, totalsum, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(localsum, totalsum, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD,ierr) 
     
     ! normalize
-    !num=rank+100
+    logtotalsum=log(totalsum)
+    un=rank+100
+    write(un,*)"rank=",rank," ",localsum,totalsum,logtotalsum
     do c=1,cuantas
-        weightchain(c)=weightchain(c)/totalsum
-        !num=rank+100
-       ! write(num,*)c,weightchain(c),energychain(c)
+        logweightchain(c)=energychain(c)-logtotalsum
+        write(un,*)rank,c,energychain(c),logweightchain(c)
     enddo    
 
     !call make_histogram(400)

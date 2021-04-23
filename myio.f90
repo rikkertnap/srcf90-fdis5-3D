@@ -131,6 +131,8 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) chainmethod
             case ('chaintype')
                 read(buffer,*,iostat=ios) chaintype
+            case ('isChainEnergyFile')
+                    read(buffer,*,iostat=ios) isChainEnergyFile    
             case ('isEnergyShift')    
                 read(buffer,*,iostat=ios) isEnergyShift
                 isSet_EnergyShift=.true.    

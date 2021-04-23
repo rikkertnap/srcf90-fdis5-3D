@@ -14,7 +14,7 @@ module chains
     real(dp), dimension(:), allocatable     :: energychain              ! energy chain   
     real(dp), dimension(:), allocatable     :: energychain_init         ! energy chain   
     real(dp) :: energychain_min              ! mimimum energy chain
-    real(dp), dimension(:),   allocatable    :: weightchain
+    real(dp), dimension(:),   allocatable    :: logweightchain
     logical :: isHomopolymer
     double precision, dimension(:),allocatable :: lsegseq  ! only needed for copolymer
 
@@ -34,7 +34,7 @@ contains
         allocate(indexchain_init(nseg,maxcuantas))
         allocate(energychain(maxcuantas))
         allocate(energychain_init(maxcuantas))
-        allocate(weightchain(maxcuantas))
+        allocate(logweightchain(maxcuantas))
         allocate(isAmonomer(nseg)) 
         allocate(type_of_monomer(nseg)) 
         allocate(type_of_monomer_char(nseg))

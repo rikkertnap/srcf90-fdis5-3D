@@ -157,9 +157,7 @@ program main
             if(.not.allocated(fvec)) allocate(fvec(neq))
 
             call init_vars_input()          ! sets up chem potenitals
-            ! call make_chains(chainmethod)   ! generate polymer configurations
             call chain_filter()
-            call make_weightchains()
             call set_fcn()           
 
             flag_solver = 0
@@ -245,7 +243,6 @@ program main
 
         call set_fcn()
         call chain_filter() 
-        call make_weightchains()
          
         ! free unused varaibles 
         deallocate(energychain)

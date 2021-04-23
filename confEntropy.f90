@@ -54,7 +54,7 @@ contains
         !  .. variables and constant declaractions 
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
-        use chains, only : indexchain, type_of_monomer, weightchain
+        use chains, only : indexchain, type_of_monomer, logweightchain
         use field, only : xsol, rhopol, q, lnproshift
         use parameters, only : vpol, isVdW, VdWscale
         use VdW, only : VdW_contribution_lnexp
@@ -109,14 +109,14 @@ contains
         Econf_local=0.0_dp ! init  Econf
             
         do c=1,cuantas         ! loop over cuantas
-            lnpro=log(weightchain(c))     
+            lnpro=logweightchain(c)     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
                 lnpro = lnpro+lnexppi(k,t)
             enddo  
             pro=exp(lnpro-lnproshift)   
-            FEconf_local=FEconf_local+pro*(log(pro)-log(weightchain(c)))
+            FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
         enddo
         
         ! communicate FEconf
@@ -167,7 +167,7 @@ contains
         !  .. variables and constant declaractions 
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
-        use chains, only : indexchain, type_of_monomer, weightchain
+        use chains, only : indexchain, type_of_monomer, logweightchain
         use field, only : xsol, rhopol, q, lnproshift
         use parameters, only : vpol, isVdW, VdWscale
         use VdW, only : VdW_contribution_exp
@@ -216,14 +216,14 @@ contains
         Econf_local=0.0_dp ! init FEconf
             
         do c=1,cuantas         ! loop over cuantas
-            lnpro=log(weightchain(c))        ! internal energy  
+            lnpro=logweightchain(c)        ! internal energy  
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
                 lnpro = lnpro+ lnexppi(k,t)
             enddo    
             pro=exp(lnpro-lnproshift)
-            FEconf_local=FEconf_local+pro*(log(pro)-log(weightchain(c)))
+            FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
         enddo
         
         ! communicate FEconf
@@ -271,7 +271,7 @@ contains
         !  .. variables and constant declaractions 
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
-        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, weightchain
+        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain
         use field, only : xsol,psi, fdis,rhopol,q, lnproshift
         use parameters
         use VdW, only : VdW_contribution_lnexp
@@ -335,14 +335,14 @@ contains
         Econf_local=0.0_dp ! init FEconf
          
         do c=1,cuantas         ! loop over cuantas
-            lnpro=log(weightchain(c))     
+            lnpro=logweightchain(c)     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
                 lnpro = lnpro+lnexppi(k,t)
             enddo 
             pro=exp(lnpro-lnproshift)      
-            FEconf_local=FEconf_local+pro*(log(pro)-log(weightchain(c)))
+            FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
         enddo
         
         ! communicate FEconf
@@ -389,7 +389,7 @@ contains
         !  .. variables and constant declaractions 
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
-        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, weightchain
+        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain
         use field, only : xsol, psi, fdis, rhopol, q ,lnproshift
         use parameters
         use volume, only : ngr, nset_per_graft
@@ -448,14 +448,14 @@ contains
         Econf_local=0.0_dp ! init FEconf
             
         do c=1,cuantas         ! loop over cuantas
-            lnpro=log(weightchain(c))        ! internal energy  
+            lnpro=logweightchain(c)       ! internal energy  
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
                 lnpro = lnpro+ lnexppi(k,t)
             enddo    
             pro=exp(lnpro-lnproshift)
-            FEconf_local=FEconf_local+pro*(log(pro)-log(weightchain(c)))
+            FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
         enddo
         
         ! communicate FEconf
@@ -502,7 +502,7 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use volume, only : ngr, nset_per_graft
-        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, weightchain, isAmonomer
+        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain, isAmonomer
         use field,  only : xsol, psi, fdisA,fdisB, rhopol, q ,lnproshift
         use parameters
 
@@ -548,7 +548,7 @@ contains
 
         do c=1,cuantas             ! loop over cuantas
         
-            lnpro=log(weightchain(c))                ! initial weight conformation 
+            lnpro=logweightchain(c)               ! initial weight conformation 
             do s=1,nseg              ! loop over segments 
                 k=indexchain(s,c)         
                 if(isAmonomer(s)) then ! A segment 
@@ -558,7 +558,7 @@ contains
                 endif
             enddo
             pro=exp(lnpro-lnproshift)
-            FEconf_local=FEconf_local+pro*(log(pro)-log(weightchain(c)))
+            FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
                   
         enddo  
 
@@ -607,7 +607,7 @@ contains
         !  .. variables and constant declaractions 
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
-        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, weightchain
+        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain
         use field, only : xsol,psi, fdis,rhopol,q, lnproshift, fdisA, epsfcn, Depsfcn
         use field, only : xOHmin,xHplus,xNa,xCl,xMg,xCa,xRb
         use parameters, only : bornrad, lb, VdWscale, tA, isrhoselfconsistent, isVdW
@@ -750,14 +750,14 @@ contains
         Econf_local=0.0_dp ! init FEconf
          
         do c=1,cuantas         ! loop over cuantas
-            lnpro=log(weightchain(c))     
+            lnpro=logweightchain(c)     
             do s=1,nseg        ! loop over segments                     
                 k=indexchain(s,c)
                 t=type_of_monomer(s)                
                 lnpro = lnpro+lnexppi(k,t)
             enddo 
             pro=exp(lnpro-lnproshift)      
-            FEconf_local=FEconf_local+pro*(log(pro)-log(weightchain(c)))
+            FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
         enddo
 
         ! communicate FEconf
