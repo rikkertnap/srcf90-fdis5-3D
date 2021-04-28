@@ -248,7 +248,7 @@ contains
             noffset=2*nsize
         case("brush_mul") 
             noffset=(2+nsegtypes)*nsize    
-        case("brushssdna") 
+        case("brushdna") 
             noffset=(2+nsegtypes)*nsize    
         case default    
             print*,"error: systype wrong value for Poisson_equation_surface "    
@@ -414,7 +414,7 @@ contains
 
 
 
-    ! computes gradient electrostaic potential multiplied by (scaled) derivate of dielectric 
+    ! computes gradient electrostatic potential multiplied by (scaled) derivate of dielectric 
     ! with respect of volume fraction of polymer. Terms occur in PDF 
 
     subroutine grad_pot_sqr_eps_cubic(psi,eps,Deps,sqrDpsi)

@@ -25,6 +25,8 @@ module myio
     integer, parameter ::  myio_err_index     = 18
     integer, parameter ::  myio_err_conf      = 19
     integer, parameter ::  myio_err_nseg      = 20
+    integer, parameter ::  myio_err_inputlabel = 21
+
 
 
     ! unit number 
@@ -129,6 +131,8 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) chainmethod
             case ('chaintype')
                 read(buffer,*,iostat=ios) chaintype
+            case ('isChainEnergyFile')
+                    read(buffer,*,iostat=ios) isChainEnergyFile    
             case ('isEnergyShift')    
                 read(buffer,*,iostat=ios) isEnergyShift
                 isSet_EnergyShift=.true.    
@@ -246,7 +250,9 @@ subroutine read_inputfile(info)
             case default
                 if(pos>1) then 
                     print *, 'Invalid label at line', line  ! empty lines are skipped
-                endif
+                    if (present(info)) info = myio_err_inputlabel
+                    return
+                endif    
             end select
         end if
     end do
@@ -254,6 +260,7 @@ subroutine read_inputfile(info)
 
     if(ios >0 ) then
         print*, 'Error parsing file : iostat =', ios
+        print*, 'Read error at line =', line
         if (present(info)) info = myio_err_inputfile
         return
     endif
@@ -337,7 +344,7 @@ subroutine read_inputfile(info)
     endif
 
     ! overide certain input values
-    if(systype=="brushssdna".or.systype=="brushborn".or.systype=="brush_mul") then
+    if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_mul") then
         KionNa=0.0_dp 
         KionK=0.0_dp
         cpro%val =0.0_dp
@@ -362,7 +369,7 @@ subroutine check_value_systype(systype,info)
     systypestr(2)="neutral"
     systypestr(3)="brush_mul" 
     systypestr(4)="brush_mulnoVdW"
-    systypestr(5)="brushssdna"
+    systypestr(5)="brushdna"
     systypestr(6)="brushborn"
     systypestr(7)="bulk water"
     systypestr(8)="neutralnoVdW"
@@ -539,7 +546,7 @@ subroutine check_value_chainmethod(chainmethod,info)
     integer, intent(out),optional :: info
 
     logical :: flag
-    character(len=15) :: chainmethodstr(3) 
+    character(len=15) :: chainmethodstr(4) 
     integer :: i
 
     ! permissible values of chainmethod
@@ -547,10 +554,11 @@ subroutine check_value_chainmethod(chainmethod,info)
     chainmethodstr(1)="MC"
     chainmethodstr(2)="FILE_lammps_xyz"
     chainmethodstr(3)="FILE_lammps_trj"
-       
+    chainmethodstr(3)="FILE_XYZ"   
+   
     flag=.FALSE.
 
-    do i=1,3
+    do i=1,4
         if(chainmethod==chainmethodstr(i)) flag=.TRUE.
     enddo
         
@@ -644,7 +652,7 @@ subroutine check_value_VdWeps(systype,isVdW,info)
      
         systypestr(1)="neutral"
         systypestr(2)="brush_mul"
-        systypestr(3)="brushssdna"
+        systypestr(3)="brushdna"
         systypestr(4)="brushborn"
        
         do i=1,4! sofar only electA works with VdW 
@@ -842,16 +850,24 @@ subroutine output()
 
     select case (systype)
     case ("elect")
+
         call output_elect  
+    
     case("neutral","neutralnoVdW") 
+    
         call output_neutral
         call output_individualcontr_fe
-    case("brush_mul","brush_mulnoVdW","brushssdna") 
+    
+    case("brush_mul","brush_mulnoVdW","brushdna","brushborn") 
+    
         call output_brush_mul  
         call output_individualcontr_fe  
+   
     case default
+   
         print*,"Error in output subroutine"
         print*,"Wrong value systype : ", systype
+   
     end select     
 
 end subroutine output
@@ -937,7 +953,7 @@ subroutine output_brush_mul
          
         open(unit=newunit(un_xpol),file=xpolfilename)
         open(unit=newunit(un_fdis),file=densfracfilename)  
-        if(systype=="brushssdna") open(unit=newunit(un_fdisP),file=densfracPfilename) 
+        if(systype=="brushdna") open(unit=newunit(un_fdisP),file=densfracPfilename) 
         open(unit=newunit(un_q),file=qfilename)        
         open(unit=newunit(un_xpolz),file=xpolzfilename)
         
@@ -967,27 +983,33 @@ subroutine output_brush_mul
 
     !   .. writting files
     !   .. this line seperates different distances 
-      
-    write(un_xsol,*)'#D    = ',nz*delta 
-    write(un_psi,*)'#D    = ',nz*delta
-    write(un_xpol,*)'#D    = ',nz*delta 
-    write(un_fdis,*)'#D    = ',nz*delta
-    if(systype=="brushssdna") write(un_fdisP,*)'#D    = ',nz*delta
+    !   .. only for loop over distances i.e runtype =="rangedis"
+
+    if(runtype=="rangedist") then 
+        
+        write(un_xsol,*)'#D    = ',nz*delta 
+        write(un_psi,*)'#D    = ',nz*delta
+        write(un_xpol,*)'#D    = ',nz*delta 
+        write(un_fdis,*)'#D    = ',nz*delta
+
+        if(systype=="brushdna") write(un_fdisP,*)'#D    = ',nz*delta
     
      
-    if(verboseflag=="yes") then    
-        write(un_xNa,*)'#D    = ',nz*delta 
-        write(un_xK,*)'#D    = ',nz*delta 
-        write(un_xCa,*)'#D    = ',nz*delta 
-        write(un_xMg,*)'#D    = ',nz*delta 
-        write(un_xNaCl,*)'#D    = ',nz*delta 
-        write(un_xKCl,*)'#D    = ',nz*delta 
-        write(un_xpair,*)'#D    = ',nz*delta 
-        write(un_charge,*)'#D    = ',nz*delta 
-        write(un_xCl,*)'#D    = ',nz*delta 
-        write(un_xHplus,*)'#D    = ',nz*delta 
-        write(un_xOHMin,*)'#D    = ',nz*delta 
-    endif
+        if(verboseflag=="yes") then    
+            write(un_xNa,*)'#D    = ',nz*delta 
+            write(un_xK,*)'#D    = ',nz*delta 
+            write(un_xCa,*)'#D    = ',nz*delta 
+            write(un_xMg,*)'#D    = ',nz*delta 
+            write(un_xNaCl,*)'#D    = ',nz*delta 
+            write(un_xKCl,*)'#D    = ',nz*delta 
+            write(un_xpair,*)'#D    = ',nz*delta 
+            write(un_charge,*)'#D    = ',nz*delta 
+            write(un_xCl,*)'#D    = ',nz*delta 
+            write(un_xHplus,*)'#D    = ',nz*delta 
+            write(un_xOHMin,*)'#D    = ',nz*delta 
+        endif
+
+    endif    
 
 !    do i=1,nsurf
 !        write(un_psi,*)psiSurfL(i)
@@ -998,7 +1020,7 @@ subroutine output_brush_mul
         write(un_psi,*)psi(i)
     enddo    
 
-!~    do i=1,nsurf
+!    do i=1,nsurf
 !       write(un_psi,*)psiSurfR(i)
 !    enddo         
 
@@ -1013,7 +1035,7 @@ subroutine output_brush_mul
         write(un_xpolz,fmt1reals)xpolz(i)
     enddo     
     
-    if(systype=="brushssdna")then
+    if(systype=="brushdna")then
         do i=1,nsize
             write(un_fdisP,*)(fdisA(i,k),k=1,7)
         enddo    
@@ -1081,7 +1103,11 @@ subroutine output_brush_mul
 
         ! disociation constants 
         write(un_sys,*)'pKa         = ',(pKa(t),t=1,nsegtypes)      
-      
+        !
+        if(systype=="brushdna".or.systype=="brushborn") then
+           write(un_sys,*)'pKaAA       = ',(pKaAA(t),t=1,7)      
+        endif
+        
         write(un_sys,*)'KionNa      = ',KionNa
         write(un_sys,*)'KionK       = ',KionK
         write(un_sys,*)'K0ionNa     = ',K0ionNa
@@ -1136,9 +1162,10 @@ subroutine output_brush_mul
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
     write(un_sys,*)'qpoltot     = ',qpol_tot
-    write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
-    if(systype=="brushssdna")then
-        write(un_sys,'(A14,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
+    if(systype=="brushdna".or.systype=="brushborn")then
+        write(un_sys,'(A15,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
+    else
+        write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
     endif    
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
@@ -1174,7 +1201,7 @@ subroutine output_brush_mul
         close(un_psi)
         close(un_xpol)
         close(un_fdis)
-        if(systype=="brushssdna") close(un_fdisP)
+        if(systype=="brushdna") close(un_fdisP)
         close(un_xpolz)            
         close(un_q)
         if(verboseflag=="yes") then 
@@ -1306,26 +1333,31 @@ subroutine output_elect
 
     !   .. writting files
     !   .. this line seperates different distances 
-      
-    write(un_xsol,*)'#D    = ',nz*delta 
-    write(un_psi,*)'#D    = ',nz*delta       
-    write(un_xpolAB,*)'#D    = ',nz*delta 
-    write(un_fdisA,*)'#D    = ',nz*delta
-    write(un_fdisB,*)'#D    = ',nz*delta
+
+    if(runtype=="rangedist") then 
+
+        write(un_xsol,*)'#D    = ',nz*delta 
+        write(un_psi,*)'#D    = ',nz*delta       
+        write(un_xpolAB,*)'#D    = ',nz*delta 
+        write(un_fdisA,*)'#D    = ',nz*delta
+        write(un_fdisB,*)'#D    = ',nz*delta
+        
+        if(verboseflag=="yes") then    
+            write(un_xNa,*)'#D    = ',nz*delta 
+            write(un_xK,*)'#D    = ',nz*delta 
+            write(un_xCa,*)'#D    = ',nz*delta 
+            write(un_xMg,*)'#D    = ',nz*delta 
+            write(un_xNaCl,*)'#D    = ',nz*delta 
+            write(un_xKCl,*)'#D    = ',nz*delta 
+            write(un_xpair,*)'#D    = ',nz*delta 
+            write(un_charge,*)'#D    = ',nz*delta 
+            write(un_xCl,*)'#D    = ',nz*delta 
+            write(un_xHplus,*)'#D    = ',nz*delta 
+            write(un_xOHMin,*)'#D    = ',nz*delta 
+        endif
     
-    if(verboseflag=="yes") then    
-        write(un_xNa,*)'#D    = ',nz*delta 
-        write(un_xK,*)'#D    = ',nz*delta 
-        write(un_xCa,*)'#D    = ',nz*delta 
-        write(un_xMg,*)'#D    = ',nz*delta 
-        write(un_xNaCl,*)'#D    = ',nz*delta 
-        write(un_xKCl,*)'#D    = ',nz*delta 
-        write(un_xpair,*)'#D    = ',nz*delta 
-        write(un_charge,*)'#D    = ',nz*delta 
-        write(un_xCl,*)'#D    = ',nz*delta 
-        write(un_xHplus,*)'#D    = ',nz*delta 
-        write(un_xOHMin,*)'#D    = ',nz*delta 
     endif
+        
 
     !do i=1,nsurf
     !    write(un_psi,*)psiSurfL(i)
@@ -1625,14 +1657,16 @@ subroutine output_neutral
         if(.not.isopen) write(*,*)"un_xpro is not open"
     endif    
         
-     !   .. writting files
+    !   .. writting files
     !   .. this line seperates different distances 
-      
-    write(un_xsol,*)'#D    = ',nz*delta 
-    write(un_xpol,*)'#D    = ',nz*delta       
-    write(un_xpro,*)'#D    = ',nz*delta 
-    write(un_xpolz,*)'#D    = ',nz*delta     
-
+    
+    if(runtype=="rangedist") then   
+        write(un_xsol,*)'#D    = ',nz*delta 
+        write(un_xpol,*)'#D    = ',nz*delta       
+        write(un_xpro,*)'#D    = ',nz*delta 
+        write(un_xpolz,*)'#D    = ',nz*delta     
+    endif
+    
     do i=1,nsize    
        write(un_xpol,fmt3reals)xpol(i),(rhopol(i,t),t=1,nsegtypes)
        write(un_xsol,fmt1reals)xsol(i)
@@ -1755,21 +1789,28 @@ subroutine output_individualcontr_fe
     write(un_fe,*)'deltaFEalt      = ',deltaFEalt
     write(un_fe,*)'deltadeltaFE    = ',deltaFE-deltaFEalt
     
-    write(un_fe,*)'FEq             = ',FEq  
-    write(un_fe,*)'FEpi            = ',FEpi
-    write(un_fe,*)'FErho           = ',FErho
-    write(un_fe,*)'FEel            = ',FEel
-    write(un_fe,*)'FEelsurf(LEFT)  = ',FEelsurf(LEFT)
-    write(un_fe,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT) 
-    write(un_fe,*)'FEbind          = ',FEbind 
-    write(un_fe,*)'FEchem          = ',FEchem
-    write(un_fe,*)'FEVdW           = ',FEVdW
+    write(un_fe,*)'FEq             = ',FEq 
     write(un_fe,*)'FEconf          = ',FEconf
     write(un_fe,*)'Econf           = ',Econf
     write(un_fe,*)'Eshift          = ',Eshift
     write(un_fe,*)'isEnergyShift   = ',isEnergyShift
     write(un_fe,*)'Emin            = ',energychain_min    
-    
+
+    write(un_fe,*)'FEpi            = ',FEpi
+    write(un_fe,*)'FErho           = ',FErho
+    write(un_fe,*)'FEel            = ',FEel
+    write(un_fe,*)'FEelsurf(LEFT)  = ',FEelsurf(LEFT)
+    write(un_fe,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT) 
+    write(un_fe,*)'FEelvar         = ',FEelvar
+    write(un_fe,*)'FEelvarborn     = ',FEelvarborn
+    write(un_fe,*)'FEborn          = ',FEborn
+    write(un_fe,*)'FEbornbulk      = ',FEbornbulk
+    write(un_fe,*)'deltaFEborn     = ',FEborn - FEbornbulk
+
+    write(un_fe,*)'FEbind          = ',FEbind 
+    write(un_fe,*)'FEchem          = ',FEchem
+    write(un_fe,*)'FEVdW           = ',FEVdW
+   
     write(un_fe,*)"FEtrans%sol     = ",FEtrans%sol   
     write(un_fe,*)"FEtrans%Na      = ",FEtrans%Na  
     write(un_fe,*)"FEtrans%Cl      = ",FEtrans%Cl  
@@ -1811,7 +1852,7 @@ end subroutine output_individualcontr_fe
 subroutine make_filename_label(fnamelabel)
  
     use globals, only : LEFT,RIGHT, systype, runtype
-    use parameters, only : cNaCl,cCaCl2,cMgCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale
+    use parameters, only : cNaCl,cKCl,cCaCl2,cMgCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale
 
     character(len=*), intent(inout) :: fnamelabel    
 
@@ -1831,6 +1872,17 @@ subroutine make_filename_label(fnamelabel)
         fnamelabel="phi"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
+
+        if(cKCl/=0.0_dp) then      
+            if(cKCl>=0.001_dp) then 
+                write(rstr,'(F5.3)')cKCl
+            else
+                write(rstr,'(ES9.2E2)')cKCl
+            endif       
+            fnamelabel=trim(fnamelabel)//"cKCl"//trim(adjustl(rstr))
+        endif
+
+
         if(cCaCl2>=0.001) then 
             write(rstr,'(F5.3)')cCaCl2
         elseif(cCaCl2>0.0) then  
@@ -1857,12 +1909,22 @@ subroutine make_filename_label(fnamelabel)
         write(rstr,'(F5.3)')VdWscale%val
         fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
 
-    case("brush_mul","brush_mulnoVdW","brushssdna","brushborn")  
+    case("brush_mul","brush_mulnoVdW","brushdna","brushborn")  
         
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr)) 
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
+
+        if(cKCl/=0.0_dp) then      
+            if(cKCl>=0.001_dp) then 
+                write(rstr,'(F5.3)')cKCl
+            else
+                write(rstr,'(ES9.2E2)')cKCl
+            endif       
+            fnamelabel=trim(fnamelabel)//"cKCl"//trim(adjustl(rstr))
+        endif
+
         
         if(cCaCl2>=0.001) then 
             write(rstr,'(F5.3)')cCaCl2
@@ -1989,7 +2051,7 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height) 
         call output()           ! writing of output
     
-    case ("brush_mul","brush_mulnoVdW","brushssdna","brushborn")
+    case ("brush_mul","brush_mulnoVdW","brushdna","brushborn")
 
         call fcnenergy()   
         call charge_polymer() 
@@ -1998,9 +2060,11 @@ subroutine compute_vars_and_output()
         call output()           ! writing of output
 
     case default   
+
         print*,"Error: systype incorrect in compute_vars_and_output"
         print*,"stopping program"
         stop
+    
     end select
          
 end subroutine compute_vars_and_output

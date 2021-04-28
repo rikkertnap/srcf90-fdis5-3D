@@ -146,7 +146,8 @@ program main
         pH%val=pH%min
        
         iter = 0
-        
+
+
         do while (nz>=nzmin)        ! loop distances
 
             call set_size_neq()
@@ -156,9 +157,8 @@ program main
             if(.not.allocated(fvec)) allocate(fvec(neq))
 
             call init_vars_input()          ! sets up chem potenitals
-            call make_chains(chainmethod)   ! generate polymer configura
             call chain_filter()
-            call set_fcn()          ! why
+            call set_fcn()           
 
             flag_solver = 0
 
@@ -242,7 +242,12 @@ program main
         endif
 
         call set_fcn()
-        call chain_filter()   
+        call chain_filter() 
+         
+        ! free unused varaibles 
+        deallocate(energychain)
+        deallocate(energychain_init)
+        deallocate(indexchain_init) 
 
         do while (loop%min<=loop%val.and.loop%val<=loop%max.and.&
                 (abs(loop%stepsize)>=loop%delta))
@@ -278,13 +283,14 @@ program main
 
             if(rank==0) then
 
-                call compute_vars_and_output()
                 if(isSolution) then
+                
                     call compute_vars_and_output()
                     isfirstguess =.false.
                     loop%val=loop%val+loop%stepsize
 
                 else
+                
                     text="no solution: backstep"
                     call print_to_log(LogUnit,text)
                     loop%stepsize=loop%stepsize/2.0d0   ! decrease increment
@@ -292,6 +298,7 @@ program main
                     do i=1,neq
                         x(i)=xguess(i)
                     enddo
+                
                 endif
 
                 ! communicate new values of loop from master to compute nodes to advance while loop on compute nodes
