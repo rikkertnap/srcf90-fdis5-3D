@@ -27,7 +27,13 @@ module myio
     integer, parameter ::  myio_err_nseg      = 20
     integer, parameter ::  myio_err_inputlabel = 21
 
+    integer :: num_cNaCl   ! number of salt concentration considered
+    integer :: num_cMgCl2
+    integer :: num_cKCl
 
+    real(dp), dimension(:), allocatable, target :: cNaCl_array ! salt concentrations
+    real(dp), dimension(:), allocatable, target :: cMgCl2_array
+    real(dp), dimension(:), allocatable, target :: cKCl_array
 
     ! unit number 
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xMg,un_xNaCl,un_xKCl
@@ -47,7 +53,9 @@ module myio
     public :: read_inputfile, output_individualcontr_fe, output, compute_vars_and_output,write_chain_config
     public :: myio_err_chainsfile, myio_err_energyfile, myio_err_chainmethod, myio_err_geometry
     public :: myio_err_graft, myio_err_index, myio_err_conf, myio_err_nseg
-    
+    public :: num_cNaCl,num_cMgCl2, cNaCl_array,  cMgCl2_array, set_value_NaCl, set_value_MgCl2
+    public :: num_cKCl,  cKCl_array, set_value_KCl
+
 contains
 
 subroutine read_inputfile(info)
@@ -246,7 +254,17 @@ subroutine read_inputfile(info)
             case ('VdWscale%stepsize')
                 read(buffer,*,iostat=ios) VdWscale%stepsize
             case ('VdWscale%delta')
-                read(buffer,*,iostat=ios) VdWscale%delta     
+                read(buffer,*,iostat=ios) VdWscale%delta 
+            case ('pKd%val')
+                read(buffer,*,iostat=ios) pKd%val
+            case ('pKd%min')
+                read(buffer,*,iostat=ios) pKd%min
+            case ('pKd%max')
+                read(buffer,*,iostat=ios) pKd%max
+            case ('pKd%stepsize')
+                read(buffer,*,iostat=ios) pKd%stepsize
+            case ('pKd%delta')
+                read(buffer,*,iostat=ios) pKd%delta       
             case default
                 if(pos>1) then 
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -397,16 +415,19 @@ subroutine check_value_runtype(runtype,info)
     character(len=15), intent(in) :: runtype
     integer, intent(out),optional :: info
 
-    character(len=15) :: runtypestr(4)
+    character(len=15) :: runtypestr(6)
     integer :: i
     logical :: flag
 
     ! permissible values of runtype
 
-    runtypestr(1)="rangepH"
+    runtypestr(1)="inputcspH" ! used to rangpH
     runtypestr(2)="rangeVdWeps"
     runtypestr(3)="rangedist"
     runtypestr(4)="rangecpro"
+
+    runtypestr(5)="inputMgpH"
+    runtypestr(6)="rangepKd"
 
     flag=.FALSE.
 
@@ -472,6 +493,180 @@ subroutine check_value_bcflag(bcflag,info)
     endif
 
 end subroutine check_value_bcflag
+
+
+    subroutine set_value_NaCl(runtype,info)
+
+        use mpivars
+        !use parameters, only : num_cNaCl,cNaCl_array
+        use myutils, only : newunit
+
+        character(len=12), intent(in) :: runtype
+        integer, intent(out),optional :: info
+
+        ! local variables
+        character(len=7) :: fname
+        integer :: ios
+        integer :: i    
+        integer :: un_cs
+ 
+
+        if(runtype=="defaultpH".or.runtype=="defaultT".or.runtype=="defaultsigma") then
+
+            num_cNaCl=6  
+            allocate(cNaCl_array(num_cNaCl))
+            
+            cNaCl_array(1)=0.25_dp
+            cNaCl_array(2)=0.20_dp
+            cNaCl_array(3)=0.15_dp
+            cNaCl_array(4)=0.10_dp
+            cNaCl_array(5)=0.05_dp
+            cNaCl_array(6)=0.01_dp
+
+        else if(runtype=="inputcspH".or.runtype=="inputcsT".or.runtype=="inputcssigma") then
+
+            !     .. read salt concentrations from file
+            write(fname,'(A7)')'salt.in'
+            open(unit=newunit(un_cs),file=fname,iostat=ios,status='old')
+            if(ios > 0 ) then
+                print*, 'Error opening file salt.in : iostat =', ios
+                call MPI_FINALIZE(ierr)
+                if (present(info)) then
+                    info = myio_err_inputfile
+                    return
+                else
+                    stop
+                endif
+             endif
+
+             read(un_cs,*)num_cNaCl ! read number of salt concentration form file
+             allocate(cNaCl_array(num_cNaCl)) 
+                
+             do i=1,num_cNaCl     ! read value salt concentration
+                 read(un_cs,*)cNaCl_array(i)
+             enddo
+             close(un_cs)
+        endif
+
+
+    end subroutine  set_value_NaCl
+
+
+    subroutine set_value_KCl(runtype,info)
+
+        use mpivars
+        !use parameters, only : num_cNaCl,cNaCl_array
+        use myutils, only : newunit
+
+        character(len=12), intent(in) :: runtype
+        integer, intent(out),optional :: info
+
+        ! local variables
+        character(len=7) :: fname
+        integer :: ios
+        integer :: i    
+        integer :: un_cs
+ 
+
+       if(runtype=="inputcsKClpH") then
+
+            !     .. read salt concentrations from file
+            write(fname,'(A7)')'salt.in'
+            open(unit=newunit(un_cs),file=fname,iostat=ios,status='old')
+            if(ios > 0 ) then
+                print*, 'Error opening file salt.in : iostat =', ios
+                call MPI_FINALIZE(ierr)
+                if (present(info)) then
+                    info = myio_err_inputfile
+                    return
+                else
+                    stop
+                endif
+            endif
+
+            read(un_cs,*)num_cKCl ! read number of salt concentration form file
+            allocate(cKCl_array(num_cKCl)) 
+                
+            do i=1,num_cKCl     ! read value salt concentration
+                read(un_cs,*)cKCl_array(i)
+            enddo
+            close(un_cs)
+
+
+        else
+            print*,'Error wrong runtype in set_value_KCl'
+            call MPI_FINALIZE(ierr)
+            if (present(info)) then
+                info = myio_err_inputfile
+                return
+            else
+                stop
+            endif
+
+        endif
+
+
+    end subroutine  set_value_KCl
+
+subroutine set_value_MgCl2(runtype,info)
+
+        use mpivars
+        !use parameters, only : num_cMgCl2,cMgCl2_array
+        use myutils, only : newunit
+
+        character(len=12), intent(in) :: runtype
+        integer, intent(out),optional :: info
+
+
+        ! local variables
+        character(len=9) :: fname
+        integer :: ios
+        integer :: i    
+        integer :: un_cs
+    
+        if (present(info)) info=0
+
+        if(runtype=="inputMgpH".or.runtype=="rangepKd".or.runtype=="rangeVdWeps") then
+
+            !     .. read salt concentrations from file
+            write(fname,'(A9)')'saltMg.in'
+            open(unit=newunit(un_cs),file=fname,iostat=ios,status='old')
+            if(ios > 0 ) then
+                print*, 'Error opening file saltMg.in : iostat =', ios
+                call MPI_FINALIZE(ierr)
+                if (present(info)) then
+                    info = myio_err_inputfile
+                    return
+                else
+                    stop
+                endif
+            endif
+
+            read(un_cs,*)num_cMgCl2 ! read number of salt concentration form file
+            allocate(cMgCl2_array(num_cMgCl2))
+                
+            do i=1,num_cMgCl2     ! read value salt concentration
+                read(un_cs,*)cMgCl2_array(i)
+            enddo
+            close(un_cs)
+        
+        else
+        
+            print*,'Error wrong runtype in set_value_MgCl2'
+            call MPI_FINALIZE(ierr)
+            if (present(info)) then
+                info = myio_err_inputfile
+                return
+            else
+                stop
+            endif
+
+        
+        endif
+
+
+    end subroutine  set_value_MgCl2
+
 
 subroutine check_value_geometry(geometry,info)
         
@@ -1852,7 +2047,7 @@ end subroutine output_individualcontr_fe
 subroutine make_filename_label(fnamelabel)
  
     use globals, only : LEFT,RIGHT, systype, runtype
-    use parameters, only : cNaCl,cKCl,cCaCl2,cMgCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale
+    use parameters, only : cNaCl,cKCl,cCaCl2,cMgCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale,pKd
 
     character(len=*), intent(inout) :: fnamelabel    
 
@@ -1925,28 +2120,39 @@ subroutine make_filename_label(fnamelabel)
             fnamelabel=trim(fnamelabel)//"cKCl"//trim(adjustl(rstr))
         endif
 
-        
-        if(cCaCl2>=0.001) then 
-            write(rstr,'(F5.3)')cCaCl2
-        elseif(cCaCl2>0.0) then  
-            write(rstr,'(ES9.2E2)')cCaCl2
-        else 
-            write(rstr,'(F3.1)')cCaCl2
-        endif 
-        fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
-    
-        if(cMgCl2>=0.001) then 
-            write(rstr,'(F5.3)')cMgCl2
-        elseif(cMgCl2>0.0) then  
-            write(rstr,'(ES9.2E2)')cMgCl2
-        else 
-            write(rstr,'(F3.1)')cMgCl2
-        endif 
-        fnamelabel=trim(fnamelabel)//"cMgCl2"//trim(adjustl(rstr))
-    
+        if(cCaCl2/=0.0_dp) then     
+            if(cCaCl2>=0.001) then 
+                write(rstr,'(F5.3)')cCaCl2
+            elseif(cCaCl2>0.0) then  
+                write(rstr,'(ES9.2E2)')cCaCl2
+            else 
+                write(rstr,'(F3.1)')cCaCl2
+            endif 
+            fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
+        endif
+        if(cMgCl2/=0.0_dp) then  
+            if(cMgCl2>=0.001) then 
+                write(rstr,'(F5.3)')cMgCl2
+            elseif(cMgCl2>0.0) then  
+                write(rstr,'(ES9.2E2)')cMgCl2
+            else 
+                write(rstr,'(F3.1)')cMgCl2
+            endif 
+            fnamelabel=trim(fnamelabel)//"cMgCl2"//trim(adjustl(rstr))
+        endif
+            
         write(rstr,'(F7.3)')pHbulk
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))
-        if(runtype=="rangeVdWeps")then
+
+        if(runtype=="rangepKd") then 
+            if(pKd%val<0) then 
+                write(rstr,'(F5.2)')pKd%val
+            else
+                write(rstr,'(F5.3)')pKd%val
+            endif    
+            fnamelabel=trim(fnamelabel)//"pKd"//trim(adjustl(rstr))//".dat"
+        
+        elseif(runtype=="rangeVdWeps")then
             write(rstr,'(F5.3)')VdWscale%val
             fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
         else

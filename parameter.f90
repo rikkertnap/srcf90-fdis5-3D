@@ -133,7 +133,9 @@
     
     real(dp) :: KaA(4),K0aA(4),pKaA(4)     !  ... constant for  acid 
     real(dp) :: KaB(4),K0aB(4),pKaB(4)   
-    real(dp) :: KaAA(7),K0aAA(7),pKaAA(7)    
+    real(dp) :: KaAA(7),K0aAA(7),pKaAA(7) 
+    type (looplist), target :: pKd   ! binding constants 
+   
       
      ! water equilibruim constant pKw= -log[Kw] ,Kw=[H+][OH-]   
     real(dp) :: pKw                 
@@ -150,11 +152,11 @@
    
     real(dp) :: cHplus             ! concentration of H+ in bulk in mol/liter
     real(dp) :: cOHmin             ! concentration of OH- in bulk in mol/liter
-    real(dp) :: cNaCl              ! concentration of salt in bulk in mol/liter
-    real(dp) :: cKCl               ! concentration of salt in bulk in mol/liter
+    real(dp),target  :: cNaCl      ! concentration of salt in bulk in mol/liter
+    real(dp),target :: cKCl        ! concentration of salt in bulk in mol/liter
     real(dp) :: cRbCl              ! concentration of RbCl in bulk in mol/liter
     real(dp) :: cCaCl2             ! concentration of CaCl2 in bulk in mol/liter
-    real(dp) :: cMgCl2             ! concentration of MgCl2 in bulk in mol/liter
+    real(dp),target :: cMgCl2      ! concentration of MgCl2 in bulk in mol/liter
     
     type(looplist), target :: cpro ! concentration of crowder /protien in mol/liter 
 
@@ -611,6 +613,8 @@ contains
         real(dp) :: xMgCl2salt         ! volume fraction of MgCl2 salt in bulk
         real(dp) :: xRbClsalt          ! volume fraction of RbCl salt in bulk
 
+        real(dp) :: KaAA6
+
         allocate(x(5))
         allocate(xguess(5))
         
@@ -773,6 +777,15 @@ contains
             expmu%pro   = xbulk%pro  /(xbulk%sol**vpro) 
 
         endif    
+              
+        if(runtype=="rangepKd") then 
+            
+            pKaAA(6)=pKd%val ! this override value read in.
+
+            KaAA6=10.0_dp**(-pKaAA(6))  
+            K0aAA(6) = KaAA6*(vsol*Na/1.0e24_dp)
+            K0aAA(6) = K0aAA(6)*(vsol*Na/1.0e24_dp) ! A2Mg
+        endif     
               
         !     .. end init electrostatic part 
 

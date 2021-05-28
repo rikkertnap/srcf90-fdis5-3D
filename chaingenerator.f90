@@ -1546,11 +1546,11 @@ subroutine normed_weightchains()
     
     ! normalize
     logtotalsum=log(totalsum)
-    un=rank+100
-    write(un,*)"rank=",rank," ",localsum,totalsum,logtotalsum
+    !un=rank+100
+    !write(un,*)"rank=",rank," ",localsum,totalsum,logtotalsum
     do c=1,cuantas
         logweightchain(c)=energychain(c)-logtotalsum
-        write(un,*)rank,c,energychain(c),logweightchain(c)
+        !write(un,*)rank,c,energychain(c),logweightchain(c)
     enddo    
 
     !call make_histogram(400)

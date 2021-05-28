@@ -37,7 +37,7 @@ program main
     real(dp),  dimension(:), allocatable :: xstored   ! stored iteration vector
     real(dp),  dimension(:), allocatable :: fvec
 
-    integer :: i
+    integer :: i,c,num
     logical :: use_xstored
     logical :: isfirstguess
     logical :: issolution
@@ -46,8 +46,15 @@ program main
     character(len=20) :: fname, conffilename
     integer :: iend , un_conf
     type (looplist), pointer :: loop
+    real(dp) :: loopbegin,  loopstepsizebegin
+    real(dp), parameter :: loopeps = 1.0e-14_dp   
+    real(dp), dimension(:),  pointer :: list
+    real(dp), pointer :: list_val
+    real(dp) :: list_first
+
 
     ! .. executable statements
+
 
     ! .. mpi
 
@@ -88,6 +95,7 @@ program main
         stop
     endif
 
+    
     call init_constants()
     call make_geometry()            ! generate volume elements lattice
     call allocate_chain_parameters()  
@@ -218,15 +226,51 @@ program main
     else  ! loop over pH  values
  
 
-        if(runtype=="rangepH") then 
+        if(runtype=="inputcspH".or.runtype=="inputMgpH".or.runtype=="inputcsKClpH") then 
             loop => pH
         else if(runtype=="rangecpro") then 
             loop => cpro
+        else if (runtype=="rangepKd") then
+            loop => pKd   
         else if(runtype=="rangeVdWeps") then 
             loop => VdWscale    
         else
             if(associated(loop)) nullify(loop) ! make explict that no association is made
         endif  
+
+         ! .. select variable with which list_array to associate
+
+        if (runtype=="inputMgpH".or.runtype=="rangepKd".or.runtype=="rangeVdWeps") then
+            call set_value_MgCl2(runtype,info)
+            if(info/=0) then
+                print*,"Error in input file: info = ",info," : end program."
+                stop
+            endif
+            num=num_cMgCl2
+            list=>cMgCl2_array
+            list_val => cMgCl2
+
+        else if(runtype=="inputcsKClpH") then
+            call set_value_KCl(runtype,info)
+            if(info/=0) then
+                print*,"Error in input file: info = ",info," : end program."
+                stop
+            endif
+            num=num_cKCl
+            list=>cKCl_array
+            list_val => cKCl
+
+        else 
+            call set_value_NaCl(runtype,info)
+            if(info/=0) then
+                print*,"Error in input file: info = ",info," : end program."
+                stop
+            endif
+            num=num_cNaCl
+            list=>cNaCl_array
+            list_val => cNaCl ! pointer points to target  cNaCl
+
+        endif
 
         nz = nzmax
         neqmax = neq
@@ -249,71 +293,95 @@ program main
         deallocate(energychain_init)
         deallocate(indexchain_init) 
 
-        do while (loop%min<=loop%val.and.loop%val<=loop%max.and.&
-                (abs(loop%stepsize)>=loop%delta))
-            
-            
-            call init_vars_input()  ! sets up chem potentials
-            
-            flag_solver = 0
+        list_first= list(1)
+        loopstepsizebegin=loop%stepsize
 
-            if(rank==0) then     ! node rank=0
-                call make_guess(x, xguess, isfirstguess)
-                call solver(x, xguess, tol_conv, fnorm, issolution)
-                call fcnptr(x, fvec, neq)
-                flag_solver = 0   ! stop nodes
-                do i = 1, size-1
-                    dest =i
-                    call MPI_SEND(flag_solver, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
-                enddo
+
+        do c=1,num                          ! loop over list items       
+   
+            list_val=list(c)                ! get value from array
+            iter = 0                        ! iteration counter 
+            loop%stepsize=loopstepsizebegin ! reset of loopstep size 
+                                  
+            if(loop%stepsize>0) then        ! sign loops%stepsize determines direction loop
+                loop%val=loop%min
+                loopbegin=loop%min 
             else
-                flag_solver = 1
-                do while(flag_solver.eq.1)
-                    flag_solver = 0
-                    source = 0
-                    call MPI_RECV(flag_solver, 1, MPI_INTEGER, source, tag,MPI_COMM_WORLD,stat, ierr)
-                    if(flag_solver.eq.1) then
-                        call MPI_RECV(x, neqint, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)
-                        call fcnptr(x, fvec, neq)
-                    endif
-                enddo
-            endif
+                loop%val=loop%max
+                loopbegin=loop%max
+            endif    
 
-            call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf FEconf_entropy
-
-            if(rank==0) then
-
-                if(isSolution) then
+            do while (loop%min<=loop%val.and.loop%val<=loop%max.and.&
+                    (abs(loop%stepsize)>=loop%delta))
                 
-                    call compute_vars_and_output()
-                    isfirstguess =.false.
-                    loop%val=loop%val+loop%stepsize
-
-                else
+                isfirstguess=(loop%val==loopbegin)
                 
-                    text="no solution: backstep"
-                    call print_to_log(LogUnit,text)
-                    loop%stepsize=loop%stepsize/2.0d0   ! decrease increment
-                    loop%val=loop%val-loop%stepsize     ! step back
-                    do i=1,neq
-                        x(i)=xguess(i)
+                call init_vars_input()  ! sets up chem potentials
+                
+                flag_solver = 0
+
+                if(rank==0) then     ! node rank=0
+                    call make_guess(x, xguess, isfirstguess,use_xstored,xstored) 
+                    !call make_guess(x,xguess,loop%val,loopbegin,use_xstored,xstored) 
+                    call solver(x, xguess, tol_conv, fnorm, issolution)
+                    call fcnptr(x, fvec, neq)
+                    flag_solver = 0   ! stop nodes
+                    do i = 1, size-1
+                        dest =i
+                        call MPI_SEND(flag_solver, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
                     enddo
-                
+                else
+                    flag_solver = 1
+                    do while(flag_solver.eq.1)
+                        flag_solver = 0
+                        source = 0
+                        call MPI_RECV(flag_solver, 1, MPI_INTEGER, source, tag,MPI_COMM_WORLD,stat, ierr)
+                        if(flag_solver.eq.1) then
+                            call MPI_RECV(x, neqint, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)
+                            call fcnptr(x, fvec, neq)
+                        endif
+                    enddo
                 endif
 
-                ! communicate new values of loop from master to compute nodes to advance while loop on compute nodes
-                do i = 1, size-1
-                    dest = i
-                    call MPI_SEND(loop%val, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)
-                enddo
-            else ! receive values
-                source = 0
-                call MPI_RECV(loop%val, 1, MPI_DOUBLE_PRECISION, source, tag,MPI_COMM_WORLD,stat, ierr)
-            endif
+                call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf FEconf_entropy
 
-            iter  = 0              ! reset of iteration counter
+                if(rank==0) then
 
-        enddo ! end while loop
+                    if(isSolution) then
+                    
+                        call compute_vars_and_output()
+                        isfirstguess =.false.
+                        loop%val=loop%val+loop%stepsize
+
+                    else
+                    
+                        text="no solution: backstep"
+                        call print_to_log(LogUnit,text)
+                        loop%stepsize=loop%stepsize/2.0d0   ! decrease increment
+                        loop%val=loop%val-loop%stepsize     ! step back
+                        do i=1,neq
+                            x(i)=xguess(i)
+                        enddo
+                    
+                    endif
+
+                    ! communicate new values of loop from master to compute nodes to advance while loop on compute nodes
+                    do i = 1, size-1
+                        dest = i
+                        call MPI_SEND(loop%val, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)
+                    enddo
+                else ! receive values
+                    source = 0
+                    call MPI_RECV(loop%val, 1, MPI_DOUBLE_PRECISION, source, tag,MPI_COMM_WORLD,stat, ierr)
+                endif
+
+                iter  = 0              ! reset of iteration counter
+
+            enddo ! end while loop
+
+            use_xstored=.true.
+
+        enddo ! end loop list item
 
         deallocate(x)
         deallocate(xguess)
