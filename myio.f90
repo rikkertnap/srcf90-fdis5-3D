@@ -431,7 +431,7 @@ subroutine check_value_runtype(runtype,info)
 
     flag=.FALSE.
 
-    do i=1,4
+    do i=1,6
         if(runtype==runtypestr(i)) flag=.TRUE.
     enddo
 
