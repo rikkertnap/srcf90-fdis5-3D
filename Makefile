@@ -179,7 +179,9 @@ ifdef is_quest
 
 FFLAGS= -O3 -cpp -DVERSION=\"$(GIT_VERSION)\" -no-wrap-margin
 
-LDFLAGS= -lm /usr/lib64/librt.so -L/home/rna878/sundials-2.6.1-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/home/rna878/sundials-2.6.1-openmpi/lib
+LDFLAGS= -lm /usr/lib64/librt.so -L/projects/p31445/sundials/sundials-2.6.1-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/projects/p31445/sundials/sundials-2.6.1-openmpi/lib
+
+#LDFLAGS= -lm /usr/lib64/librt.so -L/home/rna878/sundials-2.6.1-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/home/rna878/sundials-2.6.1-openmpi/lib
 
 LFFLAGS=$(LDFLAGS)
 

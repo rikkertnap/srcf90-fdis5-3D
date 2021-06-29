@@ -223,7 +223,7 @@ program main
         enddo ! end while loop
 
 
-    else  ! loop over pH  values
+    else  ! loop over pH, or pKd etc  values
  
 
         if(runtype=="inputcspH".or.runtype=="inputMgpH".or.runtype=="inputcsKClpH") then 
