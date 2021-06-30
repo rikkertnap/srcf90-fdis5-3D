@@ -323,7 +323,10 @@ subroutine init_guess_multi(x, xguess)
 
             x(i)         = xsol(i)    ! placing xsol in vector x
             x(i+nsize)   = psi(i)     ! placing psi in vector x
-            do t=1,nsegtypes          ! placing rhopol(:,t) in vector x
+        enddo 
+            
+        do t=1,nsegtypes          ! placing rhopol(:,t) in vector x
+            do i=1,nsize
                 x(i+(t+1)*nsize)=rhopol(i,t)
             enddo        
         enddo

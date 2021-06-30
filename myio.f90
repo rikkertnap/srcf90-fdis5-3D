@@ -608,7 +608,7 @@ end subroutine check_value_bcflag
 
     end subroutine  set_value_KCl
 
-subroutine set_value_MgCl2(runtype,info)
+    subroutine set_value_MgCl2(runtype,info)
 
         use mpivars
         !use parameters, only : num_cMgCl2,cMgCl2_array
@@ -1232,7 +1232,7 @@ subroutine output_brush_mul
     
     if(systype=="brushdna")then
         do i=1,nsize
-            write(un_fdisP,*)(fdisA(i,k),k=1,7)
+            write(un_fdisP,'(7ES25.16)')(fdisA(i,k),k=1,7)
         enddo    
     endif 
 
@@ -1300,7 +1300,7 @@ subroutine output_brush_mul
         write(un_sys,*)'pKa         = ',(pKa(t),t=1,nsegtypes)      
         !
         if(systype=="brushdna".or.systype=="brushborn") then
-           write(un_sys,*)'pKaAA       = ',(pKaAA(t),t=1,7)      
+           write(un_sys,'(A15,7ES25.16)')'pKaAA       = ',(pKaAA(t),t=1,7) 
         endif
         
         write(un_sys,*)'KionNa      = ',KionNa
@@ -1386,6 +1386,16 @@ subroutine output_brush_mul
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'pH%val      = ',pH%val
     write(un_sys,*)'VdWscale%val= ',VdWscale%val
+
+    ! output ion_excces
+
+    write(un_sys,*)'gamma%Na        = ',ion_excess%Na
+    write(un_sys,*)'gamma%Cl        = ',ion_excess%Cl
+    write(un_sys,*)'gamma%K         = ',ion_excess%K
+    write(un_sys,*)'gamma%Ca        = ',ion_excess%Ca
+    write(un_sys,*)'gamma%Mg        = ',ion_excess%Mg
+    write(un_sys,*)'gamma%Hplus     = ',ion_excess%Hplus
+    write(un_sys,*)'gamma%OHmin     = ',ion_excess%OHmin  
    
 
     ! .. closing files
@@ -1752,6 +1762,16 @@ subroutine output_elect
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'pH%val      = ',pH%val
     write(un_sys,*)'VdWscale%val= ',VdWscale%val
+
+    ! output ion_excces
+
+    write(un_sys,*)'gamma%Na        = ',ion_excess%Na
+    write(un_sys,*)'gamma%Cl        = ',ion_excess%Cl
+    write(un_sys,*)'gamma%K         = ',ion_excess%K
+    write(un_sys,*)'gamma%Ca        = ',ion_excess%Ca
+    write(un_sys,*)'gamma%Mg        = ',ion_excess%Mg
+    write(un_sys,*)'gamma%Hplus     = ',ion_excess%Hplus
+    write(un_sys,*)'gamma%OHmin     = ',ion_excess%OHmin  
    
     ! .. closing files
 

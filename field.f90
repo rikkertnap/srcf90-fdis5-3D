@@ -537,6 +537,50 @@ contains
         endif
             
     end subroutine average_density_z
+
+
+    ! computes ion_exces , gamma_i per unit area 
+    ! gamma_i = \int dV (\rho_i(r) -\rho_bulk)
+
+    function fcn_ion_excess(xion,xionbulk,vol) result(ionexcess)
+
+        use volume, only : delta
+        use globals, only : nsize
+        use parameters, only : vsol
+
+        real(dp), intent(in) :: xion(:)
+        real(dp), intent(in) :: xionbulk
+        real(dp), intent(in) :: vol  ! volume ion divide by vsol 
+
+        real(dp) :: ionexcess
+
+        integer :: i 
+
+        ionexcess=0.0_dp
+        do i=1,nsize
+            ionexcess=ionexcess+xion(i)
+        enddo  
+        ionexcess=(ionexcess -xionbulk*nsize)*(delta**3)/(vol*vsol)
+
+    end function fcn_ion_excess
+
+
+
+    subroutine make_ion_excess
+
+        use parameters, only : vNa,vK,vMg,vCl,vCa
+        use parameters, only : xbulk,ion_excess
+
+        ion_excess%Na=fcn_ion_excess(xNa,xbulk%Na,vNa)
+        ion_excess%Cl=fcn_ion_excess(xCl,xbulk%Cl,vCl)
+        ion_excess%K =fcn_ion_excess(xK,xbulk%K,vK)
+        ion_excess%Mg=fcn_ion_excess(xMg,xbulk%Mg,vMg)
+        ion_excess%Ca=fcn_ion_excess(xCa,xbulk%Ca,vCa)
+        ion_excess%Hplus=fcn_ion_excess(xHplus,xbulk%Hplus,1.0_dp)
+        ion_excess%OHmin=fcn_ion_excess(xOHmin,xbulk%OHmin,1.0_dp)
+        
+    end subroutine make_ion_excess
+    
   
 end module field
 

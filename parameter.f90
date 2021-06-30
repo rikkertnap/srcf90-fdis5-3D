@@ -10,7 +10,9 @@
 
     type(moleclist) :: xbulk
     type(moleclist) :: expmu
+    type(moleclist) :: ion_excess  
     type(bornmoleclist) :: bornrad,bornbulk 
+
 
     !  .. volume 
   
