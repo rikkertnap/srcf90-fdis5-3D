@@ -1232,7 +1232,7 @@ subroutine output_brush_mul
     
     if(systype=="brushdna")then
         do i=1,nsize
-            write(un_fdisP,'(7ES25.16)')(fdisA(i,k),k=1,7)
+            write(un_fdisP,'(8ES25.16)')(fdisA(i,k),k=1,8)
         enddo    
     endif 
 

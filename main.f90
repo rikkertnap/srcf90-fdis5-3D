@@ -47,7 +47,7 @@ program main
     integer :: iend , un_conf
     type (looplist), pointer :: loop
     real(dp) :: loopbegin,  loopstepsizebegin
-    real(dp), parameter :: loopeps = 1.0e-14_dp   
+    real(dp), parameter :: loopeps = 1.0e-10_dp   
     real(dp), dimension(:),  pointer :: list
     real(dp), pointer :: list_val
     real(dp) :: list_first
@@ -288,7 +288,7 @@ program main
         call set_fcn()
         call chain_filter() 
          
-        ! free unused varaibles 
+        ! free unused variables 
         deallocate(energychain)
         deallocate(energychain_init)
         deallocate(indexchain_init) 
@@ -314,15 +314,16 @@ program main
             do while (loop%min<=loop%val.and.loop%val<=loop%max.and.&
                     (abs(loop%stepsize)>=loop%delta))
                 
-                isfirstguess=(loop%val==loopbegin)
-                
+                isfirstguess=(loop%val==loopbegin) !abs(loop%val-loopbegin)<loopeps)
+               
+                !print*,"loop%val+",loop%val,"isfirstguess=",isfirstguess," list_val=", list_val
+                !print*,"use_xstored=",use_xstored
                 call init_vars_input()  ! sets up chem potentials
                 
                 flag_solver = 0
 
                 if(rank==0) then     ! node rank=0
-                    call make_guess(x, xguess, isfirstguess,use_xstored,xstored) 
-                    !call make_guess(x,xguess,loop%val,loopbegin,use_xstored,xstored) 
+                    call make_guess(x, xguess, isfirstguess,use_xstored,xstored)
                     call solver(x, xguess, tol_conv, fnorm, issolution)
                     call fcnptr(x, fvec, neq)
                     flag_solver = 0   ! stop nodes
@@ -347,25 +348,33 @@ program main
 
                 if(rank==0) then
 
-                    if(isSolution) then
+                    if(.not.isSolution) then
                     
-                        call compute_vars_and_output()
-                        isfirstguess =.false.
-                        loop%val=loop%val+loop%stepsize
-
-                    else
-                    
-                        text="no solution: backstep"
+                        text="no solution: backstep" 
                         call print_to_log(LogUnit,text)
                         loop%stepsize=loop%stepsize/2.0d0   ! decrease increment
                         loop%val=loop%val-loop%stepsize     ! step back
                         do i=1,neq
                             x(i)=xguess(i)
-                        enddo
+                         enddo
                     
-                    endif
+                    else 
 
-                    ! communicate new values of loop from master to compute nodes to advance while loop on compute nodes
+                        call compute_vars_and_output()
+                        if(isfirstguess) then
+                           do i=1,neqint
+                              xstored(i)=x(i)
+                           enddo
+                           use_xstored=.false.
+                        endif
+                        
+                        isfirstguess =.false.
+                        loop%val=loop%val+loop%stepsize
+
+                     endif
+                     
+                    
+                    ! communicate new values of loop from head to compute nodes to advance while loop on compute nodes
                     do i = 1, size-1
                         dest = i
                         call MPI_SEND(loop%val, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)

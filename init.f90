@@ -643,7 +643,7 @@ subroutine make_guess_from_xstored(xguess,xstored)
 
     else
         
-        do i=1,nsize
+        do i=1,neq
             xguess(i)=xstored(i)     
         enddo
 
