@@ -166,7 +166,7 @@ subroutine init_guess_neutral(x, xguess)
     
     use globals, only : neqint,nsize,nsegtypes
     use volume, only : nz
-    use field, only : xsol,rhopol
+    use field, only : xsol,rhopol,xpol
     use parameters, only : xbulk, infile
     use myutils, only : newunit
   
@@ -191,7 +191,7 @@ subroutine init_guess_neutral(x, xguess)
 
     if (infile.eq.1) then   ! infile is read in from file/stdio  
         write(fname(1),'(A7)')'xsol.in'
-        write(fname(2),'(A6)')'rho.in'
+        write(fname(2),'(A7)')'xpol.in'
         do i=1,2 ! loop files
             open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
             if(ios >0 ) then
@@ -202,7 +202,7 @@ subroutine init_guess_neutral(x, xguess)
         enddo
         do i=1,nsize
             read(un_file(1),*)xsol(i) ! solvent
-            read(un_file(2),*)(rhopol(i,t),t=1,nsegtypes)
+            read(un_file(2),*)xpol(i),(rhopol(i,t),t=1,nsegtypes)
             x(i) = xsol(i)            ! placing xsol  in vector x
             do t=1,nsegtypes          ! placing rhopol(:,t) in vector x
                 x(i+t*nsize)=rhopol(i,t)
@@ -274,7 +274,7 @@ subroutine init_guess_multi(x, xguess)
 
     use globals, only : neq,bcflag,LEFT,RIGHT,nsize,neqint,nsegtypes
     use volume, only : nsurf
-    use field, only : xsol,psi,rhopol
+    use field, only : xsol,psi,rhopol,xpol
     use surface, only : psisurfL, psisurfR 
     use parameters, only : xbulk, infile
     use myutils, only : newunit
@@ -301,7 +301,7 @@ subroutine init_guess_multi(x, xguess)
     
         write(fname(1),'(A7)')'xsol.in'
         write(fname(2),'(A6)')'psi.in'
-        write(fname(3),'(A6)')'rho.in'
+        write(fname(3),'(A7)')'xpol.in'
      
         do i=1,3 ! loop files
             open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
@@ -319,7 +319,7 @@ subroutine init_guess_multi(x, xguess)
         do i=1,nsize
             read(un_file(1),*)xsol(i)    ! solvent
             read(un_file(2),*)psi(i)     ! potential
-            read(un_file(3),*)(rhopol(i,t),t=1,nsegtypes)
+            read(un_file(3),*)xpol(i),(rhopol(i,t),t=1,nsegtypes)
 
             x(i)         = xsol(i)    ! placing xsol in vector x
             x(i+nsize)   = psi(i)     ! placing psi in vector x
@@ -455,7 +455,7 @@ subroutine init_guess_multi_born(x, xguess)
     if (infile.eq.1) then   ! infile is read in from file/stdio  
         write(fname(1),'(A7)')'xsol.in'
         write(fname(2),'(A6)')'psi.in'
-        write(fname(3),'(A6)')'phi.in'
+        write(fname(3),'(A7)')'xpol.in'
         write(fname(4),'(A8)')'fdisA.in'   
 
         do i=1,4
