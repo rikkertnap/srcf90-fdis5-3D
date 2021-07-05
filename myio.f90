@@ -1120,6 +1120,7 @@ subroutine output_brush_mul
     integer :: i,j,k          ! dummy indexes
     real(dp) :: denspol
 
+  
     ! .. executable statements
 
     denspol=init_denspol()
@@ -1404,8 +1405,7 @@ subroutine output_brush_mul
     write(un_sys,*)'gamma%Mg        = ',ion_excess%Mg
     write(un_sys,*)'gamma%Hplus     = ',ion_excess%Hplus
     write(un_sys,*)'gamma%OHmin     = ',ion_excess%OHmin
-
-
+    write(un_sys,*)'sumgamma        = ',sum_ion_excess
     ! .. closing files
 
     if(nz==nzmin) then
@@ -1780,6 +1780,8 @@ subroutine output_elect
     write(un_sys,*)'gamma%Mg        = ',ion_excess%Mg
     write(un_sys,*)'gamma%Hplus     = ',ion_excess%Hplus
     write(un_sys,*)'gamma%OHmin     = ',ion_excess%OHmin
+
+
 
     ! .. closing files
 
@@ -2277,6 +2279,7 @@ subroutine compute_vars_and_output()
         call charge_polymer()
         call average_charge_polymer()
         call average_density_z(xpol,xpolz,height)
+        call make_ion_excess()
         call output()
 
     case ("neutral","neutralnoVdW")
@@ -2291,6 +2294,7 @@ subroutine compute_vars_and_output()
         call charge_polymer()
         call average_charge_polymer()
         call average_density_z(xpol,xpolz,height)
+        call make_ion_excess()    
         call output()           ! writing of output
 
     case default

@@ -756,6 +756,7 @@ contains
                                                               
                         do i=1,n
                             rhopol(i,t) = rhopol0 * rhopol(i,t)               ! density polymer of type t  
+                            rhoqpol(i)  = rhoqpol(i) + (zpol(t,2)*fdis(i,t)+zpol(t,1)*(1.0_dp-fdis(i,t)))*rhopol(i,t)*vsol 
                             xpol(i)     = xpol(i) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
                             f(i+t*n)    = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
                         enddo  

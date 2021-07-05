@@ -226,7 +226,7 @@ contains
             qpol(t)=0.0_dp
             if(t/=tA) then    
                 do i=1,nsize
-                    qpol(t)=qpol(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
+                    qpol(t)=qpol(t)+(fdis(i,t)*zpol(t,2)+(1.0_dp-fdis(i,t))*zpol(t,1))*rhopol(i,t)
                 enddo
             else
                 do i=1,nsize
@@ -253,7 +253,7 @@ contains
         do t=1,nsegtypes
             qpol(t)=0.0_dp
             do i=1,nsize
-                qpol(t)=qpol(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
+                qpol(t)=qpol(t)+(fdis(i,t)*zpol(t,2)+(1.0_dp-fdis(i,t))*zpol(t,1))*rhopol(i,t)
             enddo
             qpol(t)=qpol(t)*volcell
             qpol_tot=qpol_tot+qpol(t)
@@ -310,7 +310,7 @@ contains
         use globals, only : nseg,nsize,nsegtypes
         use volume, only : volcell,ngr
         use parameters, only : zpol, avfdis, avfdisA, tA
-        use chains, only: type_of_monomer
+        use chains, only: type_of_monomer,ismonomer_chargeable
 
         integer, dimension(:), allocatable   :: npol
         integer :: i,s,t,k
@@ -331,24 +331,26 @@ contains
             
         do t=1,nsegtypes
             avfdis(t)=0.0_dp
-            sumrhopolt=npol(t)/volcell
-            if(npol(t)/=0) then
-                if(t/=tA) then    
-                    do i=1,nsize
-                        avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,1)+(1.0_dp-fdis(i,t))*zpol(t,2))*rhopol(i,t)
-                    enddo
-                    avfdis(t)=avfdis(t)/sumrhopolt        
-                else
-                    do k=1,8
-                        avfdisA(k)=0.0_dp
+            if(ismonomer_chargeable(t)) then 
+                sumrhopolt=npol(t)/volcell
+                if(npol(t)/=0) then
+                    if(t/=tA) then    
                         do i=1,nsize
-                            avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopol(i,t)
+                            avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,2)+(1.0_dp-fdis(i,t))*zpol(t,1))*rhopol(i,t)
                         enddo
-                        avfdisA(k)=avfdisA(k)/sumrhopolt  
-                    enddo
-                    avfdis(t)=avfdisA(1)
-                endif       
-            endif
+                        avfdis(t)=avfdis(t)/sumrhopolt        
+                    else
+                        do k=1,8
+                            avfdisA(k)=0.0_dp
+                            do i=1,nsize
+                                avfdisA(k)=avfdisA(k)+fdisA(i,k)*rhopol(i,t)
+                            enddo
+                            avfdisA(k)=avfdisA(k)/sumrhopolt  
+                        enddo
+                        avfdis(t)=avfdisA(1)
+                    endif       
+                endif
+            endif    
         enddo         
 
         deallocate(npol)    
@@ -360,7 +362,7 @@ contains
         use globals, only : nseg,nsize,nsegtypes
         use volume, only : volcell,ngr
         use parameters, only : zpol, avfdis
-        use chains, only: type_of_monomer
+        use chains, only: type_of_monomer,ismonomer_chargeable
 
         integer, dimension(:), allocatable   :: npol
         integer :: i,s,t
@@ -379,16 +381,19 @@ contains
         enddo
 
         do t=1,nsegtypes
-            sumrhopolt=npol(t)/volcell
-            if(npol(t)/=0) then
-                avfdis(t)=0.0_dp
-                do i=1,nsize
-                    avfdis(t)=avfdis(t)+((1.0_dp-fdis(i,t))*zpol(t,1)+fdis(i,t)*zpol(t,2))*rhopol(i,t)
-                enddo
-                avfdis(t)=avfdis(t)/sumrhopolt       
-            else
-                avfdis(t)=0.0_dp
-            endif
+            avfdis(t)=0.0_dp
+            if(ismonomer_chargeable(t)) then 
+                sumrhopolt=npol(t)/volcell
+                if(npol(t)/=0) then
+                    avfdis(t)=0.0_dp
+                    do i=1,nsize
+                        avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,2)+(1.0_dp-fdis(i,t))*zpol(t,1))*rhopol(i,t)
+                    enddo
+                    avfdis(t)=avfdis(t)/sumrhopolt       
+                else
+                    avfdis(t)=0.0_dp
+                endif
+            endif    
         enddo         
 
         deallocate(npol)    
@@ -569,7 +574,7 @@ contains
     subroutine make_ion_excess
 
         use parameters, only : vNa,vK,vMg,vCl,vCa
-        use parameters, only : xbulk,ion_excess
+        use parameters, only : xbulk,ion_excess,sum_ion_excess
 
         ion_excess%Na=fcn_ion_excess(xNa,xbulk%Na,vNa)
         ion_excess%Cl=fcn_ion_excess(xCl,xbulk%Cl,vCl)
@@ -578,6 +583,11 @@ contains
         ion_excess%Ca=fcn_ion_excess(xCa,xbulk%Ca,vCa)
         ion_excess%Hplus=fcn_ion_excess(xHplus,xbulk%Hplus,1.0_dp)
         ion_excess%OHmin=fcn_ion_excess(xOHmin,xbulk%OHmin,1.0_dp)
+       
+        ! sum of ion_excess weighted with valence of ion
+       
+        sum_ion_excess =ion_excess%Na -ion_excess%Cl+ion_excess%K +2.0_dp*ion_excess%Ca+2.0_dp*ion_excess%Mg +&
+         ion_excess%Hplus -ion_excess%OHmin
         
     end subroutine make_ion_excess
     

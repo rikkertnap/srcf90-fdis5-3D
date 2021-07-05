@@ -126,6 +126,7 @@
     real(dp), dimension(:), allocatable :: avfdis              ! average degree of dissociation
     real(dp) :: avfdisA(8)         ! average degree of dissociation 
     real(dp) :: avfdisB(5)         ! average degree of dissociation
+    real(dp) :: sum_ion_excess     ! sum of ion_excess of all ions weighted with valence of ion
 
     !  .. weak polyelectrolyte variables 
     !  .. equibrium constant
