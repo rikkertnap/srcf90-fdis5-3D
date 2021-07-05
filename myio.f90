@@ -13,12 +13,12 @@ module myio
     integer, parameter ::  myio_err_domain    = 6
     integer, parameter ::  myio_err_inputfile = 7
     integer, parameter ::  myio_err_input     = 8
-    integer, parameter ::  myio_err_bcflag    = 9 
+    integer, parameter ::  myio_err_bcflag    = 9
     integer, parameter ::  myio_err_label     = 10
-    integer, parameter ::  myio_err_VdWeps    = 11 
+    integer, parameter ::  myio_err_VdWeps    = 11
     integer, parameter ::  myio_err_nsegtypes = 12
-    integer, parameter ::  myio_err_chainmethod = 13  
-    integer, parameter ::  myio_err_chainsfile = 14 
+    integer, parameter ::  myio_err_chainmethod = 13
+    integer, parameter ::  myio_err_chainsfile = 14
     integer, parameter ::  myio_err_energyfile = 15
     integer, parameter ::  myio_err_dielect   = 16
     integer, parameter ::  myio_err_graft     = 17
@@ -35,20 +35,20 @@ module myio
     real(dp), dimension(:), allocatable, target :: cMgCl2_array
     real(dp), dimension(:), allocatable, target :: cKCl_array
 
-    ! unit number 
+    ! unit number
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xMg,un_xNaCl,un_xKCl
     integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q
     integer :: un_dip ,un_dielec,un_xpolABz, un_xpolz, un_xpol, un_fdis, un_xpro, un_fdisP
-   
-    ! format specifiers 
+
+    ! format specifiers
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
-    character(len=80), parameter  :: fmt1reals = "(ES25.16E3)"   
-    character(len=80), parameter  :: fmt2reals = "(2ES25.16E3)"   
-    character(len=80), parameter  :: fmt3reals = "(3ES25.16E3)"  
-    character(len=80), parameter  :: fmt4reals = "(4ES25.16E3)" 
+    character(len=80), parameter  :: fmt1reals = "(ES25.16E3)"
+    character(len=80), parameter  :: fmt2reals = "(2ES25.16E3)"
+    character(len=80), parameter  :: fmt3reals = "(3ES25.16E3)"
+    character(len=80), parameter  :: fmt4reals = "(4ES25.16E3)"
     character(len=80), parameter  :: fmt5reals = "(5ES25.16E3)"
-    character(len=80), parameter  :: fmt6reals = "(6ES25.16E3)" 
-    
+    character(len=80), parameter  :: fmt6reals = "(6ES25.16E3)"
+
     private
     public :: read_inputfile, output_individualcontr_fe, output, compute_vars_and_output,write_chain_config
     public :: myio_err_chainsfile, myio_err_energyfile, myio_err_chainmethod, myio_err_geometry
@@ -62,7 +62,7 @@ subroutine read_inputfile(info)
 
     use globals
     use parameters
-    use surface 
+    use surface
     use myutils, only : newunit
 
     integer, intent(out), optional :: info
@@ -72,14 +72,14 @@ subroutine read_inputfile(info)
     integer :: info_sys, info_bc, info_run, info_geo, info_meth, info_chaintype, info_combi, info_VdWeps
     integer :: info_chainmethod, info_dielect
     character(len=8) :: fname
-    integer :: ios,un_input  ! un = unit number    
+    integer :: ios,un_input  ! un = unit number
     character(len=100) :: buffer, label
     integer :: pos
     integer :: line
     logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha,  isSet_EnergyShift
 
     if (present(info)) info = 0
-    
+
     !     .. reading in of variables from file
     write(fname,'(A8)')'input.in'
     open(unit=newunit(un_input),file=fname,iostat=ios,status='old')
@@ -91,24 +91,28 @@ subroutine read_inputfile(info)
 
     ! defaults
     isSet_maxnchains  =.false.
-    isSet_maxnchainsxy=.false.  
+    isSet_maxnchainsxy=.false.
     isSet_precondition=.false.
-    isSet_savePalpha  =.false.  
+    isSet_savePalpha  =.false.
     write_mc_chains   =.false.
     isSet_EnergyShift =.false.
 
-    ! defailt concentrations
+    ! default concentrations
     cKCl=0.0_dp
     cCaCl2=0.0_dp
     cMgCl2=0.0_dp
     cRbCl=0.0_dp
-    
 
-    ios=0 
+    ! init surface charge 
+    sigmaSurfL = 0.0_dp
+    sigmaSurfL = 0.0_dp
+
+
+    ios=0
     line = 0
 
-    ! ios<0 : if an end of record condition is encountered or if an end of file condition was detected.  
-    ! ios>0 : if an error occured 
+    ! ios<0 : if an end of record condition is encountered or if an end of file condition was detected.
+    ! ios>0 : if an error occured
     ! ios=0 : otherwise.
 
     do while (ios == 0)
@@ -116,7 +120,7 @@ subroutine read_inputfile(info)
         read(un_input, '(A)', iostat=ios) buffer
 
         if (ios == 0) then
-        
+
             line = line + 1
 
             !  Split label and data based on first occurence of a whitespace
@@ -140,12 +144,12 @@ subroutine read_inputfile(info)
             case ('chaintype')
                 read(buffer,*,iostat=ios) chaintype
             case ('isChainEnergyFile')
-                    read(buffer,*,iostat=ios) isChainEnergyFile    
-            case ('isEnergyShift')    
+                    read(buffer,*,iostat=ios) isChainEnergyFile
+            case ('isEnergyShift')
                 read(buffer,*,iostat=ios) isEnergyShift
-                isSet_EnergyShift=.true.    
+                isSet_EnergyShift=.true.
             case ('tolerance')
-                read(buffer,*,iostat=ios) tol_conv           
+                read(buffer,*,iostat=ios) tol_conv
             case ('infile')
                 read(buffer,*,iostat=ios) infile              ! guess  1==yes
             case ('pH%val')
@@ -162,6 +166,10 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) KionNa
             case ('KionK')
                 read(buffer,*,iostat=ios) KionK
+            case ('sigmaSurfL')
+              read(buffer,*,iostat=ios) sigmaSurfL
+           case ('sigmaSurfR')
+              read(buffer,*,iostat=ios) sigmaSurfR
             case ('cNaCl')
                 read(buffer,*,iostat=ios) cNaCl
             case ('cKCl')
@@ -188,14 +196,14 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) nsize
             case ('nseg')
                 read(buffer,*,iostat=ios) nseg
-            case ('nsegtypes')    
-                read(buffer,*,iostat=ios) nsegtypes        ! carefully need to be overwriiten depending on value systype and or chainmethod    
-            case ('maxnchains')    
-                read(buffer,*,iostat=ios) maxnchainsrotations  
-                isSet_maxnchains=.true.      
-            case ('maxnchainsxy')    
+            case ('nsegtypes')
+                read(buffer,*,iostat=ios) nsegtypes        ! carefully need to be overwriiten depending on value systype and or chainmethod
+            case ('maxnchains')
+                read(buffer,*,iostat=ios) maxnchainsrotations
+                isSet_maxnchains=.true.
+            case ('maxnchainsxy')
                 read(buffer,*,iostat=ios) maxnchainsrotationsXY
-                isSet_maxnchainsxy=.true.        
+                isSet_maxnchainsxy=.true.
             case ('cuantas')
                 read(buffer,*,iostat=ios) max_confor
             case ('chainperiod')
@@ -203,11 +211,11 @@ subroutine read_inputfile(info)
             case('vpolfname')
                 read(buffer,*,iostat=ios) vpolfname
             case('pKafname')
-                read(buffer,*,iostat=ios) pKafname      
-            case('typesfname') 
-                read(buffer,*,iostat=ios) typesfname  
-            case('lsegfname') 
-                read(buffer,*,iostat=ios) lsegfname  
+                read(buffer,*,iostat=ios) pKafname
+            case('typesfname')
+                read(buffer,*,iostat=ios) typesfname
+            case('lsegfname')
+                read(buffer,*,iostat=ios) lsegfname
             case ('nx')
                 read(buffer,*,iostat=ios) nx
             case ('ny')
@@ -219,30 +227,30 @@ subroutine read_inputfile(info)
             case ('nzstep')
                 read(buffer,*,iostat=ios) nzstep
             case ('verboseflag  ')
-                read(buffer,*,iostat=ios) verboseflag  
+                read(buffer,*,iostat=ios) verboseflag
             case ('delta')
-                read(buffer,*,iostat=ios) delta   
+                read(buffer,*,iostat=ios) delta
             case('unit_conv')
                 read(buffer,*,iostat=ios) unit_conv
             case ('geometry')
                 read(buffer,*,iostat=ios) geometry
             case ('ngr_freq')
-                read(buffer,*,iostat=ios) ngr_freq 
+                read(buffer,*,iostat=ios) ngr_freq
             case ('sgraft')
                 read(buffer,*,iostat=ios) sgraft
             case ('nset_per_graft')
-                read(buffer,*,iostat=ios) nset_per_graft      
+                read(buffer,*,iostat=ios) nset_per_graft
             case ('gamma')
-                read(buffer,*,iostat=ios) gamma 
+                read(buffer,*,iostat=ios) gamma
             case ('isRandom_pos_graft')
-                read(buffer,*,iostat=ios) isRandom_pos_graft  
+                read(buffer,*,iostat=ios) isRandom_pos_graft
             case ('seed_graft')
-                read(buffer,*,iostat=ios) seed_graft  
+                read(buffer,*,iostat=ios) seed_graft
             case ('write_mc_chains')
-                read(buffer,*,iostat=ios) write_mc_chains        
-            case ('precondition')    
+                read(buffer,*,iostat=ios) write_mc_chains
+            case ('precondition')
                 read(buffer,*,iostat=ios) precondition
-                isSet_precondition=.true.   
+                isSet_precondition=.true.
             case ('dielect_env')
                 read(buffer,*,iostat=ios) dielect_env
             case ('VdWscale%val')
@@ -254,7 +262,7 @@ subroutine read_inputfile(info)
             case ('VdWscale%stepsize')
                 read(buffer,*,iostat=ios) VdWscale%stepsize
             case ('VdWscale%delta')
-                read(buffer,*,iostat=ios) VdWscale%delta 
+                read(buffer,*,iostat=ios) VdWscale%delta
             case ('pKd%val')
                 read(buffer,*,iostat=ios) pKd%val
             case ('pKd%min')
@@ -264,13 +272,13 @@ subroutine read_inputfile(info)
             case ('pKd%stepsize')
                 read(buffer,*,iostat=ios) pKd%stepsize
             case ('pKd%delta')
-                read(buffer,*,iostat=ios) pKd%delta       
+                read(buffer,*,iostat=ios) pKd%delta
             case default
-                if(pos>1) then 
+                if(pos>1) then
                     print *, 'Invalid label at line', line  ! empty lines are skipped
                     if (present(info)) info = myio_err_inputlabel
                     return
-                endif    
+                endif
             end select
         end if
     end do
@@ -284,22 +292,22 @@ subroutine read_inputfile(info)
     endif
 
     close(un_input)
-    
-    ! override input bcflags 
-    
+
+    ! override input bcflags
+
     bcflag(LEFT)="cc"
-    bcflag(RIGHT)="cc"  
-    
+    bcflag(RIGHT)="cc"
+
 
     ! .. check error flag
 
-    call check_value_systype(systype,info_sys) 
+    call check_value_systype(systype,info_sys)
     if (info_sys == myio_err_systype) then
         if (present(info)) info = info_sys
         return
     endif
 
-    call check_value_runtype(runtype,info_run) 
+    call check_value_runtype(runtype,info_run)
     if (info_sys == myio_err_runtype) then
         if (present(info)) info = info_run
         return
@@ -311,7 +319,7 @@ subroutine read_inputfile(info)
         return
     endif
 
-    call check_value_bcflag(bcflag,info_bc) 
+    call check_value_bcflag(bcflag,info_bc)
     if (info_bc == myio_err_bcflag) then
         if (present(info)) info = info_bc
         return
@@ -330,7 +338,7 @@ subroutine read_inputfile(info)
     endif
 
     call check_value_chainmethod(chainmethod,info_chainmethod)
-    if (info_chainmethod == myio_err_chainmethod) then            
+    if (info_chainmethod == myio_err_chainmethod) then
         if (present(info)) info = info_chainmethod
         return
     endif
@@ -363,14 +371,14 @@ subroutine read_inputfile(info)
 
     ! overide certain input values
     if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_mul") then
-        KionNa=0.0_dp 
+        KionNa=0.0_dp
         KionK=0.0_dp
         cpro%val =0.0_dp
         Rpro=0.1_dp
-    endif    
+    endif
 
 end subroutine read_inputfile
- 
+
 
 subroutine check_value_systype(systype,info)
 
@@ -385,13 +393,13 @@ subroutine check_value_systype(systype,info)
 
     systypestr(1)="elect"
     systypestr(2)="neutral"
-    systypestr(3)="brush_mul" 
+    systypestr(3)="brush_mul"
     systypestr(4)="brush_mulnoVdW"
     systypestr(5)="brushdna"
     systypestr(6)="brushborn"
     systypestr(7)="bulk water"
     systypestr(8)="neutralnoVdW"
-   
+
     flag=.FALSE.
 
     do i=1,8
@@ -468,7 +476,7 @@ subroutine check_value_bcflag(bcflag,info)
     bcvalues(LEFT,2)="cc"
 
     flag=.FALSE.
-            
+
     do i=1,5
         if(bcflag(RIGHT)==bcvalues(RIGHT,i)) flag=.TRUE.
     enddo
@@ -507,15 +515,15 @@ end subroutine check_value_bcflag
         ! local variables
         character(len=7) :: fname
         integer :: ios
-        integer :: i    
+        integer :: i
         integer :: un_cs
- 
+
 
         if(runtype=="defaultpH".or.runtype=="defaultT".or.runtype=="defaultsigma") then
 
-            num_cNaCl=6  
+            num_cNaCl=6
             allocate(cNaCl_array(num_cNaCl))
-            
+
             cNaCl_array(1)=0.25_dp
             cNaCl_array(2)=0.20_dp
             cNaCl_array(3)=0.15_dp
@@ -540,8 +548,8 @@ end subroutine check_value_bcflag
              endif
 
              read(un_cs,*)num_cNaCl ! read number of salt concentration form file
-             allocate(cNaCl_array(num_cNaCl)) 
-                
+             allocate(cNaCl_array(num_cNaCl))
+
              do i=1,num_cNaCl     ! read value salt concentration
                  read(un_cs,*)cNaCl_array(i)
              enddo
@@ -564,9 +572,9 @@ end subroutine check_value_bcflag
         ! local variables
         character(len=7) :: fname
         integer :: ios
-        integer :: i    
+        integer :: i
         integer :: un_cs
- 
+
 
        if(runtype=="inputcsKClpH") then
 
@@ -585,8 +593,8 @@ end subroutine check_value_bcflag
             endif
 
             read(un_cs,*)num_cKCl ! read number of salt concentration form file
-            allocate(cKCl_array(num_cKCl)) 
-                
+            allocate(cKCl_array(num_cKCl))
+
             do i=1,num_cKCl     ! read value salt concentration
                 read(un_cs,*)cKCl_array(i)
             enddo
@@ -621,9 +629,9 @@ end subroutine check_value_bcflag
         ! local variables
         character(len=9) :: fname
         integer :: ios
-        integer :: i    
+        integer :: i
         integer :: un_cs
-    
+
         if (present(info)) info=0
 
         if(runtype=="inputMgpH".or.runtype=="rangepKd".or.runtype=="rangeVdWeps") then
@@ -644,14 +652,14 @@ end subroutine check_value_bcflag
 
             read(un_cs,*)num_cMgCl2 ! read number of salt concentration form file
             allocate(cMgCl2_array(num_cMgCl2))
-                
+
             do i=1,num_cMgCl2     ! read value salt concentration
                 read(un_cs,*)cMgCl2_array(i)
             enddo
             close(un_cs)
-        
+
         else
-        
+
             print*,'Error wrong runtype in set_value_MgCl2'
             call MPI_FINALIZE(ierr)
             if (present(info)) then
@@ -661,7 +669,7 @@ end subroutine check_value_bcflag
                 stop
             endif
 
-        
+
         endif
 
 
@@ -669,34 +677,34 @@ end subroutine check_value_bcflag
 
 
 subroutine check_value_geometry(geometry,info)
-        
+
     character(len=11), intent(in) :: geometry
     integer, intent(out),optional :: info
 
     logical :: flag
-    character(len=11) :: geometrystr(2) 
+    character(len=11) :: geometrystr(2)
     integer :: i
 
     ! permissible values of geometry
 
     geometrystr(1)="cubic"
     geometrystr(2)="prism"
-   
+
     flag=.FALSE.
 
     do i=1,2
         if(geometry==geometrystr(i)) flag=.TRUE.
     enddo
-        
+
     if (present(info)) info = 0
 
-    if (flag.eqv. .FALSE.) then 
+    if (flag.eqv. .FALSE.) then
         print*,"Error: value of geometry is not permissible"
         print*,"geometry = ",geometry
-        if (present(info)) info = myio_err_geometry 
+        if (present(info)) info = myio_err_geometry
         return
     endif
-    
+
 end subroutine
 
 
@@ -736,12 +744,12 @@ subroutine check_value_chaintype(chaintype,info)
 end subroutine check_value_chaintype
 
 subroutine check_value_chainmethod(chainmethod,info)
-      
+
     character(len=15), intent(in) :: chainmethod
     integer, intent(out),optional :: info
 
     logical :: flag
-    character(len=15) :: chainmethodstr(4) 
+    character(len=15) :: chainmethodstr(4)
     integer :: i
 
     ! permissible values of chainmethod
@@ -749,17 +757,17 @@ subroutine check_value_chainmethod(chainmethod,info)
     chainmethodstr(1)="MC"
     chainmethodstr(2)="FILE_lammps_xyz"
     chainmethodstr(3)="FILE_lammps_trj"
-    chainmethodstr(3)="FILE_XYZ"   
-   
+    chainmethodstr(3)="FILE_XYZ"
+
     flag=.FALSE.
 
     do i=1,4
         if(chainmethod==chainmethodstr(i)) flag=.TRUE.
     enddo
-        
+
     if (present(info)) info = 0
 
-    if (flag.eqv. .FALSE.) then 
+    if (flag.eqv. .FALSE.) then
         print*,"Error: value of chainmethod is not permissible"
         print*,"chainmethod = ",chainmethod
         if (present(info)) info = myio_err_chainmethod
@@ -798,12 +806,12 @@ subroutine check_value_method(method,info)
 end subroutine check_value_method
 
 subroutine check_value_dielect_env(dielect_env,info)
-        
+
     character(len=15), intent(in) :: dielect_env
     integer, intent(out),optional :: info
 
     logical :: flag
-    character(len=15) :: dielect_env_str(3) 
+    character(len=15) :: dielect_env_str(3)
     integer :: i
 
     ! permissible values of dielect_env
@@ -811,22 +819,22 @@ subroutine check_value_dielect_env(dielect_env,info)
     dielect_env_str(1)="constant"
     dielect_env_str(2)="linear"
     dielect_env_str(3)="MaxwellGarnett"
-    
+
     flag=.FALSE.
 
     do i=1,3
         if(dielect_env==dielect_env_str(i)) flag=.TRUE.
     enddo
-        
+
     if (present(info)) info = 0
 
-    if (flag.eqv. .FALSE.) then 
+    if (flag.eqv. .FALSE.) then
         print*,"Error: value of dielect_env is not permissible"
         print*,"dielect_env = ",dielect_env
-        if (present(info)) info = myio_err_dielect 
+        if (present(info)) info = myio_err_dielect
         return
     endif
-    
+
 end subroutine check_value_dielect_env
 
 
@@ -843,19 +851,19 @@ subroutine check_value_VdWeps(systype,isVdW,info)
 
     flag=.false.
 
-    if(isVdW) then ! check for correct combination systype 
-     
+    if(isVdW) then ! check for correct combination systype
+
         systypestr(1)="neutral"
         systypestr(2)="brush_mul"
         systypestr(3)="brushdna"
         systypestr(4)="brushborn"
-       
-        do i=1,4! sofar only electA works with VdW 
+
+        do i=1,4! sofar only electA works with VdW
             if(systype==systypestr(i)) flag=.TRUE.
         enddo
-    else  ! isVdW=.false. so oke 
+    else  ! isVdW=.false. so oke
         flag=.true.
-    endif        
+    endif
 
     if (present(info)) info = 0
 
@@ -871,7 +879,7 @@ end subroutine check_value_VdWeps
 
 
 ! override input value nzmin
-! Sets nzmin=nzmax for which runtype that do not loop over nz 
+! Sets nzmin=nzmax for which runtype that do not loop over nz
 ! ensuring that the output files are properly close once
 
 subroutine set_value_nzmin(runtype,nzmin,nzmax)
@@ -879,8 +887,8 @@ subroutine set_value_nzmin(runtype,nzmin,nzmax)
     character(len=15), intent(in) :: runtype
     integer, intent(inout) :: nzmin
     integer, intent(in) :: nzmax
-   
-    if (runtype/="rangedist") nzmin=nzmax 
+
+    if (runtype/="rangedist") nzmin=nzmax
 
 end subroutine
 
@@ -891,24 +899,24 @@ subroutine set_value_isVdW(systype, isVdW)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdW
 
-    character(len=15) :: systypestr(3) 
+    character(len=15) :: systypestr(3)
     integer :: i
 
      isVdW=.True.
 
-    ! systype that NOT involve VdW interactions 
-    
-    systypestr(1)="elect"
-    systypestr(2)="neutralnoVdW" 
-    systypestr(3)="brush_mulnoVdW"  
+    ! systype that NOT involve VdW interactions
 
-    do i=1,3     
+    systypestr(1)="elect"
+    systypestr(2)="neutralnoVdW"
+    systypestr(3)="brush_mulnoVdW"
+
+    do i=1,3
         if(systype==systypestr(i)) isVdW=.FALSE.
-    enddo    
+    enddo
 
 end subroutine
 
-! isVdWintEne = .true. compute internal VdW energy chain  
+! isVdWintEne = .true. compute internal VdW energy chain
 ! allways true
 
 subroutine set_value_isVdWintEne(systype, isVdWintEne)
@@ -916,12 +924,12 @@ subroutine set_value_isVdWintEne(systype, isVdWintEne)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdWintEne
 
-    character(len=15) :: systypestr(2) 
+    character(len=15) :: systypestr(2)
     integer :: i
 
     ! all systype that involve internal VdW chain energy
-      
-    isVdWintEne=.true.  
+
+    isVdWintEne=.true.
 
 end subroutine
 
@@ -935,18 +943,18 @@ subroutine set_value_isVdW_on_values(nsegtypes, VdWeps, isVdW)
     logical, intent(inout)  :: isVdW
 
     integer :: s,t
-  
+
     do s=1,nsegtypes
-        do t=1,nsegtypes   
+        do t=1,nsegtypes
             if (abs(VdWeps(s,t))>1.0e-4_dp) isVdW=.true.
         enddo
-    enddo    
+    enddo
 
 end subroutine
 
 
 subroutine set_value_nsegtypes(nsegtypes,chaintype,systype,info)
-            
+
 
     integer, intent(inout) :: nsegtypes
     integer, intent(out),optional :: info
@@ -954,7 +962,7 @@ subroutine set_value_nsegtypes(nsegtypes,chaintype,systype,info)
     character(len=15), intent(in) :: systype
 
     logical :: flag
-    character(len=8) :: chaintypestr(5) 
+    character(len=8) :: chaintypestr(5)
     integer :: i
 
     ! permissible values of chaintype
@@ -964,11 +972,11 @@ subroutine set_value_nsegtypes(nsegtypes,chaintype,systype,info)
     chaintypestr(3)="altA"
     chaintypestr(4)="altB"
     chaintypestr(5)="copolyAB"
-    
+
 
     ! two components
     flag=.FALSE.
-    
+
     do i=1,5
         if(chaintype==chaintypestr(i)) flag=.TRUE.
     enddo
@@ -976,46 +984,46 @@ subroutine set_value_nsegtypes(nsegtypes,chaintype,systype,info)
 
     if(chaintype=="multi") flag=.true.
 
-    if(systype=="neutral") flag=.true.    
+    if(systype=="neutral") flag=.true.
 
     if (present(info)) info = 0
 
-    if (flag.eqv. .FALSE.) then 
+    if (flag.eqv. .FALSE.) then
         print*,"Error: value of nsegtype could not be set for given "
         print*,"chaintype = ",chaintype
         if (present(info)) info = myio_err_nsegtypes
         return
     endif
-    
+
 end subroutine set_value_nsegtypes
 
-    
+
 subroutine set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
 
     integer, intent(inout) :: maxnchainsrotations
     logical, intent(in)  :: isSet_maxnchains
 
-    if(.not.isSet_maxnchains) then 
+    if(.not.isSet_maxnchains) then
         maxnchainsrotations=12 ! default value
     else
-        maxnchainsrotations=abs(maxnchainsrotations) !  make positive   
+        maxnchainsrotations=abs(maxnchainsrotations) !  make positive
     endif
-        
+
 end subroutine set_value_maxnchains
 
 
-    
+
 subroutine set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
 
     integer, intent(inout) :: maxnchainsrotationsxy
     logical, intent(in)  :: isSet_maxnchainsxy
 
-    if(.not.isSet_maxnchainsxy) then 
+    if(.not.isSet_maxnchainsxy) then
         maxnchainsrotationsxy=1 ! default value
     else
-        maxnchainsrotationsxy=abs(maxnchainsrotationsxy) !  make positive   
+        maxnchainsrotationsxy=abs(maxnchainsrotationsxy) !  make positive
     endif
-        
+
 end subroutine set_value_maxnchainsxy
 
 
@@ -1025,7 +1033,7 @@ subroutine set_value_precondition(precondition,isSet_precondition)
     logical, intent(in)  :: isSet_precondition
 
     if(.not.isSet_precondition) precondition=.false. ! default value
-   
+
 end subroutine set_value_precondition
 
 
@@ -1035,7 +1043,7 @@ subroutine set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
     logical, intent(in)  :: isSet_EnergyShift
 
     if(.not.isSet_EnergyShift) isEnergyShift=.false. ! default value
-   
+
 end subroutine set_value_isEnergyShift
 
 
@@ -1046,51 +1054,51 @@ subroutine output()
     select case (systype)
     case ("elect")
 
-        call output_elect  
-    
-    case("neutral","neutralnoVdW") 
-    
+        call output_elect
+
+    case("neutral","neutralnoVdW")
+
         call output_neutral
         call output_individualcontr_fe
-    
-    case("brush_mul","brush_mulnoVdW","brushdna","brushborn") 
-    
-        call output_brush_mul  
-        call output_individualcontr_fe  
-   
+
+    case("brush_mul","brush_mulnoVdW","brushdna","brushborn")
+
+        call output_brush_mul
+        call output_individualcontr_fe
+
     case default
-   
+
         print*,"Error in output subroutine"
         print*,"Wrong value systype : ", systype
-   
-    end select     
+
+    end select
 
 end subroutine output
 
 
 subroutine output_brush_mul
-  
+
     !     .. variables and constant declaractions
-    use globals 
+    use globals
     use volume
     use parameters
     use field
     use energy
-    use surface 
+    use surface
     use myutils, only : newunit
     use chains, only : isHomopolymer
-    
+
     !     .. local arguments
-   
+
     integer :: t
 
-    !     .. output file names       
-    
-    character(len=90) :: sysfilename     
-    character(len=90) :: xsolfilename 
-    character(len=90) :: xpolfilename 
-    character(len=90) :: xpolzfilename 
-    character(len=90) :: xpolendfilename 
+    !     .. output file names
+
+    character(len=90) :: sysfilename
+    character(len=90) :: xsolfilename
+    character(len=90) :: xpolfilename
+    character(len=90) :: xpolzfilename
+    character(len=90) :: xpolendfilename
     character(len=90) :: xNafilename
     character(len=90) :: xKfilename
     character(len=90) :: xCafilename
@@ -1112,11 +1120,11 @@ subroutine output_brush_mul
     integer :: i,j,k          ! dummy indexes
     real(dp) :: denspol
 
-    ! .. executable statements 
+    ! .. executable statements
 
     denspol=init_denspol()
 
-    if(nz.eq.nzmax)  then 
+    if(nz.eq.nzmax)  then
         !     .. make label filenames f
         call make_filename_label(fnamelabel)
 
@@ -1139,21 +1147,21 @@ subroutine output_brush_mul
         densfracPfilename='densityfracP.'//trim(fnamelabel)
         densfracionpairfilename='densityfracionpair.'//trim(fnamelabel)
         qfilename='q.'//trim(fnamelabel)
-       
-        !     .. opening files        
-        
-        open(unit=newunit(un_sys),file=sysfilename)       
+
+        !     .. opening files
+
+        open(unit=newunit(un_sys),file=sysfilename)
         open(unit=newunit(un_xsol),file=xsolfilename)
         open(unit=newunit(un_psi),file=potentialfilename)
-         
+
         open(unit=newunit(un_xpol),file=xpolfilename)
-        open(unit=newunit(un_fdis),file=densfracfilename)  
-        if(systype=="brushdna") open(unit=newunit(un_fdisP),file=densfracPfilename) 
-        open(unit=newunit(un_q),file=qfilename)        
+        open(unit=newunit(un_fdis),file=densfracfilename)
+        if(systype=="brushdna") open(unit=newunit(un_fdisP),file=densfracPfilename)
+        open(unit=newunit(un_q),file=qfilename)
         open(unit=newunit(un_xpolz),file=xpolzfilename)
-        
-       
-        if(verboseflag=="yes") then    
+
+
+        if(verboseflag=="yes") then
             open(unit=newunit(un_xNa),file=xNafilename)
             open(unit=newunit(un_xK),file=xKfilename)
             open(unit=newunit(un_xCa),file=xCafilename)
@@ -1174,50 +1182,50 @@ subroutine output_brush_mul
 
         if(.not.isopen) write(*,*)"un_xsol is not open"
 
-    endif       
+    endif
 
     !   .. writting files
-    !   .. this line seperates different distances 
+    !   .. this line seperates different distances
     !   .. only for loop over distances i.e runtype =="rangedis"
 
-    if(runtype=="rangedist") then 
-        
-        write(un_xsol,*)'#D    = ',nz*delta 
+    if(runtype=="rangedist") then
+
+        write(un_xsol,*)'#D    = ',nz*delta
         write(un_psi,*)'#D    = ',nz*delta
-        write(un_xpol,*)'#D    = ',nz*delta 
+        write(un_xpol,*)'#D    = ',nz*delta
         write(un_fdis,*)'#D    = ',nz*delta
 
         if(systype=="brushdna") write(un_fdisP,*)'#D    = ',nz*delta
-    
-     
-        if(verboseflag=="yes") then    
-            write(un_xNa,*)'#D    = ',nz*delta 
-            write(un_xK,*)'#D    = ',nz*delta 
-            write(un_xCa,*)'#D    = ',nz*delta 
-            write(un_xMg,*)'#D    = ',nz*delta 
-            write(un_xNaCl,*)'#D    = ',nz*delta 
-            write(un_xKCl,*)'#D    = ',nz*delta 
-            write(un_xpair,*)'#D    = ',nz*delta 
-            write(un_charge,*)'#D    = ',nz*delta 
-            write(un_xCl,*)'#D    = ',nz*delta 
-            write(un_xHplus,*)'#D    = ',nz*delta 
-            write(un_xOHMin,*)'#D    = ',nz*delta 
+
+
+        if(verboseflag=="yes") then
+            write(un_xNa,*)'#D    = ',nz*delta
+            write(un_xK,*)'#D    = ',nz*delta
+            write(un_xCa,*)'#D    = ',nz*delta
+            write(un_xMg,*)'#D    = ',nz*delta
+            write(un_xNaCl,*)'#D    = ',nz*delta
+            write(un_xKCl,*)'#D    = ',nz*delta
+            write(un_xpair,*)'#D    = ',nz*delta
+            write(un_charge,*)'#D    = ',nz*delta
+            write(un_xCl,*)'#D    = ',nz*delta
+            write(un_xHplus,*)'#D    = ',nz*delta
+            write(un_xOHMin,*)'#D    = ',nz*delta
         endif
 
-    endif    
+    endif
 
 !    do i=1,nsurf
 !        write(un_psi,*)psiSurfL(i)
-!    enddo 
-        
+!    enddo
+
     do i=1,nsize
         write(un_xsol,*)xsol(i)
         write(un_psi,*)psi(i)
-    enddo    
+    enddo
 
 !    do i=1,nsurf
 !       write(un_psi,*)psiSurfR(i)
-!    enddo         
+!    enddo
 
     write(un_q,*)q
 
@@ -1228,15 +1236,15 @@ subroutine output_brush_mul
 
     do i=1,nz
         write(un_xpolz,fmt1reals)xpolz(i)
-    enddo     
-    
+    enddo
+
     if(systype=="brushdna")then
         do i=1,nsize
             write(un_fdisP,'(8ES25.16)')(fdisA(i,k),k=1,8)
-        enddo    
-    endif 
+        enddo
+    endif
 
-    if(verboseflag=="yes") then 
+    if(verboseflag=="yes") then
         do i=1,nsize
             write(un_xNa,*)xNa(i)
             write(un_xK,*)xK(i)
@@ -1247,39 +1255,39 @@ subroutine output_brush_mul
             write(un_xCl,*)xCl(i)
             write(un_charge,*)rhoq(i)
             write(un_xHplus,*)xHplus(i)
-            write(un_xOHmin,*)xOHmin(i)    
-        enddo    
+            write(un_xOHmin,*)xOHmin(i)
+        enddo
     endif
 
-    ! .. writing system information 
-    if(nz.eq.nzmax) then 
-        write(un_sys,*)'===begin distance independent settings=='  
+    ! .. writing system information
+    if(nz.eq.nzmax) then
+        write(un_sys,*)'===begin distance independent settings=='
         write(un_sys,*)'system      = planar weakpolyelectrolyte brush'
         write(un_sys,*)'version     = ',VERSION
-        ! chain description 
+        ! chain description
         write(un_sys,*)'chainmethod = ',chainmethod
         write(un_sys,*)'chaintype   = ',chaintype
         write(un_sys,*)"isHomopolymer= ",isHomopolymer
         write(un_sys,*)'nseg        = ',nseg
-        write(un_sys,*)'nsegtypes   = ',nsegtypes        
+        write(un_sys,*)'nsegtypes   = ',nsegtypes
         write(un_sys,*)'lseg        = ',(lsegAA(t),t=1,nsegtypes)
         write(un_sys,*)'cuantas     = ',cuantas
         write(un_sys,*)'denspol     = ',denspol
-       
+
         ! system description
         write(un_sys,*)'systype     = ',systype
         write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
         write(un_sys,*)'bcflag(RIGHT) = ',bcflag(RIGHT)
         write(un_sys,*)'delta       = ',delta
-        write(un_sys,*)'ngr         = ',ngr  
-        write(un_sys,*)'ngr_node    = ',ngr_node  
+        write(un_sys,*)'ngr         = ',ngr
+        write(un_sys,*)'ngr_node    = ',ngr_node
         write(un_sys,*)'nx          = ',nx
         write(un_sys,*)'ny          = ',ny
         write(un_sys,*)'nzmax       = ',nzmax
         write(un_sys,*)'nzmin       = ',nzmin
         write(un_sys,*)'nzstep      = ',nzstep
         write(un_sys,*)'tol_conv    = ',tol_conv
-        ! concentration 
+        ! concentration
         write(un_sys,*)'cNaCl       = ',cNaCl
         write(un_sys,*)'cKCl        = ',cKCl
         write(un_sys,*)'cCaCl2      = ',cCaCl2
@@ -1296,13 +1304,13 @@ subroutine output_brush_mul
         write(un_sys,*)'xOHminbulk  = ',xbulk%OHmin
         write(un_sys,*)'pHbulk      = ',pHbulk
 
-        ! disociation constants 
-        write(un_sys,*)'pKa         = ',(pKa(t),t=1,nsegtypes)      
+        ! disociation constants
+        write(un_sys,*)'pKa         = ',(pKa(t),t=1,nsegtypes)
         !
         if(systype=="brushdna".or.systype=="brushborn") then
-           write(un_sys,'(A15,7ES25.16)')'pKaAA       = ',(pKaAA(t),t=1,7) 
+           write(un_sys,'(A15,7ES25.16)')'pKaAA       = ',(pKaAA(t),t=1,7)
         endif
-        
+
         write(un_sys,*)'KionNa      = ',KionNa
         write(un_sys,*)'KionK       = ',KionK
         write(un_sys,*)'K0ionNa     = ',K0ionNa
@@ -1313,14 +1321,14 @@ subroutine output_brush_mul
 
         ! charge components
         do t=1,nsegtypes
-            write(un_sys,*)'zpol(',t,')     = ',zpol(t,1),zpol(t,2) 
+            write(un_sys,*)'zpol(',t,')     = ',zpol(t,1),zpol(t,2)
         enddo
         write(un_sys,*)'zNa         = ',zNa
         write(un_sys,*)'zCa         = ',zCa
         write(un_sys,*)'zMG         = ',zMg
         write(un_sys,*)'zK          = ',zK
-        write(un_sys,*)'zCl         = ',zCl 
-         ! volume  
+        write(un_sys,*)'zCl         = ',zCl
+         ! volume
         write(un_sys,*)'vsol        = ',vsol
         write(un_sys,*)'vpol        = ',(vpol(t)*vsol,t=1,nsegtypes)
         write(un_sys,*)'vNa         = ',vNa*vsol
@@ -1330,29 +1338,29 @@ subroutine output_brush_mul
         write(un_sys,*)'vK          = ',vK*vsol
         write(un_sys,*)'vNaCl       = ',vNaCl*vsol
         write(un_sys,*)'vKCl        = ',vKCl*vsol
-    
+
         write(un_sys,*)'===end distance independent settings=='
     endif
-    write(un_sys,*)'D plates    = ',nz*delta 
+    write(un_sys,*)'D plates    = ',nz*delta
     write(un_sys,*)'nz          = ',nz
-    write(un_sys,*)'nsize       = ',nsize  
+    write(un_sys,*)'nsize       = ',nsize
     write(un_sys,*)'free energy = ',FE
-    write(un_sys,*)'energy bulk = ',FEbulk 
+    write(un_sys,*)'energy bulk = ',FEbulk
     write(un_sys,*)'deltafenergy = ',deltaFE
     write(un_sys,*)'fnorm       = ',fnorm
     write(un_sys,*)'q residual  = ',qres
     write(un_sys,*)'tol_conv    = ',tol_conv
     write(un_sys,*)'denspol     = ',denspol
     write(un_sys,*)'sumphi      = ',(sumphi(t),t=1,nsegtypes)
-    write(un_sys,*)'check phi   = ',checkphi 
-    write(un_sys,*)'FEq         = ',FEq 
+    write(un_sys,*)'check phi   = ',checkphi
+    write(un_sys,*)'FEq         = ',FEq
     write(un_sys,*)'FEpi        = ',FEpi
     write(un_sys,*)'FErho       = ',FErho
     write(un_sys,*)'FEel        = ',FEel
     write(un_sys,*)'FEelsurf(LEFT)  = ',FEelsurf(LEFT)
     write(un_sys,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT)
     write(un_sys,*)'FEbind      = ',FEbind
-    write(un_sys,*)'FEVdW       = ',FEVdW 
+    write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
@@ -1361,27 +1369,27 @@ subroutine output_brush_mul
         write(un_sys,'(A15,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
     else
         write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
-    endif    
+    endif
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
 
-   
+
     if(bcflag(LEFT)=='ta') then
-      do i=1,4   
+      do i=1,4
         write(un_sys,fmt)'fdisTaL(',i,')  = ',fdisTaL(i)
-      enddo  
+      enddo
     endif
-    if(bcflag(RIGHT)=='ta') then   
-      do i=1,4   
+    if(bcflag(RIGHT)=='ta') then
+      do i=1,4
         write(un_sys,fmt)' fdisTaR(',i,')  = ',fdisTaR(i)
-      enddo  
+      enddo
     endif
     if((bcflag(RIGHT)/='ta').and.(bcflag(RIGHT)/='cc') ) then
-      do i=1,6   
+      do i=1,6
         write(un_sys,fmt)' fdisSuR(',i,')  = ',fdisS(i)
-      enddo  
+      enddo
     endif
-    write(un_sys,*)'nsize       = ',nsize  
+    write(un_sys,*)'nsize       = ',nsize
     write(un_sys,*)'cuantas     = ',cuantas
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'pH%val      = ',pH%val
@@ -1395,22 +1403,22 @@ subroutine output_brush_mul
     write(un_sys,*)'gamma%Ca        = ',ion_excess%Ca
     write(un_sys,*)'gamma%Mg        = ',ion_excess%Mg
     write(un_sys,*)'gamma%Hplus     = ',ion_excess%Hplus
-    write(un_sys,*)'gamma%OHmin     = ',ion_excess%OHmin  
-   
+    write(un_sys,*)'gamma%OHmin     = ',ion_excess%OHmin
+
 
     ! .. closing files
 
-    if(nz==nzmin) then 
+    if(nz==nzmin) then
         close(un_sys)
         close(un_xsol)
         close(un_psi)
         close(un_xpol)
         close(un_fdis)
         if(systype=="brushdna") close(un_fdisP)
-        close(un_xpolz)            
+        close(un_xpolz)
         close(un_q)
-        if(verboseflag=="yes") then 
-            close(un_xNa)   
+        if(verboseflag=="yes") then
+            close(un_xNa)
             close(un_xK)
             close(un_xCa)
             close(un_xMg)
@@ -1422,32 +1430,32 @@ subroutine output_brush_mul
             close(un_xHplus)
             close(un_xOHmin)
         endif
-    endif    
+    endif
 
 end subroutine output_brush_mul
 
 
 subroutine output_elect
-  
+
     !     .. variables and constant declaractions
-    use globals 
+    use globals
     use volume
     use parameters
     use field
     use energy
-    use surface 
+    use surface
     use myutils, only : newunit
     use chains, only : isHomopolymer
-    
+
     !     .. local arguments
-   
-    !     .. output file names       
-    
-    character(len=90) :: sysfilename     
-    character(len=90) :: xsolfilename 
-    character(len=90) :: xpolfilename 
-    character(len=90) :: xpolzfilename 
-    character(len=90) :: xpolendfilename 
+
+    !     .. output file names
+
+    character(len=90) :: sysfilename
+    character(len=90) :: xsolfilename
+    character(len=90) :: xpolfilename
+    character(len=90) :: xpolzfilename
+    character(len=90) :: xpolendfilename
     character(len=90) :: xNafilename
     character(len=90) :: xKfilename
     character(len=90) :: xCafilename
@@ -1469,12 +1477,12 @@ subroutine output_elect
     integer :: i,j,k          ! dummy indexes
     real(dp) :: denspol
 
-    ! .. executable statements 
+    ! .. executable statements
 
     denspol=init_denspol()
 
-    if(nz.eq.nzmax)  then 
-        
+    if(nz.eq.nzmax)  then
+
         !     .. make label filename
         call make_filename_label(fnamelabel)
 
@@ -1499,21 +1507,21 @@ subroutine output_elect
         densfracBfilename='densityBfrac.'//trim(fnamelabel)
         densfracionpairfilename='densityfracionpair.'//trim(fnamelabel)
         qfilename='q.'//trim(fnamelabel)
-       
-        !     .. opening files        
-        
-        open(unit=newunit(un_sys),file=sysfilename)       
+
+        !     .. opening files
+
+        open(unit=newunit(un_sys),file=sysfilename)
         open(unit=newunit(un_xsol),file=xsolfilename)
         open(unit=newunit(un_psi),file=potentialfilename)
 
-                 
+
         open(unit=newunit(un_xpol),file=xpolfilename)
-        open(unit=newunit(un_fdisA),file=densfracAfilename) 
-        open(unit=newunit(un_fdisB),file=densfracBfilename)             
+        open(unit=newunit(un_fdisA),file=densfracAfilename)
+        open(unit=newunit(un_fdisB),file=densfracBfilename)
         open(unit=newunit(un_q),file=qfilename)
         open(unit=newunit(un_xpolz),file=xpolzfilename)
-        
-        if(verboseflag=="yes") then    
+
+        if(verboseflag=="yes") then
             open(unit=newunit(un_xNa),file=xNafilename)
             open(unit=newunit(un_xK),file=xKfilename)
             open(unit=newunit(un_xCa),file=xCafilename)
@@ -1534,62 +1542,62 @@ subroutine output_elect
 
         if(.not.isopen) write(*,*)"un_xsol is not open"
 
-    endif       
+    endif
 
     !   .. writting files
-    !   .. this line seperates different distances 
+    !   .. this line seperates different distances
 
-    if(runtype=="rangedist") then 
+    if(runtype=="rangedist") then
 
-        write(un_xsol,*)'#D    = ',nz*delta 
-        write(un_psi,*)'#D    = ',nz*delta       
-        write(un_xpolAB,*)'#D    = ',nz*delta 
+        write(un_xsol,*)'#D    = ',nz*delta
+        write(un_psi,*)'#D    = ',nz*delta
+        write(un_xpolAB,*)'#D    = ',nz*delta
         write(un_fdisA,*)'#D    = ',nz*delta
         write(un_fdisB,*)'#D    = ',nz*delta
-        
-        if(verboseflag=="yes") then    
-            write(un_xNa,*)'#D    = ',nz*delta 
-            write(un_xK,*)'#D    = ',nz*delta 
-            write(un_xCa,*)'#D    = ',nz*delta 
-            write(un_xMg,*)'#D    = ',nz*delta 
-            write(un_xNaCl,*)'#D    = ',nz*delta 
-            write(un_xKCl,*)'#D    = ',nz*delta 
-            write(un_xpair,*)'#D    = ',nz*delta 
-            write(un_charge,*)'#D    = ',nz*delta 
-            write(un_xCl,*)'#D    = ',nz*delta 
-            write(un_xHplus,*)'#D    = ',nz*delta 
-            write(un_xOHMin,*)'#D    = ',nz*delta 
+
+        if(verboseflag=="yes") then
+            write(un_xNa,*)'#D    = ',nz*delta
+            write(un_xK,*)'#D    = ',nz*delta
+            write(un_xCa,*)'#D    = ',nz*delta
+            write(un_xMg,*)'#D    = ',nz*delta
+            write(un_xNaCl,*)'#D    = ',nz*delta
+            write(un_xKCl,*)'#D    = ',nz*delta
+            write(un_xpair,*)'#D    = ',nz*delta
+            write(un_charge,*)'#D    = ',nz*delta
+            write(un_xCl,*)'#D    = ',nz*delta
+            write(un_xHplus,*)'#D    = ',nz*delta
+            write(un_xOHMin,*)'#D    = ',nz*delta
         endif
-    
+
     endif
-        
+
 
     !do i=1,nsurf
     !    write(un_psi,*)psiSurfL(i)
-    !enddo 
-        
+    !enddo
+
     do i=1,nsize
         write(un_xsol,*)xsol(i)
         write(un_psi,*)psi(i)
-    enddo    
+    enddo
 
     !do i=1,nsurf
     !    write(un_psi,*)psiSurfR(i)
-    !enddo         
+    !enddo
 
-    write(un_q,*)q    
+    write(un_q,*)q
 
     do i=1,nsize
         write(un_xpol,fmt3reals)xpol(i),rhopol(i,1),rhopol(i,2)
-        write(un_fdisA,fmt5reals)(fdisA(i,k),k=1,5)        
+        write(un_fdisA,fmt5reals)(fdisA(i,k),k=1,5)
         write(un_fdisB,fmt5reals)(fdisB(i,k),k=1,5)
     enddo
     do i=1,nz
         write(un_xpolz,fmt1reals)xpolz(i)
-    enddo    
-       
-    
-    if(verboseflag=="yes") then 
+    enddo
+
+
+    if(verboseflag=="yes") then
         do i=1,nsize
             write(un_xNa,*)xNa(i)
             write(un_xK,*)xK(i)
@@ -1600,16 +1608,16 @@ subroutine output_elect
             write(un_xCl,*)xCl(i)
             write(un_charge,*)rhoq(i)
             write(un_xHplus,*)xHplus(i)
-            write(un_xOHmin,*)xOHmin(i)    
-        enddo    
+            write(un_xOHmin,*)xOHmin(i)
+        enddo
     endif
 
-    ! .. writing system information 
-    if(nz.eq.nzmax) then 
-        write(un_sys,*)'===begin distance independent settings=='  
+    ! .. writing system information
+    if(nz.eq.nzmax) then
+        write(un_sys,*)'===begin distance independent settings=='
         write(un_sys,*)'system      = planar weakpolyelectrolyte brush'
         write(un_sys,*)'version     = ',VERSION
-        ! chain description 
+        ! chain description
         write(un_sys,*)'chainmethod = ',chainmethod
         write(un_sys,*)'chaintype   = ',chaintype
         write(un_sys,*)"isHomopolymer= ",isHomopolymer
@@ -1621,7 +1629,7 @@ subroutine output_elect
         write(un_sys,*)'chainperiod = ',chainperiod
         write(un_sys,*)'cuantas     = ',cuantas
         write(un_sys,*)'denspol     = ',denspol
-       
+
         ! system description
         write(un_sys,*)'systype     = ',systype
         write(un_sys,*)'bcflag(LEFT)  = ',bcflag(LEFT)
@@ -1633,7 +1641,7 @@ subroutine output_elect
         write(un_sys,*)'nzmin       = ',nzmin
         write(un_sys,*)'nzstep      = ',nzstep
         write(un_sys,*)'tol_conv    = ',tol_conv
-        ! concentration 
+        ! concentration
         write(un_sys,*)'cNaCl       = ',cNaCl
         write(un_sys,*)'cKCl        = ',cKCl
         write(un_sys,*)'cCaCl2      = ',cCaCl2
@@ -1646,12 +1654,12 @@ subroutine output_elect
         write(un_sys,*)'xHplusbulk  = ',xbulk%Hplus
         write(un_sys,*)'xOHminbulk  = ',xbulk%OHmin
         write(un_sys,*)'pHbulk      = ',pHbulk
-        ! disociation constants 
-        write(un_sys,*)'pKa         = ',pKaA(1)      
+        ! disociation constants
+        write(un_sys,*)'pKa         = ',pKaA(1)
         write(un_sys,*)'pKaNa       = ',pKaA(2)
         write(un_sys,*)'pKaACa      = ',pKaA(3)
         write(un_sys,*)'pKaA2Ca     = ',pKaA(4)
-        write(un_sys,*)'pKb         = ',pKaB(1)      
+        write(un_sys,*)'pKb         = ',pKaB(1)
         write(un_sys,*)'pKbNa       = ',pKaB(2)
         write(un_sys,*)'pKbBCa      = ',pKaB(3)
         write(un_sys,*)'pKbB2Ca     = ',pKaB(4)
@@ -1662,12 +1670,12 @@ subroutine output_elect
         write(un_sys,*)'dielectW    = ',dielectW
         write(un_sys,*)'lb          = ',lb
         write(un_sys,*)'T           = ',Tref
-        if(isVdW) then 
+        if(isVdW) then
             write(un_sys,*)'VdWeps  = ',VdWeps
-            write(un_sys,*)'VdWepsAA = ',VdWepsAA 
+            write(un_sys,*)'VdWepsAA = ',VdWepsAA
             write(un_sys,*)'VdWepsBB = ',VdWepsBB
             write(un_sys,*)'VdWepsAB = ',VdWepsAB
-        endif    
+        endif
         ! charge components
         write(un_sys,*)'zpolA(1)    = ',zpolA(1)
         write(un_sys,*)'zpolA(2)    = ',zpolA(2)
@@ -1681,8 +1689,8 @@ subroutine output_elect
         write(un_sys,*)'zNa         = ',zNa
         write(un_sys,*)'zCa         = ',zCa
         write(un_sys,*)'zK          = ',zK
-        write(un_sys,*)'zCl         = ',zCl 
-         ! volume  
+        write(un_sys,*)'zCl         = ',zCl
+         ! volume
         write(un_sys,*)'vsol        = ',vsol
         write(un_sys,*)'vpolA(1)    = ',vpolA(1)*vsol
         write(un_sys,*)'vpolA(2)    = ',vpolA(2)*vsol
@@ -1700,14 +1708,14 @@ subroutine output_elect
         write(un_sys,*)'vK          = ',vK*vsol
         write(un_sys,*)'vNaCl       = ',vNaCl*vsol
         write(un_sys,*)'vKCl        = ',vKCl*vsol
-    
+
         write(un_sys,*)'===end distance independent settings=='
     endif
-    write(un_sys,*)'D plates    = ',nz*delta 
+    write(un_sys,*)'D plates    = ',nz*delta
     write(un_sys,*)'nz          = ',nz
-    write(un_sys,*)'nsize       = ',nsize  
+    write(un_sys,*)'nsize       = ',nsize
     write(un_sys,*)'free energy = ',FE
-    write(un_sys,*)'energy bulk = ',FEbulk 
+    write(un_sys,*)'energy bulk = ',FEbulk
     write(un_sys,*)'deltafenergy = ',deltaFE
     write(un_sys,*)'fnorm       = ',fnorm
     write(un_sys,*)'q residual  = ',qres
@@ -1715,15 +1723,15 @@ subroutine output_elect
     write(un_sys,*)'denspol     = ',denspol
     write(un_sys,*)'sumphiA     = ',sumphiA
     write(un_sys,*)'sumphiB     = ',sumphiB
-    write(un_sys,*)'check phi   = ',checkphi 
-    write(un_sys,*)'FEq         = ',FEq 
+    write(un_sys,*)'check phi   = ',checkphi
+    write(un_sys,*)'FEq         = ',FEq
     write(un_sys,*)'FEpi        = ',FEpi
     write(un_sys,*)'FErho       = ',FErho
     write(un_sys,*)'FEel        = ',FEel
     write(un_sys,*)'FEelsurf(LEFT)  = ',FEelsurf(LEFT)
     write(un_sys,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT)
     write(un_sys,*)'FEbind      = ',FEbind
-    write(un_sys,*)'FEVdW       = ',FEVdW 
+    write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'qpolA       = ',qpolA
@@ -1741,23 +1749,23 @@ subroutine output_elect
     write(un_sys,*)'avfdisB(5)  = ',avfdisB(5)
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
-   
+
     if(bcflag(LEFT)=='ta') then
-      do i=1,4   
+      do i=1,4
         write(un_sys,fmt)'fdisTaL(',i,')  = ',fdisTaL(i)
-      enddo  
+      enddo
     endif
-    if(bcflag(RIGHT)=='ta') then   
-      do i=1,4   
+    if(bcflag(RIGHT)=='ta') then
+      do i=1,4
         write(un_sys,fmt)' fdisTaR(',i,')  = ',fdisTaR(i)
-      enddo  
+      enddo
     endif
     if((bcflag(RIGHT)/='ta').and.(bcflag(RIGHT)/='cc') ) then
-      do i=1,6   
+      do i=1,6
         write(un_sys,fmt)' fdisSuR(',i,')  = ',fdisS(i)
-      enddo  
+      enddo
     endif
-    write(un_sys,*)'nsize       = ',nsize  
+    write(un_sys,*)'nsize       = ',nsize
     write(un_sys,*)'cuantas     = ',cuantas
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'pH%val      = ',pH%val
@@ -1771,21 +1779,21 @@ subroutine output_elect
     write(un_sys,*)'gamma%Ca        = ',ion_excess%Ca
     write(un_sys,*)'gamma%Mg        = ',ion_excess%Mg
     write(un_sys,*)'gamma%Hplus     = ',ion_excess%Hplus
-    write(un_sys,*)'gamma%OHmin     = ',ion_excess%OHmin  
-   
+    write(un_sys,*)'gamma%OHmin     = ',ion_excess%OHmin
+
     ! .. closing files
 
-    if(nz==nzmin) then 
+    if(nz==nzmin) then
         close(un_sys)
         close(un_xsol)
         close(un_psi)
-        close(un_xpol) 
+        close(un_xpol)
         close(un_fdisA)
         close(un_fdisB)
         close(un_xpolz)
         close(un_q)
-        if(verboseflag=="yes") then 
-            close(un_xNa)   
+        if(verboseflag=="yes") then
+            close(un_xNa)
             close(un_xK)
             close(un_xCa)
             close(un_xNaCl)
@@ -1797,29 +1805,29 @@ subroutine output_elect
             close(un_xOHmin)
         endif
     endif
-        
+
 end subroutine output_elect
 
 
 subroutine output_neutral
-  
+
     !     .. variables and constant declaractions
-    use globals 
+    use globals
     use volume
-    use parameters    
+    use parameters
     use field
     use energy
     use myutils, only : newunit
     use chains, only : isHomopolymer
 
-    !     .. output file names         
-    character(len=90) :: sysfilename     
-    character(len=90) :: xsolfilename 
-    character(len=90) :: xpolfilename 
-    character(len=90) :: xpolzfilename 
-    character(len=90) :: xprofilename 
-    
-    character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals   
+    !     .. output file names
+    character(len=90) :: sysfilename
+    character(len=90) :: xsolfilename
+    character(len=90) :: xpolfilename
+    character(len=90) :: xpolzfilename
+    character(len=90) :: xprofilename
+
+    character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals
 
     !     .. local arguments
     integer :: i, t
@@ -1828,40 +1836,40 @@ subroutine output_neutral
     logical :: isopen
     real(dp) :: denspol
 
-    !     .. executable statements 
+    !     .. executable statements
 
     denspol=init_denspol()
 
-    fmt2reals = "(2ES25.16)"  
-    fmt3reals = "(3ES25.16)"  
-    fmt4reals = "(4ES25.16)"  
-    fmt5reals = "(5ES25.16)" 
-    fmt6reals = "(6ES25.16)" 
-    
-    if(nz==nzmax) then 
+    fmt2reals = "(2ES25.16)"
+    fmt3reals = "(3ES25.16)"
+    fmt4reals = "(4ES25.16)"
+    fmt5reals = "(5ES25.16)"
+    fmt6reals = "(6ES25.16)"
+
+    if(nz==nzmax) then
 
         !     .. make label filename
         call make_filename_label(fnamelabel)
-       
-        !     .. make filenames 
+
+        !     .. make filenames
         sysfilename='system.'//trim(fnamelabel)
         xpolfilename='xpol.'//trim(fnamelabel)
-        xpolzfilename='xpolz.'//trim(fnamelabel)  
-        xsolfilename='xsol.'//trim(fnamelabel)   
-        xprofilename='xpro.'//trim(fnamelabel)   
+        xpolzfilename='xpolz.'//trim(fnamelabel)
+        xsolfilename='xsol.'//trim(fnamelabel)
+        xprofilename='xpro.'//trim(fnamelabel)
 
 
         !      .. opening files
-        open(unit=newunit(un_sys),file=sysfilename)   
+        open(unit=newunit(un_sys),file=sysfilename)
         open(unit=newunit(un_xpol),file=xpolfilename)
         open(unit=newunit(un_xpolz),file=xpolzfilename)
         open(unit=newunit(un_xsol),file=xsolfilename)
         open(unit=newunit(un_xpro),file=xprofilename)
-        
-        
+
+
     else ! check that files are open
         inquire(unit=un_sys, opened=isopen)
-        if(.not.isopen) write(*,*)"un_sys is not open" 
+        if(.not.isopen) write(*,*)"un_sys is not open"
         inquire(unit=un_xpol, opened=isopen)
         if(.not.isopen) write(*,*)"un_xpol is not open"
         inquire(unit=un_xsol, opened=isopen)
@@ -1870,35 +1878,35 @@ subroutine output_neutral
         if(.not.isopen) write(*,*)"un_xpolz is not open"
         inquire(unit=un_xpro, opened=isopen)
         if(.not.isopen) write(*,*)"un_xpro is not open"
-    endif    
-        
-    !   .. writting files
-    !   .. this line seperates different distances 
-    
-    if(runtype=="rangedist") then   
-        write(un_xsol,*)'#D    = ',nz*delta 
-        write(un_xpol,*)'#D    = ',nz*delta       
-        write(un_xpro,*)'#D    = ',nz*delta 
-        write(un_xpolz,*)'#D    = ',nz*delta     
     endif
-    
-    do i=1,nsize    
+
+    !   .. writting files
+    !   .. this line seperates different distances
+
+    if(runtype=="rangedist") then
+        write(un_xsol,*)'#D    = ',nz*delta
+        write(un_xpol,*)'#D    = ',nz*delta
+        write(un_xpro,*)'#D    = ',nz*delta
+        write(un_xpolz,*)'#D    = ',nz*delta
+    endif
+
+    do i=1,nsize
        write(un_xpol,fmt3reals)xpol(i),(rhopol(i,t),t=1,nsegtypes)
        write(un_xsol,fmt1reals)xsol(i)
        write(un_xpro,fmt1reals)xpro(i)
-       
+
     enddo
-    do i=1,nz   
+    do i=1,nz
        write(un_xpolz,fmt1reals)xpolz(i)
     enddo
-        
-    !     .. system information 
 
-    if(nz.eq.nzmax) then 
-        write(un_sys,*)'===begin distance independent settings=='  
-        write(un_sys,*)'system      = planar  brush' 
+    !     .. system information
+
+    if(nz.eq.nzmax) then
+        write(un_sys,*)'===begin distance independent settings=='
+        write(un_sys,*)'system      = planar  brush'
         write(un_sys,*)'version     = ',VERSION
-        ! chain description 
+        ! chain description
         write(un_sys,*)'chainmethod = ',chainmethod
         write(un_sys,*)'chaintype   = ',chaintype
         write(un_sys,*)"isHomopolymer= ",isHomopolymer
@@ -1909,12 +1917,12 @@ subroutine output_neutral
         write(un_sys,*)'lseg        = ',lseg
         write(un_sys,*)'chainperiod = ',chainperiod
         write(un_sys,*)'cuantas     = ',cuantas
-        write(un_sys,*)'maxnchainsrot      = ',maxnchainsrotations     
-        write(un_sys,*)'maxnchainsrotxy    = ',maxnchainsrotationsxy  
-        ! system description 
+        write(un_sys,*)'maxnchainsrot      = ',maxnchainsrotations
+        write(un_sys,*)'maxnchainsrotxy    = ',maxnchainsrotationsxy
+        ! system description
         write(un_sys,*)'systype     = ',systype
-        write(un_sys,*)'delta       = ',delta  
-        write(un_sys,*)'nsize       = ',nsize  
+        write(un_sys,*)'delta       = ',delta
+        write(un_sys,*)'nsize       = ',nsize
         write(un_sys,*)'nx          = ',nx
         write(un_sys,*)'ny          = ',ny
         write(un_sys,*)'ngr_freq    = ',ngr_freq
@@ -1925,32 +1933,32 @@ subroutine output_neutral
         write(un_sys,*)'tol_conv    = ',tol_conv
         ! other physcial parameters
         write(un_sys,*)'T           = ',Tref
-        ! volume 
+        ! volume
         write(un_sys,*)'vsol        = ',vsol
         write(un_sys,*)'vpol        = ',(vpol(t)*vsol,t=1,nsegtypes)
         write(un_sys,*)'vpro        = ',vpro
         write(un_sys,*)'cpro        = ',cpro%val
         write(un_sys,*)'isVdW       = ',isVdW
-        
+
         write(un_sys,*)'===end distance independent settings=='
     endif
-    
-    write(un_sys,*)'distance    = ',nz*delta 
+
+    write(un_sys,*)'distance    = ',nz*delta
     write(un_sys,*)'nz          = ',nz
     write(un_sys,*)'nsize       = ',nsize
-    write(un_sys,*)'free energy = ',FE  
-    write(un_sys,*)'energy bulk = ',FEbulk 
+    write(un_sys,*)'free energy = ',FE
+    write(un_sys,*)'energy bulk = ',FEbulk
     write(un_sys,*)'deltafenergy = ',deltaFE
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'FEconf      = ',FEconf
-    write(un_sys,*)'Econf       = ',Econf  
-    write(un_sys,*)'FEtrans%sol = ',FEtrans%sol  
-    write(un_sys,*)'FEtrans%pro = ',FEtrans%pro  
+    write(un_sys,*)'Econf       = ',Econf
+    write(un_sys,*)'FEtrans%sol = ',FEtrans%sol
+    write(un_sys,*)'FEtrans%pro = ',FEtrans%pro
     write(un_sys,*)'fnorm       = ',fnorm
     write(un_sys,*)'sumphi      = ',(sumphi(t),t=1,nsegtypes)
     write(un_sys,*)'check phi   = ',checkphi
     write(un_sys,*)'denspol     = ',denspol
-    write(un_sys,*)'FEq         = ',FEq 
+    write(un_sys,*)'FEq         = ',FEq
     write(un_sys,*)'FEpi        = ',FEpi
     write(un_sys,*)'FErho       = ',FErho
     write(un_sys,*)'FEVdW       = ',FEVdW
@@ -1959,16 +1967,16 @@ subroutine output_neutral
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'VdWscale%val= ',VdWscale%val
-    
+
     ! .. closing files
-    if(nz.eq.nzmin) then 
+    if(nz.eq.nzmin) then
         close(un_xsol)
         close(un_xpol)
         close(un_sys)
         close(un_xpolz)
         close(un_xpro)
     endif
-  
+
 end subroutine output_neutral
 
 
@@ -1979,66 +1987,66 @@ subroutine output_individualcontr_fe
     use myutils, only : newunit
     use volume, only : delta,nz,nzmax,nzmin
     use parameters, only : isEnergyShift
-    use chains, only : energychain_min    
+    use chains, only : energychain_min
 
     ! local arguments
 
-    character(len=100) :: fenergyfilename   
+    character(len=100) :: fenergyfilename
     character(len=100) :: fnamelabel
     character(len=20) :: rstr
 
-    if(nz==nzmax) then 
+    if(nz==nzmax) then
         !     .. make label filename
         call make_filename_label(fnamelabel)
-        fenergyfilename='energy.'//trim(fnamelabel)           
-        !     .. opening files        
-        open(unit=newunit(un_fe),file=fenergyfilename) 
-    endif   
+        fenergyfilename='energy.'//trim(fnamelabel)
+        !     .. opening files
+        open(unit=newunit(un_fe),file=fenergyfilename)
+    endif
 
-    write(un_fe,*)'#D              = ',nz*delta 
-    write(un_fe,*)'FE              = ',FE  
-    write(un_fe,*)'FEbulk          = ',FEbulk 
+    write(un_fe,*)'#D              = ',nz*delta
+    write(un_fe,*)'FE              = ',FE
+    write(un_fe,*)'FEbulk          = ',FEbulk
     write(un_fe,*)'deltaFE         = ',deltaFE
-    write(un_fe,*)'FEalt           = ',FEalt  
-    write(un_fe,*)'FEbulkalt       = ',FEbulkalt 
+    write(un_fe,*)'FEalt           = ',FEalt
+    write(un_fe,*)'FEbulkalt       = ',FEbulkalt
     write(un_fe,*)'deltaFEalt      = ',deltaFEalt
     write(un_fe,*)'deltadeltaFE    = ',deltaFE-deltaFEalt
-    
-    write(un_fe,*)'FEq             = ',FEq 
+
+    write(un_fe,*)'FEq             = ',FEq
     write(un_fe,*)'FEconf          = ',FEconf
     write(un_fe,*)'Econf           = ',Econf
     write(un_fe,*)'Eshift          = ',Eshift
     write(un_fe,*)'isEnergyShift   = ',isEnergyShift
-    write(un_fe,*)'Emin            = ',energychain_min    
+    write(un_fe,*)'Emin            = ',energychain_min
 
     write(un_fe,*)'FEpi            = ',FEpi
     write(un_fe,*)'FErho           = ',FErho
     write(un_fe,*)'FEel            = ',FEel
     write(un_fe,*)'FEelsurf(LEFT)  = ',FEelsurf(LEFT)
-    write(un_fe,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT) 
+    write(un_fe,*)'FEelsurf(RIGHT) = ',FEelsurf(RIGHT)
     write(un_fe,*)'FEelvar         = ',FEelvar
     write(un_fe,*)'FEelvarborn     = ',FEelvarborn
     write(un_fe,*)'FEborn          = ',FEborn
     write(un_fe,*)'FEbornbulk      = ',FEbornbulk
     write(un_fe,*)'deltaFEborn     = ',FEborn - FEbornbulk
 
-    write(un_fe,*)'FEbind          = ',FEbind 
+    write(un_fe,*)'FEbind          = ',FEbind
     write(un_fe,*)'FEchem          = ',FEchem
     write(un_fe,*)'FEVdW           = ',FEVdW
-   
-    write(un_fe,*)"FEtrans%sol     = ",FEtrans%sol   
-    write(un_fe,*)"FEtrans%Na      = ",FEtrans%Na  
-    write(un_fe,*)"FEtrans%Cl      = ",FEtrans%Cl  
+
+    write(un_fe,*)"FEtrans%sol     = ",FEtrans%sol
+    write(un_fe,*)"FEtrans%Na      = ",FEtrans%Na
+    write(un_fe,*)"FEtrans%Cl      = ",FEtrans%Cl
     write(un_fe,*)"FEtrans%Ca      = ",FEtrans%Ca
-    write(un_fe,*)"FEtrans%Mg      = ",FEtrans%Mg  
+    write(un_fe,*)"FEtrans%Mg      = ",FEtrans%Mg
     write(un_fe,*)"FEtrans%K       = ",FEtrans%K
     write(un_fe,*)"FEtrans%KCl     = ",FEtrans%KCl
-    write(un_fe,*)"FEtrans%NaCl    = ",FEtrans%NaCl  
-    write(un_fe,*)"FEtrans%Hplus   = ",FEtrans%Hplus  
-    write(un_fe,*)"FEtrans%OHmin   = ",FEtrans%OHmin  
+    write(un_fe,*)"FEtrans%NaCl    = ",FEtrans%NaCl
+    write(un_fe,*)"FEtrans%Hplus   = ",FEtrans%Hplus
+    write(un_fe,*)"FEtrans%OHmin   = ",FEtrans%OHmin
     write(un_fe,*)"FEtrans%pro     = ",FEtrans%pro
-    
-    
+
+
     write(un_fe,*)"FEchempot%Na    = ",FEchempot%Na
     write(un_fe,*)"FEchempot%Cl    = ",FEchempot%Cl
     write(un_fe,*)"FEchempot%Ca    = ",FEchempot%Ca
@@ -2065,11 +2073,11 @@ end subroutine output_individualcontr_fe
 
 
 subroutine make_filename_label(fnamelabel)
- 
+
     use globals, only : LEFT,RIGHT, systype, runtype
     use parameters, only : cNaCl,cKCl,cCaCl2,cMgCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale,pKd
 
-    character(len=*), intent(inout) :: fnamelabel    
+    character(len=*), intent(inout) :: fnamelabel
 
     character(len=20) :: rstr
     real(dp) :: denspol
@@ -2079,99 +2087,99 @@ subroutine make_filename_label(fnamelabel)
 
     !     .. make label filename
 
-    select case(systype) 
-    case("elect","electnopoly","electA")  
+    select case(systype)
+    case("elect","electnopoly","electA")
 
 
         write(rstr,'(F5.3)')denspol
-        fnamelabel="phi"//trim(adjustl(rstr)) 
+        fnamelabel="phi"//trim(adjustl(rstr))
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
 
-        if(cKCl/=0.0_dp) then      
-            if(cKCl>=0.001_dp) then 
+        if(cKCl/=0.0_dp) then
+            if(cKCl>=0.001_dp) then
                 write(rstr,'(F5.3)')cKCl
             else
                 write(rstr,'(ES9.2E2)')cKCl
-            endif       
+            endif
             fnamelabel=trim(fnamelabel)//"cKCl"//trim(adjustl(rstr))
         endif
 
 
-        if(cCaCl2>=0.001) then 
+        if(cCaCl2>=0.001) then
             write(rstr,'(F5.3)')cCaCl2
-        elseif(cCaCl2>0.0) then  
+        elseif(cCaCl2>0.0) then
             write(rstr,'(ES9.2E2)')cCaCl2
-        else 
+        else
             write(rstr,'(F3.1)')cCaCl2
-        endif 
+        endif
         fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
         write(rstr,'(F7.3)')pHbulk
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))//".dat"
 
     case("neutral","neutralnoVdW")
-        
+
         write(rstr,'(F5.3)')denspol
-        fnamelabel="phi"//trim(adjustl(rstr)) 
-        if(cpro%val>=0.001) then 
+        fnamelabel="phi"//trim(adjustl(rstr))
+        if(cpro%val>=0.001) then
             write(rstr,'(F5.3)')cpro%val
-        elseif(cpro%val>0.0) then  
+        elseif(cpro%val>0.0) then
             write(rstr,'(ES9.2E2)')cpro%val
-        else 
+        else
             write(rstr,'(F3.1)')cpro%val
-        endif 
+        endif
         fnamelabel=trim(fnamelabel)//"cPro"//trim(adjustl(rstr))
         write(rstr,'(F5.3)')VdWscale%val
         fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
 
-    case("brush_mul","brush_mulnoVdW","brushdna","brushborn")  
-        
+    case("brush_mul","brush_mulnoVdW","brushdna","brushborn")
+
         write(rstr,'(F5.3)')denspol
-        fnamelabel="phi"//trim(adjustl(rstr)) 
+        fnamelabel="phi"//trim(adjustl(rstr))
         write(rstr,'(F5.3)')cNaCl
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
 
-        if(cKCl/=0.0_dp) then      
-            if(cKCl>=0.001_dp) then 
+        if(cKCl/=0.0_dp) then
+            if(cKCl>=0.001_dp) then
                 write(rstr,'(F5.3)')cKCl
             else
                 write(rstr,'(ES9.2E2)')cKCl
-            endif       
+            endif
             fnamelabel=trim(fnamelabel)//"cKCl"//trim(adjustl(rstr))
         endif
 
-        if(cCaCl2/=0.0_dp) then     
-            if(cCaCl2>=0.001) then 
+        if(cCaCl2/=0.0_dp) then
+            if(cCaCl2>=0.001) then
                 write(rstr,'(F5.3)')cCaCl2
-            elseif(cCaCl2>0.0) then  
+            elseif(cCaCl2>0.0) then
                 write(rstr,'(ES9.2E2)')cCaCl2
-            else 
+            else
                 write(rstr,'(F3.1)')cCaCl2
-            endif 
+            endif
             fnamelabel=trim(fnamelabel)//"cCaCl2"//trim(adjustl(rstr))
         endif
-        if(cMgCl2/=0.0_dp) then  
-            if(cMgCl2>=0.001) then 
+        if(cMgCl2/=0.0_dp) then
+            if(cMgCl2>=0.001) then
                 write(rstr,'(F5.3)')cMgCl2
-            elseif(cMgCl2>0.0) then  
+            elseif(cMgCl2>0.0) then
                 write(rstr,'(ES9.2E2)')cMgCl2
-            else 
+            else
                 write(rstr,'(F3.1)')cMgCl2
-            endif 
+            endif
             fnamelabel=trim(fnamelabel)//"cMgCl2"//trim(adjustl(rstr))
         endif
-            
+
         write(rstr,'(F7.3)')pHbulk
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))
 
-        if(runtype=="rangepKd") then 
-            if(pKd%val<0) then 
+        if(runtype=="rangepKd") then
+            if(pKd%val<0) then
                 write(rstr,'(F5.2)')pKd%val
             else
                 write(rstr,'(F5.3)')pKd%val
-            endif    
+            endif
             fnamelabel=trim(fnamelabel)//"pKd"//trim(adjustl(rstr))//".dat"
-        
+
         elseif(runtype=="rangeVdWeps")then
             write(rstr,'(F5.3)')VdWscale%val
             fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
@@ -2194,66 +2202,66 @@ subroutine copy_solution(x)
     use surface, only : psiSurfL, psiSurfR
     use field
 
-    real(dp), dimension(neq) :: x  ! expliciet size array 
-    
+    real(dp), dimension(neq) :: x  ! expliciet size array
+
     ! local variable
     integer :: i, neq_bc
     integer, parameter :: A=1, B=2
 
     select case (systype)
-    case ("elect")   
+    case ("elect")
 
-        do i=1,nsize                   
-            xsol(i)= x(i)              
-            psi(i) = x(i+nsize)        
+        do i=1,nsize
+            xsol(i)= x(i)
+            psi(i) = x(i+nsize)
             rhopol(i,A)=x(i+2*nsize)
             rhopol(i,B)=x(i+3*nsize)
         enddo
-        
-        neq_bc=0 ! surface potential  
+
+        neq_bc=0 ! surface potential
         if(bcflag(RIGHT)/="cc") then
             neq_bc=nx*ny
             do i=1,neq_bc
-                psiSurfR(i) =x(4*nsize+i) 
+                psiSurfR(i) =x(4*nsize+i)
             enddo
-        endif   
-        if(bcflag(LEFT)/="cc") then 
+        endif
+        if(bcflag(LEFT)/="cc") then
             do i=1,nx*ny
-                psiSurfL(i) =x(4*nsize+neq_bc+i)         
+                psiSurfL(i) =x(4*nsize+neq_bc+i)
             enddo
             neq_bc=neq_bc+nx*ny
-        endif    
+        endif
 
     case ("neutral")
 
-        do i=1,nsize                   
-            xsol(i)= x(i)     
+        do i=1,nsize
+            xsol(i)= x(i)
         enddo
 
     case ("neutralnoVdW")
 
-        do i=1,nsize                   
-            xsol(i)= x(i)     
-        enddo 
-           
-    case ("brush_mulnoVdW")   
+        do i=1,nsize
+            xsol(i)= x(i)
+        enddo
 
-        do i=1,nsize                   
-            xsol(i)= x(i)              
+    case ("brush_mulnoVdW")
+
+        do i=1,nsize
+            xsol(i)= x(i)
             psi(i) = x(i+nsize)
         enddo
 
-    case default   
+    case default
 
         print*,"Error: systype incorrect in copy_solution"
         print*,"stopping program"
         stop
-    
+
     end select
-         
+
 end subroutine copy_solution
 
-! output routine 
+! output routine
 
 subroutine compute_vars_and_output()
 
@@ -2264,35 +2272,35 @@ subroutine compute_vars_and_output()
 
     select case (systype)
     case ("elect")
-    
-        call fcnenergy()   
-        call charge_polymer()
-        call average_charge_polymer()     
-        call average_density_z(xpol,xpolz,height)  
-        call output()
-    
-    case ("neutral","neutralnoVdW")  
 
-        call fcnenergy() 
-        call average_density_z(xpol,xpolz,height) 
+        call fcnenergy()
+        call charge_polymer()
+        call average_charge_polymer()
+        call average_density_z(xpol,xpolz,height)
+        call output()
+
+    case ("neutral","neutralnoVdW")
+
+        call fcnenergy()
+        call average_density_z(xpol,xpolz,height)
         call output()           ! writing of output
-    
+
     case ("brush_mul","brush_mulnoVdW","brushdna","brushborn")
 
-        call fcnenergy()   
-        call charge_polymer() 
-        call average_charge_polymer()     
-        call average_density_z(xpol,xpolz,height)    
+        call fcnenergy()
+        call charge_polymer()
+        call average_charge_polymer()
+        call average_density_z(xpol,xpolz,height)
         call output()           ! writing of output
 
-    case default   
+    case default
 
         print*,"Error: systype incorrect in compute_vars_and_output"
         print*,"stopping program"
         stop
-    
+
     end select
-         
+
 end subroutine compute_vars_and_output
 
 
@@ -2305,18 +2313,18 @@ subroutine write_chain_config()
 
     use myutils, only : newunit
 
-    character(len=100) :: fname 
+    character(len=100) :: fname
     integer :: i, un_cc
     character(len=10) ::istr
-    
+
     if(rank==0) then
         write(istr,'(I4)')rank
         fname='chain_config.'//trim(adjustl(istr))//'.log'
-        !     .. opening file        
-        open(unit=newunit(un_cc),file=fname) 
+        !     .. opening file
+        open(unit=newunit(un_cc),file=fname)
 
         write(un_cc,*)"chain configuration summary"
-        write(un_cc,*)"###"   
+        write(un_cc,*)"###"
         write(un_cc,*)"lseg=",lseg
         write(un_cc,*)"#nsegtypes   lsegAA    vpol"
         do i=1,nsegtypes
@@ -2325,16 +2333,14 @@ subroutine write_chain_config()
         write(un_cc,*)"#segment type_num  type_char  isAmonomer"
         do i=1,nseg
             write(un_cc,*)i,type_of_monomer(i),type_of_monomer_char(i),isAmonomer(i)
-        enddo 
-        write(un_cc,*)"###"  
+        enddo
+        write(un_cc,*)"###"
         close(un_cc)
 
-    endif    
+    endif
 
 
 end subroutine write_chain_config
 
 
 end module
-
-

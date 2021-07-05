@@ -96,6 +96,22 @@ contains
                 rhopolin(i,t) = x(i+k) ! density 
             enddo    
         enddo
+
+        ! neq_bc=0
+        ! n0=(2 +nsegtypes)*n
+        ! if(bcflag(RIGHT)/="cc") then
+        !     neq_bc=nx*ny
+        !     do i=1,neq_bc
+        !         psiSurfR(i) =x(n0+i)                 ! surface potentail
+        !     enddo
+        ! endif   
+        ! if(bcflag(LEFT)/="cc") then 
+        !     do i=1,nx*ny
+        !         psiSurfL(i) =x(n0+neq_bc+i)          ! surface potentail
+        !     enddo
+        !     neq_bc=neq_bc+nx*ny
+        ! endif    
+
              
         !  .. assign global and local polymer density 
 
@@ -243,11 +259,19 @@ contains
             !   print*,i,rhoq(i)
             enddo
           
-            !     .. end computation polymer density and charge density  
+            ! .. end computation polymer density and charge density  
 
+           
             ! .. electrostatics 
-
-            call Poisson_Equation(f,psi,rhoq)    
+           
+            sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
+            sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
+            
+            ! .. Poisson Eq 
+            call Poisson_Equation(f,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
+    
+            ! .. boundary conditions
+            call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)    
 
             norm=l2norm(f,neqint)
             iter=iter+1
@@ -468,7 +492,15 @@ contains
 
             ! .. electrostatics 
 
-            call Poisson_Equation(f,psi,rhoq)  
+            sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
+            sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
+            
+            ! .. Poisson Eq 
+            call Poisson_Equation(f,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
+
+            ! .. boundary conditions
+            call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)    
+
           
             norm=l2norm(f,neqint)
             iter=iter+1
@@ -762,7 +794,15 @@ contains
 
             ! .. electrostatics 
 
-            call Poisson_Equation(f,psi,rhoq)  
+            sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
+            sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
+            
+            ! .. Poisson Eq 
+            call Poisson_Equation(f,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
+    
+            ! .. boundary conditions
+            call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)    
+
          
             norm=l2norm(f,(nsegtypes+2)*n)
             iter=iter+1
@@ -1039,15 +1079,16 @@ contains
             !     .. end computation polymer density and charge density  
 
             ! .. electrostatics 
+            
+            sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
+            sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
+            
+            ! .. Poisson Eq 
+            call Poisson_Equation(f,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
+    
+            ! .. boundary conditions
+            call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)    
 
-            ! .. surface charge  
-            !sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
-            !sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
-
-            call Poisson_Equation(f,psi,rhoq) !,sigmaqSurfR,sigmaqSurfL)  
-          
-            ! .. selfconsistent boundary conditions
-            !call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)
 
             !  .. end electrostatics   
          
@@ -1434,9 +1475,15 @@ contains
 
             ! .. electrostatics 
 
-            call Poisson_Equation_Eps(f,psi,rhoq,epsfcn) 
-          
-          
+            sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
+            sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
+            
+
+            call Poisson_Equation_Eps(f,psi,rhoq,epsfcn,sigmaqsurfR,sigmaqsurfL) 
+
+            ! .. boundary conditions
+            call Poisson_Equation_Surface_Eps(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag,epsfcn)
+
             norm=l2norm(f,neqint)
             iter=iter+1
 
@@ -1715,9 +1762,15 @@ contains
 
             ! .. electrostatics 
 
-            call Poisson_Equation(f,psi,rhoq)
+            sigmaqSurfR=surface_charge(bcflag(RIGHT),psiSurfR,RIGHT)
+            sigmaqSurfL=surface_charge(bcflag(LEFT),psiSurfL,LEFT)
+            
+            ! .. Poisson Eq 
+            call Poisson_Equation(f,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
+    
+            ! .. boundary conditions
+            call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)    
  
-
             do i=1,n
                 f(2*n+i)=rhopol(i,A)-rhopolin(i,A)
                 f(3*n+i)=rhopol(i,B)-rhopolin(i,B)
