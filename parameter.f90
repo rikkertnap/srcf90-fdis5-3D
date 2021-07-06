@@ -89,6 +89,7 @@
     real(dp) :: fnorm            ! L2 norm of residual vector function fcn  
     integer  :: infile           ! infile=1 read input files infile!=1 no input files 
     integer  :: iter             ! counts number of iterations
+    integer(8) :: maxniter       ! maximum of nonlinear iterations  
     character(len=8) :: method   ! method="kinsol"  
     logical ::  precondition     ! controls use of precondtioner 
 

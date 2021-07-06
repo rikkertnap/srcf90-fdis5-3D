@@ -423,20 +423,20 @@ subroutine check_value_runtype(runtype,info)
     character(len=15), intent(in) :: runtype
     integer, intent(out),optional :: info
 
-    character(len=15) :: runtypestr(6)
+    character(len=15) :: runtypestr(7)
     integer :: i
     logical :: flag
 
     ! permissible values of runtype
 
     runtypestr(1)="inputcspH" ! used to rangpH
-    runtypestr(2)="rangeVdWeps"
-    runtypestr(3)="rangedist"
-    runtypestr(4)="rangecpro"
-
-    runtypestr(5)="inputMgpH"
-    runtypestr(6)="rangepKd"
-
+    runtypestr(2)="inputMgpH"
+    runtypestr(3)="inputcsKClpH"
+    runtypestr(4)="rangepKd"
+    runtypestr(5)="rangeVdWeps"
+    runtypestr(6)="rangedist"
+    runtypestr(7)="rangecpro"
+    
     flag=.FALSE.
 
     do i=1,6
@@ -1136,7 +1136,7 @@ subroutine output_brush_mul
         xNafilename='xNaions.'//trim(fnamelabel)
         xKfilename='xKions.'//trim(fnamelabel)
         xCafilename='xCaions.'//trim(fnamelabel)
-        xMgfilename='xMGions.'//trim(fnamelabel)
+        xMgfilename='xMgions.'//trim(fnamelabel)
         xNaClfilename='xNaClionpair.'//trim(fnamelabel)
         xKClfilename='xKClionpair.'//trim(fnamelabel)
         xClfilename='xClions.'//trim(fnamelabel)
@@ -1249,7 +1249,8 @@ subroutine output_brush_mul
         do i=1,nsize
             write(un_xNa,*)xNa(i)
             write(un_xK,*)xK(i)
-            write(un_xCa,*)xMg(i)
+            write(un_xCa,*)xCa(i)
+            write(un_xMg,*)xMg(i)
             write(un_xNaCl,*)xNaCl(i)
             write(un_xKCl,*)xKCl(i)
             write(un_xpair,*)(xNaCl(i)/vNaCl)/(xNa(i)/vNa+xCl(i)/vCl+xNaCl(i)/vNaCl)
@@ -1602,6 +1603,7 @@ subroutine output_elect
             write(un_xNa,*)xNa(i)
             write(un_xK,*)xK(i)
             write(un_xCa,*)xCa(i)
+            write(un_xMg,*)xMg(i)
             write(un_xNaCl,*)xNaCl(i)
             write(un_xKCl,*)xKCl(i)
             write(un_xpair,*)(xNaCl(i)/vNaCl)/(xNa(i)/vNa+xCl(i)/vCl+xNaCl(i)/vNaCl)

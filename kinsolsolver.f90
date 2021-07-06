@@ -75,7 +75,7 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
     !use ieee_arithmetic, only : ieee_is_nan    ! alternative for function isNaN in myutils
     use globals, only : nsize, neq, systype
     use kinsolvars
-    use parameters, only : iter, precondition
+    use parameters, only : iter, precondition, maxniter
     use myutils
     use listfcn, only : set_contraints
 
@@ -102,17 +102,16 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
     real(dp) :: rout(2)           ! Kinsol additional out information
     integer  :: i                 ! dummy index 
     integer  :: ier               ! Kinsol error flag
-    integer  ::  maxniter
     real(dp) :: fnormtol, scsteptol
     real(dp) :: fscale(neq)
     real(dp) :: constr(neq)
     integer  ::  globalstrat, maxl, maxlrst
     character(len=lenText) :: text, rstr, istr
+    integer(8) :: nfe,nni 
   
-    !     .. executable statements 
+    ! .. executable statements 
 
-    ! print*,"inside kinsol_grmers_solver: rank",rank," systype=",systype
-    !     .. init of kinsol variables 
+    ! .. init of kinsol variables 
                             
     msbpre  = 5               ! maximum number of iterations without prec. setup 
     fnormtol = error          ! Function-norm stopping tolerance
@@ -173,7 +172,7 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
         call fkinfree          ! free memory
         stop
     endif
-    !     .. init Scale Preconditioned GMRES solver 
+    ! .. init Scale Preconditioned GMRES solver 
   
     call fkinspgmr(maxl, maxlrst, ier)   
     if (ier .ne. 0) then
@@ -188,13 +187,17 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
         !     .. preconditioner  zero no preconditioner  
         call fkinspilssetprec(0, ier) 
     endif    
-    !     .. call solver
+    ! .. call solver
     call fkinsol(x, globalstrat, fscale, fscale, ier) 
-    fnorm=rout(1) 
+    
+    fnorm=rout(1)
+    nfe=iout(4) 
+    nni=iout(3)
   
-    ! determine quality of solution
+    ! .. determine quality of solution
     
     !isSolution=(ier==0).and.(.not.ieee_is_nan(fnorm))
+    
     isSolution=(ier==0).and.(.not.isNaN(fnorm))
 
     if(isSolution) then  
@@ -207,6 +210,12 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
         call print_to_log(LogUnit,text)
         write(istr,'(I8)')ier
         text="kinsol return value  = "//trim(istr)
+        call print_to_log(LogUnit,text)
+        write(istr,'(I8)')nfe
+        text="nfe  = "//trim(istr)
+        call print_to_log(LogUnit,text)
+        write(istr,'(I8)')nni
+        text="nni  = "//trim(istr)
         call print_to_log(LogUnit,text)
     
     else
@@ -249,7 +258,6 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
     
     call fkinfree             ! free memory
     deallocate(pp)
-    return
   
 end subroutine kinsol_gmres_solver
 
@@ -265,6 +273,7 @@ subroutine fkfun(x,f,ier)
     use precision_definition
     use globals,  only  : neq
     use fcnpointer
+    ! use parameters, only : iter,maxniter
 
     implicit none
 
@@ -273,6 +282,12 @@ subroutine fkfun(x,f,ier)
     integer ::  ier
 
     call fcnptr(x,f,neq)
+
+    !if(iter<maxniter) then 
+    !    ier=0
+    !else
+    !    ier=-1 ! stop 
+    !endif
 
     ier=0  
 
