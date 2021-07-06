@@ -44,6 +44,7 @@ The program uses an input file called 'input.in' that contain following key word
 |                         |                           | __brushssdna__  : multi-component acid-base plus one acid with Ca/Mg binding |
 |runtype`char`             | Sets type of run                  | __inputcspH__ : loop over pH salt concentration from file salt.in|
 |                          |   	                               | __inputMgpH__ : loop over pH Mg salt concentration from file saltMg.in |
+|                          |                                   | __inputcsKClpH__ : loop over pH K salt concentration from file salt.in | 
 |                          |   	                               | __rangedist__ : loop over distance between plates  |
 |                          |   	                               | __rangecpro__ : loop over protein concentrations   |
 |                          |                                   | __rangepKd__: loop over pKd2 Mg salt concentration  from file saltMg.in |   
@@ -69,8 +70,8 @@ The program uses an input file called 'input.in' that contain following key word
 |KionNa `real`            | dissociation constant of NaCl| __0__  complete dissociation|
 |   	                    |                              | __0.60__ : suggested value for NaCl|
 |KionK `real`						  | dissociation constant of KCl | |
-|sigmaSurfL `real`	      | Surface charge density LEFT surface Unit: e/nm2, only for bcflag(LEFT)==cc  | not read in |
-|sigmaSurfR `real`		    | Surface charge density RIGHT surfcae Unit: e/nm2, only for bcflag(RIGHT)==cc | not read in |
+|sigmaSurfL `real`	      | Surface charge density LEFT surface Unit: e/nm2, only for bcflag(LEFT)==cc  |  |
+|sigmaSurfR `real`		    | Surface charge density RIGHT surfcae Unit: e/nm2, only for bcflag(RIGHT)==cc |  |
 |cNaCl `real`              | NaCl value     |  |
 |cKCl `real`               | KCl value      |  |
 |cRbCl `real`              | RbCl value     |   | 
@@ -123,14 +124,14 @@ The program uses an input file called 'input.in' that contain following key word
 |  | Following variables describe VdW interactions. | |
 |VdWeps%val `real`	          | Strength VdW parameter 	Unit: kBT    |  |
 |VdWeps%min `real`			      | Minimum strength VdW parameter  Unit: kBT    |  |
-|VdWeps%max `real`			      | Maximum strength VdW parameter  Unit: kBT    | - |
-|VdWeps%stepsize `real`			  | Stepsize strength VdW parameter     Unit: kBT  | - |
-|VdWeps%delta `real`			    | Minimal allowed stepsize. Stopping criteria  Unit: kBT    | - |
+|VdWeps%max `real`			      | Maximum strength VdW parameter  Unit: kBT    |  |
+|VdWeps%stepsize `real`			  | Stepsize strength VdW parameter     Unit: kBT  | |
+|VdWeps%delta `real`			    | Minimal allowed stepsize. Stopping criteria  Unit: kBT    | |
 |pKd%val `real`	              | Strength pKd parameter 	    |  |
 |pKd%min `real`			          | Minimum strength pKd parameter    |  |
-|pKd%max `real`			          | Maximum strength pKd parameter      | - |
-|pKd%stepsize `real`			    | Stepsize strength pKd parameter     | - |
-|pKd%delta `real`			        | Minimal allowed stepsize. Stopping criteria    | - |
+|pKd%max `real`			          | Maximum strength pKd parameter      |  |
+|pKd%stepsize `real`			    | Stepsize strength pKd parameter     |  |
+|pKd%delta `real`			        | Minimal allowed stepsize. Stopping criteria    |  |
 
 ## Built With
 
@@ -139,7 +140,7 @@ The program uses an input file called 'input.in' that contain following key word
 
 ## Versioning
 
-version 1.3.1 06-10-2021
+version 1.4 07-06-2021
 
 ## Authors
 
