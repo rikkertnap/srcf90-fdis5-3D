@@ -75,7 +75,7 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
     !use ieee_arithmetic, only : ieee_is_nan    ! alternative for function isNaN in myutils
     use globals, only : nsize, neq, systype
     use kinsolvars
-    use parameters, only : iter, precondition, maxniter
+    use parameters, only : iter, precondition, maxniter, maxfkfunevals
     use myutils
     use listfcn, only : set_contraints
 
@@ -119,7 +119,7 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
     maxl = 1000               ! maximum Krylov subspace dimension 
     maxlrst = 20              ! maximum number of restarts
     globalstrat = 0           ! inexact Newton  
-    maxniter =1000            ! maximum of nonlinear iterations default 200  
+    !maxniter =1000            ! maximum of nonlinear iterations default 200 , see read_input_file
 
     allocate(pp(neq))
 
@@ -243,15 +243,24 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
             text="number of iterations  = "//trim(istr)
             call print_to_log(LogUnit,text)
         
-        else     
-        
+        elseif(iter>=maxfkfunevals) then
+
             write(rstr,'(E25.16)')fnorm
-            text="No solution: fnorm = "//trim(rstr)
+            text="Maximum of fkfun evals exceeded: fnorm = "//trim(rstr)
             call print_to_log(LogUnit,text)
             write(istr,'(I8)')iter
             text="number of iterations  = "//trim(istr)
             call print_to_log(LogUnit,text)
     
+        else
+    
+            write(rstr,'(E25.16)')fnorm
+            text="No solution: fnorm = "//trim(rstr)
+            call print_to_log(LogUnit,text)
+            write(istr,'(I8)')iter
+            text="number of iterations  = "//trim(istr)
+            call print_to_log(LogUnit,text)    
+
         endif
         
     endif    
@@ -273,7 +282,7 @@ subroutine fkfun(x,f,ier)
     use precision_definition
     use globals,  only  : neq
     use fcnpointer
-    ! use parameters, only : iter,maxniter
+    use parameters, only : iter,maxfkfunevals
 
     implicit none
 
@@ -283,14 +292,14 @@ subroutine fkfun(x,f,ier)
 
     call fcnptr(x,f,neq)
 
-    !if(iter<maxniter) then 
-    !    ier=0
-    !else
-    !    ier=-1 ! stop 
-    !endif
+    if(iter<=maxfkfunevals) then 
+        ier=0
+    else
+        ier=-1 ! stop 
+    endif
+    
 
-    ier=0  
-
+    
 end subroutine fkfun
 
 

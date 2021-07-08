@@ -90,6 +90,7 @@
     integer  :: infile           ! infile=1 read input files infile!=1 no input files 
     integer  :: iter             ! counts number of iterations
     integer(8) :: maxniter       ! maximum of nonlinear iterations  
+    integer  :: maxfkfunevals    ! maximum number of fkun function evaluations
     character(len=8) :: method   ! method="kinsol"  
     logical ::  precondition     ! controls use of precondtioner 
 

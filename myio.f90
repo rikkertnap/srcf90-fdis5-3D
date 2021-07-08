@@ -77,6 +77,7 @@ subroutine read_inputfile(info)
     integer :: pos
     integer :: line
     logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha,  isSet_EnergyShift
+    logical :: isSet_maxfkfunevals, isSet_maxniter
 
     if (present(info)) info = 0
 
@@ -251,6 +252,12 @@ subroutine read_inputfile(info)
             case ('precondition')
                 read(buffer,*,iostat=ios) precondition
                 isSet_precondition=.true.
+            case ('maxniter')
+                read(buffer,*,iostat=ios) maxniter
+                isSet_maxniter=.true.
+            case ('maxfkfunevals')
+                read(buffer,*,iostat=ios) maxfkfunevals
+                isSet_maxfkfunevals=.true. 
             case ('dielect_env')
                 read(buffer,*,iostat=ios) dielect_env
             case ('VdWscale%val')
@@ -355,6 +362,8 @@ subroutine read_inputfile(info)
     call set_value_isVdW(systype,isVdW)
     call set_value_isVdWintEne(systype, isVdWintEne)
     call set_value_nsegtypes(nsegtypes,chaintype,systype,info)
+
+    !  .. seg input: use of default or based on input.in
 
     call set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
     call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
@@ -1033,8 +1042,31 @@ subroutine set_value_precondition(precondition,isSet_precondition)
     logical, intent(in)  :: isSet_precondition
 
     if(.not.isSet_precondition) precondition=.false. ! default value
-
+    
+            
 end subroutine set_value_precondition
+
+
+subroutine set_value_maxniter(maxniter,isSet_maxniter)
+
+    integer(8), intent(inout) :: maxniter
+    logical, intent(in)  :: isSet_maxniter
+
+    if(.not.isSet_maxnIter) maxniter=1000 ! default value
+
+
+end subroutine set_value_maxniter
+
+
+subroutine set_value_maxfkfunevals(maxfkfunevals,isSet_maxfkfunevals)
+
+    integer, intent(inout) :: maxfkfunevals
+    logical, intent(in)  :: isSet_maxfkfunevals
+
+    if(.not.isSet_maxfkfunevals) maxfkfunevals=1000 ! default value
+
+end subroutine set_value_maxfkfunevals
+
 
 
 subroutine set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
