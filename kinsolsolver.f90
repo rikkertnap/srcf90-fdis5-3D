@@ -243,7 +243,7 @@ subroutine kinsol_gmres_solver(x, xguess, error, fnorm,isSolution)
             text="number of iterations  = "//trim(istr)
             call print_to_log(LogUnit,text)
         
-        elseif(iter>=maxfkfunevals) then
+        elseif(iter>maxfkfunevals) then
 
             write(rstr,'(E25.16)')fnorm
             text="Maximum of fkfun evals exceeded: fnorm = "//trim(rstr)
@@ -297,8 +297,6 @@ subroutine fkfun(x,f,ier)
     else
         ier=-1 ! stop 
     endif
-    
-
     
 end subroutine fkfun
 
