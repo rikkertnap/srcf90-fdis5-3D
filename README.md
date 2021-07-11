@@ -41,7 +41,7 @@ The program uses an input file called 'input.in' that contain following key word
 |                         |                           | __brush_mul__: multi-component acid-base: VdW interaction |
 |                         |                           | __brush_mulnoVdW__: multi-component acid-base: noVdW interaction  |
 |                         |                           | __brushborn__ : idem brush plus varing Born Energy  |
-|                         |                           | __brushssdna__  : multi-component acid-base plus one acid with Ca/Mg binding |
+|                         |                           | __brushdna__  : multi-component acid-base plus one acid with Ca/Mg binding |
 |runtype`char`             | Sets type of run                  | __inputcspH__ : loop over pH salt concentration from file salt.in|
 |                          |   	                               | __inputMgpH__ : loop over pH Mg salt concentration from file saltMg.in |
 |                          |                                   | __inputcsKClpH__ : loop over pH K salt concentration from file salt.in | 
@@ -118,6 +118,8 @@ The program uses an input file called 'input.in' that contain following key word
 |                              | Different values produce different random patterns|  | 
 | write_mc_chain `logical`          | if .true. writes MC chain to file  ||  
 |precondition `logical`    | if precondition==".true."  precondition | __.false.__ : default if not set |
+|maxniter `int`    | maximum of nonlinear iterations | if not set : default maxiter=1000 |
+|maxfkfunevlas `int`    | maximum of fcn evaluations | if not set : default maxfkfunevlas=1000 |
 |dielect_env `char`        | Selects the dielect function                         | __linear__ |
 |                          | only used for systype="brushvarelec" and "brushborn" | __constant__ |
 |                          |                                                      | __MaxwellGarnett__ |     
@@ -140,7 +142,7 @@ The program uses an input file called 'input.in' that contain following key word
 
 ## Versioning
 
-version 1.4 07-06-2021
+version 1.4.1 07-11-2021
 
 ## Authors
 

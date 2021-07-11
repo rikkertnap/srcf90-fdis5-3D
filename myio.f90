@@ -97,6 +97,8 @@ subroutine read_inputfile(info)
     isSet_savePalpha  =.false.
     write_mc_chains   =.false.
     isSet_EnergyShift =.false.
+    isSet_maxfkfunevals =.false.
+    isSet_maxniter = .false. 
 
     ! default concentrations
     cKCl=0.0_dp
@@ -370,6 +372,8 @@ subroutine read_inputfile(info)
     call set_value_precondition(precondition,isSet_precondition)
     call set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
 
+    call set_value_maxfkfunevals(maxfkfunevals,isSet_maxfkfunevals)
+    call set_value_maxniter(maxniter,isSet_maxniter)
 
     ! after set_value_isVdW
     call check_value_VdWeps(systype,isVdW,info_VdWeps)
@@ -1426,6 +1430,8 @@ subroutine output_brush_mul
     write(un_sys,*)'nsize       = ',nsize
     write(un_sys,*)'cuantas     = ',cuantas
     write(un_sys,*)'iterations  = ',iter
+    write(un_sys,*)'maxniter    = ',maxniter
+    write(un_sys,*)'maxfkfunevals = ', maxfkfunevals
     write(un_sys,*)'pH%val      = ',pH%val
     write(un_sys,*)'VdWscale%val= ',VdWscale%val
 
@@ -1802,6 +1808,8 @@ subroutine output_elect
     write(un_sys,*)'nsize       = ',nsize
     write(un_sys,*)'cuantas     = ',cuantas
     write(un_sys,*)'iterations  = ',iter
+    write(un_sys,*)'maxniter    = ',maxniter
+    write(un_sys,*)'maxfkfunevals = ', maxfkfunevals
     write(un_sys,*)'pH%val      = ',pH%val
     write(un_sys,*)'VdWscale%val= ',VdWscale%val
 

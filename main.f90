@@ -141,8 +141,7 @@ program main
     allocate(xguess(neq))
     allocate(fvec(neq))
 
-    
-
+        
     if(runtype=="rangedist") then ! loop over distances
 
         nz = nzmax
@@ -349,7 +348,7 @@ program main
                 if(rank==0) then
 
                     if(.not.isSolution) then
-                    
+                        
                         text="no solution: backstep" 
                         call print_to_log(LogUnit,text)
                         loop%stepsize=loop%stepsize/2.0d0   ! decrease increment
