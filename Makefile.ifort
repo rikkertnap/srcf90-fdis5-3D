@@ -177,13 +177,11 @@ endif
 
 ifdef is_quest 
 
+FFLAGS=  -cpp -DVERSION=\"$(GIT_VERSION)\"  -O0 -traceback -g -check all -check bounds  #-check bounds -traceback -O3 -no-wrap-margin
 
-FFLAGS=  -std=f2008  -cpp -DVERSION=\"$(GIT_VERSION)\"  -O3 # -fcheck=all -fbounds-check -Warray-bounds -g -fbacktrace # -Wargument-mismatch -Wpedantic #-Wall
+LDFLAGS= -lm /usr/lib64/librt.so -L/projects/p31445/sundials/sundials-2.6.1-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/projects/p31445/sundials/sundials-2.6.1-openmpi/lib
 
-
-LDFLAGS= -lm /usr/lib64/librt.so -L/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran/lib
-
-
+#LDFLAGS= -lm /usr/lib64/librt.so -L/home/rna878/sundials-2.6.1-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/home/rna878/sundials-2.6.1-openmpi/lib
 
 LFFLAGS=$(LDFLAGS)
 
