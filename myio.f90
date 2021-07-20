@@ -98,7 +98,7 @@ subroutine read_inputfile(info)
     write_mc_chains   =.false.
     isSet_EnergyShift =.false.
     isSet_maxfkfunevals =.false.
-    isSet_maxniter = .false. 
+    isSet_maxniter = .false.
 
     ! default concentrations
     cKCl=0.0_dp
@@ -106,7 +106,7 @@ subroutine read_inputfile(info)
     cMgCl2=0.0_dp
     cRbCl=0.0_dp
 
-    ! init surface charge 
+    ! init surface charge
     sigmaSurfL = 0.0_dp
     sigmaSurfL = 0.0_dp
 
@@ -259,7 +259,7 @@ subroutine read_inputfile(info)
                 isSet_maxniter=.true.
             case ('maxfkfunevals')
                 read(buffer,*,iostat=ios) maxfkfunevals
-                isSet_maxfkfunevals=.true. 
+                isSet_maxfkfunevals=.true.
             case ('dielect_env')
                 read(buffer,*,iostat=ios) dielect_env
             case ('VdWscale%val')
@@ -442,14 +442,14 @@ subroutine check_value_runtype(runtype,info)
 
     ! permissible values of runtype
 
-    runtypestr(1)="inputcspH" ! used to rangpH
+    runtypestr(1)="inputcspH" ! used to be rangpH
     runtypestr(2)="inputMgpH"
     runtypestr(3)="inputcsKClpH"
     runtypestr(4)="rangepKd"
     runtypestr(5)="rangeVdWeps"
     runtypestr(6)="rangedist"
-    runtypestr(7)="rangecpro"
-    
+    runtypestr(7)="rangecpro"  ! excluded
+
     flag=.FALSE.
 
     do i=1,6
@@ -917,7 +917,7 @@ subroutine set_value_isVdW(systype, isVdW)
 
      isVdW=.True.
 
-    ! systype that NOT involve VdW interactions
+    ! systype that NOT involve VdW interactions 
 
     systypestr(1)="elect"
     systypestr(2)="neutralnoVdW"
@@ -1046,8 +1046,8 @@ subroutine set_value_precondition(precondition,isSet_precondition)
     logical, intent(in)  :: isSet_precondition
 
     if(.not.isSet_precondition) precondition=.false. ! default value
-    
-            
+
+
 end subroutine set_value_precondition
 
 
@@ -1088,11 +1088,12 @@ subroutine output()
     use globals, only : systype
 
     select case (systype)
-    case ("elect")
+    case ("elect") 
 
         call output_elect
 
-    case("neutral","neutralnoVdW")
+    case("neutral","neutralnoVdW") 
+
 
         call output_neutral
         call output_individualcontr_fe
@@ -1156,7 +1157,7 @@ subroutine output_brush_mul
     integer :: i,j,k          ! dummy indexes
     real(dp) :: denspol
 
-  
+
     ! .. executable statements
 
     denspol=init_denspol()
@@ -1329,6 +1330,7 @@ subroutine output_brush_mul
         write(un_sys,*)'cNaCl       = ',cNaCl
         write(un_sys,*)'cKCl        = ',cKCl
         write(un_sys,*)'cCaCl2      = ',cCaCl2
+        write(un_sys,*)'cMgCl2      = ',cMgCl2
         write(un_sys,*)'xsolbulk    = ',xbulk%sol
         write(un_sys,*)'xNabulk     = ',xbulk%Na
         write(un_sys,*)'xClbulk     = ',xbulk%Cl
@@ -1685,6 +1687,7 @@ subroutine output_elect
         write(un_sys,*)'cNaCl       = ',cNaCl
         write(un_sys,*)'cKCl        = ',cKCl
         write(un_sys,*)'cCaCl2      = ',cCaCl2
+        write(un_sys,*)'cMgCl2      = ',cMgCl2
         write(un_sys,*)'xNabulk     = ',xbulk%Na
         write(un_sys,*)'xClbulk     = ',xbulk%Cl
         write(un_sys,*)'xKbulk      = ',xbulk%K
@@ -1840,6 +1843,7 @@ subroutine output_elect
             close(un_xNa)
             close(un_xK)
             close(un_xCa)
+            close(un_xMg)
             close(un_xNaCl)
             close(un_xKCl)
             close(un_xpair)
@@ -2336,7 +2340,7 @@ subroutine compute_vars_and_output()
         call charge_polymer()
         call average_charge_polymer()
         call average_density_z(xpol,xpolz,height)
-        call make_ion_excess()    
+        call make_ion_excess()
         call output()           ! writing of output
 
     case default
