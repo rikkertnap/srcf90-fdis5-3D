@@ -249,6 +249,10 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) isRandom_pos_graft
             case ('seed_graft')
                 read(buffer,*,iostat=ios) seed_graft
+            case ('isRandom_rot_loop')
+                read(buffer,*,iostat=ios) isRandom_rot_loop
+            case ('seed_rot_loop')
+                read(buffer,*,iostat=ios) seed_rot_loop
             case ('write_mc_chains')
                 read(buffer,*,iostat=ios) write_mc_chains
             case ('precondition')
@@ -365,7 +369,7 @@ subroutine read_inputfile(info)
     call set_value_isVdWintEne(systype, isVdWintEne)
     call set_value_nsegtypes(nsegtypes,chaintype,systype,info)
 
-    !  .. seg input: use of default or based on input.in
+    !  .. set input values: use of default or based on input.in
 
     call set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
     call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)

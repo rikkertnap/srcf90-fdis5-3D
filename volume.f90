@@ -13,31 +13,37 @@ module volume
     integer :: nz                   ! nz number of lattice sites in z-direction 
     integer :: nx                   ! nx number of lattice sites in x-direction 
     integer :: ny                   ! ny number of lattice sites in y-direction 
-    integer :: nsurf                ! nsurf numer of lattice site  at z=0 ore z=nz*delta
+    integer :: nsurf                ! nsurf numer of lattice siteß  at z=0 ore z=nz*delta
     integer :: nzmax                ! nzmax  maximum number of lattice sites in z-direction
     integer :: nzmin                ! nzmin minimumal number of lattice sites in z-direction  
-    integer :: nzstep               ! nzstep number of lattice sites stepped over or reduced 
-    integer :: ngr                  ! total number of graft points    
-    integer :: ngr_node             ! number of grafted areas assigned to an individual node
-    integer :: ngr_freq             ! frequence spacing in terms of delta 
-    integer :: ngrx                 ! total number of graft points along x-axis 
-    integer :: ngry                 ! total number of graft points along y-axis                                                       
-    logical :: isRandom_pos_graft   ! true random position, false regual pattern   
+    integer :: nzstep               ! nzstep number of lattice sites stepped over or reduced
     real(dp) :: volcell             ! volcell=delta**3
     real(dp) :: areacell            ! areacell=delta**2
     real(dp) :: areasurf            ! area surfaces spanned by x and y direction
     real(dp) :: gamma               ! angle between oblique basis vectors u and v: cubic = gamma=90=pi/2 hexagonl gamma=60=2pi/3                          
     real(dp) :: beta                ! related beta = (pi/2- gamma)/2, angle between basis vector u and x and v and y
     real(dp) :: cos_two_beta        ! sqrt(cos(beta)**2 - sin(beta)**2)=cos(2beta) scales u and v coordinates 
-    real(dp) :: sin_two_beta        ! sin(2beta)      
-    integer  :: seed_graft          ! seed for graft points 
-    integer  :: sgraft              ! item number of graft point to which loop is attached 
-    integer  :: nset_per_graft      ! number of confomation set to read in graft point
-    
-    real(dp), dimension(:,:), allocatable :: position_graft
-
+    real(dp) :: sin_two_beta        ! sin(2beta)  
     character(len=11) :: geometry
-  
+
+    ! variable for grafting position
+    
+    integer :: ngr                  ! total number of graft points    
+    integer :: ngr_node             ! number of grafted areas assigned to an individual node
+    integer :: ngr_freq             ! frequence spacing in terms of delta 
+    integer :: ngrx                 ! total number of graft points along x-axis 
+    integer :: ngry                 ! total number of graft points along y-axis                                                       
+    logical :: isRandom_pos_graft   ! true random position, false regual pattern
+    integer :: seed_graft           ! seed for graft points 
+    integer :: sgraft               ! item number of graft point to which loop is attached 
+    integer :: nset_per_graft       ! number of confomation set to read in graft point
+    real(dp), dimension(:,:), allocatable :: position_graft
+   
+    ! variable for rotation loop chain
+
+    logical  :: isRandom_rot_loop   ! true random rotation/oewinetation loop chain, false regaualr rotation 
+    integer  :: seed_rot_loop       ! seed for rotation loops 
+
     private :: beta
 
 contains
@@ -72,14 +78,16 @@ contains
         ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
 
         ! check 
+        
         if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
              print*,"ngr test failed: exiting"
              print*,"nx= ",nx," ny= ",ny," ngr_freq = ",ngr_freq
              stop
         endif    
         
-        !nset_per_graft = int(size/ngr)
-        !..testing
+        !  nset_per_graft = int(size/ngr)
+        !  testing
+        
         if(ngr*nset_per_graft/=size) then
             print*,"nset_per_graft test failed: exiting"
             print*,"nset_per_graft=",nset_per_graft,"ngr=",ngr,"size=",size
@@ -89,6 +97,7 @@ contains
         allocate(position_graft(ngr,2)) ! only after ngr has been established position_graft can be allocated
 
         call init_graftpoints()
+
 
     end subroutine init_lattice
          
@@ -230,6 +239,7 @@ contains
 
     subroutine init_graftpoints()
 
+        use globals,  only : DEBUG
         use random 
         use myutils, only : newunit,lenText
 
@@ -252,8 +262,7 @@ contains
             enddo
         
         else 
-            ! regulat lattice
-
+        
             ig = 1   
 
             do i=1,ngrx            ! location regular graft points 
@@ -276,21 +285,86 @@ contains
         
         endif        
         
-        write(fname,'(A18)')'positiongraft-rank'
-        write(istr,'(I4)')rank
-        fname=trim(fname)//trim(adjustl(istr))//'.dat'
-        open(unit=newunit(un_pgpt),file=fname,iostat=ios)
-        if(ios >0 ) then
-             print*, 'Error opening positiongraftpt.dat file : iostat =', ios
-        else
+        ! output
+        if(DEBUG.or.rank==0) then
+            write(fname,'(A18)')'positiongraft-rank'
+            write(istr,'(I4)')rank
+            fname=trim(fname)//trim(adjustl(istr))//'.dat'
+            open(unit=newunit(un_pgpt),file=fname,iostat=ios)
+            if(ios >0 ) then
+                 print*, 'Error opening positiongraftpt.dat file : iostat =', ios
+            else
 
-            do ig=1,ngr          
-                write(un_pgpt,*)position_graft(ig,1),position_graft(ig,2) 
-            enddo
-            close(un_pgpt)
-        endif
-    
+                do ig=1,ngr          
+                    write(un_pgpt,*)position_graft(ig,1),position_graft(ig,2) 
+                enddo
+                close(un_pgpt)
+            endif
+        endif    
+
     end subroutine init_graftpoints
+
+    subroutine init_loop_rot_angle(maxntheta,ngr,theta_angle)
+
+        use globals, only : DEBUG
+        use mathconst
+        use random, only : seed, rands
+        use myutils, only : newunit,lenText
+
+
+        integer, intent(in) :: maxntheta,ngr
+        real(dp), allocatable, dimension(:,:), intent(inout) :: theta_angle
+
+        ! local variables
+
+        integer :: i, g
+        real(dp) :: delta_theta_angle, rnd  
+        character(len=lenText) :: fname, istr
+        integer :: ios, un_rotgpt
+
+        ! maxntheta = maxnchainsrotationsxy  maximum number of rotation in xy-plane 
+
+        allocate(theta_angle(maxntheta,ngr))
+
+        delta_theta_angle = 2.0_dp*pi/maxntheta ! angle of rotation   
+        
+        do g=1,ngr
+            do i=1,maxntheta           ! location graft points 
+                theta_angle(i,g) = i * delta_theta_angle
+            end do
+        end do    
+
+        if(isRandom_rot_loop) then   
+            
+            seed=seed_rot_loop     ! randomize
+            do g =1,ngr
+                do i=1,maxntheta          
+                    rnd = (rands(seed)-0.5_dp)*delta_theta_angle/2.0_dp 
+                    theta_angle(i,g) = theta_angle(i,g) + rnd
+                end do
+            end do              
+        end if        
+    
+
+        ! output
+        if(DEBUG.or.rank==0) then
+            write(fname,'(A18)')'rotationgraft-rank'
+            write(istr,'(I4)')rank
+            fname=trim(fname)//trim(adjustl(istr))//'.dat'
+            open(unit=newunit(un_rotgpt),file=fname,iostat=ios)
+            if(ios >0 ) then
+                 print*, 'Error opening rotationgraftpt.dat file : iostat =', ios
+            else
+                do g=1,ngr
+                    do i=1,maxntheta          
+                        write(un_rotgpt,*)theta_angle(i,g) 
+                    end do
+                end do
+                close(un_rotgpt)
+            end if
+        end if    
+
+    end subroutine init_loop_rot_angle
 
 
 end module volume

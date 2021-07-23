@@ -29,7 +29,7 @@ module globals
     integer, parameter :: LEFT = 1
     integer, parameter :: RIGHT = 2
 
-    logical, parameter :: DEBUG = .TRUE. ! switch for debug information
+    logical, parameter :: DEBUG = .False. ! switch for debug information
 
 end module globals
 

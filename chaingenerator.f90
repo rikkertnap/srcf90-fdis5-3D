@@ -44,7 +44,7 @@ subroutine make_chains(chainmethod)
     case ("FILE_XYZ")
         call read_chains_xyz(info)  
     case default
-        text="chainmethod not equal to MC, FILEE_lammps_XYZ, FILE_lammps_trj or FILKE_XYZ"
+        text="chainmethod not equal to MC, FILE_lammps_XYZ, FILE_lammps_trj or FILKE_XYZ"
         call print_to_log(LogUnit,text)
         print*,text
         info=myio_err_chainmethod
@@ -966,11 +966,13 @@ subroutine read_chains_XYZ_loop(info)
     use chains
     use random
     use parameters
-    use volume,  only: position_graft, sgraft, nx, ny,nz, delta, nset_per_graft
+    use volume, only : position_graft, sgraft, nx, ny,nz, delta, nset_per_graft
+    use volume, only : init_loop_rot_angle  
     use chain_rotation, only : rotationXaxis
     use myio, only : myio_err_chainsfile, myio_err_energyfile, myio_err_index
     use myio, only : myio_err_conf, myio_err_nseg, myio_err_geometry
     use myutils,  only :  print_to_log, LogUnit, lenText, newunit
+
 
     ! .. argument
 
@@ -987,7 +989,7 @@ subroutine read_chains_XYZ_loop(info)
     integer :: conf,conffile        ! counts number of conformations  
     integer :: nsegfile             ! nseg in chain file      
     integer :: cuantasfile          ! cuantas in chain file                                              
-    real(dp) :: chain(3,nseg)     ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1  
+    real(dp) :: chain(3,nseg)       ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1  
     real(dp) :: xseg(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg)    ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates 
@@ -995,14 +997,15 @@ subroutine read_chains_XYZ_loop(info)
     integer  :: xi,yi,zi
     real(dp) :: Lx,Ly,Lz,xcm,ycm,zcm ! sizes box and center of mass box
     real(dp) :: xpt,ypt              ! coordinates
-    real(dp) :: theta, theta_angle
+    real(dp) :: theta 
+    real(dp), allocatable, dimension(:,:) :: theta_array
     real(dp) :: xc,yc,zc               
     real(dp) :: energy                                             
     character(len=25) :: fname
     integer :: ios, rankfile, iosene
     character(len=30) :: str
     real(dp) :: scalefactor
-    integer :: un,unw,un_ene! unit number
+    integer :: un,unw,un_ene ! unit number
     logical :: exist
     character(len=lenText) :: text,istr
 
@@ -1011,11 +1014,11 @@ subroutine read_chains_XYZ_loop(info)
     info=0
 
     ! get location graft points loop
+
     call read_graftpts_xyz_loop(info)
     if(info/=0) return
 
     ! .. open file   
-    ! rankfile=int(rank*nset_per_graft/size)
 
     rankfile=mod(rank,nset_per_graft)                                                                                     
     
@@ -1029,12 +1032,12 @@ subroutine read_chains_XYZ_loop(info)
         print*,'traj.rank.xyz file does not exit'
         info = myio_err_chainsfile
         return
-    endif
+    end if
     if(ios >0 ) then
         print*, 'Error opening file : iostat =', ios
         info = myio_err_chainsfile
         return
-    endif
+    end if
 
     if(isChainEnergyFile) then
         write(istr,'(I4)')rankfile
@@ -1047,13 +1050,13 @@ subroutine read_chains_XYZ_loop(info)
             print*,text
             info = myio_err_energyfile
             return
-        endif
+        end if
         if(ios >0 ) then
             print*, 'Error opening file : iostat =', ios
             info = myio_err_energyfile
             return
-        endif
-    endif    
+        end if
+    end if    
 
 
     conf=1                    ! counter for conformations                                                           
@@ -1064,8 +1067,8 @@ subroutine read_chains_XYZ_loop(info)
 
     seed=435672               ! seed for random number generator                                                                               
     maxnchains= maxnchainsrotations  ! maximum number of rotation conf                                                                  
-    maxntheta = maxnchainsrotationsxy! maximum number of rotation in xy-plane  
-    theta_angle= 2.0_dp*pi/maxntheta ! angle of rotation 
+    maxntheta = maxnchainsrotationsxy! maximum number of rotation in xy-plane
+    call init_loop_rot_angle(maxntheta,ngr,theta_array) ! aray of angles of rotation 
 
     ios=0
     Lz= nz*delta            ! maximum height box 
@@ -1074,7 +1077,6 @@ subroutine read_chains_XYZ_loop(info)
     xcm= Lx/2.0_dp          ! center x-y plane
     ycm= Ly/2.0_dp
     zcm= 0.0_dp
-
 
     do while ((conf<=max_confor).and.(ios==0))
     
@@ -1087,15 +1089,15 @@ subroutine read_chains_XYZ_loop(info)
                 call print_to_log(LogUnit,text)
                 info=myio_err_nseg 
                 return
-            endif    
-        endif
+            end if    
+        end if
     
         do s=1,nseg              ! .. read form  trajecotory file
             read(un,*,iostat=ios)xc,yc,zc
             xseg(1,s) = xc*scalefactor 
             xseg(2,s) = yc*scalefactor  
             xseg(3,s) = zc*scalefactor  
-        enddo
+        end do
      
         if(isChainEnergyFile) read(un_ene,*,iostat=ios)energy
 
@@ -1107,33 +1109,33 @@ subroutine read_chains_XYZ_loop(info)
                 chain(1,s) = xseg(1,s)-xgraftloop(1,1) 
                 chain(2,s) = xseg(2,s)-xgraftloop(2,1)  
                 chain(3,s) = xseg(3,s)-xgraftloop(3,1) 
-            enddo
+            end do
   
             select case (geometry)
             case ("cubic")
 
                 g=int(rank/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
 
-                xpt =  position_graft(g,1)  ! position of graft point
+                xpt =  position_graft(g,1)    ! position of graft point
                 ypt =  position_graft(g,2)  
 
-                do ntheta=1,maxntheta      ! .. rotation in xy-plane and translation to graft location of xy-plane
+                do ntheta=1,maxntheta         ! rotation in xy-plane and translation to graft location of xy-plane
 
-                    theta= ntheta * theta_angle
+                    theta=theta_array(ntheta,g)
 
                     do s=1,nseg
                         xp(s)=  chain(1,s)*cos(theta)+chain(2,s)*sin(theta) + xpt
                         yp(s)= -chain(1,s)*sin(theta)+chain(2,s)*cos(theta) + ypt
                         zp(s)=  chain(3,s)                                  
-                    enddo 
+                    end do 
                
                     do s=1,nseg
 
-                        x(s) = pbc(xp(s),Lx) ! .. periodic boundary conditions in x and y direction
+                        x(s) = pbc(xp(s),Lx) ! periodic boundary conditions in x and y direction
                         y(s) = pbc(yp(s),Ly)
-                        z(s) = zp(s)         ! .. no pbc in z- direction 
+                        z(s) = zp(s)         ! no pbc in z- direction 
 
-                        ! .. transforming form real- to lattice coordinates                 
+                        ! transforming form real- to lattice coordinates                 
                         xi = int(x(s)/delta)+1
                         yi = int(y(s)/delta)+1
                         zi = int(z(s)/delta)+1
@@ -1150,32 +1152,32 @@ subroutine read_chains_XYZ_loop(info)
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                             info= myio_err_index
                             return
-                        endif
+                        end if
                         
-                    enddo
+                    end do
                     
                     energychain_init(conf)=energy
 
                     conf=conf+1   
                 
-                enddo ! .. rotation 
+                end do ! .. rotation 
                         
             case("prism") 
                     
                 g=int(rank/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
 
-                xpt =  position_graft(g,1)  ! position of graft point
+                xpt =  position_graft(g,1)    ! position of graft point
                 ypt =  position_graft(g,2)  
 
-                do ntheta=1,maxntheta      ! .. rotation in xy-plane and translation to center of xy-plane
+                do ntheta=1,maxntheta         ! rotation in xy-plane and translation to center of xy-plane
 
-                    theta= ntheta * theta_angle
+                    theta=theta_array(ntheta,g)
 
                     do s=1,nseg
                         xp(s)=  chain(1,s)*cos(theta)+chain(2,s)*sin(theta) + xpt
                         yp(s)= -chain(1,s)*sin(theta)+chain(2,s)*cos(theta) + ypt
                         zp(s)=  chain(3,s)   !+ zcm =  0                                 
-                    enddo 
+                    end do 
                
                     do s=1,nseg
 
@@ -1203,15 +1205,15 @@ subroutine read_chains_XYZ_loop(info)
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                             info= myio_err_index
                             return
-                        endif
+                        end if
                         
-                    enddo
+                    end do
                     
                     energychain_init(conf)=energy
 
                     conf=conf+1   
                 
-                enddo ! .. rotation     
+                end do ! .. rotation     
 
             case default
                 text="Error: in make_chains_XYZ_loop geometry not cubic or prism: stopping program"
@@ -1221,10 +1223,10 @@ subroutine read_chains_XYZ_loop(info)
                     
             end select
 
-        endif   ! read 
+        end if   ! read 
 
-    enddo       ! end while loop                                                                                                          
-    !  .. end chains generation    
+    end do       ! end while loop                                                                                                          
+    ! end chains generation    
     
     conf=conf-1  ! lower by one  
 
@@ -1249,9 +1251,9 @@ subroutine read_chains_XYZ_loop(info)
     if(.not.(isChainEnergyFile)) energychain_init=0.0_dp
 
     close(un) 
-
-
     if(isChainEnergyFile) close(un_ene)
+    
+    deallocate(theta_array)
 
 end subroutine read_chains_XYZ_loop
 
@@ -1294,12 +1296,12 @@ subroutine read_graftpts_xyz_loop(info)
         print*,'traj-graft.rank.xyz file does not exit'
         info = myio_err_chainsfile
         return
-    endif
+    end if
     if(ios >0 ) then
         print*, 'Error opening file : iostat =', ios
         info = myio_err_chainsfile
         return
-    endif
+    end if
 
     ! read preamble/header
    
@@ -1312,18 +1314,18 @@ subroutine read_graftpts_xyz_loop(info)
             isGraftItem=.true.
         else
             t=2
-        endif    
+        end if    
         xgraftloop(1,t)=xc*scalefactor
         xgraftloop(2,t)=yc*scalefactor
         xgraftloop(3,t)=zc*scalefactor    
-    enddo
+    end do
     
     close(un)
 
     if(.not.isGraftItem) then
         print*,'Error read_graftpts_xyz_loop: sgraft not in traj file.'
         info = myio_err_graft
-    endif
+    end if
         
 end subroutine
 
@@ -1358,7 +1360,7 @@ subroutine make_sequence_chain(freq,chaintype)
                 isAmonomer(s)=.FALSE.
                 type_of_monomer_char(s)="B"
                 type_of_monomer(s)=2
-            endif
+            end if
         enddo
     case('altB') 
         do s=1,nseg
@@ -1370,7 +1372,7 @@ subroutine make_sequence_chain(freq,chaintype)
                 isAmonomer(s)=.FALSE.
                 type_of_monomer_char(s)="B"
                 type_of_monomer(s)=2
-            endif
+            end if
         enddo
     case('diblockA')
         do s=1,nseg
@@ -1382,7 +1384,7 @@ subroutine make_sequence_chain(freq,chaintype)
                 isAmonomer(s)=.FALSE.
                 type_of_monomer_char(s)="B"
                 type_of_monomer(s)=2
-            endif
+            end if
         enddo
     case('diblockB') 
         do s=1,nseg
@@ -1394,7 +1396,7 @@ subroutine make_sequence_chain(freq,chaintype)
                 isAmonomer(s)=.FALSE.
                 type_of_monomer_char(s)="B"
                 type_of_monomer(s)=2
-            endif
+            end if
         enddo  
     case('copolyAB')
 
@@ -1407,7 +1409,7 @@ subroutine make_sequence_chain(freq,chaintype)
             else
                 type_of_monomer_char(s)="B"
                 type_of_monomer(s)=2
-            endif
+            end if
         enddo
 
     case('multi')
@@ -1417,7 +1419,7 @@ subroutine make_sequence_chain(freq,chaintype)
         
         do s=1,nseg
             isAmonomer(s)=(type_of_monomer_char(s)=="A")
-        enddo
+        end do
 
     case default
         print*,"Wrong chaintype: aborting program"
@@ -1446,7 +1448,7 @@ subroutine read_sequence_copoly_from_file(info)
     if(ios >0 ) then
         print*, 'Error opening file sequence.in : iostat =', ios
         stop
-    endif
+    end if
         
     s=0
     ios=0
@@ -1461,14 +1463,14 @@ subroutine read_sequence_copoly_from_file(info)
                 isAmonomer(s)=.TRUE.
             else
                 isAmonomer(s)=.FALSE.
-            endif
-        endif    
-    enddo 
+            end if
+        end if    
+    end do 
     if(s/=nseg) then 
         print*,"reached end of file before all elements read"
         info = 1
         stop "read sequence file failed"
-    endif
+    end if
 
 end subroutine read_sequence_copoly_from_file
 
@@ -1495,16 +1497,16 @@ subroutine chain_filter()
             indx=indexchain_init(s,conf)
             call coordinateFromLinearIndex(indx,ix,iy,iz)
             if(iz<=nz) count_seg=count_seg+1
-        enddo
+        end do
 
         if (count_seg.eq.nseg) then
             c= c+1 ! conformation  is allowed  
             energychain(c)=energychain_init(conf)
             do s=1,nseg
                 indexchain(s,c)=indexchain_init(s,conf)
-            enddo
-        endif    
-    enddo    
+            end do
+        end if    
+    end do    
 
     cuantas=c ! actual number of conformation   
 

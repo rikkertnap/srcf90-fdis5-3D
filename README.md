@@ -114,8 +114,12 @@ The program uses an input file called 'input.in' that contain following key word
 |gamma `real`             | angle between the none-orthogonal prism basis vectors, unit: radian | |
 | isRandom_pos_graft `logical`  | Displaces  grafting position by a random distance | .false. : regular |
 |                               |                         | .true. : irregular|
-|seed_graft 'int'              | Seed for graft point. use in combination with isRandom_pos_graft | |
+|seed_graft 'int'              | Seed for graft point. Use in combination with isRandom_pos_graft | |
 |                              | Different values produce different random patterns|  | 
+| isRandom_rot_loop `logical`  | Displacess rotation in loop in xy by a random angle | .false. : regular |
+|                              |                         | .true. : irregular|
+|seed_rot_loop 'int'           | Seed for rotation angle loop. Use in combination with isRandom_rot_loop | |
+|                              | Different values produce different angles|  | 
 | write_mc_chain `logical`          | if .true. writes MC chain to file  ||  
 |precondition `logical`    | if precondition==".true."  precondition | __.false.__ : default if not set |
 |maxniter `int`    | maximum of nonlinear iterations | if not set : default maxiter=1000 |
