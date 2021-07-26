@@ -77,7 +77,8 @@ subroutine read_inputfile(info)
     integer :: pos
     integer :: line
     logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha,  isSet_EnergyShift
-    logical :: isSet_maxfkfunevals, isSet_maxniter
+    logical :: isSet_maxfkfunevals, isSet_maxniter, isSet_isRandom_rot_loop, isSet_isRandom_pos_graft
+    logical :: isSet_seed_graft,isSet_seed_rot_loop
 
     if (present(info)) info = 0
 
@@ -98,18 +99,21 @@ subroutine read_inputfile(info)
     write_mc_chains   =.false.
     isSet_EnergyShift =.false.
     isSet_maxfkfunevals =.false.
-    isSet_maxniter = .false.
+    isSet_maxniter     =.false.
+    isSet_isRandom_rot_loop=.false.
+    isSet_isRandom_pos_graft=.true.
+    isSet_seed_graft = .false.
+    isSet_seed_rot_loop =.false.
 
     ! default concentrations
     cKCl=0.0_dp
     cCaCl2=0.0_dp
     cMgCl2=0.0_dp
     cRbCl=0.0_dp
-
+    
     ! init surface charge
     sigmaSurfL = 0.0_dp
     sigmaSurfL = 0.0_dp
-
 
     ios=0
     line = 0
@@ -247,12 +251,16 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) gamma
             case ('isRandom_pos_graft')
                 read(buffer,*,iostat=ios) isRandom_pos_graft
+                isSet_isRandom_pos_graft=.true.
             case ('seed_graft')
                 read(buffer,*,iostat=ios) seed_graft
+                isSet_seed_graft=.true.
             case ('isRandom_rot_loop')
                 read(buffer,*,iostat=ios) isRandom_rot_loop
+                isSet_isRandom_rot_loop=.true.
             case ('seed_rot_loop')
                 read(buffer,*,iostat=ios) seed_rot_loop
+                isSet_seed_rot_loop=.true.
             case ('write_mc_chains')
                 read(buffer,*,iostat=ios) write_mc_chains
             case ('precondition')
@@ -375,6 +383,13 @@ subroutine read_inputfile(info)
     call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
     call set_value_precondition(precondition,isSet_precondition)
     call set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
+
+    call set_value_logical_var(isRandom_pos_graft,isSet_isRandom_pos_graft,.false.)
+    call set_value_logical_var(isRandom_rot_loop,isSet_isRandom_rot_loop,.false.)
+    call set_value_int_var(seed_graft,isSet_seed_graft,1234)
+    call set_value_int_var(seed_rot_loop,isSet_seed_rot_loop,5678)
+
+
 
     call set_value_maxfkfunevals(maxfkfunevals,isSet_maxfkfunevals)
     call set_value_maxniter(maxniter,isSet_maxniter)
@@ -1085,6 +1100,26 @@ subroutine set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
     if(.not.isSet_EnergyShift) isEnergyShift=.false. ! default value
 
 end subroutine set_value_isEnergyShift
+
+subroutine set_value_logical_var(var,isSet_var,default_value_var)
+
+    logical, intent(inout) :: var
+    logical, intent(in) :: isSet_var
+    logical, intent(in) :: default_value_var
+
+    if(.not.isSet_var) var=default_value_var! default value
+
+end subroutine set_value_logical_var
+
+subroutine set_value_int_var(var,isSet_var,default_value_var)
+
+    integer, intent(inout) :: var
+    logical, intent(in) :: isSet_var
+    integer, intent(in) :: default_value_var
+
+    if(.not.isSet_var) var=default_value_var! default value
+
+end subroutine set_value_int_var
 
 
 subroutine output()

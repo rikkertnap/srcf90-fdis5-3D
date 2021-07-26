@@ -112,13 +112,13 @@ The program uses an input file called 'input.in' that contain following key word
 |sgraft `int`             | segment number of graft | only used chaintype equal loop | 
 |nset_per_graft `int`     | number of graft | only used chaintype equal loop | 
 |gamma `real`             | angle between the none-orthogonal prism basis vectors, unit: radian | |
-| isRandom_pos_graft `logical`  | Displaces  grafting position by a random distance | .false. : regular |
+|isRandom_pos_graft `logical`  | Displaces  grafting position by a random distance | .false. : regular if not set|
 |                               |                         | .true. : irregular|
-|seed_graft 'int'              | Seed for graft point. Use in combination with isRandom_pos_graft | |
+|seed_graft 'int'              | Seed for graft point. Use in combination with isRandom_pos_graft | 1234 if not set |
 |                              | Different values produce different random patterns|  | 
-| isRandom_rot_loop `logical`  | Displacess rotation in loop in xy by a random angle | .false. : regular |
+|isRandom_rot_loop `logical`  | Displacess rotation in loop in xy by a random angle | .false. : regular if not set |
 |                              |                         | .true. : irregular|
-|seed_rot_loop 'int'           | Seed for rotation angle loop. Use in combination with isRandom_rot_loop | |
+|seed_rot_loop 'int'           | Seed for rotation angle loop. Use in combination with isRandom_rot_loop | 5678 if not set |
 |                              | Different values produce different angles|  | 
 | write_mc_chain `logical`          | if .true. writes MC chain to file  ||  
 |precondition `logical`    | if precondition==".true."  precondition | __.false.__ : default if not set |
@@ -146,7 +146,7 @@ The program uses an input file called 'input.in' that contain following key word
 
 ## Versioning
 
-version 1.4.1 07-11-2021
+version 1.4.2 07-23-2021
 
 ## Authors
 
