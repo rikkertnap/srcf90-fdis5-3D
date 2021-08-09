@@ -74,7 +74,7 @@ contains
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
         if(rank==0) then
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 do t=1,nsegtypes
@@ -130,7 +130,7 @@ contains
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
@@ -187,7 +187,7 @@ contains
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
         if(rank==0) then
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 !do t=1,nsegtypes
@@ -236,7 +236,7 @@ contains
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
 
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
@@ -290,7 +290,7 @@ contains
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
         if(rank==0) then
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(psi , nsize+1 , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -356,7 +356,7 @@ contains
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
@@ -408,7 +408,7 @@ contains
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
         if(rank==0) then
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(psi , nsize+1 , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -467,7 +467,7 @@ contains
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
@@ -522,7 +522,7 @@ contains
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
         if(rank==0) then
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(psi , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -571,7 +571,7 @@ contains
             FEconf_array(1)=FEconf_local
             Econf_array=0.0_dp
             Econf_array(1)=FEconf_local
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
@@ -640,7 +640,7 @@ contains
         tcfdis(3)=6
         
         if(rank==0) then
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(psi , nsize+1 , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -771,7 +771,7 @@ contains
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)

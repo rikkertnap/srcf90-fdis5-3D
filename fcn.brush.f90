@@ -76,7 +76,7 @@ contains
 
         if (rank.eq.0) then 
             flag_solver = 1      !  continue program  
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(flag_solver, 1, MPI_INTEGER,dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(x, neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -211,7 +211,7 @@ contains
             g=1  
             q(g)=local_q
 
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
@@ -225,7 +225,7 @@ contains
                 enddo
             enddo
            
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 g =int(source/nset_per_graft)+1 
                 do t=1,nsegtypes
@@ -336,7 +336,7 @@ contains
 
         if (rank.eq.0) then 
             flag_solver = 1      !  continue program  
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(flag_solver, 1, MPI_INTEGER,dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(x, neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -442,7 +442,7 @@ contains
             g=1  
             q(g)=local_q
 
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
@@ -456,7 +456,7 @@ contains
                 enddo
             enddo
            
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 g =int(source/nset_per_graft)+1 
                 do t=1,nsegtypes
@@ -567,7 +567,7 @@ contains
 
         if (rank.eq.0) then 
             flag_solver = 1      !  continue program  
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(flag_solver, 1, MPI_INTEGER,dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(x, neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -720,7 +720,7 @@ contains
             g=1  
             q(g)=local_q
             
-             do i=1, size-1
+             do i=1, numproc-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
@@ -734,7 +734,7 @@ contains
                 enddo
             enddo
            
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 g =int(source/nset_per_graft)+1 
                 do t=1,nsegtypes
@@ -873,7 +873,7 @@ contains
 
         if (rank.eq.0) then 
             flag_solver = 1      !  continue program  
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(flag_solver, 1, MPI_INTEGER,dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(x, neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -1018,7 +1018,7 @@ contains
             g=1  
             q(g)=local_q
 
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
@@ -1033,7 +1033,7 @@ contains
                 enddo
             enddo
            
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 g =int(source/nset_per_graft)+1 
                 do t=1,nsegtypes
@@ -1160,7 +1160,7 @@ contains
 
         if (rank.eq.0) then 
             flag_solver = 1      !  continue program  
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(flag_solver, 1, MPI_INTEGER,dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(x, neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -1395,7 +1395,7 @@ contains
             g=1  
             q(g)=local_q
 
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
@@ -1409,7 +1409,7 @@ contains
                 enddo
             enddo
  
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 g =int(source/nset_per_graft)+1 
                 do t=1,nsegtypes
@@ -1550,7 +1550,7 @@ contains
         
         if (rank.eq.0) then
             flag_solver = 1      !  continue program
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(flag_solver, 1,   MPI_INTEGER, dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(x,neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -1708,7 +1708,7 @@ contains
             g=1  
             q(g)=q_local
 
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(q_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
@@ -1721,7 +1721,7 @@ contains
                 rhopol(i,B)=rhopol_local(i,B)/q(1) ! polymer density 
             enddo
            
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 g =int(source/nset_per_graft)+1 
                 
@@ -1838,7 +1838,7 @@ contains
 
         if (rank.eq.0) then 
             flag_solver = 1      !  continue program  
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(flag_solver, 1, MPI_INTEGER,dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(x, neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -1925,7 +1925,7 @@ contains
             g=1  
             q(g)=local_q
 
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
@@ -1939,7 +1939,7 @@ contains
                 enddo
             enddo
            
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 g =int(source/nset_per_graft)+1 
                 do t=1,nsegtypes
@@ -2025,7 +2025,7 @@ contains
 
         if (rank.eq.0) then 
             flag_solver = 1      !  continue program  
-            do i = 1, size-1
+            do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(flag_solver, 1, MPI_INTEGER,dest, tag,MPI_COMM_WORLD,ierr)
                 call MPI_SEND(x, neqint , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -2114,7 +2114,7 @@ contains
             g=1  
             q(g)=local_q
  
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 call MPI_RECV(local_q, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
@@ -2128,7 +2128,7 @@ contains
                 enddo
             enddo
 
-            do i=1, size-1
+            do i=1, numproc-1
                 source = i
                 g =int(source/nset_per_graft)+1 
                 do t=1,nsegtypes

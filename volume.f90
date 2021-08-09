@@ -88,9 +88,9 @@ contains
         !  nset_per_graft = int(size/ngr)
         !  testing
         
-        if(ngr*nset_per_graft/=size) then
+        if(ngr*nset_per_graft/=numproc) then
             print*,"nset_per_graft test failed: exiting"
-            print*,"nset_per_graft=",nset_per_graft,"ngr=",ngr,"size=",size
+            print*,"nset_per_graft=",nset_per_graft,"ngr=",ngr,"numproc=",numproc
             stop
         endif
 

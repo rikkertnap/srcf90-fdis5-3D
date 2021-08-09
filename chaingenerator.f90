@@ -307,7 +307,7 @@ end subroutine
 subroutine read_chains_lammps_XYZ(info)
 
     !     .. variable and constant declaractions  
-    use mpivars, only : rank, size                                                                                     
+    use mpivars, only : rank, numproc                                                                                     
     use globals
     use chains
     use random
@@ -569,7 +569,7 @@ end subroutine read_chains_lammps_XYZ
 
 subroutine read_graftpts_lammps_trj(info)
 
-    use mpivars, only : rank, size
+    use mpivars, only : rank, numproc
     use parameters, only : unit_conv
     use myio, only : myio_err_chainsfile, myio_err_graft
     use myutils,  only : newunit
@@ -656,7 +656,7 @@ end subroutine
 subroutine read_chains_lammps_trj(info)
 
     !     .. variable and constant declaractions  
-    use mpivars, only : rank,size                                                                                   
+    use mpivars, only : rank, numproc                                                                                
     use globals
     use chains
     use random
@@ -961,7 +961,7 @@ end subroutine read_chains_lammps_trj
 subroutine read_chains_XYZ_loop(info)
 
     !     .. variable and constant declaractions  
-    use mpivars, only : rank,size                                                                                   
+    use mpivars, only : rank, numproc                                                                                 
     use globals
     use chains
     use random

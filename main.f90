@@ -60,13 +60,13 @@ program main
 
     call MPI_INIT(ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, rank, ierr)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, size, ierr)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, numproc, ierr)
 
     ! .. logfile
     
     write(istr,'(I4)')rank
-    if( size>9999) then 
-        text="Error: size to large for status file number"
+    if( numproc>9999) then 
+        text="Error: numproc to large for status file number"
         call print_to_log(LogUnit,text)
         print*,text
         call MPI_FINALIZE(ierr)
@@ -174,7 +174,7 @@ program main
                 call solver(x, xguess, tol_conv, fnorm, issolution)
                 call fcnptr(x, fvec, neq)
                 flag_solver = 0   ! stop nodes
-                do i = 1, size-1
+                do i = 1, numproc-1
                     dest =i
                     call MPI_SEND(flag_solver, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
                 enddo
@@ -205,7 +205,7 @@ program main
                     xstored(i)=x(i)
                 enddo
                 ! communicate new values of nz from master to  compute  nodes to advance while loop on compute nodes
-                do i = 1, size-1
+                do i = 1, numproc-1
                     dest = i
                     call MPI_SEND(nz, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
                 enddo
@@ -326,7 +326,7 @@ program main
                     call solver(x, xguess, tol_conv, fnorm, issolution)
                     call fcnptr(x, fvec, neq)
                     flag_solver = 0   ! stop nodes
-                    do i = 1, size-1
+                    do i = 1, numproc-1
                         dest =i
                         call MPI_SEND(flag_solver, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
                     enddo
@@ -374,7 +374,7 @@ program main
                      
                     
                     ! communicate new values of loop from head to compute nodes to advance while loop on compute nodes
-                    do i = 1, size-1
+                    do i = 1, numproc-1
                         dest = i
                         call MPI_SEND(loop%val, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)
                     enddo

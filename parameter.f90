@@ -220,7 +220,7 @@ contains
                 stop
         end select  
 
-        neqint =neq ! used for MPI func binding, MPI has no integer(8)
+        neqint = neq ! used for MPI func binding, MPI has no integer(8)
          
     end subroutine set_size_neq
 
