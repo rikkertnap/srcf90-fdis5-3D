@@ -50,9 +50,7 @@ program main
     real(dp), parameter :: loopeps = 1.0e-10_dp   
     real(dp), dimension(:),  pointer :: list
     real(dp), pointer :: list_val
-    real(dp) :: list_first, list_step
-    integer  :: nlist_elem, maxlist_elem, nlist_step
-
+    real(dp) :: list_first
 
 
     ! .. executable statements
@@ -294,16 +292,13 @@ program main
         deallocate(energychain_init)
         deallocate(indexchain_init) 
 
-      
+        list_first= list(1)
         loopstepsizebegin=loop%stepsize
-        list_val=list(1)                ! get value from array
-        nlist_elem=1
-        maxlist_elem=num
-        nlist_step=0
-        maxlist_step=99
 
-        do while (nlist_elem<=maxlist_elem .and. nlist_step<=maxlist_step )   ! loop over list items
 
+        do c=1,num                          ! loop over list items       
+   
+            list_val=list(c)                ! get value from array
             iter = 0                        ! iteration counter 
             loop%stepsize=loopstepsizebegin ! reset of loopstep size 
                                   
@@ -319,11 +314,9 @@ program main
                     (abs(loop%stepsize)>=loop%delta))
                 
                 isfirstguess=(loop%val==loopbegin) !abs(loop%val-loopbegin)<loopeps)
-                print*,"rank= ",rank
-                print*,"loop%val= ",loop%val,"isfirstguess= ",isfirstguess," list_val=", list_val 
-                print*,"nlist_elem= ",nlist_elem," list_step=",list_step
-                print*,"use_xstored=",use_xstored," isSolution=",isSolution
-
+               
+                !print*,"loop%val+",loop%val,"isfirstguess=",isfirstguess," list_val=", list_val
+                !print*,"use_xstored=",use_xstored
                 call init_vars_input()  ! sets up chem potentials
                 
                 flag_solver = 0
@@ -332,15 +325,12 @@ program main
                     call make_guess(x, xguess, isfirstguess,use_xstored,xstored)
                     call solver(x, xguess, tol_conv, fnorm, issolution)
                     call fcnptr(x, fvec, neq)
-
                     flag_solver = 0   ! stop nodes
                     do i = 1, numproc-1
                         dest =i
                         call MPI_SEND(flag_solver, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
                     enddo
-
                 else
-
                     flag_solver = 1
                     do while(flag_solver.eq.1)
                         flag_solver = 0
@@ -350,14 +340,24 @@ program main
                             call MPI_RECV(x, neqint, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)
                             call fcnptr(x, fvec, neq)
                         endif
-                    enddo    
+                    enddo
                 endif
 
                 call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf FEconf_entropy
 
                 if(rank==0) then
 
-                    if(isSolution) then
+                    if(.not.isSolution) then
+                        
+                        text="no solution: backstep" 
+                        call print_to_log(LogUnit,text)
+                        loop%stepsize=loop%stepsize/2.0d0   ! decrease increment
+                        loop%val=loop%val-loop%stepsize     ! step back
+                        do i=1,neq
+                            x(i)=xguess(i)
+                         enddo
+                    
+                    else 
 
                         call compute_vars_and_output()
                         if(isfirstguess) then
@@ -366,28 +366,11 @@ program main
                            enddo
                            use_xstored=.false.
                         endif
-                    
-
+                        
                         isfirstguess =.false.
                         loop%val=loop%val+loop%stepsize
-                    
-                    else if(abs(loop%val-loopbegin)>loopeps) then ! no solution and not first loop value
 
-                        text="no solution: backstep" 
-                        call print_to_log(LogUnit,text)
-                        loop%stepsize=loop%stepsize/2.0d0   ! decrease increment
-                        loop%val=loop%val-loop%stepsize     ! step back
-                        
-                        do i=1,neq
-                            x(i)=xguess(i)
-                        enddo
-                
-                    else 
-                        ! break while loop over loop%val  by making
-                        ! loop%stepsize smaller loop%delta
-            
-                        loop%stepsize = loop%delta/2.0_dp 
-                    endif
+                     endif
                      
                     
                     ! communicate new values of loop from head to compute nodes to advance while loop on compute nodes
@@ -406,82 +389,6 @@ program main
                 iter  = 0              ! reset of iteration counter
 
             enddo ! end while loop
-
-
-            print*,"rank=",rank," end inner while loop"
-
-            if(rank==0) then
-
-                if(isSolution.or. (abs(loop%val-loopbegin)>loopeps) )then 
-                    if(abs(list_val-list(nlist_elem))<loopeps) then 
-                        print*,"Hello 1 "
-                        if(nlist_elem<maxlist_elem) then ! prevents list exceed upper bond
-                            list_step = list(nlist_elem+1) - list(nlist_elem)
-                        endif    
-                        nlist_step = nlist_step + 1
-                        nlist_elem = nlist_elem + 1 ! advance element in input list values 
-                    else
-                        print*,"Hello 2 "
-                        if(nlist_elem<maxlist_elem) then ! prevents list exceed upper bond
-                            list_step = list(nlist_elem+1) - list_val
-                        endif
-                        !nlist_elem = nlist_elem + 1 ! orginal 
-                        nlist_step = nlist_step + 1
-
-                    endif        
-                    list_val=list_val+list_step                
-                else 
-                    if(nlist_elem>1) then     ! not first element list
-                        print*,"rank=",rank," Hello 3 "
-                        list_step = list_step/2.0_dp      
-                        nlist_step = nlist_step +1
-                        list_val = list_val-list_step  
-
-                    else if(nlist_elem==1) then 
-                        print*,"Hello 4 "   
-                        nlist_step = maxlist_step+1       ! break out while over list
-                        text="no solution first call of double while loop"
-                        call print_to_log(LogUnit,text)
-                        print*,text
-                    endif   
-
-                    do i=1,neq
-                        x(i)=xguess(i)
-                    enddo 
-                endif       
-
-                ! commucitate new values  from head to compute nodes
-                ! to advance while loop on compute nodes
-                !do i = 1, numproc-1
-                !    dest = i
-                !   
-                !    call MPI_SEND(list_val,   1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)
-                !    call MPI_SEND(list_step,  1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)
-                !    call MPI_SEND(nlist_elem, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
-                !    call MPI_SEND(nlist_step, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
-                         
-                !enddo
-
-            ! else
-                ! receive values
-                !source = 0
-                !call MPI_RECV(list_val,   1, MPI_DOUBLE_PRECISION, source, tag,MPI_COMM_WORLD,stat, ierr)
-                !call MPI_RECV(list_step,  1, MPI_DOUBLE_PRECISION, source, tag,MPI_COMM_WORLD,stat, ierr)
-                !call MPI_RECV(nlist_elem, 1, MPI_INTEGER, source, tag,MPI_COMM_WORLD,stat, ierr)
-                !call MPI_RECV(nlist_step, 1, MPI_INTEGER, source, tag,MPI_COMM_WORLD,stat, ierr)
-
-            endif
-
-            print*,"rank=",rank," Hello 5 "
-
-            call MPI_Barrier(MPI_COMM_WORLD, ierr) ! synchronize 
-
-            call MPI_Bcast(list_val,   1, MPI_DOUBLE_PRECISION, 0 ,MPI_COMM_WORLD, ierr)
-            call MPI_Bcast(list_step,  1, MPI_DOUBLE_PRECISION, 0 ,MPI_COMM_WORLD, ierr)
-            call MPI_Bcast(nlist_elem, 1, MPI_INTEGER, 0 ,MPI_COMM_WORLD, ierr)
-            call MPI_Bcast(nlist_step, 1, MPI_INTEGER, 0 ,MPI_COMM_WORLD, ierr)
-
-        
 
             use_xstored=.true.
 

@@ -9,10 +9,18 @@ module initxvector
 
 contains
 
+
+! Makes an inital guess vector xguess.
+! Order of assignment:
+! if flagstored present and true  : xguess => xstored
+! if flagstored false and isfirstguess true                 
+!                                 : xguess => init_guess(x,xguess)
+! else                            : xguess => x
+
+
 subroutine make_guess(x, xguess, isfirstguess, flagstored, xstored)
   
-    use globals, only : neq,neqmax,systype,bcflag,LEFT,RIGHT
-    use volume, only : nsurf 
+    use globals, only : neq
 
     real(dp), intent(in) :: x(:)          ! iteration vector 
     real(dp), intent(out) :: xguess(:)    ! guess volume fraction solvent and potential 
