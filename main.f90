@@ -47,7 +47,8 @@ program main
     integer :: iend , un_conf
     type (looplist), pointer :: loop
     real(dp) :: loopbegin,  loopstepsizebegin
-    real(dp), parameter :: loopeps = 1.0e-10_dp   
+    real(dp), parameter :: loopeps = 1.0e-10_dp 
+    real(dp), parameter :: listeps = 1.0e-7_dp   
     real(dp), dimension(:),  pointer :: list
     real(dp), pointer :: list_val
     real(dp) :: list_first, list_step
@@ -278,7 +279,7 @@ program main
 
         isfirstguess = .true.
         use_xstored = .false.         ! with both flags set false make_guess will set xguess equal to x
-        iter = 0                    ! iteration counter
+        iter = 0                      ! iteration counter
 
         if(loop%stepsize>0) then
             loop%val=loop%min
@@ -319,10 +320,10 @@ program main
                     (abs(loop%stepsize)>=loop%delta))
                 
                 isfirstguess=(loop%val==loopbegin) !abs(loop%val-loopbegin)<loopeps)
-                print*,"rank= ",rank
-                print*,"loop%val= ",loop%val,"isfirstguess= ",isfirstguess," list_val=", list_val 
-                print*,"nlist_elem= ",nlist_elem," list_step=",list_step
-                print*,"use_xstored=",use_xstored," isSolution=",isSolution
+               ! print*,"rank= ",rank
+               ! print*,"loop%val= ",loop%val,"isfirstguess= ",isfirstguess," list_val=", list_val 
+               ! print*,"nlist_elem= ",nlist_elem," list_step=",list_step
+               ! print*,"use_xstored=",use_xstored," isSolution=",isSolution
 
                 call init_vars_input()  ! sets up chem potentials
                 
@@ -408,71 +409,42 @@ program main
             enddo ! end while loop
 
 
-            print*,"rank=",rank," end inner while loop"
-
             if(rank==0) then
 
                 if(isSolution.or. (abs(loop%val-loopbegin)>loopeps) )then 
-                    if(abs(list_val-list(nlist_elem))<loopeps) then 
-                        print*,"Hello 1 "
+                    if(abs(list_val-list(nlist_elem))<listeps) then 
+                        
                         if(nlist_elem<maxlist_elem) then ! prevents list exceed upper bond
                             list_step = list(nlist_elem+1) - list(nlist_elem)
                         endif    
                         nlist_step = nlist_step + 1
                         nlist_elem = nlist_elem + 1 ! advance element in input list values 
                     else
-                        print*,"Hello 2 "
+                       
                         if(nlist_elem<maxlist_elem) then ! prevents list exceed upper bond
-                            list_step = list(nlist_elem+1) - list_val
+                            list_step = list(nlist_elem) - list_val
                         endif
-                        !nlist_elem = nlist_elem + 1 ! orginal 
                         nlist_step = nlist_step + 1
 
                     endif        
                     list_val=list_val+list_step                
                 else 
                     if(nlist_elem>1) then     ! not first element list
-                        print*,"rank=",rank," Hello 3 "
                         list_step = list_step/2.0_dp      
                         nlist_step = nlist_step +1
                         list_val = list_val-list_step  
 
                     else if(nlist_elem==1) then 
-                        print*,"Hello 4 "   
+ 
                         nlist_step = maxlist_step+1       ! break out while over list
                         text="no solution first call of double while loop"
                         call print_to_log(LogUnit,text)
                         print*,text
                     endif   
 
-                    do i=1,neq
-                        x(i)=xguess(i)
-                    enddo 
                 endif       
 
-                ! commucitate new values  from head to compute nodes
-                ! to advance while loop on compute nodes
-                !do i = 1, numproc-1
-                !    dest = i
-                !   
-                !    call MPI_SEND(list_val,   1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)
-                !    call MPI_SEND(list_step,  1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD,ierr)
-                !    call MPI_SEND(nlist_elem, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
-                !    call MPI_SEND(nlist_step, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
-                         
-                !enddo
-
-            ! else
-                ! receive values
-                !source = 0
-                !call MPI_RECV(list_val,   1, MPI_DOUBLE_PRECISION, source, tag,MPI_COMM_WORLD,stat, ierr)
-                !call MPI_RECV(list_step,  1, MPI_DOUBLE_PRECISION, source, tag,MPI_COMM_WORLD,stat, ierr)
-                !call MPI_RECV(nlist_elem, 1, MPI_INTEGER, source, tag,MPI_COMM_WORLD,stat, ierr)
-                !call MPI_RECV(nlist_step, 1, MPI_INTEGER, source, tag,MPI_COMM_WORLD,stat, ierr)
-
             endif
-
-            print*,"rank=",rank," Hello 5 "
 
             call MPI_Barrier(MPI_COMM_WORLD, ierr) ! synchronize 
 
