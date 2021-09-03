@@ -35,6 +35,9 @@ module myio
     real(dp), dimension(:), allocatable, target :: cMgCl2_array
     real(dp), dimension(:), allocatable, target :: cKCl_array
 
+    ! varialble for allow steps in between given salt concentrations
+    integer :: maxlist_step
+
     ! unit number
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xMg,un_xNaCl,un_xKCl
     integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q
@@ -55,6 +58,7 @@ module myio
     public :: myio_err_graft, myio_err_index, myio_err_conf, myio_err_nseg
     public :: num_cNaCl,num_cMgCl2, cNaCl_array,  cMgCl2_array, set_value_NaCl, set_value_MgCl2
     public :: num_cKCl,  cKCl_array, set_value_KCl
+    public :: maxlist_step
 
 contains
 
@@ -2180,7 +2184,12 @@ subroutine make_filename_label(fnamelabel)
 
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr))
-        write(rstr,'(F5.3)')cNaCl
+     
+        if(cNaCl>=0.001_dp) then
+            write(rstr,'(F5.3)')cNaCl
+        else
+            write(rstr,'(ES9.2E2)')cNaCl
+        endif
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
 
         if(cKCl/=0.0_dp) then
@@ -2223,7 +2232,11 @@ subroutine make_filename_label(fnamelabel)
 
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr))
-        write(rstr,'(F5.3)')cNaCl
+        if(cNaCl>=0.001_dp) then
+            write(rstr,'(F5.3)')cNaCl
+        else
+            write(rstr,'(ES9.2E2)')cNaCl
+        endif
         fnamelabel=trim(fnamelabel)//"cNaCl"//trim(adjustl(rstr))
 
         if(cKCl/=0.0_dp) then
