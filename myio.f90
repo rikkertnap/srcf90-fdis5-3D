@@ -2233,7 +2233,11 @@ subroutine make_filename_label(fnamelabel)
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr))
         if(cNaCl>=0.001_dp) then
-            write(rstr,'(F5.3)')cNaCl
+            if(cNaCl>=0.01) then
+                write(rstr,'(F5.3)')cNaCl
+            else
+                write(rstr,'(F6.4)')cNaCl
+            endif  
         else
             write(rstr,'(ES9.2E2)')cNaCl
         endif
@@ -2241,7 +2245,11 @@ subroutine make_filename_label(fnamelabel)
 
         if(cKCl/=0.0_dp) then
             if(cKCl>=0.001_dp) then
-                write(rstr,'(F5.3)')cKCl
+                if(cKCl>=0.01) then
+                    write(rstr,'(F5.3)')cKCl
+                else
+                    write(rstr,'(F6.4)')cKCl
+                endif  
             else
                 write(rstr,'(ES9.2E2)')cKCl
             endif
@@ -2250,7 +2258,11 @@ subroutine make_filename_label(fnamelabel)
 
         if(cCaCl2/=0.0_dp) then
             if(cCaCl2>=0.001) then
-                write(rstr,'(F5.3)')cCaCl2
+                if(cCaCl2>=0.01) then
+                    write(rstr,'(F5.3)')cCaCl2
+                else
+                    write(rstr,'(F6.4)')cCaCl2
+                endif  
             elseif(cCaCl2>0.0) then
                 write(rstr,'(ES9.2E2)')cCaCl2
             else
@@ -2260,7 +2272,11 @@ subroutine make_filename_label(fnamelabel)
         endif
         if(cMgCl2/=0.0_dp) then
             if(cMgCl2>=0.001) then
-                write(rstr,'(F5.3)')cMgCl2
+                if(cMgCl2>=0.01) then
+                    write(rstr,'(F5.3)')cMgCl2
+                else
+                    write(rstr,'(F6.4)')cMgCl2
+                endif  
             elseif(cMgCl2>0.0) then
                 write(rstr,'(ES9.2E2)')cMgCl2
             else
