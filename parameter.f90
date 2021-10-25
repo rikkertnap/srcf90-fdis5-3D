@@ -109,6 +109,8 @@
 
     character(len=15) :: chainmethod  ! method of generating chains ="MC" or "FILE" 
     character(len=8)  :: chaintype    ! type of chain: diblock,alt
+    character(len=8)  :: chaintopol   ! topology of chain ="linear" or "branched" or "loop"
+
     integer :: readinchains           ! nunmber of used/readin chains
     integer :: chainperiod            ! peridociy of repeat of A or B block 
     integer :: maxnchainsrotations    ! number of rotations read in from input.in, assigned to maxnchain in chaingenerator default 12  

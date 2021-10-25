@@ -26,6 +26,7 @@ module myio
     integer, parameter ::  myio_err_conf      = 19
     integer, parameter ::  myio_err_nseg      = 20
     integer, parameter ::  myio_err_inputlabel = 21
+    integer, parameter ::  myio_err_chaintopol = 22
 
     integer :: num_cNaCl   ! number of salt concentration considered
     integer :: num_cMgCl2
@@ -74,7 +75,7 @@ subroutine read_inputfile(info)
     ! .. local arguments
 
     integer :: info_sys, info_bc, info_run, info_geo, info_meth, info_chaintype, info_combi, info_VdWeps
-    integer :: info_chainmethod, info_dielect
+    integer :: info_chainmethod, info_chaintopol, info_dielect
     character(len=8) :: fname
     integer :: ios,un_input  ! un = unit number
     character(len=100) :: buffer, label
@@ -117,9 +118,9 @@ subroutine read_inputfile(info)
     
     ! init surface charge
     sigmaSurfL = 0.0_dp
-    sigmaSurfL = 0.0_dp
+    sigmaSurfR = 0.0_dp
 
-    ios=0
+    ios = 0
     line = 0
 
     ! ios<0 : if an end of record condition is encountered or if an end of file condition was detected.
@@ -154,6 +155,8 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) chainmethod
             case ('chaintype')
                 read(buffer,*,iostat=ios) chaintype
+            case ('chaintopol')
+                read(buffer,*,iostat=ios) chaintopol
             case ('isChainEnergyFile')
                     read(buffer,*,iostat=ios) isChainEnergyFile
             case ('isEnergyShift')
@@ -359,6 +362,12 @@ subroutine read_inputfile(info)
     call check_value_chaintype(chaintype,info_chaintype)
     if (info_chaintype == myio_err_chaintype) then
         if (present(info)) info = info_chaintype
+        return
+    endif
+
+    call check_value_chaintopol(chaintopol,info_chaintopol)
+    if (info_chaintopol == myio_err_chaintopol) then
+        if (present(info)) info = info_chaintopol
         return
     endif
 
@@ -811,6 +820,40 @@ subroutine check_value_chainmethod(chainmethod,info)
     endif
 
 end subroutine check_value_chainmethod
+
+
+ subroutine check_value_chaintopol(chaintopol,info)
+
+        character(len=8), intent(in) :: chaintopol
+        integer, intent(out),optional :: info
+
+        character(len=8) :: chaintopolstr(3) 
+        integer :: i
+        logical :: flag
+
+        ! permissible values of chaintopol                                                                                        
+
+        chaintopolstr(1)="linear"
+        chaintopolstr(2)="loop"
+        chaintopolstr(3)="branched"  ! not include branched yet ..
+        
+        flag=.FALSE.
+
+        do i=1,2
+            if(chaintopol==chaintopolstr(i)) flag=.TRUE.
+        enddo
+
+        if (present(info)) info = 0
+
+        if (flag.eqv. .FALSE.) then
+            print*,"Error: value of chaintopol is not permissible"
+            print*,"chaintopol = ",chaintopol
+            if (present(info)) info = myio_err_chaintopol
+            return
+        end if
+
+    end subroutine check_value_chaintopol
+
 
 
 subroutine check_value_method(method,info)
