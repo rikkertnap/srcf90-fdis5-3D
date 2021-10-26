@@ -1403,15 +1403,10 @@ subroutine read_chains_XYZ_linear(info)
     ! .. open file   
 
     rankfile=mod(rank,nset_per_graft)  
-
-    print*,"rank=",rank,"rank_file=",rankfile,"nset_per_graft=",nset_per_graft                                                                                  
     
     write(istr,'(I4)')rankfile
     fname='traj.'//trim(adjustl(istr))//'.xyz'
     
-    print*,"rank=",rank," ",fname
-
-
     inquire(file=fname,exist=exist)
     if(exist) then
         open(unit=newunit(un),file=fname,status='old',iostat=ios)
@@ -1466,8 +1461,6 @@ subroutine read_chains_XYZ_linear(info)
     xcm= Lx/2.0_dp          ! center x-y plane
     ycm= Ly/2.0_dp
     zcm= 0.0_dp
-
-    print*,"scalefactor=",scalefactor
 
     do while ((conf<=max_confor).and.(ios==0))
     

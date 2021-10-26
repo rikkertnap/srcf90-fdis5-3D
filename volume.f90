@@ -35,6 +35,7 @@ module volume
     integer :: ngry                 ! total number of graft points along y-axis                                                       
     logical :: isRandom_pos_graft   ! true random position, false regual pattern
     integer :: seed_graft           ! seed for graft points 
+    real(dp) :: scale_ran_step      ! scale random postition,minimum value =1.0 =half ngr_freq
     integer :: sgraft               ! item number of graft point to which loop is attached 
     integer :: nset_per_graft       ! number of confomation set to read in graft point
     real(dp), dimension(:,:), allocatable :: position_graft
@@ -277,9 +278,9 @@ contains
             seed=seed_graft         ! randomize
 
             do ig=1,ngr          
-                rnd = (rands(seed)-0.5_dp)*ngr_freq !/2.0_dp
+                rnd = (rands(seed)-0.5_dp)*ngr_freq/scale_ran_step
                 position_graft(ig,1) = position_graft(ig,1) + delta*rnd
-                rnd = (rands(seed)-0.5_dp)*ngr_freq !/2.0_dp
+                rnd = (rands(seed)-0.5_dp)*ngr_freq/scale_ran_step
                 position_graft(ig,2) = position_graft(ig,2) + delta*rnd
             enddo
         

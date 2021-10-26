@@ -83,7 +83,7 @@ subroutine read_inputfile(info)
     integer :: line
     logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha,  isSet_EnergyShift
     logical :: isSet_maxfkfunevals, isSet_maxniter, isSet_isRandom_rot_loop, isSet_isRandom_pos_graft
-    logical :: isSet_seed_graft,isSet_seed_rot_loop
+    logical :: isSet_seed_graft,isSet_seed_rot_loop, isSet_scale_ran_step
 
     if (present(info)) info = 0
 
@@ -109,6 +109,7 @@ subroutine read_inputfile(info)
     isSet_isRandom_pos_graft=.true.
     isSet_seed_graft = .false.
     isSet_seed_rot_loop =.false.
+    isSet_scale_ran_step=.false.
 
     ! default concentrations
     cKCl=0.0_dp
@@ -262,6 +263,9 @@ subroutine read_inputfile(info)
             case ('seed_graft')
                 read(buffer,*,iostat=ios) seed_graft
                 isSet_seed_graft=.true.
+            case ('scale_ran_step')
+                read(buffer,*,iostat=ios) scale_ran_step
+                isSet_scale_ran_step=.true.    
             case ('isRandom_rot_loop')
                 read(buffer,*,iostat=ios) isRandom_rot_loop
                 isSet_isRandom_rot_loop=.true.
@@ -401,8 +405,7 @@ subroutine read_inputfile(info)
     call set_value_logical_var(isRandom_rot_loop,isSet_isRandom_rot_loop,.false.)
     call set_value_int_var(seed_graft,isSet_seed_graft,1234)
     call set_value_int_var(seed_rot_loop,isSet_seed_rot_loop,5678)
-
-
+    call set_value_double_var(scale_ran_step,isSet_scale_ran_step,1.25_dp)
 
     call set_value_maxfkfunevals(maxfkfunevals,isSet_maxfkfunevals)
     call set_value_maxniter(maxniter,isSet_maxniter)
@@ -1167,6 +1170,16 @@ subroutine set_value_int_var(var,isSet_var,default_value_var)
     if(.not.isSet_var) var=default_value_var! default value
 
 end subroutine set_value_int_var
+
+subroutine set_value_double_var(var,isSet_var,default_value_var)
+
+    real(dp), intent(inout) :: var
+    logical, intent(in) :: isSet_var
+    real(dp), intent(in) :: default_value_var
+
+    if(.not.isSet_var) var=default_value_var ! default value
+
+end subroutine set_value_double_var
 
 
 subroutine output()
