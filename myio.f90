@@ -394,21 +394,27 @@ subroutine read_inputfile(info)
     call set_value_isVdWintEne(systype, isVdWintEne)
     call set_value_nsegtypes(nsegtypes,chaintype,systype,info)
 
-    !  .. set input values: use of default or based on input.in
-
-    call set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
-    call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
-    call set_value_precondition(precondition,isSet_precondition)
-    call set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
-
+    !  .. set input values: use of default if not set in input.in
+    
+    call set_value_int_var(maxnchainsrotations,isSet_maxnchains,12)
+    call set_value_int_var(maxnchainsrotationsxy,isSet_maxnchainsxy,1)
+    call set_value_logical_var(precondition,isSet_precondition,.false.)
+    call set_value_logical_var(isEnergyShift,isSet_EnergyShift,.false.)
     call set_value_logical_var(isRandom_pos_graft,isSet_isRandom_pos_graft,.false.)
     call set_value_logical_var(isRandom_rot_loop,isSet_isRandom_rot_loop,.false.)
     call set_value_int_var(seed_graft,isSet_seed_graft,1234)
     call set_value_int_var(seed_rot_loop,isSet_seed_rot_loop,5678)
     call set_value_double_var(scale_ran_step,isSet_scale_ran_step,1.25_dp)
+    call set_value_int_var(maxfkfunevals,isSet_maxfkfunevals,1000)
+    call set_value_int8_var(maxniter,isSet_maxniter,int(1000,8))
 
-    call set_value_maxfkfunevals(maxfkfunevals,isSet_maxfkfunevals)
-    call set_value_maxniter(maxniter,isSet_maxniter)
+    !call set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
+    !call set_value_precondition(precondition,isSet_precondition)
+    !call set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
+    !call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
+    !call set_value_maxfkfunevals(maxfkfunevals,isSet_maxfkfunevals)
+    !call set_value_maxniter(maxniter,isSet_maxniter)
+    
 
     ! after set_value_isVdW
     call check_value_VdWeps(systype,isVdW,info_VdWeps)
@@ -1109,15 +1115,15 @@ subroutine set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
 end subroutine set_value_maxnchainsxy
 
 
-subroutine set_value_precondition(precondition,isSet_precondition)
+! subroutine set_value_precondition(precondition,isSet_precondition)
 
-    logical, intent(inout) :: precondition
-    logical, intent(in)  :: isSet_precondition
+!     logical, intent(inout) :: precondition
+!     logical, intent(in)  :: isSet_precondition
 
-    if(.not.isSet_precondition) precondition=.false. ! default value
+!     if(.not.isSet_precondition) precondition=.false. ! default value
 
 
-end subroutine set_value_precondition
+! end subroutine set_value_precondition
 
 
 subroutine set_value_maxniter(maxniter,isSet_maxniter)
@@ -1142,14 +1148,15 @@ end subroutine set_value_maxfkfunevals
 
 
 
-subroutine set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
+! subroutine set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
 
-    logical, intent(inout) :: isEnergyShift
-    logical, intent(in)  :: isSet_EnergyShift
+!     logical, intent(inout) :: isEnergyShift
+!     logical, intent(in)  :: isSet_EnergyShift
 
-    if(.not.isSet_EnergyShift) isEnergyShift=.false. ! default value
+!     if(.not.isSet_EnergyShift) isEnergyShift=.false. ! default value
 
-end subroutine set_value_isEnergyShift
+! end subroutine set_value_isEnergyShift
+
 
 subroutine set_value_logical_var(var,isSet_var,default_value_var)
 
@@ -1170,6 +1177,16 @@ subroutine set_value_int_var(var,isSet_var,default_value_var)
     if(.not.isSet_var) var=default_value_var! default value
 
 end subroutine set_value_int_var
+
+subroutine set_value_int8_var(var,isSet_var,default_value_var)
+
+    integer(8), intent(inout) :: var
+    logical, intent(in) :: isSet_var
+    integer(8), intent(in) :: default_value_var
+
+    if(.not.isSet_var) var=default_value_var! default value
+
+end subroutine set_value_int8_var
 
 subroutine set_value_double_var(var,isSet_var,default_value_var)
 

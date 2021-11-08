@@ -1034,12 +1034,12 @@ subroutine read_chains_XYZ_loop(info)
         print*,'traj.rank.xyz file does not exit'
         info = myio_err_chainsfile
         return
-    end if
+    endif
     if(ios >0 ) then
         print*, 'Error opening file : iostat =', ios
         info = myio_err_chainsfile
         return
-    end if
+    endif
 
     if(isChainEnergyFile) then
         write(istr,'(I4)')rankfile
@@ -1052,13 +1052,13 @@ subroutine read_chains_XYZ_loop(info)
             print*,text
             info = myio_err_energyfile
             return
-        end if
+        endif
         if(ios >0 ) then
             print*, 'Error opening file : iostat =', ios
             info = myio_err_energyfile
             return
-        end if
-    end if    
+        endif
+    endif    
 
 
     conf=1                    ! counter for conformations                                                           
@@ -1091,15 +1091,15 @@ subroutine read_chains_XYZ_loop(info)
                 call print_to_log(LogUnit,text)
                 info=myio_err_nseg 
                 return
-            end if    
-        end if
+            endif    
+        endif
     
         do s=1,nseg              ! .. read form  trajecotory file
             read(un,*,iostat=ios)xc,yc,zc
             xseg(1,s) = xc*scalefactor 
             xseg(2,s) = yc*scalefactor  
             xseg(3,s) = zc*scalefactor  
-        end do
+        enddo
      
         if(isChainEnergyFile) read(un_ene,*,iostat=ios)energy
 
@@ -1111,7 +1111,7 @@ subroutine read_chains_XYZ_loop(info)
                 chain(1,s) = xseg(1,s)-xgraftloop(1,1) 
                 chain(2,s) = xseg(2,s)-xgraftloop(2,1)  
                 chain(3,s) = xseg(3,s)-xgraftloop(3,1) 
-            end do
+            enddo
   
             select case (geometry)
             case ("cubic")
@@ -1129,7 +1129,7 @@ subroutine read_chains_XYZ_loop(info)
                         xp(s)=  chain(1,s)*cos(theta)+chain(2,s)*sin(theta) + xpt
                         yp(s)= -chain(1,s)*sin(theta)+chain(2,s)*cos(theta) + ypt
                         zp(s)=  chain(3,s)                                  
-                    end do 
+                    enddo 
                
                     do s=1,nseg
 
@@ -1154,9 +1154,9 @@ subroutine read_chains_XYZ_loop(info)
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                             info= myio_err_index
                             return
-                        end if
+                        endif
                         
-                    end do
+                    enddo
                     
                     energychain_init(conf)=energy
 
@@ -1277,11 +1277,11 @@ subroutine read_graftpts_xyz_loop(info)
     character(len=25) :: fname
     integer :: ios 
     real(dp) :: xc,yc,zc          
-    integer :: ix,iy,iz,un,s, i,t
+    integer :: un,s, t
     integer :: rankfile
     integer :: item,moltype,nsegfile,idatom
     character(len=30) :: istr,str
-    real(dp) :: xbox0,xbox1,scalefactor
+    real(dp) :: scalefactor
     logical :: exist, isGraftItem
 
     ! .. executable statements 
@@ -1330,6 +1330,8 @@ subroutine read_graftpts_xyz_loop(info)
     end if
         
 end subroutine
+
+
 
 ! Reads confomations from a file called traj.xyz
 ! Format repeated lammps trajectory file 
@@ -1396,9 +1398,8 @@ subroutine read_chains_XYZ_linear(info)
 
     ! get location graft points linear
 
-    xgraftlinear(1)=0.0_dp
-    xgraftlinear(2)=0.0_dp 
-    xgraftlinear(3)=0.0_dp
+    call read_graftpts_xyz_linear(info)
+    if(info/=0) return
 
     ! .. open file   
 
@@ -1447,7 +1448,6 @@ subroutine read_chains_XYZ_linear(info)
     scalefactor=unit_conv
     energy=0.0_dp
 
-    maxattempts=72            ! maximum number of attempts to rotate conf
     seed=435672               ! seed for random number generator                                                                               
     maxnchains= maxnchainsrotations  ! maximum number of rotation conf                                                                  
     rotmax=maxnchains
@@ -1458,9 +1458,6 @@ subroutine read_chains_XYZ_linear(info)
     Lz= nz*delta            ! maximum height box 
     Lx= nx*delta            ! maximum width box 
     Ly= ny*delta            ! maximum depth box 
-    xcm= Lx/2.0_dp          ! center x-y plane
-    ycm= Ly/2.0_dp
-    zcm= 0.0_dp
 
     do while ((conf<=max_confor).and.(ios==0))
     
@@ -1494,7 +1491,7 @@ subroutine read_chains_XYZ_linear(info)
                 chain(2,s) = xseg(2,s)-xgraftlinear(2)  
                 chain(3,s) = xseg(3,s)-xgraftlinear(3) 
             end do
-  
+            
             select case (geometry)
             case ("cubic")
 
@@ -1503,62 +1500,47 @@ subroutine read_chains_XYZ_linear(info)
                 xpt =  position_graft(g,1)    ! position of graft point
                 ypt =  position_graft(g,2)  
 
-                do rot=1,rotmax        
-                 
-                    nchain=1
-                    is_positive_rot=.false.
+                do ntheta=1,maxntheta         ! rotation in xy-plane and translation to graft location of xy-plane
 
-                    do while ((is_positive_rot.eqv..false.).and.(nchain.lt.maxattempts))
-                        is_positive_rot=rotationZcorr3(chain,chain_rot,nseg-1) 
-                        nchain=nchain+1
-                    end do
+                    theta=theta_array(ntheta,g)
 
-                    if(is_positive_rot) then
+                    do s=1,nseg
+                        xp(s)=  chain_rot(1,s)*cos(theta)+chain_rot(2,s)*sin(theta) + xpt
+                        yp(s)= -chain_rot(1,s)*sin(theta)+chain_rot(2,s)*cos(theta) + ypt
+                        zp(s)=  chain_rot(3,s)                                  
+                    enddo 
+               
+                    do s=1,nseg
 
-                        do ntheta=1,maxntheta         ! rotation in xy-plane and translation to graft location of xy-plane
+                        x(s) = pbc(xp(s),Lx) ! periodic boundary conditions in x and y direction
+                        y(s) = pbc(yp(s),Ly)
+                        z(s) = zp(s)         ! no pbc in z- direction 
 
-                            theta=theta_array(ntheta,g)
-
-                            do s=1,nseg
-                                xp(s)=  chain_rot(1,s)*cos(theta)+chain_rot(2,s)*sin(theta) + xpt
-                                yp(s)= -chain_rot(1,s)*sin(theta)+chain_rot(2,s)*cos(theta) + ypt
-                                zp(s)=  chain_rot(3,s)                                  
-                            end do 
-                       
-                            do s=1,nseg
-
-                                x(s) = pbc(xp(s),Lx) ! periodic boundary conditions in x and y direction
-                                y(s) = pbc(yp(s),Ly)
-                                z(s) = zp(s)         ! no pbc in z- direction 
-
-                                ! transforming form real- to lattice coordinates                 
-                                xi = int(x(s)/delta)+1
-                                yi = int(y(s)/delta)+1
-                                zi = int(z(s)/delta)+1
-                                    
-                                call linearIndexFromCoordinate(xi,yi,zi,idx)
-                                    
-                                indexchain_init(s,conf) = idx
-
-                                if(idx<=0.or.idx>nsize) then   
-
-                                    text="Conformation outside box:"
-                                    call print_to_log(LogUnit,text)  
-                                    print*,text                          
-                                    print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
-                                    info= myio_err_index
-                                    return 
-                                endif
-                                
-                            enddo
+                        ! transforming form real- to lattice coordinates                 
+                        xi = int(x(s)/delta)+1
+                        yi = int(y(s)/delta)+1
+                        zi = int(z(s)/delta)+1
                             
-                            energychain_init(conf)=energy
+                        call linearIndexFromCoordinate(xi,yi,zi,idx)
+                            
+                        indexchain_init(s,conf) = idx
 
-                            conf=conf+1   
+                        if(idx<=0.or.idx>nsize) then   
+
+                            text="Conformation outside box:"
+                            call print_to_log(LogUnit,text)  
+                            print*,text                          
+                            print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                            info= myio_err_index
+                            return 
+                        endif
                         
-                        enddo ! .. rotation xy 
+                    enddo
+                    
+                    energychain_init(conf)=energy
 
-                    endif  
+                    conf=conf+1   
+                
 
                 enddo   ! .. rotation 
                         
@@ -1570,67 +1552,55 @@ subroutine read_chains_XYZ_linear(info)
                 ypt =  position_graft(g,2) 
 
 
-                do rot=1,rotmax        
-                 
-                    nchain=1
-                    is_positive_rot=.false.
+                do ntheta=1,maxntheta         ! rotation in xy-plane and translation to center of xy-plane
 
-                    do while ((is_positive_rot.eqv..false.).and.(nchain.lt.maxattempts))
-                        is_positive_rot=rotationZcorr3(chain,chain_rot,nseg-1) 
-                        nchain=nchain+1
-                    enddo
+                    theta=theta_array(ntheta,g)
 
-                    if(is_positive_rot) then 
+                    do s=1,nseg
+                        xp(s)=  chain(1,s)*cos(theta)+chain(2,s)*sin(theta) + xpt
+                        yp(s)= -chain(1,s)*sin(theta)+chain(2,s)*cos(theta) + ypt
+                        zp(s)=  chain(3,s)   !+ zcm =  0                                 
+                    enddo 
+               
+                    do s=1,nseg
 
-                        do ntheta=1,maxntheta         ! rotation in xy-plane and translation to center of xy-plane
+                        ! .. transformation to prism coordinates 
+                        xpp(s) = ut(xp(s),yp(s))
+                        ypp(s) = vt(xp(s),yp(s))
 
-                            theta=theta_array(ntheta,g)
+                        x(s) = pbc(xpp(s),Lx) ! .. periodic boundary conditions in x and y direction
+                        y(s) = pbc(ypp(s),Ly)
+                        z(s) = zp(s)          ! .. no pbc  in z- direction 
 
-                            do s=1,nseg
-                                xp(s)=  chain(1,s)*cos(theta)+chain(2,s)*sin(theta) + xpt
-                                yp(s)= -chain(1,s)*sin(theta)+chain(2,s)*cos(theta) + ypt
-                                zp(s)=  chain(3,s)   !+ zcm =  0                                 
-                            end do 
-                       
-                            do s=1,nseg
-
-                                ! .. transformation to prism coordinates 
-                                xpp(s) = ut(xp(s),yp(s))
-                                ypp(s) = vt(xp(s),yp(s))
-
-                                x(s) = pbc(xpp(s),Lx) ! .. periodic boundary conditions in x and y direction
-                                y(s) = pbc(ypp(s),Ly)
-                                z(s) = zp(s)          ! .. no pbc  in z- direction 
-
-                                ! .. transforming form real- to lattice coordinates                 
-                                xi = int(x(s)/delta)+1
-                                yi = int(y(s)/delta)+1
-                                zi = int(z(s)/delta)+1
-                                    
-                                call linearIndexFromCoordinate(xi,yi,zi,idx)
-                                    
-                                indexchain_init(s,conf) = idx
-
-                                if(idx<=0.or.idx>nsize) then    
-                                    text="Conformation outside box:"
-                                    call print_to_log(LogUnit,text)  
-                                    print*,text                          
-                                    print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
-                                    info= myio_err_index
-                                    return
-                                end if
-                                
-                            end do
+                        ! .. transforming form real- to lattice coordinates                 
+                        xi = int(x(s)/delta)+1
+                        yi = int(y(s)/delta)+1
+                        zi = int(z(s)/delta)+1
                             
-                            energychain_init(conf)=energy
+                        call linearIndexFromCoordinate(xi,yi,zi,idx)
+                            
+                        indexchain_init(s,conf) = idx
 
-                            conf=conf+1   
+                        if(idx<=0.or.idx>nsize) then    
+                            text="Conformation outside box:"
+                            call print_to_log(LogUnit,text)  
+                            print*,text                          
+                            print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                            info= myio_err_index
+                            return
+                        endif
                         
-                        end do ! .. rotation
-                    end if
-                end do            
+                    enddo
+                    
+                    energychain_init(conf)=energy
+
+                    conf=conf+1   
+                
+                enddo ! .. rotation
+                    
 
             case default
+
                 text="Error: in make_chains_XYZ_linear geometry not cubic or prism: stopping program"
                 call print_to_log(LogUnit,text)
                 info = myio_err_geometry
@@ -1638,9 +1608,9 @@ subroutine read_chains_XYZ_linear(info)
                     
             end select
 
-        end if   ! read 
+        endif   ! read 
 
-    end do       ! end while loop                                                                                                          
+    enddo       ! end while loop                                                                                                          
     ! end chains generation    
     
     conf=conf-1  ! lower by one  
@@ -1672,6 +1642,67 @@ subroutine read_chains_XYZ_linear(info)
 
 end subroutine read_chains_XYZ_linear
 
+subroutine read_graftpts_XYZ_linear(info)
+
+    use mpivars, only : rank
+    use parameters, only : unit_conv
+    use myio, only : myio_err_chainsfile, myio_err_graft
+    use myutils,  only : newunit
+    use volume, only : sgraft,nset_per_graft  
+
+    ! .. argument
+
+    integer, intent(out) :: info
+
+    ! .. local variables
+
+    character(len=25) :: fname
+    integer :: ios, un, item
+    real(dp) :: xc,yc,zc          
+    integer :: rankfile
+    character(len=30) :: istr,str
+    real(dp) :: scalefactor
+    logical :: exist
+
+    ! .. executable statements 
+    info=0
+
+    !. . open file    
+    rankfile=mod(rank,nset_per_graft)                                                                                            
+    write(istr,'(I4)')rankfile
+    fname='traj-graft.'//trim(adjustl(istr))//'.xyz'
+    inquire(file=fname,exist=exist)
+    if(exist) then
+        open(unit=newunit(un),file=fname,status='old',iostat=ios)
+    else
+        print*,'traj-graft.rank.xyz file does not exit'
+        info = myio_err_chainsfile
+        return
+    endif
+    if(ios >0 ) then
+        print*, 'Error opening file : iostat =', ios
+        info = myio_err_chainsfile
+        return
+    endif
+
+    ! read preamble/header
+   
+    scalefactor=unit_conv
+    
+    read(un,*,iostat=ios)item,xc,yc,zc
+    xgraftlinear(1)=xc*scalefactor
+    xgraftlinear(2)=yc*scalefactor
+    xgraftlinear(3)=zc*scalefactor    
+    
+
+    close(un)
+
+    if(item/=1) then
+        print*,'Error read_graftpts_xyz_linear: segement number not 1 in traj file.'
+        info = myio_err_graft
+    endif
+        
+end subroutine read_graftpts_XYZ_linear
 
 
 ! post: isAmonomer set 
