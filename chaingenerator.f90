@@ -1505,9 +1505,9 @@ subroutine read_chains_XYZ_linear(info)
                     theta=theta_array(ntheta,g)
 
                     do s=1,nseg
-                        xp(s)=  chain_rot(1,s)*cos(theta)+chain_rot(2,s)*sin(theta) + xpt
-                        yp(s)= -chain_rot(1,s)*sin(theta)+chain_rot(2,s)*cos(theta) + ypt
-                        zp(s)=  chain_rot(3,s)                                  
+                        xp(s)=  chain(1,s)*cos(theta)+chain(2,s)*sin(theta) + xpt
+                        yp(s)= -chain(1,s)*sin(theta)+chain(2,s)*cos(theta) + ypt
+                        zp(s)=  chain(3,s)                                  
                     enddo 
                
                     do s=1,nseg
