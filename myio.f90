@@ -2363,7 +2363,7 @@ subroutine make_filename_label(fnamelabel)
 
         if(runtype=="rangepKd") then
             if(pKd%val<0) then
-                write(rstr,'(F5.2)')pKd%val
+                write(rstr,'(F6.3)')pKd%val
             else
                 write(rstr,'(F5.3)')pKd%val
             endif
