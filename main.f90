@@ -233,7 +233,9 @@ program main
         else if(runtype=="rangecpro") then 
             loop => cpro
         else if (runtype=="rangepKd") then
-            loop => pKd   
+            loop => pKd  
+        else if (runtype=="rangedeltaGd") then
+            loop => deltaGd   
         else if(runtype=="rangeVdWeps") then 
             loop => VdWscale    
         else
@@ -242,7 +244,7 @@ program main
 
          ! .. select variable with which list_array to associate
 
-        if (runtype=="inputMgpH".or.runtype=="rangepKd".or.runtype=="rangeVdWeps") then
+        if (runtype=="inputMgpH".or.runtype=="rangepKd".or.runtype=="rangeVdWeps".or.runtype=="rangedeltaGd") then
             call set_value_MgCl2(runtype,info)
             if(info/=0) then
                 print*,"Error in input file: info = ",info," : end program."

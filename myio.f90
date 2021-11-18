@@ -305,6 +305,16 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) pKd%stepsize
             case ('pKd%delta')
                 read(buffer,*,iostat=ios) pKd%delta
+            case ('deltaGd%val')
+                read(buffer,*,iostat=ios) deltaGd%val
+            case ('deltaGd%min')
+                read(buffer,*,iostat=ios) deltaGd%min
+            case ('deltaGd%max')
+                read(buffer,*,iostat=ios) deltaGd%max
+            case ('deltaGd%stepsize')
+                read(buffer,*,iostat=ios) deltaGd%stepsize
+            case ('deltaGd%delta')
+                read(buffer,*,iostat=ios) deltaGd%delta    
             case default
                 if(pos>1) then
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -396,8 +406,8 @@ subroutine read_inputfile(info)
 
     !  .. set input values: use of default if not set in input.in
     
-    call set_value_int_var(maxnchainsrotations,isSet_maxnchains,12)
-    call set_value_int_var(maxnchainsrotationsxy,isSet_maxnchainsxy,1)
+    call set_value_int_var(maxnchainsrotations,isSet_maxnchains,1)
+    call set_value_int_var(maxnchainsrotationsxy,isSet_maxnchainsxy,12)
     call set_value_logical_var(precondition,isSet_precondition,.false.)
     call set_value_logical_var(isEnergyShift,isSet_EnergyShift,.false.)
     call set_value_logical_var(isRandom_pos_graft,isSet_isRandom_pos_graft,.false.)
@@ -489,11 +499,12 @@ subroutine check_value_runtype(runtype,info)
     runtypestr(4)="rangepKd"
     runtypestr(5)="rangeVdWeps"
     runtypestr(6)="rangedist"
-    runtypestr(7)="rangecpro"  ! excluded
+    runtypestr(7)="rangedeltaGd"
+    ! runtypestr(8)="rangecpro"  ! excluded
 
     flag=.FALSE.
 
-    do i=1,6
+    do i=1,7
         if(runtype==runtypestr(i)) flag=.TRUE.
     enddo
 
@@ -688,7 +699,7 @@ end subroutine check_value_bcflag
 
         if (present(info)) info=0
 
-        if(runtype=="inputMgpH".or.runtype=="rangepKd".or.runtype=="rangeVdWeps") then
+        if(runtype=="inputMgpH".or.runtype=="rangepKd".or.runtype=="rangeVdWeps".or.runtype=="rangedeltaGd") then
 
             !     .. read salt concentrations from file
             write(fname,'(A9)')'saltMg.in'
@@ -2361,7 +2372,7 @@ subroutine make_filename_label(fnamelabel)
         write(rstr,'(F7.3)')pHbulk
         fnamelabel=trim(fnamelabel)//"pH"//trim(adjustl(rstr))
 
-        if(runtype=="rangepKd") then
+        if(runtype=="rangepKd".or.runtype=="rangedeltaGd") then
             if(pKd%val<0) then
                 write(rstr,'(F6.3)')pKd%val
             else

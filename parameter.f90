@@ -142,6 +142,7 @@
     real(dp) :: KaB(4),K0aB(4),pKaB(4)   
     real(dp) :: KaAA(7),K0aAA(7),pKaAA(7) 
     type (looplist), target :: pKd   ! binding constants 
+    type (looplist), target :: deltaGd 
    
       
      ! water equilibruim constant pKw= -log[Kw] ,Kw=[H+][OH-]   
@@ -592,7 +593,24 @@ contains
  
     end function
 
-         
+    
+    function compute_pKd_two_to_one(deltaGd)result(pKd)
+
+        use physconst, only : Na
+
+        real(dp), intent(in) :: deltaGd
+        real(dp) :: pKd
+
+        ! local 
+        real(dp) :: const
+
+        const = 1.0e24_dp/(Na*vsol) ! conversion factor
+    
+        pKd = -log10(exp(-deltaGd)) -2.0_dp*log10(const) 
+        
+    end function
+
+
    
     !     purpose: initialize expmu needed by fcn 
     !     pre: first read_inputfile has to be called
@@ -787,7 +805,21 @@ contains
               
         if(runtype=="rangepKd") then 
             
-            pKaAA(6)=pKd%val ! this override value read in.
+            pKaAA(6) = pKd%val ! this override value read in.
+
+            KaAA6=10.0_dp**(-pKaAA(6))  
+            K0aAA(6) = KaAA6*(vsol*Na/1.0e24_dp)
+            K0aAA(6) = K0aAA(6)*(vsol*Na/1.0e24_dp) ! A2Mg
+        endif 
+
+
+        if(runtype=="rangedeltaGd") then 
+            
+            ! compute pKd two_to_one binding based on deltaGd
+
+            pKd%val = compute_pKd_two_to_one(DeltaGd%val)
+        
+            pKaAA(6) = pKd%val ! this override value read in. 
 
             KaAA6=10.0_dp**(-pKaAA(6))  
             K0aAA(6) = KaAA6*(vsol*Na/1.0e24_dp)
