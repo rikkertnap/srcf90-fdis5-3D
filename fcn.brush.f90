@@ -758,7 +758,7 @@ contains
                             rhopol(i,t) = rhopol0 * rhopol(i,t)               ! density polymer of type t  
                             rhoqpol(i)  = rhoqpol(i) + (zpol(t,2)*fdis(i,t)+zpol(t,1)*(1.0_dp-fdis(i,t)))*rhopol(i,t)*vsol 
                             xpol(i)     = xpol(i) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
-                            f(i+t*n)    = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
+                            f(i+(t+1)*n)    = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
                         enddo  
 
                     else
@@ -778,9 +778,9 @@ contains
                     endif    
                 else  
                     do i=1,n
-                        rhopol(i,t) = rhopol0 * rhopol(i,t)               ! density polymer of type t  
-                        xpol(i)     = xpol(i) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
-                        f(i+(t+1)*n)    = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
+                        rhopol(i,t)  = rhopol0 * rhopol(i,t)               ! density polymer of type t  
+                        xpol(i)      = xpol(i) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
+                        f(i+(t+1)*n) = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
                     enddo
                 endif          
             enddo    
@@ -859,7 +859,7 @@ contains
         real(dp) :: local_q
         real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
         real(dp) :: pro,lnpro
-        integer  :: n,i,j,k,l,c,s,ln,t,g,gn   ! dummy indices
+        integer  :: n,i,j,k,l,c,s,ln,t,g,gn,t0  ! dummy indices
         real(dp) :: norm
         real(dp) :: rhopol0 
         real(dp) :: xA(7),sumxA, sgxA,qAD, constA, constACa, constAMg ! disociation variables 
@@ -888,7 +888,7 @@ contains
             psi(i)  = x(i+k)      ! potential
         enddo           
         do t=1,nsegtypes
-            k=t*n+n
+            k=(t+1)*n
             do i=1,n 
                 rhopolin(i,t) = x(i+k) ! density 
             enddo    
@@ -1048,12 +1048,13 @@ contains
             rhopol0=(1.0_dp/volcell)! volume polymer segment per volume cell
 
             do t=1, nsegtypes
+                t0=(t+1)*n
                 if(ismonomer_chargeable(t)) then 
 
                     do i=1,n
                         rhopol(i,t) = rhopol0 * rhopol(i,t)               ! density polymer of type t 
                         rhoqpol(i)  = rhoqpol(i) + (- fdisA(i,1)+fdisA(i,4)+fdisA(i,6) )*rhopol(i,t)*vsol 
-                        f(i+t*n)    = rhopol(i,t) - rhopolin(i,t) 
+                        f(i+t0)     = rhopol(i,t) - rhopolin(i,t) 
                         do k=1,4               ! polymer volume fraction
                             xpol(i)=xpol(i)+rhopol(i,t)*fdisA(i,k)*vpolAA(k)*vsol   
                         enddo
@@ -1066,7 +1067,7 @@ contains
                     do i=1,n
                         rhopol(i,t) = rhopol0 * rhopol(i,t)               ! density polymer of type t  
                         xpol(i)     = xpol(i) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
-                        f(i+t*n)    = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
+                        f(i+t0)     = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
                     enddo
                 endif          
             enddo    
