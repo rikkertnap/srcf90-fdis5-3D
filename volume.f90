@@ -247,6 +247,7 @@ contains
 
         integer :: i, j, ig
         real(dp) :: rnd
+        real(dp) :: u, v
         character(len=lenText) :: fname, istr
         integer :: ios, un_pgpt
 
@@ -284,8 +285,24 @@ contains
                 position_graft(ig,2) = position_graft(ig,2) + delta*rnd
             enddo
         
-        endif        
+        endif  
+      
+        ! position_graft is on a regular square pattern applicable to geometry ="cubic" 
+        ! For hexagonal/oblique geometry one needs to tranform (u,v) to (x,y),
+        ! then above square pattern becomes a hexagonal/oblique pattern. 
+
+        if(geometry=="prism") then 
+
+            do ig=1,ngr   
+                u = position_graft(ig,1)
+                v = position_graft(ig,2)  
+                position_graft(ig,1) = xt(u, v)  
+                position_graft(ig,2) = yt(u, v)
+            enddo    
         
+        endif   
+
+
         ! output
         if(DEBUG.or.rank==0) then
             write(fname,'(A18)')'positiongraft-rank'
