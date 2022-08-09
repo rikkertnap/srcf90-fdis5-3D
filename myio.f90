@@ -102,6 +102,7 @@ subroutine read_inputfile(info)
     isSet_precondition=.false.
     isSet_savePalpha  =.false.
     write_mc_chains   =.false.
+    write_struct      =.false.
     isSet_EnergyShift =.false.
     isSet_maxfkfunevals =.false.
     isSet_maxniter     =.false.
@@ -314,7 +315,9 @@ subroutine read_inputfile(info)
             case ('deltaGd%stepsize')
                 read(buffer,*,iostat=ios) deltaGd%stepsize
             case ('deltaGd%delta')
-                read(buffer,*,iostat=ios) deltaGd%delta    
+                read(buffer,*,iostat=ios) deltaGd%delta 
+            case ("write_struct")
+                read(buffer,*,iostat=ios) write_struct   
             case default
                 if(pos>1) then
                     print *, 'Invalid label at line', line  ! empty lines are skipped

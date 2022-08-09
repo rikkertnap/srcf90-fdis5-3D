@@ -2,6 +2,8 @@
 module chains
   
     use globals
+    use volume, only: ngr
+
     implicit none
   
     integer, dimension(:,:), allocatable :: indexchain               ! index(alpha,s)= layer number of conf alpha and segment number s
@@ -17,6 +19,13 @@ module chains
     real(dp), dimension(:),   allocatable    :: logweightchain
     logical :: isHomopolymer
     double precision, dimension(:),allocatable :: lsegseq  ! only needed for copolymer
+
+    ! chain structural quantities
+    real(dp), dimension(:), allocatable     :: Rgsqr                    ! radius of gyration (for all conformations) 
+    real(dp), dimension(:), allocatable     :: Rendsqr                  ! end-to-end distance (for all conformations)
+
+    real(dp), dimension(:), allocatable     :: avRgsqr                    ! average radius of gyration (for each graft point)
+    real(dp), dimension(:), allocatable     :: avRendsqr                  ! average end-to-end distance (for each graft point)
 
 
 contains
@@ -40,6 +49,11 @@ contains
         allocate(type_of_monomer_char(nseg))
         allocate(ismonomer_of_type(nseg,nsegtypes)) 
         allocate(ismonomer_chargeable(nsegtypes))
+
+        ! chain structural quantities
+
+        allocate(Rgsqr(maxcuantas))
+        allocate(Rendsqr(maxcuantas))
 
     end subroutine allocate_chains
   

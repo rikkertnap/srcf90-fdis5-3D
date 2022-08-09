@@ -345,6 +345,7 @@ subroutine read_chains_XYZ_loop(info)
     integer :: nsegfile             ! nseg in chain file      
     integer :: cuantasfile          ! cuantas in chain file                                              
     real(dp) :: chain(3,nseg)       ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1  
+    real(dp) :: chain_nopbc(3,nseg)  ! chains(x,i) coordinates without pbc
     real(dp) :: xseg(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg)    ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates 
@@ -490,6 +491,10 @@ subroutine read_chains_XYZ_loop(info)
                         y(s) = pbc(yp(s),Ly)
                         z(s) = zp(s)         ! no pbc in z- direction 
 
+                        chain_nopbc(1,s) = xp(s)
+                        chain_nopbc(2,s) = yp(s)
+                        chain_nopbc(3,s) = zp(s)
+
                         ! transforming form real- to lattice coordinates                 
                         xi = int(x(s)/delta)+1
                         yi = int(y(s)/delta)+1
@@ -510,8 +515,11 @@ subroutine read_chains_XYZ_loop(info)
                         endif
                         
                     enddo
-                    
+                               
                     energychain_init(conf)=energy
+
+                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,int(nseg/2))
 
                     conf=conf+1   
                 
@@ -565,6 +573,9 @@ subroutine read_chains_XYZ_loop(info)
                     end do
                     
                     energychain_init(conf)=energy
+
+                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,int(nseg/2))
 
                     conf=conf+1   
                 
@@ -724,6 +735,7 @@ subroutine read_chains_XYZ_linear(info)
     integer :: nsegfile             ! nseg in chain file      
     integer :: cuantasfile          ! cuantas in chain file                                              
     real(dp) :: chain(3,nseg)       ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1   
+    real(dp) :: chain_nopbc(3,nseg)  ! chains(x,i) coordinates without pbc
     real(dp) :: chain_rot(3,nseg) ! 
     real(dp) :: xseg(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg)    ! coordinates
@@ -869,6 +881,10 @@ subroutine read_chains_XYZ_linear(info)
                         y(s) = pbc(yp(s),Ly)
                         z(s) = zp(s)         ! no pbc in z- direction 
 
+                        chain_nopbc(1,s) = xp(s)
+                        chain_nopbc(2,s) = yp(s)
+                        chain_nopbc(3,s) = zp(s)
+                        
                         ! transforming form real- to lattice coordinates                 
                         xi = int(x(s)/delta)+1
                         yi = int(y(s)/delta)+1
@@ -891,6 +907,9 @@ subroutine read_chains_XYZ_linear(info)
                     enddo
                     
                     energychain_init(conf)=energy
+ 
+                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
 
                     conf=conf+1   
                 
@@ -946,6 +965,9 @@ subroutine read_chains_XYZ_linear(info)
                     enddo
                     
                     energychain_init(conf)=energy
+
+                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
 
                     conf=conf+1   
                 
@@ -1947,5 +1969,119 @@ subroutine VdWpotentialenergy(chain,Energy)
 
 end subroutine VdWpotentialenergy
 
+function radius_gyration(chain,nseg) result(Rgsqr)
+
+    real(dp), intent(in) :: chain(:,:)
+    integer, intent(in) :: nseg
+    real(dp) :: Rgsqr
+    integer :: i,j,k
+
+    Rgsqr=0.0_dp
+    
+    do i=1,nseg
+        do j=1,nseg
+            do k=1,3
+                Rgsqr=Rgsqr+(chain(k,i)-chain(k,j))**2
+            enddo
+        enddo
+    enddo     
+
+    Rgsqr=Rgsqr/(2.0_dp*nseg*nseg)
+
+end function radius_gyration
+
+function end_to_end_distance(chain,end_ind) result(Rendsqr)
+
+    real(dp), intent(in) :: chain(:,:) 
+    integer, intent(in) :: end_ind
+
+    real(dp) :: Rendsqr
+    integer :: k
+
+    Rendsqr=0.0_dp
+
+    do k=1,3
+        Rendsqr=Rendsqr+(chain(k,end_ind)-chain(k,1))**2
+    enddo     
+
+end function end_to_end_distance
+
+subroutine write_chain_struct(write_struct,info)
+
+    use globals, only : cuantas
+    use myutils, only : lenText
+    use chains, only : Rgsqr,Rendsqr
+
+    implicit none 
+
+    logical, intent(in) :: write_struct
+    integer, intent(inout) :: info
+ 
+    ! .. local
+    character(len=lenText) :: filename
+    integer :: un_Rg,un_Rend
+    integer :: c
+
+    info=0
+
+    if(write_struct) then
+    
+        filename="Rgalpha."
+        un_Rg=open_chain_struct_file(filename,info)
+        filename="Rend."
+        un_Rend=open_chain_struct_file(filename,info)
+    
+        do c=1,cuantas
+            write(un_Rg,*)Rgsqr(c)
+            write(un_Rend,*)Rendsqr(c)
+
+        enddo 
+
+        close(un_Rg)
+        close(un_Rend)  
+      
+    endif
+        
+end subroutine write_chain_struct
+
+function open_chain_struct_file(filename,info)result(un)
+
+    use mpivars, only : rank
+    use myutils, only : newunit, lenText
+    use myio, only : myio_err_chainsfile
+
+    character(len=lenText) :: filename
+    integer, optional, intent(inout) :: info
+
+    integer :: un
+
+    ! local
+    character(len=lenText) :: istr
+    character(len=25) :: fname
+    integer :: ios
+    logical :: exist
+    
+    if (present(info))  info=0 ! init
+    
+    write(istr,'(I4)')rank
+    fname=trim(adjustl(filename))//trim(adjustl(istr))//'.dat'
+
+    inquire(file=fname,exist=exist)
+    if(.not.exist) then
+        open(unit=newunit(un),file=fname,status='new',iostat=ios)
+        if(ios >0 ) then
+            print*, 'Error opening : ',fname,' file : iostat =', ios
+            if (present(info)) info = myio_err_chainsfile
+            return
+        endif
+    else
+        open(unit=newunit(un),file=fname,status='old',iostat=ios)
+        if(ios >0 ) then
+            print*, 'Error opening : ',fname,' file : iostat =', ios
+            if (present(info)) info = myio_err_chainsfile
+            return
+        endif
+    endif    
+end function open_chain_struct_file
         
 end module chaingenerator
