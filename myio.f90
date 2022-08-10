@@ -1253,7 +1253,7 @@ subroutine output_brush_mul
     use energy
     use surface
     use myutils, only : newunit
-    use chains, only : isHomopolymer
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr
 
     !     .. local arguments
 
@@ -1533,6 +1533,8 @@ subroutine output_brush_mul
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
+    write(un_sys,*)'avRgsqr         = ',(avRgsqr(t),t=1,ngr)
+    write(un_sys,*)'avRendsqr       = ',(avRendsqr(t),t=1,ngr)
     write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
     write(un_sys,*)'qpoltot     = ',qpol_tot
     if(systype=="brushdna".or.systype=="brushborn")then
@@ -1616,9 +1618,11 @@ subroutine output_elect
     use energy
     use surface
     use myutils, only : newunit
-    use chains, only : isHomopolymer
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr
 
     !     .. local arguments
+
+    integer :: t
 
     !     .. output file names
 
@@ -1907,6 +1911,8 @@ subroutine output_elect
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
+    write(un_sys,*)'avRgsqr         = ',(avRgsqr(t),t=1,ngr)
+    write(un_sys,*)'avRendsqr       = ',(avRendsqr(t),t=1,ngr)
     write(un_sys,*)'qpolA       = ',qpolA
     write(un_sys,*)'qpolB       = ',qpolB
     write(un_sys,*)'qpoltot     = ',qpol_tot
@@ -1996,7 +2002,7 @@ subroutine output_neutral
     use field
     use energy
     use myutils, only : newunit
-    use chains, only : isHomopolymer
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr
 
     !     .. output file names
     character(len=90) :: sysfilename
@@ -2143,6 +2149,8 @@ subroutine output_neutral
     write(un_sys,*)'q           = ',q
     write(un_sys,*)'mu          = ',-log(q)
     write(un_sys,*)'height      = ',height
+    write(un_sys,*)'avRgsqr         = ',(avRgsqr(t),t=1,ngr)
+    write(un_sys,*)'avRendsqr       = ',(avRendsqr(t),t=1,ngr)
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'VdWscale%val= ',VdWscale%val
 
