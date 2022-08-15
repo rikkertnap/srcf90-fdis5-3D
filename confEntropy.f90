@@ -421,7 +421,7 @@ contains
                 FEconf_array(g)=FEconf_array(g)+FEconf_local
                 Econf_array(g) =Econf_array(g) +Econf_local 
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
-                Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local            
+                Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local         
             enddo 
         else     ! Export results
             dest = 0
@@ -440,7 +440,7 @@ contains
                 FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))  
                 Econf = Econf + Econf_array(g)/q(g)
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
-                avRendsqr(g) = Rendsqr_array(g)/q(g)  
+                avRendsqr(g) = Rendsqr_array(g)/q(g) 
             enddo    
         endif
 

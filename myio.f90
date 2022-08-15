@@ -1604,7 +1604,6 @@ subroutine output_brush_mul
             close(un_xOHmin)
         endif
     endif
-
 end subroutine output_brush_mul
 
 

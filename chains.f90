@@ -54,6 +54,8 @@ contains
 
         allocate(Rgsqr(maxcuantas))
         allocate(Rendsqr(maxcuantas))
+        allocate(avRgsqr(ngr))
+        allocate(avRendsqr(ngr))
 
     end subroutine allocate_chains
   

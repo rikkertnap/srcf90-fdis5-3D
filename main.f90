@@ -196,6 +196,8 @@ program main
             endif
 
             call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf entropy
+            print*,avRgsqr(1)
+            print*,avRendsqr(1)
 
             if(rank==0) then
 
@@ -358,6 +360,8 @@ program main
                 endif
 
                 call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf FEconf_entropy
+                print*,avRgsqr(1)
+                print*,avRendsqr(1)
 
                 if(rank==0) then
 
