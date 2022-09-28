@@ -335,7 +335,7 @@ subroutine read_chains_XYZ_loop(info)
 
     ! .. local variables
 
-    integer :: i,j,s,rot,g,gn, As_idx      ! dummy indices
+    integer :: i,j,s,rot,g,gn, As_idx1,As_idx2      ! dummy indices
     integer :: idx                 ! index label
     integer :: ix,iy,iz,idxtmp,ntheta
     integer :: nchains              ! number of rotations
@@ -357,7 +357,7 @@ subroutine read_chains_XYZ_loop(info)
     real(dp), allocatable, dimension(:,:) :: theta_array
     real(dp) :: xc,yc,zc               
     real(dp) :: energy      
-    real(dp) :: As_mtrx_conf(9)   ! temporary array to store asphericity matrix per conformation                                       
+    real(dp) :: As_mtrx_conf(3,3)   ! temporary array to store asphericity matrix per conformation                                       
     character(len=25) :: fname
     integer :: ios, rankfile, iosene
     character(len=30) :: str
@@ -523,8 +523,10 @@ subroutine read_chains_XYZ_loop(info)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,int(nseg/2))
                     
                     As_mtrx_conf          = asphericity_matrix(chain_nopbc,nseg)
-                    do As_idx=1,9
-                        As_mtrx(conf,As_idx) = As_mtrx_conf(As_idx)
+                    do As_idx1=1,3
+                        do As_idx2=1,3
+                            As_mtrx(conf,As_idx1,As_idx2) = As_mtrx_conf(As_idx1,As_idx2)
+                        end do
                     end do
 
                     conf=conf+1   
@@ -583,8 +585,10 @@ subroutine read_chains_XYZ_loop(info)
                     Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,int(nseg/2))
                     As_mtrx_conf          = asphericity_matrix(chain_nopbc,nseg)
-                    do As_idx=1,9
-                        As_mtrx(conf,As_idx) = As_mtrx_conf(As_idx)
+                    do As_idx1=1,3
+                        do As_idx2=1,3
+                            As_mtrx(conf,As_idx1,As_idx2) = As_mtrx_conf(As_idx1,As_idx2)
+                        end do
                     end do
 
                     conf=conf+1   
@@ -734,7 +738,7 @@ subroutine read_chains_XYZ_linear(info)
 
     ! .. local variables
 
-    integer :: i,j,s,rot,g,gn ,k, As_idx     ! dummy indices
+    integer :: i,j,s,rot,g,gn ,k, As_idx1, As_idx2     ! dummy indices
     integer :: idx                 ! index label
     integer :: ix,iy,iz,idxtmp,ntheta
     integer :: nchains              ! number of rotations
@@ -758,7 +762,7 @@ subroutine read_chains_XYZ_linear(info)
     real(dp), allocatable, dimension(:,:) :: theta_array
     real(dp) :: xc,yc,zc               
     real(dp) :: energy      
-    real(dp) :: As_mtrx_conf(9)                                       
+    real(dp) :: As_mtrx_conf(3,3)                                       
     character(len=25) :: fname
     integer :: ios, rankfile, iosene
     character(len=30) :: str
@@ -922,8 +926,10 @@ subroutine read_chains_XYZ_linear(info)
                     Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
                     As_mtrx_conf          = asphericity_matrix(chain_nopbc,nseg)
-                    do As_idx=1,9
-                        As_mtrx(conf,As_idx) = As_mtrx_conf(As_idx)
+                    do As_idx1=1,3
+                        do As_idx2=1,3
+                            As_mtrx(conf,As_idx1,As_idx2) = As_mtrx_conf(As_idx1,As_idx2)
+                        end do
                     end do
 
                     conf=conf+1   
@@ -984,8 +990,10 @@ subroutine read_chains_XYZ_linear(info)
                     Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
                     As_mtrx_conf          = asphericity_matrix(chain_nopbc,nseg)
-                    do As_idx=1,9
-                        As_mtrx(conf,As_idx) = As_mtrx_conf(As_idx)
+                    do As_idx1=1,3
+                        do As_idx2=1,3
+                            As_mtrx(conf,As_idx1,As_idx2) = As_mtrx_conf(As_idx1,As_idx2)
+                        end do
                     end do
 
                     conf=conf+1   
@@ -2029,10 +2037,11 @@ function asphericity_matrix(chain,nseg) result(As_mtrx_conf)
 
     real(dp), intent(in) :: chain(:,:)
     integer, intent(in) :: nseg
-    real(dp) :: As_mtrx_conf(9)
+    real(dp) :: As_mtrx_conf(3,3)
     real(dp) :: s_xx,s_xy,s_xz,s_yx,s_yy,s_yz,s_zx,s_zy,s_zz
     integer :: i,j,k
 
+    ! Calculate gyration tensor
     s_xx=0.0_dp
     s_xy=0.0_dp
     s_xz=0.0_dp
@@ -2043,10 +2052,10 @@ function asphericity_matrix(chain,nseg) result(As_mtrx_conf)
     do i=1,nseg
         do j=1,nseg
             s_xx=s_xx+(chain(1,i)-chain(1,j))**2
-            s_xy=s_xy+(chain(1,i)-chain(2,j))**2
-            s_xz=s_xz+(chain(1,i)-chain(3,j))**2
+            s_xy=s_xy+(chain(1,i)-chain(1,j))*(chain(2,i)-chain(2,j))
+            s_xz=s_xz+(chain(1,i)-chain(1,j))*(chain(3,i)-chain(3,j))
             s_yy=s_yy+(chain(2,i)-chain(2,j))**2
-            s_yz=s_yz+(chain(2,i)-chain(3,j))**2
+            s_yz=s_yz+(chain(2,i)-chain(2,j))*(chain(3,i)-chain(3,j))
             s_zz=s_zz+(chain(3,i)-chain(3,j))**2
         enddo
     enddo
@@ -2055,15 +2064,15 @@ function asphericity_matrix(chain,nseg) result(As_mtrx_conf)
     s_zx=s_xz
     s_zy=s_yz
 
-    As_mtrx_conf(1)=s_xx/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(2)=s_xy/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(3)=s_xz/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(4)=s_yx/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(5)=s_yy/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(6)=s_yz/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(7)=s_zx/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(8)=s_zy/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(9)=s_zz/(2.0_dp*nseg*nseg)
+    As_mtrx_conf(1,1)=s_xx/(2.0_dp*nseg*nseg)
+    As_mtrx_conf(1,2)=s_xy/(2.0_dp*nseg*nseg)
+    As_mtrx_conf(1,3)=s_xz/(2.0_dp*nseg*nseg)
+    As_mtrx_conf(2,1)=s_yx/(2.0_dp*nseg*nseg)
+    As_mtrx_conf(2,2)=s_yy/(2.0_dp*nseg*nseg)
+    As_mtrx_conf(2,3)=s_yz/(2.0_dp*nseg*nseg)
+    As_mtrx_conf(3,1)=s_zx/(2.0_dp*nseg*nseg)
+    As_mtrx_conf(3,2)=s_zy/(2.0_dp*nseg*nseg)
+    As_mtrx_conf(3,3)=s_zz/(2.0_dp*nseg*nseg)
 
 end function asphericity_matrix
 
@@ -2081,7 +2090,7 @@ subroutine write_chain_struct(write_struct,info)
     ! .. local
     character(len=lenText) :: filename
     integer :: un_Rg,un_Rend,un_As_mtrx
-    integer :: c,i
+    integer :: c,row,col
 
     info=0
 
@@ -2097,7 +2106,9 @@ subroutine write_chain_struct(write_struct,info)
         do c=1,cuantas
             write(un_Rg,*)Rgsqr(c)
             write(un_Rend,*)Rendsqr(c)
-            write(un_As_mtrx,*)(As_mtrx(c,i),i=1,9)
+            do row=1,3
+                write(un_As_mtrx,*)(As_mtrx(c,row,col),col=1,3)
+            end do
         enddo 
 
         close(un_Rg)

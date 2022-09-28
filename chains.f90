@@ -23,11 +23,11 @@ module chains
     ! chain structural quantities
     real(dp), dimension(:), allocatable     :: Rgsqr                    ! radius of gyration (for all conformations) 
     real(dp), dimension(:), allocatable     :: Rendsqr                  ! end-to-end distance (for all conformations)
-    real(dp), dimension(:,:), allocatable   :: As_mtrx                   ! asphericity (for all conformations)
+    real(dp), dimension(:,:,:), allocatable   :: As_mtrx                   ! "asphericity matrix"/gyration tensor (for all conformations)
 
     real(dp), dimension(:), allocatable     :: avRgsqr                    ! average radius of gyration (for each graft point)
     real(dp), dimension(:), allocatable     :: avRendsqr                  ! average end-to-end distance (for each graft point)
-    real(dp), dimension(:,:), allocatable   :: avAs_mtrx                  ! average asphericity (for each graft point)
+    real(dp), dimension(:,:,:), allocatable   :: avAs_mtrx                  ! average "asphericity matrix"/gyration tensor (for each graft point)
 
 contains
 
@@ -55,10 +55,10 @@ contains
 
         allocate(Rgsqr(maxcuantas))
         allocate(Rendsqr(maxcuantas))
-        allocate(As_mtrx(maxcuantas,9))
+        allocate(As_mtrx(maxcuantas,3,3))
         allocate(avRgsqr(ngr))
         allocate(avRendsqr(ngr))
-        allocate(avAs_mtrx(ngr,9))
+        allocate(avAs_mtrx(ngr,3,3))
 
     end subroutine allocate_chains
   

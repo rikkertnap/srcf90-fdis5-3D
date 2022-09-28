@@ -1253,11 +1253,11 @@ subroutine output_brush_mul
     use energy
     use surface
     use myutils, only : newunit
-    use chains, only : isHomopolymer, avRgsqr, avRendsqr
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avAs_mtrx
 
     !     .. local arguments
 
-    integer :: t
+    integer :: t,row,col
 
     !     .. output file names
 
@@ -1535,6 +1535,12 @@ subroutine output_brush_mul
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'avRgsqr         = ',(avRgsqr(t),t=1,ngr)
     write(un_sys,*)'avRendsqr       = ',(avRendsqr(t),t=1,ngr)
+    write(un_sys,*)'avAs_mtrx       = '
+    do t=1,ngr
+        do row=1,3
+            write(un_sys,*)(avAs_mtrx(t,row,col),col=1,3)
+        end do
+    end do
     write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
     write(un_sys,*)'qpoltot     = ',qpol_tot
     if(systype=="brushdna".or.systype=="brushborn")then
@@ -1617,11 +1623,11 @@ subroutine output_elect
     use energy
     use surface
     use myutils, only : newunit
-    use chains, only : isHomopolymer, avRgsqr, avRendsqr
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avAs_mtrx
 
     !     .. local arguments
 
-    integer :: t
+    integer :: t,row,col
 
     !     .. output file names
 
@@ -1912,6 +1918,12 @@ subroutine output_elect
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'avRgsqr         = ',(avRgsqr(t),t=1,ngr)
     write(un_sys,*)'avRendsqr       = ',(avRendsqr(t),t=1,ngr)
+    write(un_sys,*)'avAs_mtrx       = '
+    do t=1,ngr
+        do row=1,3
+            write(un_sys,*)(avAs_mtrx(t,row,col),col=1,3)
+        end do
+    end do
     write(un_sys,*)'qpolA       = ',qpolA
     write(un_sys,*)'qpolB       = ',qpolB
     write(un_sys,*)'qpoltot     = ',qpol_tot
@@ -2001,7 +2013,7 @@ subroutine output_neutral
     use field
     use energy
     use myutils, only : newunit
-    use chains, only : isHomopolymer, avRgsqr, avRendsqr
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avAs_mtrx
 
     !     .. output file names
     character(len=90) :: sysfilename
@@ -2013,7 +2025,7 @@ subroutine output_neutral
     character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals
 
     !     .. local arguments
-    integer :: i, t
+    integer :: i, t, row, col
     character(len=100) :: fnamelabel
     character(len=20) :: rstr
     logical :: isopen
@@ -2150,6 +2162,12 @@ subroutine output_neutral
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'avRgsqr         = ',(avRgsqr(t),t=1,ngr)
     write(un_sys,*)'avRendsqr       = ',(avRendsqr(t),t=1,ngr)
+    write(un_sys,*)'avAs_mtrx       = '
+    do t=1,ngr
+        do row=1,3
+            write(un_sys,*)(avAs_mtrx(t,row,col),col=1,3)
+        end do
+    end do
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'VdWscale%val= ',VdWscale%val
 
