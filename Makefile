@@ -2,7 +2,8 @@
 
 # Put the name of the target program here
 TARGET = brush.domain.loop.multi.VdW # the list of source files
-SRC =  mpivars.f90  precision.f90  mathconst.f90 physconst.f90 globals.f90 myutils.f90 molecule.f90  dielectfcn.f90  loop.f90 rands.f90 volume.f90 chains.f90 L2norm.f90 parameter.f90  poissonEq.f90 field.f90 VdW.f90 surface.f90 confEntropy.f90 fenergy.f90 initcha.f90  myio.f90 rota.f90 cadenas.f90 cadenas-sequence.f90 fcn.brush.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  main.f90
+SRC =  mpivars.f90  precision.f90  mathconst.f90 physconst.f90 globals.f90 eigen.f90 myutils.f90 molecule.f90  dielectfcn.f90  loop.f90 rands.f90 volume.f90 chains.f90 L2norm.f90 parameter.f90  poissonEq.f90 field.f90 VdW.f90 surface.f90 confEntropy.f90 fenergy.f90 initcha.f90  myio.f90 rota.f90 cadenas.f90 cadenas-sequence.f90 fcn.brush.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  main.f90
+OBJ= $(SRC:.f90=.o) 
 
 # some definitions
 SHELL = /bin/bash
@@ -81,23 +82,23 @@ LFFLAGS=$(LDFLAGS)
 FF= gfortran
 
 
-else ifeq ($(shell hostname),quser24)
+else ifeq ($(shell hostname),quser34)
 
         is_quest = yes
 
-else ifeq ($(shell hostname),quser23)
+else ifeq ($(shell hostname),quser33)
 
 	is_quest = yes
 
-else ifeq ($(shell hostname),quser22)
+else ifeq ($(shell hostname),quser32)
 
         is_quest = yes
 
-else ifeq ($(shell hostname),quser21)
+else ifeq ($(shell hostname),quser31)
 
 	is_quest = yes
 
-else ifeq ($(shell hostname),quser20)
+else ifeq ($(shell hostname),quser30)
 
 	is_quest = yes
 
@@ -181,8 +182,7 @@ ifdef is_quest
 FFLAGS=  -std=f2008  -cpp -DVERSION=\"$(GIT_VERSION)\"  -O3 # -fcheck=all -fbounds-check -Warray-bounds -g -fbacktrace # -Wargument-mismatch -Wpedantic #-Wall
 
 
-LDFLAGS= -lm /usr/lib64/librt.so -L/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran/lib
-
+LDFLAGS= -lm /usr/lib64/librt.so -L/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran84/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran84/lib -L/software/lapack/3.10.1/lib64  -llapack
 
 
 LFFLAGS=$(LDFLAGS)
@@ -204,20 +204,20 @@ FF= mpif90
 
 endif
 
-
+# Compiling only modified .f90 files
 
 all:	$(TARGET)
 
-$(TARGET): $(SRC:.f90=.o)
-	$(FF) -o $(TARGET) $(SRC:.f90=.o)  $(LDFLAGS) $(LFLAGS)
+# Linking the program using object files
+$(TARGET): $(OBJ)
+	$(FF) -o $(TARGET) $(OBJ)  $(LDFLAGS) $(LFLAGS)
 
-#$(SRC:.f90=.o): 	
-#	${FF} -c ${FFLAGS}  $(SRC) 
-
+# Compile each source file into an object file
 %.o: %.f90
 #.f90.o :
-	${FF} ${FFLAGS} -c $(SRC)
+	${FF} ${FFLAGS} -c $< -o $@
 
+# Intall the binary to the correct location
 install: all
 ifdef is_cooley        
 	cp $(TARGET) ~/bincooley
@@ -225,17 +225,19 @@ else
 	cp $(TARGET) ~/bin
 endif
 
-
-
+# Cleaning up object files, modules, and the executable
 clean:	
-	@rm -f $(SRC:.f90=.o) $(SRC:.f90=.d) $(TARGET) *~ *.mod
+	@rm -f $(OBJ) $(SRC:.f90=.d) $(TARGET) *~ *.mod
 
+# Removing all build artifacts including dependencies
 realclean: clean
 	@rm -f .depend
 
+# Generate dependency info
 depend dep:
 	@$(FF)  $(CFLAGS) -MM $(SRC) > .depend 
 
+# If the dependency file exist, include it. 
 ifeq (.depend, $(wildcard .depend))
 include .depend
 endif
