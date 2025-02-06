@@ -55,7 +55,8 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, logweightchain
-        use chains, only : Rgsqr, Rendsqr, As_mtrx, avRgsqr, avRendsqr, avAs_mtrx
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, gyr_tensor,avgyr_tensor
+        use chains, only: Asphparam, avAsphparam 
         use field, only : xsol, rhopol, q, lnproshift
         use parameters, only : vpol, isVdW, VdWscale
         use VdW, only : VdW_contribution_lnexp
@@ -67,17 +68,16 @@ contains
         real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
         real(dp) :: pro,lnpro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
-        integer  :: a1,a2  ! dummy indices for indexing As_mtrx
-        real(dp) :: FEconf_local
-        real(dp) :: Econf_local
+        real(dp) :: FEconf_local, Econf_local
         real(dp) :: FEconf_array(ngr)
         real(dp) :: Econf_array(ngr)
-        real(dp) :: Rgsqr_local
-        real(dp) :: Rendsqr_local
+        real(dp) :: Rgsqr_local, Rendsqr_local
         real(dp) :: Rgsqr_array(ngr)
         real(dp) :: Rendsqr_array(ngr)
-        real(dp) :: As_mtrx_local(3,3)
-        real(dp) :: As_mtrx_array(ngr,3,3)
+        real(dp) :: gyr_tensor_local(3,3)
+        real(dp) :: gyr_tensor_array(3,3,ngr)
+        real(dp) :: Asphparam_local
+        real(dp) :: Asphparam_array(ngr)
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -113,16 +113,14 @@ contains
 
         !  .. computation polymer volume fraction      
        
-        FEconf_local= 0.0_dp !init FEconf
-        Econf_local=0.0_dp ! init  Econf
-        Rgsqr_local=0.0_dp ! init Rgsqr
-        Rendsqr_local=0.0_dp ! init Rendsqr
-        do a1=1,3
-            do a2=1,3
-                As_mtrx_local(a1,a2)=0.0_dp ! init Asphericity matrix (gyration tensor)
-            end do
-        end do     
-    
+        FEconf_local= 0.0_dp ! init variables
+        Econf_local= 0.0_dp 
+        Rgsqr_local= 0.0_dp 
+        Rendsqr_local= 0.0_dp 
+        gyr_tensor_local = 0.0_dp 
+        Asphparam_local = 0.0_dp
+        
+
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)     
             do s=1,nseg        ! loop over segments                     
@@ -134,12 +132,9 @@ contains
             FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
             Rgsqr_local=Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local=Rendsqr_local+Rendsqr(c)*pro
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_local(a1,a2)=As_mtrx_local(a1,a2)+As_mtrx(c,a1,a2)*pro
-                end do
-            end do
-        enddo
+            gyr_tensor_local = gyr_tensor_local + gyr_tensor(:,:,c ) * pro
+            Asphparam_local = Asphparam_local + Asphparam(c) * pro
+         enddo
         
         ! communicate FEconf
 
@@ -150,47 +145,42 @@ contains
             Econf_array=0.0_dp  
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp
-            As_mtrx_array=0.0_dp
 
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_array(1,a1,a2)=As_mtrx_local(a1,a2)
-                end do
-            end do
-            
+            gyr_tensor_array(:,:,1) = gyr_tensor_local
+            Asphparam_array(1) = Asphparam_local 
+ 
             do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(As_mtrx_local, 9, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-
+                call MPI_RECV(gyr_tensor_local,9,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+               
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
                 FEconf_array(g)=FEconf_array(g)+FEconf_local
                 Econf_array(g) =Econf_array(g) +Econf_local
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
                 Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
-                do a1=1,3
-                    do a2=1,3
-                        As_mtrx_array(g,a1,a2)=As_mtrx_array(g,a1,a2)+As_mtrx_local(a1,a2)
-                    end do
-                end do
-                
-            enddo 
+                gyr_tensor_array(:,:,g) = gyr_tensor_array(:,:,g) + gyr_tensor_local
+                Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+             enddo
+
         else     ! Export results
             dest = 0
             call MPI_SEND(FEconf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Econf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
-            call MPI_SEND(As_mtrx_local, 9 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(gyr_tensor_local,9,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD, ierr)
         endif
-
+       
 
         if(rank==0) then
              ! normalize
@@ -200,12 +190,9 @@ contains
                 FEconf = FEconf + (FEconf_array(g)/q(g)-log(q(g)))  
                 Econf = Econf + Econf_array(g)/q(g)
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
-                avRendsqr(g) = Rendsqr_array(g)/q(g)  
-                do a1=1,3
-                    do a2=1,3
-                        avAs_mtrx(g,a1,a2) = As_mtrx_array(g,a1,a2)/q(g)
-                    end do
-                end do
+                avRendsqr(g) = Rendsqr_array(g)/q(g)
+                avgyr_tensor(:,:,g) = gyr_tensor_array(:,:,g)/q(g)
+                avAsphparam(g) = Asphparam_array(g)/q(g)  
             enddo      
         endif
 
@@ -220,7 +207,7 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, logweightchain
-        use chains, only : Rgsqr, Rendsqr, As_mtrx, avRgsqr, avRendsqr, avAs_mtrx
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr,gyr_tensor,avgyr_tensor, Asphparam, avAsphparam
         use field, only : xsol, rhopol, q, lnproshift
         use parameters, only : vpol, isVdW, VdWscale
         use VdW, only : VdW_contribution_exp
@@ -232,7 +219,6 @@ contains
         real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
         real(dp) :: pro,lnpro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
-        integer  :: a1,a2  ! dummy indices for indexing As_mtrx
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
         real(dp) :: FEconf_array(ngr)
@@ -241,8 +227,10 @@ contains
         real(dp) :: Rendsqr_local
         real(dp) :: Rgsqr_array(ngr)
         real(dp) :: Rendsqr_array(ngr)
-        real(dp) :: As_mtrx_local(3,3)
-        real(dp) :: As_mtrx_array(ngr,3,3)
+        real(dp) :: gyr_tensor_local(3,3)
+        real(dp) :: gyr_tensor_array(3,3,ngr)
+        real(dp) :: Asphparam_local
+        real(dp) :: Asphparam_array(ngr)
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -276,12 +264,9 @@ contains
         Econf_local=0.0_dp ! init FEconf
         Rgsqr_local=0.0_dp ! init Rgsqr
         Rendsqr_local=0.0_dp ! init Rendsqr
-        do a1=1,3
-            do a2=1,3
-                As_mtrx_local(a1,a2)=0.0_dp ! init Asphericity matrix (gyration tensor)
-            end do
-        end do
-            
+        gyr_tensor_local = 0.0_dp
+        Asphparam_local = 0.0_dp        
+    
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)        ! internal energy  
             do s=1,nseg        ! loop over segments                     
@@ -293,13 +278,10 @@ contains
             FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_local(a1,a2)=As_mtrx_local(a1,a2)+As_mtrx(c,a1,a2)*pro
-                end do
-            end do
+            gyr_tensor_local = gyr_tensor_local + gyr_tensor(:,:,c ) * pro
+            Asphparam_local = Asphparam_local + Asphparam(c) * pro       
         enddo
-        
+ 
         ! communicate FEconf
 
         if(rank==0) then
@@ -308,44 +290,40 @@ contains
             Econf_array=0.0_dp
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp
-            As_mtrx_array=0.0_dp  
 
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_array(1,a1,a2)=As_mtrx_local(a1,a2)
-                end do
-            end do
+            gyr_tensor_array(:,:,1) = gyr_tensor_local
+            Asphparam_array(1) = Asphparam_local
+      
+        do i=1, numproc-1
+            source = i
+            call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+            call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+            call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+            call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+            call MPI_RECV(gyr_tensor_local,9,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+            call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
 
-            do i=1, numproc-1
-                source = i
-                call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(As_mtrx_local, 9, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)            
+            g =int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
+            FEconf_array(g)=FEconf_array(g)+FEconf_local
+            Econf_array(g) =Econf_array(g) +Econf_local
+            Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
+            Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
+            gyr_tensor_array(:,:,g) = gyr_tensor_array(:,:,g) + gyr_tensor_local
+            Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+         enddo
 
-                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
-                FEconf_array(g)=FEconf_array(g)+FEconf_local
-                Econf_array(g) =Econf_array(g) +Econf_local
-                Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
-                Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
-                do a1=1,3
-                    do a2=1,3
-                        As_mtrx_array(g,a1,a2)=As_mtrx_array(g,a1,a2)+As_mtrx_local(a1,a2)
-                    end do
-                end do
-            enddo 
         else     ! Export results
             dest = 0
             call MPI_SEND(FEconf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Econf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
-            call MPI_SEND(As_mtrx_local, 9 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(gyr_tensor_local,9,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD,ierr)
+            call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD,ierr)
         endif
 
 
@@ -358,11 +336,8 @@ contains
                 Econf = Econf + Econf_array(g)/q(g) 
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
-                do a1=1,3
-                    do a2=1,3
-                        avAs_mtrx(g,a1,a2) = As_mtrx_array(g,a1,a2)/q(g)
-                    end do
-                end do 
+                avgyr_tensor(:,:,g) = gyr_tensor_array(:,:,g)/q(g)
+                avAsphparam(g) = Asphparam_array(g)/q(g)
             enddo    
         endif
 
@@ -375,7 +350,7 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain
-        use chains, only : Rgsqr, Rendsqr, As_mtrx, avRgsqr, avRendsqr, avAs_mtrx
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr,gyr_tensor,avgyr_tensor, Asphparam, avAsphparam
         use field, only : xsol,psi, fdis,rhopol,q, lnproshift
         use parameters
         use VdW, only : VdW_contribution_lnexp
@@ -386,7 +361,6 @@ contains
         real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
         real(dp) :: pro,lnpro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
-        integer  :: a1,a2  ! dummy indices for indexing As_mtrx
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
         real(dp) :: FEconf_array(ngr)
@@ -395,8 +369,10 @@ contains
         real(dp) :: Rendsqr_local
         real(dp) :: Rgsqr_array(ngr)
         real(dp) :: Rendsqr_array(ngr)
-        real(dp) :: As_mtrx_local(3,3)
-        real(dp) :: As_mtrx_array(ngr,3,3)
+        real(dp) :: gyr_tensor_local(3,3)
+        real(dp) :: gyr_tensor_array(3,3,ngr)
+        real(dp) :: Asphparam_local
+        real(dp) :: Asphparam_array(ngr)
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -446,12 +422,9 @@ contains
         Econf_local=0.0_dp ! init FEconf
         Rgsqr_local=0.0_dp ! init Rgsqr
         Rendsqr_local=0.0_dp ! init Rendsqr
-        do a1=1,3
-            do a2=1,3
-                As_mtrx_local(a1,a2)=0.0_dp ! init Asphericity matrix (gyration tensor)
-            end do
-        end do
-         
+        gyr_tensor_local = 0.0_dp
+        Asphparam_local = 0.0_dp        
+ 
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)     
             do s=1,nseg        ! loop over segments                     
@@ -463,13 +436,10 @@ contains
             FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_local(a1,a2)=As_mtrx_local(a1,a2)+As_mtrx(c,a1,a2)*pro
-                end do
-            end do
-        enddo
-        
+            gyr_tensor_local = gyr_tensor_local + gyr_tensor(:,:,c ) * pro
+            Asphparam_local = Asphparam_local + Asphparam(c) * pro       
+        enddo        
+ 
         ! communicate FEconf
 
         if(rank==0) then
@@ -479,44 +449,40 @@ contains
             Econf_array=0.0_dp  
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp
-            As_mtrx_array=0.0_dp
 
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_array(1,a1,a2)=As_mtrx_local(a1,a2)
-                end do
-            end do
-            
+            gyr_tensor_array(:,:,1) = gyr_tensor_local
+            Asphparam_array(1) = Asphparam_local           
+ 
             do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(As_mtrx_local, 9, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
+                call MPI_RECV(gyr_tensor_local,9,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
 
-                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                g =int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
                 FEconf_array(g)=FEconf_array(g)+FEconf_local
-                Econf_array(g) =Econf_array(g) +Econf_local 
+                Econf_array(g) =Econf_array(g) +Econf_local
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
-                Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local 
-                do a1=1,3
-                    do a2=1,3
-                        As_mtrx_array(g,a1,a2)=As_mtrx_array(g,a1,a2)+As_mtrx_local(a1,a2)
-                    end do
-                end do        
-            enddo 
+                Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
+                gyr_tensor_array(:,:,g) = gyr_tensor_array(:,:,g) + gyr_tensor_local
+                Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+             enddo        
+
         else     ! Export results
             dest = 0    
             call MPI_SEND(FEconf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Econf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
-            call MPI_SEND(As_mtrx_local, 9 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(gyr_tensor_local,9,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD, ierr)
         endif
 
 
@@ -529,11 +495,9 @@ contains
                 Econf = Econf + Econf_array(g)/q(g)
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
-                do a1=1,3
-                    do a2=1,3
-                        avAs_mtrx(g,a1,a2) = As_mtrx_array(g,a1,a2)/q(g)
-                    end do
-                end do 
+                avRendsqr(g) = Rendsqr_array(g)/q(g)
+                avgyr_tensor(:,:,g) = gyr_tensor_array(:,:,g)/q(g)
+                avAsphparam(g) = Asphparam_array(g)/q(g)
             enddo    
         endif
 
@@ -546,7 +510,7 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain
-        use chains, only : Rgsqr, Rendsqr, As_mtrx, avRgsqr, avRendsqr, avAs_mtrx
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr,gyr_tensor,avgyr_tensor, Asphparam, avAsphparam
         use field, only : xsol, psi, fdis, rhopol, q ,lnproshift
         use parameters
         use volume, only : ngr, nset_per_graft
@@ -557,7 +521,6 @@ contains
         real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
         real(dp) :: pro,lnpro
         integer  :: i,t,g,gn,c,s,k       ! dummy indices
-        integer  :: a1,a2  ! dummy indices for indexing As_mtrx
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
         real(dp) :: FEconf_array(ngr)
@@ -566,8 +529,10 @@ contains
         real(dp) :: Rendsqr_local
         real(dp) :: Rgsqr_array(ngr)
         real(dp) :: Rendsqr_array(ngr)
-        real(dp) :: As_mtrx_local(3,3)
-        real(dp) :: As_mtrx_array(ngr,3,3)
+        real(dp) :: gyr_tensor_local(3,3)
+        real(dp) :: gyr_tensor_array(3,3,ngr)
+        real(dp) :: Asphparam_local
+        real(dp) :: Asphparam_array(ngr)
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -612,12 +577,9 @@ contains
         Econf_local=0.0_dp ! init FEconf
         Rgsqr_local=0.0_dp ! init Rgsqr
         Rendsqr_local=0.0_dp ! init Rendsqr
-        do a1=1,3
-            do a2=1,3
-                As_mtrx_local(a1,a2)=0.0_dp ! init Asphericity matrix (gyration tensor)
-            end do
-        end do
-            
+        gyr_tensor_local = 0.0_dp
+        Asphparam_local = 0.0_dp           
+ 
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)       ! internal energy  
             do s=1,nseg        ! loop over segments                     
@@ -629,13 +591,10 @@ contains
             FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_local(a1,a2)=As_mtrx_local(a1,a2)+As_mtrx(c,a1,a2)*pro
-                end do
-            end do
-        enddo
-        
+            gyr_tensor_local = gyr_tensor_local + gyr_tensor(:,:,c ) * pro
+            Asphparam_local = Asphparam_local + Asphparam(c) * pro
+         enddo        
+ 
         ! communicate FEconf
 
         if(rank==0) then
@@ -644,44 +603,40 @@ contains
             Econf_array=0.0_dp  
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp
-            As_mtrx_array=0.0_dp
 
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_array(1,a1,a2)=As_mtrx_local(a1,a2)
-                end do
-            end do
-            
+            gyr_tensor_array(:,:,1) = gyr_tensor_local
+            Asphparam_array(1) = Asphparam_local
+ 
             do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(As_mtrx_local, 9, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-
-                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                call MPI_RECV(gyr_tensor_local,9,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)              
+ 
+                g =int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
                 FEconf_array(g)=FEconf_array(g)+FEconf_local
                 Econf_array(g) =Econf_array(g) +Econf_local
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
-                Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local  
-                do a1=1,3
-                    do a2=1,3
-                        As_mtrx_array(g,a1,a2)=As_mtrx_array(g,a1,a2)+As_mtrx_local(a1,a2)
-                    end do
-                end do          
-            enddo 
+                Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
+                gyr_tensor_array(:,:,g) = gyr_tensor_array(:,:,g) + gyr_tensor_local
+                Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+             enddo
+
         else     ! Export results
             dest = 0
             call MPI_SEND(FEconf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Econf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
-            call MPI_SEND(As_mtrx_local, 9 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(gyr_tensor_local,9,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD,ierr)
+            call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD,ierr)
         endif
 
 
@@ -694,11 +649,8 @@ contains
                 Econf = Econf + Econf_array(g)/q(g)
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
-                do a1=1,3
-                    do a2=1,3
-                        avAs_mtrx(g,a1,a2) = As_mtrx_array(g,a1,a2)/q(g)
-                    end do
-                end do  
+                avgyr_tensor(:,:,g) = gyr_tensor_array(:,:,g)/q(g)
+                avAsphparam(g) = Asphparam_array(g)/q(g)
             enddo    
            
         endif
@@ -713,7 +665,7 @@ contains
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use volume, only : ngr, nset_per_graft
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain, isAmonomer
-        use chains, only : Rgsqr, Rendsqr, As_mtrx, avRgsqr, avRendsqr, avAs_mtrx
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr,gyr_tensor, avgyr_tensor, Asphparam, avAsphparam
         use field,  only : xsol, psi, fdisA,fdisB, rhopol, q ,lnproshift
         use parameters
 
@@ -723,7 +675,6 @@ contains
         !     .. declare local variables
         real(dp) :: lnexppiA(nsize),lnexppiB(nsize)    ! auxilairy variable for computing P(\alpha) 
         integer  :: i,k,c,s,g,gn         ! dummy indices
-        integer  :: a1,a2  ! dummy indices for indexing As_mtrx
         real(dp) :: pro,lnpro
         real(dp) :: FEconf_local, Econf_local
         real(dp) :: q_local
@@ -733,8 +684,11 @@ contains
         real(dp) :: Rendsqr_local
         real(dp) :: Rgsqr_array(ngr)
         real(dp) :: Rendsqr_array(ngr)
-        real(dp) :: As_mtrx_local(3,3)
-        real(dp) :: As_mtrx_array(ngr,3,3)
+        real(dp) :: Asphparam_array(ngr)
+        real(dp) :: Asphparam_local
+        real(dp) :: gyr_tensor_local(3,3)
+        real(dp) :: gyr_tensor_array(3,3,ngr)
+
         ! .. executable statements 
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
@@ -765,11 +719,8 @@ contains
         Econf_local=0.0_dp 
         Rgsqr_local=0.0_dp ! init Rgsqr
         Rendsqr_local=0.0_dp ! init Rendsqr
-        do a1=1,3
-            do a2=1,3
-                As_mtrx_local(a1,a2)=0.0_dp ! init Asphericity matrix (gyration tensor)
-            end do
-        end do
+        gyr_tensor_local = 0.0_dp
+        Asphparam_local = 0.0_dp
 
         do c=1,cuantas             ! loop over cuantas
         
@@ -786,13 +737,9 @@ contains
             FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro 
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_local(a1,a2)=As_mtrx_local(a1,a2)+As_mtrx(c,a1,a2)*pro
-                end do
-            end do     
-        enddo  
-
+            gyr_tensor_local = gyr_tensor_local + gyr_tensor(:,:,c ) * pro
+            Asphparam_local = Asphparam_local + Asphparam(c) * pro
+        enddo
 
         ! communicate FEconf
 
@@ -807,13 +754,8 @@ contains
             Rendsqr_array=0.0_dp
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
-
-            As_mtrx_array=0.0_dp
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_array(1,a1,a2)=As_mtrx_local(a1,a2)
-                end do
-            end do
+            gyr_tensor_array(:,:,1) = gyr_tensor_local
+            Asphparam_array(1) = Asphparam_local
 
             do i=1, numproc-1
                 source = i
@@ -821,26 +763,26 @@ contains
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(As_mtrx_local, 9, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr) 
+                call MPI_RECV(gyr_tensor_local,9,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
 
-                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
-                FEconf_array(g)=FEconf_array(g)+FEconf_local 
-                Econf_array(g)= Econf_array(g)+ Econf_local 
+                g =int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
+                FEconf_array(g)=FEconf_array(g)+FEconf_local
+                Econf_array(g) =Econf_array(g) +Econf_local
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
-                Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local 
-                do a1=1,3
-                    do a2=1,3
-                        As_mtrx_array(g,a1,a2)=As_mtrx_array(g,a1,a2)+As_mtrx_local(a1,a2)
-                    end do
-                end do   
-            enddo 
+                Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
+                gyr_tensor_array(:,:,g) = gyr_tensor_array(:,:,g) + gyr_tensor_local
+                Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+             enddo
+
         else     ! Export results
             dest = 0
             call MPI_SEND(FEconf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Econf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
-            call MPI_SEND(As_mtrx_local, 9 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(gyr_tensor_local,9,MPI_DOUBLE_PRECISION,dest,tag,MPI_COMM_WORLD,ierr)
+            call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION,dest,tag,MPI_COMM_WORLD,ierr)
         endif
 
 
@@ -853,12 +795,9 @@ contains
                 Econf = Econf + Econf_array(g)/q(g)
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
-                do a1=1,3
-                    do a2=1,3
-                        avAs_mtrx(g,a1,a2) = As_mtrx_array(g,a1,a2)/q(g)
-                    end do
-                end do     
-            enddo     
+                avgyr_tensor(:,:,g) = gyr_tensor_array(:,:,g)/q(g)
+                avAsphparam(g) = Asphparam_array(g)/q(g)
+            enddo
         endif
 
         Econf=0.0_dp
@@ -872,8 +811,6 @@ contains
         !  .. variables and constant declaractions 
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
-        use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain
-        use chains, only : Rgsqr, Rendsqr, As_mtrx, avRgsqr, avRendsqr, avAs_mtrx
         use field, only : xsol,psi, fdis,rhopol,q, lnproshift, fdisA, epsfcn, Depsfcn
         use field, only : xOHmin,xHplus,xNa,xCl,xMg,xCa,xRb
         use parameters, only : bornrad, lb, VdWscale, tA, isrhoselfconsistent, isVdW
@@ -883,14 +820,15 @@ contains
         use VdW, only : VdW_contribution_lnexp
         use Poisson, only : Poisson_Equation_Eps, Poisson_Equation_Surface_Eps, grad_pot_sqr_eps_cubic
         use dielectric_const, only : dielectfcn, born
-        
+        use chains, only: ismonomer_chargeable, logweightchain, type_of_monomer, indexchain
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam, gyr_tensor,avgyr_tensor        
+
         real(dp), intent(out) :: FEconf,Econf
         
         ! .. declare local variables
         real(dp) :: lnexppi(nsize,nsegtypes)          ! auxilairy variable for computing P(\alpha)  
         real(dp) :: pro,lnpro
         integer  :: i,t,g,gn,c,s,k,tc       ! dummy indices
-        integer  :: a1,a2  ! dummy indices for indexing As_mtrx
         real(dp) :: FEconf_local
         real(dp) :: Econf_local
         real(dp) :: FEconf_array(ngr)
@@ -899,12 +837,18 @@ contains
         real(dp) :: Rendsqr_local
         real(dp) :: Rgsqr_array(ngr)
         real(dp) :: Rendsqr_array(ngr)
-        real(dp) :: As_mtrx_local(3,3)
-        real(dp) :: As_mtrx_array(ngr,3,3)
+        real(dp) :: Asphparam_local
+        real(dp) :: Asphparam_array(ngr)
+        real(dp) :: avgyr_tensor_array(3,3,ngr)
+        real(dp) :: gyr_tensor_local(3,3)
+        real(dp) :: gyr_tensor_array(3,3,ngr)
         integer  :: tcfdis(3)
         real(dp) :: rhopolAA(nsize),rhopolACa(nsize), rhopolAMg(nsize)
         real(dp) :: lbr,expborn,Etotself,expsqrgrad, Eself
         real(dp) :: expsqrgradpsi(nsize),expEtotself(nsize)
+
+        ! dumy check gyr_Tensor
+        real(dp)  :: ii, jj
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -1023,12 +967,9 @@ contains
         Econf_local=0.0_dp ! init FEconf
         Rgsqr_local=0.0_dp ! init Rgsqr
         Rendsqr_local=0.0_dp ! init Rendsqr
-        do a1=1,3
-            do a2=1,3
-                As_mtrx_local(a1,a2)=0.0_dp ! init Asphericity matrix (gyration tensor)
-            end do
-        end do
-         
+        gyr_tensor_local = 0.0_dp
+        Asphparam_local = 0.0_dp        
+ 
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)     
             do s=1,nseg        ! loop over segments                     
@@ -1040,11 +981,8 @@ contains
             FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_local(a1,a2)=As_mtrx_local(a1,a2)+As_mtrx(c,a1,a2)*pro
-                end do
-            end do
+            gyr_tensor_local = gyr_tensor_local + gyr_tensor(:,:,c ) * pro
+            Asphparam_local = Asphparam_local + Asphparam(c) * pro
         enddo
 
         ! communicate FEconf
@@ -1056,44 +994,40 @@ contains
             Econf_array=0.0_dp
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp 
-            As_mtrx_array=0.0_dp 
 
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
-            do a1=1,3
-                do a2=1,3
-                    As_mtrx_array(1,a1,a2)=As_mtrx_local(a1,a2)
-                end do
-            end do
-           
+            gyr_tensor_array(:,:,1) = gyr_tensor_local
+            Asphparam_array(1) = Asphparam_local
+ 
             do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(As_mtrx_local, 9, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-
-                g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
+                call MPI_RECV(gyr_tensor_local,9,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)               
+ 
+                g =int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
                 FEconf_array(g)=FEconf_array(g)+FEconf_local
-                Econf_array(g) =Econf_array(g) +Econf_local  
+                Econf_array(g) =Econf_array(g) +Econf_local
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
                 Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
-                do a1=1,3
-                    do a2=1,3
-                        As_mtrx_array(g,a1,a2)=As_mtrx_array(g,a1,a2)+As_mtrx_local(a1,a2)
-                    end do
-                end do           
-            enddo 
+                gyr_tensor_array(:,:,g) = gyr_tensor_array(:,:,g) + gyr_tensor_local
+                Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+             enddo
+
         else     ! Export results
             dest = 0
             call MPI_SEND(FEconf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Econf_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
-            call MPI_SEND(As_mtrx_local, 9 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(gyr_tensor_local,9,MPI_DOUBLE_PRECISION,dest,tag,MPI_COMM_WORLD,ierr)
+            call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION,dest,tag,MPI_COMM_WORLD,ierr)
         endif
 
 
@@ -1106,11 +1040,9 @@ contains
                 Econf = Econf + Econf_array(g)/q(g)
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
-                do a1=1,3
-                    do a2=1,3
-                        avAs_mtrx(g,a1,a2) = As_mtrx_array(g,a1,a2)/q(g)
-                    end do
-                end do  
+                avRendsqr(g) = Rendsqr_array(g)/q(g)
+                avgyr_tensor(:,:,g) = gyr_tensor_array(:,:,g)/q(g)
+                avAsphparam(g) = Asphparam_array(g)/q(g)
             enddo    
         endif
 

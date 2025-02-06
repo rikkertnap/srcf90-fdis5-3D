@@ -321,6 +321,8 @@ subroutine read_chains_XYZ_loop(info)
     use chains
     use random
     use parameters
+    use chains, only : Rgsqr, Rendsqr, gyr_tensor, Asphparam
+    use eigenvalues, only : Asphericity_parameter
     use volume, only : position_graft, sgraft, nx, ny,nz, delta, nset_per_graft
     use volume, only : init_loop_rot_angle  
     use chain_rotation, only : rotationXaxis
@@ -522,13 +524,8 @@ subroutine read_chains_XYZ_loop(info)
                     Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,int(nseg/2))
                     
-                    As_mtrx_conf          = asphericity_matrix(chain_nopbc,nseg)
-                    do As_idx1=1,3
-                        do As_idx2=1,3
-                            As_mtrx(conf,As_idx1,As_idx2) = As_mtrx_conf(As_idx1,As_idx2)
-                        end do
-                    end do
-
+                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf))
                     conf=conf+1   
                 
                 end do ! .. rotation 
@@ -584,12 +581,8 @@ subroutine read_chains_XYZ_loop(info)
 
                     Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,int(nseg/2))
-                    As_mtrx_conf          = asphericity_matrix(chain_nopbc,nseg)
-                    do As_idx1=1,3
-                        do As_idx2=1,3
-                            As_mtrx(conf,As_idx1,As_idx2) = As_mtrx_conf(As_idx1,As_idx2)
-                        end do
-                    end do
+                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf))       
 
                     conf=conf+1   
                 
@@ -724,6 +717,8 @@ subroutine read_chains_XYZ_linear(info)
     use chains
     use random
     use parameters
+    use chains, only : Rgsqr, Rendsqr, gyr_tensor, Asphparam
+    use eigenvalues, only : Asphericity_parameter
     use volume, only : position_graft, sgraft, nx, ny,nz, delta, nset_per_graft
     use volume, only : init_loop_rot_angle  
     use chain_rotation, only : rotationXaxis,rotationZcorr3
@@ -925,14 +920,10 @@ subroutine read_chains_XYZ_linear(info)
  
                     Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
-                    As_mtrx_conf          = asphericity_matrix(chain_nopbc,nseg)
-                    do As_idx1=1,3
-                        do As_idx2=1,3
-                            As_mtrx(conf,As_idx1,As_idx2) = As_mtrx_conf(As_idx1,As_idx2)
-                        end do
-                    end do
-
-                    conf=conf+1   
+                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf))
+                   
+                     conf=conf+1   
                 
 
                 enddo   ! .. rotation 
@@ -989,14 +980,10 @@ subroutine read_chains_XYZ_linear(info)
 
                     Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
-                    As_mtrx_conf          = asphericity_matrix(chain_nopbc,nseg)
-                    do As_idx1=1,3
-                        do As_idx2=1,3
-                            As_mtrx(conf,As_idx1,As_idx2) = As_mtrx_conf(As_idx1,As_idx2)
-                        end do
-                    end do
-
-                    conf=conf+1   
+                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf)) 
+                   
+                     conf=conf+1   
                 
                 enddo ! .. rotation
                     
@@ -2033,54 +2020,11 @@ function end_to_end_distance(chain,end_ind) result(Rendsqr)
 
 end function end_to_end_distance
 
-function asphericity_matrix(chain,nseg) result(As_mtrx_conf)
-
-    real(dp), intent(in) :: chain(:,:)
-    integer, intent(in) :: nseg
-    real(dp) :: As_mtrx_conf(3,3)
-    real(dp) :: s_xx,s_xy,s_xz,s_yx,s_yy,s_yz,s_zx,s_zy,s_zz
-    integer :: i,j,k
-
-    ! Calculate gyration tensor
-    s_xx=0.0_dp
-    s_xy=0.0_dp
-    s_xz=0.0_dp
-    s_yy=0.0_dp
-    s_yz=0.0_dp
-    s_zz=0.0_dp
-
-    do i=1,nseg
-        do j=1,nseg
-            s_xx=s_xx+(chain(1,i)-chain(1,j))**2
-            s_xy=s_xy+(chain(1,i)-chain(1,j))*(chain(2,i)-chain(2,j))
-            s_xz=s_xz+(chain(1,i)-chain(1,j))*(chain(3,i)-chain(3,j))
-            s_yy=s_yy+(chain(2,i)-chain(2,j))**2
-            s_yz=s_yz+(chain(2,i)-chain(2,j))*(chain(3,i)-chain(3,j))
-            s_zz=s_zz+(chain(3,i)-chain(3,j))**2
-        enddo
-    enddo
-   
-    s_yx=s_xy
-    s_zx=s_xz
-    s_zy=s_yz
-
-    As_mtrx_conf(1,1)=s_xx/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(1,2)=s_xy/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(1,3)=s_xz/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(2,1)=s_yx/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(2,2)=s_yy/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(2,3)=s_yz/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(3,1)=s_zx/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(3,2)=s_zy/(2.0_dp*nseg*nseg)
-    As_mtrx_conf(3,3)=s_zz/(2.0_dp*nseg*nseg)
-
-end function asphericity_matrix
-
 subroutine write_chain_struct(write_struct,info)
 
     use globals, only : cuantas
     use myutils, only : lenText
-    use chains, only : Rgsqr,Rendsqr,As_mtrx
+    use chains, only : Rgsqr,Rendsqr,gyr_tensor
 
     implicit none 
 
@@ -2100,14 +2044,14 @@ subroutine write_chain_struct(write_struct,info)
         un_Rg=open_chain_struct_file(filename,info)
         filename="Rend."
         un_Rend=open_chain_struct_file(filename,info)
-        filename="As_mtrx."
+        filename="gyr_tensor."
         un_As_mtrx=open_chain_struct_file(filename,info)
                    
         do c=1,cuantas
             write(un_Rg,*)Rgsqr(c)
             write(un_Rend,*)Rendsqr(c)
             do row=1,3
-                write(un_As_mtrx,*)(As_mtrx(c,row,col),col=1,3)
+                write(un_As_mtrx,*)(gyr_tensor(row,col,c),col=1,3)
             end do
         enddo 
 
@@ -2158,5 +2102,29 @@ function open_chain_struct_file(filename,info)result(un)
         endif
     endif    
 end function open_chain_struct_file
-        
+
+function calc_gyr_tensor(chain, nseg) result(mat)
+    
+    real(dp), intent(in) :: chain(:,:)
+    integer, intent(in) :: nseg
+
+    real(dp) :: mat(3,3)
+    integer  :: m, n, i, j
+
+    mat = 0.0_dp
+
+    do m = 1, 3
+        do n = m, 3
+            do i = 1, nseg
+                do j = 1, nseg
+                    mat(m, n) = mat(m, n) + (chain(m, i) - chain(m, j)) * (chain(n, i) - chain(n, j))
+                enddo
+            enddo
+            mat(m, n) = mat(m, n) / 2.0  ! Diving by 2 for symmetry normalization
+            mat(n, m) = mat(m, n)
+         enddo
+     enddo
+
+end function calc_gyr_tensor
+
 end module chaingenerator

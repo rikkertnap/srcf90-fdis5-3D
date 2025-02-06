@@ -1253,7 +1253,7 @@ subroutine output_brush_mul
     use energy
     use surface
     use myutils, only : newunit
-    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avAs_mtrx
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avgyr_tensor, eigen_avgyr_tensor, avAsphparam
 
     !     .. local arguments
 
@@ -1284,7 +1284,7 @@ subroutine output_brush_mul
     character(len=100) :: fnamelabel
     character(len=20) :: rstr
     logical :: isopen
-    integer :: i,j,k          ! dummy indexes
+    integer :: i,j,k,z          ! dummy indexes
     real(dp) :: denspol
 
 
@@ -1533,14 +1533,19 @@ subroutine output_brush_mul
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
-    write(un_sys,*)'avRgsqr         = ',(avRgsqr(t),t=1,ngr)
-    write(un_sys,*)'avRendsqr       = ',(avRendsqr(t),t=1,ngr)
-    write(un_sys,*)'avAs_mtrx       = '
-    do t=1,ngr
-        do row=1,3
-            write(un_sys,*)(avAs_mtrx(t,row,col),col=1,3)
-        end do
-    end do
+    write(un_sys,*)'avRgsqr     = ',(avRgsqr(t),t=1,ngr)
+    write(un_sys,*)'avRendsqr   = ',(avRendsqr(t),t=1,ngr)
+    write(un_sys,*)'Eigen_1     = ',eigen_avgyr_tensor(1)
+    write(un_sys,*)'Eigen_2     = ',eigen_avgyr_tensor(2)
+    write(un_sys,*)'Eigen_3     = ',eigen_avgyr_tensor(3)
+    write(un_sys,*)'avAs        = ',avAsphparam
+    do z=1,ngr
+        do i=1,3
+           do j=1,3
+            write(un_sys,*)'avgyr_tensor(',i,j,z,')=',avgyr_tensor(i,j,z)
+           enddo
+        enddo
+    enddo
     write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
     write(un_sys,*)'qpoltot     = ',qpol_tot
     if(systype=="brushdna".or.systype=="brushborn")then
@@ -1623,7 +1628,7 @@ subroutine output_elect
     use energy
     use surface
     use myutils, only : newunit
-    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avAs_mtrx
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avgyr_tensor, avAsphparam, eigen_avgyr_tensor
 
     !     .. local arguments
 
@@ -1654,7 +1659,7 @@ subroutine output_elect
     character(len=100) :: fnamelabel
     character(len=20) :: rstr
     logical :: isopen
-    integer :: i,j,k          ! dummy indexes
+    integer :: i,j,k,z          ! dummy indexes
     real(dp) :: denspol
 
     ! .. executable statements
@@ -1916,12 +1921,17 @@ subroutine output_elect
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
-    write(un_sys,*)'avRgsqr         = ',(avRgsqr(t),t=1,ngr)
-    write(un_sys,*)'avRendsqr       = ',(avRendsqr(t),t=1,ngr)
-    write(un_sys,*)'avAs_mtrx       = '
-    do t=1,ngr
-        do row=1,3
-            write(un_sys,*)(avAs_mtrx(t,row,col),col=1,3)
+    write(un_sys,*)'avRgsqr     = ',(avRgsqr(t),t=1,ngr)
+    write(un_sys,*)'avRendsqr   = ',(avRendsqr(t),t=1,ngr)
+    write(un_sys,*)'Eigen_1     = ',eigen_avgyr_tensor(1)
+    write(un_sys,*)'Eigen_2     = ',eigen_avgyr_tensor(2)
+    write(un_sys,*)'Eigen_3     = ',eigen_avgyr_tensor(3)
+    write(un_sys,*)'avAs        = ',avAsphparam
+    do z=1,ngr
+       do i=1,3
+          do j=1,3
+            write(un_sys,*)'avgyr_tensor(',i,j,z,')=',avgyr_tensor(i,j,z)
+          enddo
         end do
     end do
     write(un_sys,*)'qpolA       = ',qpolA
@@ -2013,7 +2023,7 @@ subroutine output_neutral
     use field
     use energy
     use myutils, only : newunit
-    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avAs_mtrx
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avgyr_tensor, eigen_avgyr_tensor, avAsphparam
 
     !     .. output file names
     character(len=90) :: sysfilename
@@ -2025,7 +2035,7 @@ subroutine output_neutral
     character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals
 
     !     .. local arguments
-    integer :: i, t, row, col
+    integer :: i, j, z, t, row, col
     character(len=100) :: fnamelabel
     character(len=20) :: rstr
     logical :: isopen
@@ -2160,12 +2170,17 @@ subroutine output_neutral
     write(un_sys,*)'q           = ',q
     write(un_sys,*)'mu          = ',-log(q)
     write(un_sys,*)'height      = ',height
-    write(un_sys,*)'avRgsqr         = ',(avRgsqr(t),t=1,ngr)
-    write(un_sys,*)'avRendsqr       = ',(avRendsqr(t),t=1,ngr)
-    write(un_sys,*)'avAs_mtrx       = '
-    do t=1,ngr
-        do row=1,3
-            write(un_sys,*)(avAs_mtrx(t,row,col),col=1,3)
+    write(un_sys,*)'avRgsqr     = ',(avRgsqr(t),t=1,ngr)
+    write(un_sys,*)'avRendsqr   = ',(avRendsqr(t),t=1,ngr)
+    write(un_sys,*)'Eigen_1     = ',eigen_avgyr_tensor(1)
+    write(un_sys,*)'Eigen_2     = ',eigen_avgyr_tensor(2)
+    write(un_sys,*)'Eigen_3     = ',eigen_avgyr_tensor(3)
+    write(un_sys,*)'avAs        = ',avAsphparam
+    do z=1,ngr
+        do i=1,3
+           do j=1,3
+            write(un_sys,*)'avgyr_tensor(',i,j,z,')=',avgyr_tensor(i,j,z)
+           enddo
         end do
     end do
     write(un_sys,*)'iterations  = ',iter
@@ -2497,7 +2512,9 @@ subroutine compute_vars_and_output()
     use energy
     use field
     use parameters, only : height
-
+    use chains, only : avgyr_tensor, eigen_avgyr_tensor, avAsphparam
+    use eigenvalues, only : eigenvalue_of_avgyr_tensor
+   
     select case (systype)
     case ("elect")
 
@@ -2507,10 +2524,12 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height)
         call make_ion_excess()
         call output()
+        eigen_avgyr_tensor=eigenvalue_of_avgyr_tensor(avgyr_tensor)
 
     case ("neutral","neutralnoVdW")
 
         call fcnenergy()
+        eigen_avgyr_tensor=eigenvalue_of_avgyr_tensor(avgyr_tensor)
         call average_density_z(xpol,xpolz,height)
         call output()           ! writing of output
 
@@ -2522,6 +2541,7 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height)
         call make_ion_excess()
         call output()           ! writing of output
+        eigen_avgyr_tensor=eigenvalue_of_avgyr_tensor(avgyr_tensor)
 
     case default
 
