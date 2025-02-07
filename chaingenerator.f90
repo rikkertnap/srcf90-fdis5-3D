@@ -2105,22 +2105,33 @@ end function open_chain_struct_file
 
 function calc_gyr_tensor(chain, nseg) result(mat)
     
-    real(dp), intent(in) :: chain(:,:)
+    real(dp), intent(in) :: chain(:,:) 
     integer, intent(in) :: nseg
 
     real(dp) :: mat(3,3)
-    integer  :: m, n, i, j
-
+    real(dp) :: cm(3)
+    integer  :: m, n, i
+ 
+    ! Intialzing matrices
     mat = 0.0_dp
+    cm = 0.0_dp
 
+    
+    ! Compute center of mass
+    do m = 1, 3
+        do i = 1, nseg
+            cm(m) = cm(m) + chain(m, i)
+        enddo
+        cm(m) = cm(m) / real(nseg, dp)
+    enddo
+
+    ! Compute gyration tensor
     do m = 1, 3
         do n = m, 3
             do i = 1, nseg
-                do j = 1, nseg
-                    mat(m, n) = mat(m, n) + (chain(m, i) - chain(m, j)) * (chain(n, i) - chain(n, j))
-                enddo
+               mat(m, n) = mat(m, n) + (chain(m, i) - cm(m)) * (chain(n, i) - cm(n))
             enddo
-            mat(m, n) = mat(m, n) / 2.0  ! Diving by 2 for symmetry normalization
+            mat(m, n) = mat(m, n) / real(nseg, dp)  ! Normalizing by nseg
             mat(n, m) = mat(m, n)
          enddo
      enddo
