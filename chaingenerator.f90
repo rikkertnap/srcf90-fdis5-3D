@@ -79,6 +79,8 @@ subroutine make_chains_mc()
     use myutils
     use cadenas_linear
     use cadenas_sequence
+    use chains, only : Rgsqr, Rendsqr, gyr_tensor, Asphparam
+    use eigenvalues, only : Asphericity_parameter
 
     !     .. variable and constant declaractions      
 
@@ -91,7 +93,7 @@ subroutine make_chains_mc()
     integer :: conf              ! counts number of conformations
     integer :: allowedconf
     real(dp) :: chain(3,nseg,200) ! chain(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
-    real(dp) :: chain_rot(3,nseg)
+    real(dp) :: chain_rot(3,nseg), chain_nopbc(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates
     real(dp) :: xpp(nseg), ypp(nseg), zpp(nseg)  
@@ -194,6 +196,18 @@ subroutine make_chains_mc()
                         endif
                     enddo            
             
+                    
+                    do s=1,nseg                          
+                        chain_nopbc(3,s) = chain(1,s,j)
+                        chain_nopbc(1,s) = chain(2,s,j)
+                        chain_nopbc(2,s) = chain(3,s,j)
+                    enddo
+
+                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
+                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf))
+
                     conf = conf +1 
 
                 enddo         ! end loop over rotations

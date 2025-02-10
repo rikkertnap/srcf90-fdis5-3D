@@ -69,10 +69,10 @@ function Asphericity_parameter(Rgsqr,gyr_tensor)result(Ap)
         print*, "Warning in Asphericity_parameter : info = ", info_eigen
     endif
 
-    print*,"eigenvalues = ",eigenvalues
-    print*,"sum eigenvalues = ",sumeigen," Rg2 = ",Rgsqr, " diff=",diffRg2
-    print*,"Gyration tensor:"
-    call print_matrix(gyr_tensor,3)
+  !  print*,"eigenvalues = ",eigenvalues
+  !  print*,"sum eigenvalues = ",sumeigen," Rg2 = ",Rgsqr, " diff=",diffRg2
+  !  print*,"Gyration tensor:"
+  !  call print_matrix(gyr_tensor,3)
 
 end function
 
