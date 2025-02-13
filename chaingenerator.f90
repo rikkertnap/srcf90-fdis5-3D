@@ -402,7 +402,8 @@ subroutine read_chains_XYZ_loop(info)
     if(exist) then
         open(unit=newunit(un),file=fname,status='old',iostat=ios)
     else
-        print*,'traj.rank.xyz file does not exit'
+        text=trim(adjustl(fname))//' file does not exit'
+        print*,text
         info = myio_err_chainsfile
         return
     endif
@@ -419,7 +420,7 @@ subroutine read_chains_XYZ_loop(info)
         if(exist) then
             open(unit=newunit(un_ene),file=fname,status='old',iostat=ios)
         else
-            text='traj.'//trim(adjustl(istr))//'.ene file does not exit'
+            text=trim(adjustl(fname))//' file does not exit'
             print*,text
             info = myio_err_energyfile
             return
@@ -521,8 +522,7 @@ subroutine read_chains_XYZ_loop(info)
                             
                         indexchain_init(s,conf) = idx
 
-                        if(idx<=0.or.idx>nsize) then   
-
+                        if(isOutsideLattice(xi,yi,zi,nx,ny,nz)) then
                             text="Conformation outside box:"
                             call print_to_log(LogUnit,text)  
                             print*,text                          
@@ -579,8 +579,8 @@ subroutine read_chains_XYZ_loop(info)
                         call linearIndexFromCoordinate(xi,yi,zi,idx)
                             
                         indexchain_init(s,conf) = idx
-
-                        if(idx<=0.or.idx>nsize) then    
+ 
+                        if(isOutsideLattice(xi,yi,zi,nx,ny,nz)) then 
                             text="Conformation outside box:"
                             call print_to_log(LogUnit,text)  
                             print*,text                          
@@ -680,7 +680,7 @@ subroutine read_graftpts_xyz_loop(info)
     if(exist) then
         open(unit=newunit(un),file=fname,status='old',iostat=ios)
     else
-        print*,'traj-graft.rank.xyz file does not exit'
+        print*,' traj file :',fname,' does not exit'
         info = myio_err_chainsfile
         return
     end if
@@ -802,6 +802,8 @@ subroutine read_chains_XYZ_linear(info)
         open(unit=newunit(un),file=fname,status='old',iostat=ios)
     else
         print*,'traj.rank.xyz file does not exit'
+        text=trim(adjustl(fname))//' file does not exit'
+        print*,text
         info = myio_err_chainsfile
         return
     end if
@@ -818,7 +820,7 @@ subroutine read_chains_XYZ_linear(info)
         if(exist) then
             open(unit=newunit(un_ene),file=fname,status='old',iostat=ios)
         else
-            text='traj.'//trim(adjustl(istr))//'.ene file does not exit'
+            text=trim(adjustl(fname))//' file does not exit'
             print*,text
             info = myio_err_energyfile
             return
@@ -1644,6 +1646,27 @@ subroutine make_charge_table(ismonomer_chargeable,zpol,nsegtypes)
     enddo
 
 end subroutine make_charge_table
+
+! Checks if (xi,yi,zi) is inside lattice
+! 0<xi<=nx  and 0< yi <= ny and 0< zi <= nz and 
+! xi , yi, zi integer positions
+! returns: logical = .true. if outside .false. otherwise
+
+
+function isOutsideLattice(xi,yi,zi,nx,ny,nz)result(isOutside)
+ 
+    integer, intent(in) :: xi,yi,zi
+    integer, intent(in) :: nx,ny,nz
+
+    logical :: isOutside
+    logical :: isInside
+    
+    isInside=(0<xi).and.(xi<=nx).and.(0<yi).and.(yi<=ny).and.(0<zi).and.(zi<=nz)
+   
+    isOutside=.not.isInside
+    
+end function isOutsideLattice
+
 
 
 logical function is_polymer_neutral(ismonomer_chargeable, nsegtypes)
