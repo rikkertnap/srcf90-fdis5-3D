@@ -138,6 +138,14 @@ program main
     call write_chain_config()
     call write_chain_struct(write_struct,info)
 
+    if(write_struct) then 
+        text="stop after write_chains_struct"
+        call print_to_log(LogUnit,text) 
+        call close_logfile(LogUnit)
+        call MPI_FINALIZE(ierr)
+        stop
+    endif    
+
     !  .. computation starts
 
     allocate(xstored(neq))
@@ -300,7 +308,6 @@ program main
         deallocate(energychain_init)
         deallocate(indexchain_init) 
 
-      
         loopstepsizebegin=loop%stepsize
         list_val=list(1)                ! get value from array
         nlist_elem=1
@@ -325,10 +332,6 @@ program main
                     (abs(loop%stepsize)>=loop%delta))
                 
                 isfirstguess=(loop%val==loopbegin) !abs(loop%val-loopbegin)<loopeps)
-               ! print*,"rank= ",rank
-               ! print*,"loop%val= ",loop%val,"isfirstguess= ",isfirstguess," list_val=", list_val 
-               ! print*,"nlist_elem= ",nlist_elem," list_step=",list_step
-               ! print*,"use_xstored=",use_xstored," isSolution=",isSolution
 
                 call init_vars_input()  ! sets up chem potentials
                 
@@ -338,7 +341,7 @@ program main
                     call make_guess(x, xguess, isfirstguess,use_xstored,xstored)
                     call solver(x, xguess, tol_conv, fnorm, issolution)
                     call fcnptr(x, fvec, neq)
-
+                    
                     flag_solver = 0   ! stop nodes
                     do i = 1, numproc-1
                         dest =i

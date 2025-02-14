@@ -86,6 +86,39 @@ contains
 
     end subroutine close_logfile    
 
+
+    ! If info > 0 program stops after writting text message to screen and in log file.
+    ! input integer :: info
+    !       character(*) :: message
+    
+    subroutine error_handler(info,message)
+        
+        use mpivars
+
+        integer, intent(in) :: info
+        character(len=*), intent(in) :: message
+
+        character(len=lenText) :: text, istr
+
+        if(info>0) then
+            write(istr,'(I3)')info
+            text="Error in "//trim(adjustl(message))//" : info = "//istr//" : end program."
+            call print_to_log(LogUnit,text)
+            print*,text
+            !call MPI_FINALIZE(ierr)
+            call MPI_Abort(MPI_COMM_WORLD,info,ierr) 
+            stop
+        endif
+
+        if(info<0) then
+            write(istr,'(I3)')info
+            text="Warning in "//trim(adjustl(message))//" : info = "//istr//" : end program."
+            call print_to_log(LogUnit,text)
+            print*,text
+        endif
+
+    end subroutine error_handler
+
     ! in fortran 2008 newunit is provided 
  
     integer function newunit(unit)

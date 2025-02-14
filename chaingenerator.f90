@@ -29,7 +29,7 @@ subroutine make_chains(chainmethod)
 
     character(len=15), intent(in)  :: chainmethod
 
-    integer :: i, info
+    integer :: info
     character(len=lenText) :: text, istr
 
     info=0
@@ -37,10 +37,6 @@ subroutine make_chains(chainmethod)
     select case (chainmethod)
     case ("MC")
         call make_chains_mc()
-    !case ("FILE_lammps_xyz") 
-    !    call read_chains_lammps_XYZ(info)
-    !case ("FILE_lammps_trj") 
-    !    call read_chains_lammps_trj(info)
     case ("FILE_XYZ")
         call read_chains_xyz(info)  
     case default
@@ -52,7 +48,7 @@ subroutine make_chains(chainmethod)
 
     if(info/=0) then
         write(istr,'(I3)')info
-        text="Error make_chains: chain generation failed: info = "//istr//" : end program."
+        text="Error make_chains: chain generation failed: info = "//trim(adjustl(istr))//" : end program."
         call print_to_log(LogUnit,text)
         print*,text
         call MPI_FINALIZE(ierr)
@@ -70,7 +66,7 @@ subroutine make_chains_mc()
     use globals
     use chains
     use random
-    use parameters, only : geometry, lseg, write_mc_chains, isVdW, isVdWintEne
+    use parameters, only : geometry, lseg, write_mc_chains
     use parameters, only : maxnchainsrotations, maxnchainsrotationsxy
     use volume, only : nx, ny, nz, delta
     use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
@@ -84,26 +80,24 @@ subroutine make_chains_mc()
 
     !     .. variable and constant declaractions      
 
-    integer :: i,j,k,s,g,gn      ! dummy indices
+    integer :: j,s,g           ! dummy indices
     integer :: idx               ! index label
-    integer :: ix,iy,idxtmp,ntheta
+    integer :: ntheta
     integer :: nchains           ! number of rotations
     integer :: maxnchains        ! number of rotations
     integer :: maxntheta         ! maximum number of rotation in xy-plane
     integer :: conf              ! counts number of conformations
-    integer :: allowedconf
     real(dp) :: chain(3,nseg,200) ! chain(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
     real(dp) :: chain_rot(3,nseg), chain_nopbc(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates
-    real(dp) :: xpp(nseg), ypp(nseg), zpp(nseg)  
+    real(dp) :: xpp(nseg), ypp(nseg) 
     real(dp) :: Lx,Ly,Lz,xcm,ycm,zcm         ! sizes box
     real(dp) :: xpt,ypt          ! coordinates
     real(dp) :: theta, theta_angle
     character(len=lenText) :: text, istr
-    integer  :: xi,yi,zi ,un_trj, un_ene, segcenter
-    real(dp) :: energy   
-    logical :: saw     
+    integer  :: xi,yi,zi ,un_trj, un_ene
+    real(dp) :: energy      
    
     !     .. executable statements
     !     .. initializations of variables     
@@ -284,7 +278,7 @@ subroutine make_chains_mc()
     !  .. end chains generation 
       
     write(istr,'(I4)')rank
-    text='AB Chains generated on node '//istr
+    text='AB Chains generated on node '//trim(adjustl(istr))
     call print_to_log(LogUnit,text)
 
   
@@ -321,7 +315,6 @@ subroutine read_chains_XYZ(info)
 end subroutine
 
 
-
 ! Reads confomations from a file called traj.xyz
 ! Format repeated lammps trajectory file 
 ! number of ATOMS much equal nseg 
@@ -330,7 +323,7 @@ end subroutine
 subroutine read_chains_XYZ_loop(info)
 
     !     .. variable and constant declaractions  
-    use mpivars, only : rank, numproc                                                                                 
+    use mpivars, only : rank !, numproc                                                                                 
     use globals
     use chains
     use random
@@ -351,15 +344,13 @@ subroutine read_chains_XYZ_loop(info)
 
     ! .. local variables
 
-    integer :: i,j,s,rot,g,gn, As_idx1,As_idx2      ! dummy indices
+    integer :: s,g                 ! dummy indices
     integer :: idx                 ! index label
-    integer :: ix,iy,iz,idxtmp,ntheta
-    integer :: nchains              ! number of rotations
+    integer :: ntheta
     integer :: maxnchains           ! number of rotations
     integer :: maxntheta            ! maximum number of rotation in xy-plane
     integer :: conf,conffile        ! counts number of conformations  
-    integer :: nsegfile             ! nseg in chain file      
-    integer :: cuantasfile          ! cuantas in chain file                                              
+    integer :: nsegfile             ! nseg in chain file                                                   
     real(dp) :: chain(3,nseg)       ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1  
     real(dp) :: chain_nopbc(3,nseg)  ! chains(x,i) coordinates without pbc
     real(dp) :: xseg(3,nseg)
@@ -373,12 +364,12 @@ subroutine read_chains_XYZ_loop(info)
     real(dp), allocatable, dimension(:,:) :: theta_array
     real(dp) :: xc,yc,zc               
     real(dp) :: energy      
-    real(dp) :: As_mtrx_conf(3,3)   ! temporary array to store asphericity matrix per conformation                                       
+    ! real(dp) :: As_mtrx_conf(3,3)   ! temporary array to store asphericity matrix per conformation                                       
     character(len=25) :: fname
-    integer :: ios, rankfile, iosene
+    integer :: ios, rankfile
     character(len=30) :: str
     real(dp) :: scalefactor
-    integer :: un,unw,un_ene ! unit number
+    integer :: un,un_ene ! unit number
     logical :: exist
     character(len=lenText) :: text,istr
 
@@ -664,8 +655,8 @@ subroutine read_graftpts_xyz_loop(info)
     real(dp) :: xc,yc,zc          
     integer :: un,s, t
     integer :: rankfile
-    integer :: item,moltype,nsegfile,idatom
-    character(len=30) :: istr,str
+    integer :: item
+    character(len=30) :: istr
     real(dp) :: scalefactor
     logical :: exist, isGraftItem
 
@@ -726,7 +717,7 @@ end subroutine
 subroutine read_chains_XYZ_linear(info)
 
     !     .. variable and constant declaractions  
-    use mpivars, only : rank, numproc                                                                                 
+    use mpivars, only : rank                                                                               
     use globals
     use chains
     use random
@@ -747,39 +738,34 @@ subroutine read_chains_XYZ_linear(info)
 
     ! .. local variables
 
-    integer :: i,j,s,rot,g,gn ,k, As_idx1, As_idx2     ! dummy indices
+    integer :: s,g                 ! dummy indices
     integer :: idx                 ! index label
-    integer :: ix,iy,iz,idxtmp,ntheta
-    integer :: nchains              ! number of rotations
+    integer :: ntheta
     integer :: maxnchains           ! number of rotations
     integer :: maxntheta            ! maximum number of rotation in xy-plane
-    integer :: nchain, rotmax,  maxattempts
+    integer :: rotmax
     integer :: conf,conffile        ! counts number of conformations  
-    integer :: nsegfile             ! nseg in chain file      
-    integer :: cuantasfile          ! cuantas in chain file                                              
+    integer :: nsegfile             ! nseg in chain file                                                  
     real(dp) :: chain(3,nseg)       ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1   
-    real(dp) :: chain_nopbc(3,nseg)  ! chains(x,i) coordinates without pbc
-    real(dp) :: chain_rot(3,nseg) ! 
+    real(dp) :: chain_nopbc(3,nseg)  ! chains(x,i) coordinates without pbc 
     real(dp) :: xseg(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg)    ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates 
     real(dp) :: xpp(nseg),ypp(nseg)
     integer  :: xi,yi,zi
-    real(dp) :: Lx,Ly,Lz,xcm,ycm,zcm ! sizes box and center of mass box
+    real(dp) :: Lx,Ly,Lz             ! sizes box and center of mass box
     real(dp) :: xpt,ypt              ! coordinates
     real(dp) :: theta 
     real(dp), allocatable, dimension(:,:) :: theta_array
     real(dp) :: xc,yc,zc               
-    real(dp) :: energy      
-    real(dp) :: As_mtrx_conf(3,3)                                       
+    real(dp) :: energy                                           
     character(len=25) :: fname
-    integer :: ios, rankfile, iosene
+    integer :: ios, rankfile
     character(len=30) :: str
     real(dp) :: scalefactor
-    integer :: un,unw,un_ene ! unit number
+    integer :: un,un_ene ! unit number
     logical :: exist
     character(len=lenText) :: text,istr
-    logical :: is_positive_rot
 
     ! .. executable statements   
 
@@ -1053,7 +1039,7 @@ subroutine read_graftpts_XYZ_linear(info)
     use parameters, only : unit_conv
     use myio, only : myio_err_chainsfile, myio_err_graft
     use myutils,  only : newunit
-    use volume, only : sgraft,nset_per_graft  
+    use volume, only : nset_per_graft  
 
     ! .. argument
 
@@ -1065,7 +1051,7 @@ subroutine read_graftpts_XYZ_linear(info)
     integer :: ios, un, item
     real(dp) :: xc,yc,zc          
     integer :: rankfile
-    character(len=30) :: istr,str
+    character(len=30) :: istr
     real(dp) :: scalefactor
     logical :: exist
 
@@ -1307,7 +1293,7 @@ subroutine normed_weightchains()
     use chains, only : energychain, logweightchain
     use volume, only : nset_per_graft
    
-    integer :: un, c, k
+    integer :: c, k
     real(dp) :: localsum, totalsum, logtotalsum
 
         
@@ -1360,12 +1346,10 @@ end function
 subroutine global_minimum_chainenergy()
 
     use  mpivars
-    use  globals, only : cuantas
-    use  chains, only : energychain, energychain_min
+    use  chains, only : energychain_min
     use  parameters, only: isEnergyShift
 
     real(dp) :: localmin(2), globalmin(2)
-    integer :: i
 
     localmin(1)=minimum_chainenergy()
     localmin(2)=rank   
@@ -1459,7 +1443,7 @@ subroutine set_lsegAA
 
     use globals
     use chains
-    use parameters, only : lseg, lsegAA,lsegPAA, lsegPAMPS, lsegPEG
+    use parameters, only : lsegAA, lsegPAA, lsegPAMPS ! , lsegPEG
     use parameters, only : chainmethod 
 
     if(chainmethod=='MC') then  ! chain are not read in from file 
@@ -1566,7 +1550,7 @@ subroutine read_type_of_monomer(type_of_monomer, type_of_monomer_char,filename, 
     !      .. local variables
     integer :: ios, un  ! un = unit number
     integer :: s
-    character(80) :: istr,str,letter
+    character(80) :: istr,str
 
     !     .. reading in of variables from file
     open(unit=newunit(un),file=filename,iostat=ios,status='old')
@@ -1598,6 +1582,7 @@ subroutine read_type_of_monomer(type_of_monomer, type_of_monomer_char,filename, 
     close(un)
 
 end subroutine read_type_of_monomer
+
 
 
 ! ismonomer_of_type is a table which row index is the segment  and column index correspond to the segment type  
@@ -1706,7 +1691,7 @@ subroutine write_indexchain_lammps_trj(info)
 
     integer, optional, intent(inout) :: info
 
-    character(len=lenText) :: text, istr
+    character(len=lenText) :: istr
     character(len=25) :: fname
     integer :: ios, un_trj 
     real(dp):: xs, ys, zs
@@ -1808,11 +1793,10 @@ subroutine write_chain_lammps_trj(un_trj,chain,nchains)
     integer, intent(in) :: nchains
     integer , intent(in) :: un_trj
     
-    character(len=lenText) :: istr
     real(dp) :: xs, ys, zs
-    integer :: ix, iy, iz, i, j, k
+    integer :: ix, iy, iz, j
     real(dp) :: xbox0, xbox1
-    integer :: idatom, item, moltype, conf
+    integer :: idatom, item, moltype
 
     ix=0
     iy=0
@@ -1923,7 +1907,7 @@ end function VdWpotentialenergy_MC
 
 subroutine VdWpotentialenergySaw(chain,Energy,saw)
 
-    use globals, only : nseg, nsegtypes
+    use globals, only : nseg
     use chains, only : type_of_monomer
     use parameters, only :  lsegAA,VdWeps
 
@@ -1977,7 +1961,7 @@ end subroutine VdWpotentialenergySaw
 
 subroutine VdWpotentialenergy(chain,Energy)
 
-    use globals, only : nseg, nsegtypes
+    use globals, only : nseg
     use chains, only : type_of_monomer
     use parameters, only :  lsegAA,VdWeps
 
@@ -2061,7 +2045,7 @@ subroutine write_chain_struct(write_struct,info)
 
     use globals, only : cuantas
     use myutils, only : lenText
-    use chains, only : Rgsqr,Rendsqr,gyr_tensor
+    use chains, only : Rgsqr,Rendsqr,gyr_tensor,Asphparam
 
     implicit none 
 
@@ -2070,7 +2054,7 @@ subroutine write_chain_struct(write_struct,info)
  
     ! .. local
     character(len=lenText) :: filename
-    integer :: un_Rg,un_Rend,un_As_mtrx
+    integer :: un_Rg,un_Rend,un_As_mtrx,un_As_param
     integer :: c,row,col
 
     info=0
@@ -2083,10 +2067,13 @@ subroutine write_chain_struct(write_struct,info)
         un_Rend=open_chain_struct_file(filename,info)
         filename="gyr_tensor."
         un_As_mtrx=open_chain_struct_file(filename,info)
+        filename="Asphparam."
+        un_As_param=open_chain_struct_file(filename,info)
                    
         do c=1,cuantas
             write(un_Rg,*)Rgsqr(c)
             write(un_Rend,*)Rendsqr(c)
+            write(un_As_param,*)Asphparam(c)
             do row=1,3
                 write(un_As_mtrx,*)(gyr_tensor(row,col,c),col=1,3)
             end do
@@ -2095,6 +2082,7 @@ subroutine write_chain_struct(write_struct,info)
         close(un_Rg)
         close(un_Rend) 
         close(un_As_mtrx) 
+        close(un_As_param)
       
     endif
         
