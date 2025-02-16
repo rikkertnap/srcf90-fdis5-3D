@@ -41,8 +41,8 @@ module myio
 
     ! unit number
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xMg,un_xNaCl,un_xKCl
-    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_rhopolAB, un_fe, un_q
-    integer :: un_dip ,un_dielec,un_xpolABz, un_xpolz, un_xpol, un_fdis, un_xpro, un_fdisP
+    integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_fe, un_q
+    integer :: un_xpolABz, un_xpolz, un_xpol, un_fdis, un_xpro, un_fdisP
 
     ! format specifiers
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
@@ -74,7 +74,7 @@ subroutine read_inputfile(info)
 
     ! .. local arguments
 
-    integer :: info_sys, info_bc, info_run, info_geo, info_meth, info_chaintype, info_combi, info_VdWeps
+    integer :: info_sys, info_bc, info_run, info_geo, info_meth, info_chaintype, info_VdWeps
     integer :: info_chainmethod, info_chaintopol, info_dielect
     character(len=8) :: fname
     integer :: ios,un_input  ! un = unit number
@@ -885,7 +885,6 @@ subroutine check_value_method(method,info)
     integer, intent(out),optional :: info
 
     character(len=8) :: methodstr
-    integer :: i
     logical :: flag
 
     ! permissible values of runtype
@@ -940,7 +939,6 @@ subroutine check_value_dielect_env(dielect_env,info)
 end subroutine check_value_dielect_env
 
 
-
 subroutine check_value_VdWeps(systype,isVdW,info)
 
     logical, intent(in) :: isVdW
@@ -977,7 +975,6 @@ subroutine check_value_VdWeps(systype,isVdW,info)
     end if
 
 end subroutine check_value_VdWeps
-
 
 
 ! override input value nzmin
@@ -1027,7 +1024,6 @@ subroutine set_value_isVdWintEne(systype, isVdWintEne)
     logical, intent(inout)  :: isVdWintEne
 
     character(len=15) :: systypestr(2)
-    integer :: i
 
     ! all systype that involve internal VdW chain energy
 
@@ -1056,7 +1052,6 @@ end subroutine
 
 
 subroutine set_value_nsegtypes(nsegtypes,chaintype,systype,info)
-
 
     integer, intent(inout) :: nsegtypes
     integer, intent(out),optional :: info
@@ -1127,17 +1122,6 @@ subroutine set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
     endif
 
 end subroutine set_value_maxnchainsxy
-
-
-! subroutine set_value_precondition(precondition,isSet_precondition)
-
-!     logical, intent(inout) :: precondition
-!     logical, intent(in)  :: isSet_precondition
-
-!     if(.not.isSet_precondition) precondition=.false. ! default value
-
-
-! end subroutine set_value_precondition
 
 
 subroutine set_value_maxniter(maxniter,isSet_maxniter)
@@ -1224,7 +1208,6 @@ subroutine output()
 
     case("neutral","neutralnoVdW") 
 
-
         call output_neutral
         call output_individualcontr_fe
 
@@ -1245,7 +1228,7 @@ end subroutine output
 
 subroutine output_brush_mul
 
-    !     .. variables and constant declaractions
+    !  .. variables and constant declaractions
     use globals
     use volume
     use parameters
@@ -1253,13 +1236,16 @@ subroutine output_brush_mul
     use energy
     use surface
     use myutils, only : newunit
-    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avgyr_tensor, eigen_avgyr_tensor, avAsphparam
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avAsphparam
 
-    !     .. local arguments
+    !  .. local arguments
 
-    integer :: t,row,col
+    logical :: isopen
+    integer :: i, k, g, t         ! dummy indexes
+    real(dp) :: denspol
+    character(len=100) :: fnamelabel
 
-    !     .. output file names
+    !  .. output file names
 
     character(len=90) :: sysfilename
     character(len=90) :: xsolfilename
@@ -1281,11 +1267,6 @@ subroutine output_brush_mul
     character(len=90) :: densfracPfilename
     character(len=90) :: qfilename
     character(len=90) :: densfracionpairfilename
-    character(len=100) :: fnamelabel
-    character(len=20) :: rstr
-    logical :: isopen
-    integer :: i,j,k,z          ! dummy indexes
-    real(dp) :: denspol
 
 
     ! .. executable statements
@@ -1533,19 +1514,9 @@ subroutine output_brush_mul
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
-    write(un_sys,*)'avRgsqr     = ',(avRgsqr(t),t=1,ngr)
-    write(un_sys,*)'avRendsqr   = ',(avRendsqr(t),t=1,ngr)
-    write(un_sys,*)'Eigen_1     = ',eigen_avgyr_tensor(1)
-    write(un_sys,*)'Eigen_2     = ',eigen_avgyr_tensor(2)
-    write(un_sys,*)'Eigen_3     = ',eigen_avgyr_tensor(3)
-    write(un_sys,*)'avAs        = ',avAsphparam
-    do z=1,ngr
-        do i=1,3
-           do j=1,3
-            write(un_sys,*)'avgyr_tensor(',i,j,z,')=',avgyr_tensor(i,j,z)
-           enddo
-        enddo
-    enddo
+    write(un_sys,*)'avRgsqr     = ',(avRgsqr(g),g=1,ngr)
+    write(un_sys,*)'avRendsqr   = ',(avRendsqr(g),g=1,ngr)
+    write(un_sys,*)'avAs        = ',(avAsphparam(g),g=1,ngr)
     write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
     write(un_sys,*)'qpoltot     = ',qpol_tot
     if(systype=="brushdna".or.systype=="brushborn")then
@@ -1628,19 +1599,21 @@ subroutine output_elect
     use energy
     use surface
     use myutils, only : newunit
-    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avgyr_tensor, avAsphparam, eigen_avgyr_tensor
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avAsphparam
 
-    !     .. local arguments
+    !  .. local arguments
 
-    integer :: t,row,col
+    logical :: isopen
+    integer :: i,k,g         ! dummy indexes
+    real(dp) :: denspol
+    character(len=100) :: fnamelabel
 
-    !     .. output file names
+    ! .. output file names
 
     character(len=90) :: sysfilename
     character(len=90) :: xsolfilename
     character(len=90) :: xpolfilename
     character(len=90) :: xpolzfilename
-    character(len=90) :: xpolendfilename
     character(len=90) :: xNafilename
     character(len=90) :: xKfilename
     character(len=90) :: xCafilename
@@ -1656,12 +1629,7 @@ subroutine output_elect
     character(len=90) :: densfracBfilename
     character(len=90) :: qfilename
     character(len=90) :: densfracionpairfilename
-    character(len=100) :: fnamelabel
-    character(len=20) :: rstr
-    logical :: isopen
-    integer :: i,j,k,z          ! dummy indexes
-    real(dp) :: denspol
-
+   
     ! .. executable statements
 
     denspol=init_denspol()
@@ -1921,19 +1889,9 @@ subroutine output_elect
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
-    write(un_sys,*)'avRgsqr     = ',(avRgsqr(t),t=1,ngr)
-    write(un_sys,*)'avRendsqr   = ',(avRendsqr(t),t=1,ngr)
-    write(un_sys,*)'Eigen_1     = ',eigen_avgyr_tensor(1)
-    write(un_sys,*)'Eigen_2     = ',eigen_avgyr_tensor(2)
-    write(un_sys,*)'Eigen_3     = ',eigen_avgyr_tensor(3)
-    write(un_sys,*)'avAs        = ',avAsphparam
-    do z=1,ngr
-       do i=1,3
-          do j=1,3
-            write(un_sys,*)'avgyr_tensor(',i,j,z,')=',avgyr_tensor(i,j,z)
-          enddo
-        end do
-    end do
+    write(un_sys,*)'avRgsqr     = ',(avRgsqr(g),g=1,ngr)
+    write(un_sys,*)'avRendsqr   = ',(avRendsqr(g),g=1,ngr)
+    write(un_sys,*)'avAs        = ',(avAsphparam(g),g=1,ngr)
     write(un_sys,*)'qpolA       = ',qpolA
     write(un_sys,*)'qpolB       = ',qpolB
     write(un_sys,*)'qpoltot     = ',qpol_tot
@@ -1983,8 +1941,6 @@ subroutine output_elect
     write(un_sys,*)'gamma%Hplus     = ',ion_excess%Hplus
     write(un_sys,*)'gamma%OHmin     = ',ion_excess%OHmin
 
-
-
     ! .. closing files
 
     if(nz==nzmin) then
@@ -2018,38 +1974,29 @@ subroutine output_neutral
 
     !     .. variables and constant declaractions
     use globals
-    use volume
+    use volume, only : nz, delta
     use parameters
-    use field
+    use field, only : xsol, xpol, xpolz, rhopol, xpro, q
     use energy
     use myutils, only : newunit
-    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avgyr_tensor, eigen_avgyr_tensor, avAsphparam
+    use chains, only : isHomopolymer, avRgsqr, avRendsqr, avAsphparam
 
-    !     .. output file names
+    !  .. output file names
     character(len=90) :: sysfilename
     character(len=90) :: xsolfilename
     character(len=90) :: xpolfilename
     character(len=90) :: xpolzfilename
     character(len=90) :: xprofilename
 
-    character(len=80) :: fmt2reals,fmt3reals,fmt4reals,fmt5reals,fmt6reals
-
-    !     .. local arguments
-    integer :: i, j, z, t, row, col
+    !  .. local arguments
+    integer :: i, g, t
     character(len=100) :: fnamelabel
-    character(len=20) :: rstr
     logical :: isopen
     real(dp) :: denspol
 
     !     .. executable statements
 
     denspol=init_denspol()
-
-    fmt2reals = "(2ES25.16)"
-    fmt3reals = "(3ES25.16)"
-    fmt4reals = "(4ES25.16)"
-    fmt5reals = "(5ES25.16)"
-    fmt6reals = "(6ES25.16)"
 
     if(nz==nzmax) then
 
@@ -2062,7 +2009,6 @@ subroutine output_neutral
         xpolzfilename='xpolz.'//trim(fnamelabel)
         xsolfilename='xsol.'//trim(fnamelabel)
         xprofilename='xpro.'//trim(fnamelabel)
-
 
         !      .. opening files
         open(unit=newunit(un_sys),file=sysfilename)
@@ -2167,22 +2113,12 @@ subroutine output_neutral
     write(un_sys,*)'FEpi        = ',FEpi
     write(un_sys,*)'FErho       = ',FErho
     write(un_sys,*)'FEVdW       = ',FEVdW
-    write(un_sys,*)'q           = ',q
-    write(un_sys,*)'mu          = ',-log(q)
+    write(un_sys,*)'q           = ',(q(g),g=1,ngr)
+    write(un_sys,*)'mu          = ',(-log(q),g=1,ngr)
     write(un_sys,*)'height      = ',height
-    write(un_sys,*)'avRgsqr     = ',(avRgsqr(t),t=1,ngr)
-    write(un_sys,*)'avRendsqr   = ',(avRendsqr(t),t=1,ngr)
-    write(un_sys,*)'Eigen_1     = ',eigen_avgyr_tensor(1)
-    write(un_sys,*)'Eigen_2     = ',eigen_avgyr_tensor(2)
-    write(un_sys,*)'Eigen_3     = ',eigen_avgyr_tensor(3)
-    write(un_sys,*)'avAs        = ',avAsphparam
-    do z=1,ngr
-        do i=1,3
-           do j=1,3
-            write(un_sys,*)'avgyr_tensor(',i,j,z,')=',avgyr_tensor(i,j,z)
-           enddo
-        end do
-    end do
+    write(un_sys,*)'avRgsqr     = ',(avRgsqr(g),g=1,ngr)
+    write(un_sys,*)'avRendsqr   = ',(avRendsqr(g),g=1,ngr)
+    write(un_sys,*)'avAs        = ',(avAsphparam(g),g=1,ngr)
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'VdWscale%val= ',VdWscale%val
 
@@ -2200,10 +2136,10 @@ end subroutine output_neutral
 
 subroutine output_individualcontr_fe
 
-    use globals, only : LEFT,RIGHT, systype
+    use globals, only : LEFT,RIGHT
     use energy
     use myutils, only : newunit
-    use volume, only : delta,nz,nzmax,nzmin
+    use volume, only : delta, nz, nzmax, nzmin
     use parameters, only : isEnergyShift
     use chains, only : energychain_min
 
@@ -2211,7 +2147,6 @@ subroutine output_individualcontr_fe
 
     character(len=100) :: fenergyfilename
     character(len=100) :: fnamelabel
-    character(len=20) :: rstr
 
     if(nz==nzmax) then
         !     .. make label filename
@@ -2264,7 +2199,6 @@ subroutine output_individualcontr_fe
     write(un_fe,*)"FEtrans%OHmin   = ",FEtrans%OHmin
     write(un_fe,*)"FEtrans%pro     = ",FEtrans%pro
 
-
     write(un_fe,*)"FEchempot%Na    = ",FEchempot%Na
     write(un_fe,*)"FEchempot%Cl    = ",FEchempot%Cl
     write(un_fe,*)"FEchempot%Ca    = ",FEchempot%Ca
@@ -2284,7 +2218,6 @@ subroutine output_individualcontr_fe
     write(un_fe,*)"delta FEchemsurfalt(LEFT) = ",FEchemsurfalt(LEFT)-FEchemsurf(LEFT)-diffFEchemsurf(LEFT)
     write(un_fe,*)"delta FEchemsurfalt(RIGHT)= ",FEchemsurfalt(RIGHT)-FEchemsurf(RIGHT)-diffFEchemsurf(RIGHT)
 
-
     if(nz==nzmin) close(un_fe)
 
 end subroutine output_individualcontr_fe
@@ -2300,14 +2233,12 @@ subroutine make_filename_label(fnamelabel)
     character(len=20) :: rstr
     real(dp) :: denspol
 
-
     denspol=init_denspol()
 
     !     .. make label filename
 
     select case(systype)
     case("elect","electnopoly","electA")
-
 
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr))
@@ -2327,7 +2258,6 @@ subroutine make_filename_label(fnamelabel)
             endif
             fnamelabel=trim(fnamelabel)//"cKCl"//trim(adjustl(rstr))
         endif
-
 
         if(cCaCl2>=0.001) then
             write(rstr,'(F5.3)')cCaCl2
@@ -2430,11 +2360,10 @@ subroutine make_filename_label(fnamelabel)
             fnamelabel=trim(fnamelabel)//".dat"
         endif
 
-
     case default
         print*,"Error in output_individualcontr_fe subroutine"
         print*,"Wrong value systype : ", systype
-    endselect
+    end select
 
 end subroutine
 
@@ -2443,7 +2372,7 @@ subroutine copy_solution(x)
     use globals, only : systype, neq, nsize, bcflag, LEFT, RIGHT
     use volume, only  : nx,ny
     use surface, only : psiSurfL, psiSurfR
-    use field
+    use field, only : xsol,psi,rhopol
 
     real(dp), dimension(neq) :: x  ! expliciet size array
 
@@ -2509,12 +2438,11 @@ end subroutine copy_solution
 subroutine compute_vars_and_output()
 
     use globals, only : systype
-    use energy
-    use field
+    use energy, only : fcnenergy
+    use field, only : xpol, xpolz
+    use field, only : charge_polymer, average_charge_polymer, average_density_z, make_ion_excess
     use parameters, only : height
-    use chains, only : avgyr_tensor, eigen_avgyr_tensor, avAsphparam
-    use eigenvalues, only : eigenvalue_of_avgyr_tensor
-   
+
     select case (systype)
     case ("elect")
 
@@ -2524,12 +2452,10 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height)
         call make_ion_excess()
         call output()
-        eigen_avgyr_tensor=eigenvalue_of_avgyr_tensor(avgyr_tensor)
-
+    
     case ("neutral","neutralnoVdW")
 
         call fcnenergy()
-        eigen_avgyr_tensor=eigenvalue_of_avgyr_tensor(avgyr_tensor)
         call average_density_z(xpol,xpolz,height)
         call output()           ! writing of output
 
@@ -2541,13 +2467,13 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height)
         call make_ion_excess()
         call output()           ! writing of output
-        eigen_avgyr_tensor=eigenvalue_of_avgyr_tensor(avgyr_tensor)
-
+        
     case default
 
         print*,"Error: systype incorrect in compute_vars_and_output"
         print*,"stopping program"
         stop
+
 
     end select
 

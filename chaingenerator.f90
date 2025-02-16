@@ -75,12 +75,12 @@ subroutine make_chains_mc()
     use myutils
     use cadenas_linear
     use cadenas_sequence
-    use chains, only : Rgsqr, Rendsqr, gyr_tensor, Asphparam
+    use chains, only : Rgsqr, Rendsqr, Asphparam
     use eigenvalues, only : Asphericity_parameter
 
     !     .. variable and constant declaractions      
 
-    integer :: j,s,g           ! dummy indices
+    integer :: j,s,g             ! dummy indices
     integer :: idx               ! index label
     integer :: ntheta
     integer :: nchains           ! number of rotations
@@ -97,7 +97,8 @@ subroutine make_chains_mc()
     real(dp) :: theta, theta_angle
     character(len=lenText) :: text, istr
     integer  :: xi,yi,zi ,un_trj, un_ene
-    real(dp) :: energy      
+    real(dp) :: energy 
+    real(dp) :: gyr_tensor(3,3) ! gyration tensor
    
     !     .. executable statements
     !     .. initializations of variables     
@@ -113,7 +114,6 @@ subroutine make_chains_mc()
     xcm= Lx/2.0_dp           ! center box
     ycm= Ly/2.0_dp
     zcm= 0.0_dp
-   
     energy=0.0_dp
             
     if(write_mc_chains) then 
@@ -199,8 +199,8 @@ subroutine make_chains_mc()
 
                     Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
-                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
-                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf))
+                    gyr_tensor            = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor)
 
                     conf = conf +1 
 
@@ -303,9 +303,9 @@ subroutine read_chains_XYZ(info)
 
     
     if(chaintopol=="loop") then 
-        call read_chains_XYZ_loop(info)
+        call read_chains_xyz_loop(info)
     else if(chaintopol=="linear") then
-        call read_chains_XYZ_linear(info)
+        call read_chains_xyz_linear(info)
     else
         print*,"Error: in read_chains_XYZ: chaintop not loop or linear"
         print*,"stopping program"
@@ -320,7 +320,7 @@ end subroutine
 ! number of ATOMS much equal nseg 
 ! conformation is a loop molecule  
 
-subroutine read_chains_XYZ_loop(info)
+subroutine read_chains_xyz_loop(info)
 
     !     .. variable and constant declaractions  
     use mpivars, only : rank !, numproc                                                                                 
@@ -328,7 +328,7 @@ subroutine read_chains_XYZ_loop(info)
     use chains
     use random
     use parameters
-    use chains, only : Rgsqr, Rendsqr, gyr_tensor, Asphparam
+    use chains, only : Rgsqr, Rendsqr, Asphparam
     use eigenvalues, only : Asphericity_parameter
     use volume, only : position_graft, sgraft, nx, ny,nz, delta, nset_per_graft
     use volume, only : init_loop_rot_angle  
@@ -337,15 +337,14 @@ subroutine read_chains_XYZ_loop(info)
     use myio, only : myio_err_conf, myio_err_nseg, myio_err_geometry
     use myutils,  only :  print_to_log, LogUnit, lenText, newunit
 
-
     ! .. argument
 
     integer, intent(out) :: info
 
     ! .. local variables
 
-    integer :: s,g                 ! dummy indices
-    integer :: idx                 ! index label
+    integer :: s,g                  ! dummy indices
+    integer :: idx                  ! index label
     integer :: ntheta
     integer :: maxnchains           ! number of rotations
     integer :: maxntheta            ! maximum number of rotation in xy-plane
@@ -364,7 +363,7 @@ subroutine read_chains_XYZ_loop(info)
     real(dp), allocatable, dimension(:,:) :: theta_array
     real(dp) :: xc,yc,zc               
     real(dp) :: energy      
-    ! real(dp) :: As_mtrx_conf(3,3)   ! temporary array to store asphericity matrix per conformation                                       
+    real(dp) :: gyr_tensor(3,3)      ! temporary array to store gyration tensor per conformation                                       
     character(len=25) :: fname
     integer :: ios, rankfile
     character(len=30) :: str
@@ -526,11 +525,12 @@ subroutine read_chains_XYZ_loop(info)
                                
                     energychain_init(conf)=energy
 
-                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
-                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,int(nseg/2))
-                    
-                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
-                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf))
+                    Rgsqr(conf)      = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)    = end_to_end_distance(chain_nopbc,int(nseg/2)) 
+                   
+                    gyr_tensor       = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)  = Asphericity_parameter(Rgsqr(conf),gyr_tensor)
+                   
                     conf=conf+1   
                 
                 end do ! .. rotation 
@@ -584,10 +584,10 @@ subroutine read_chains_XYZ_loop(info)
                     
                     energychain_init(conf)=energy
 
-                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
-                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,int(nseg/2))
-                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
-                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf))       
+                    Rgsqr(conf)      = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)    = end_to_end_distance(chain_nopbc,int(nseg/2))
+                    gyr_tensor       = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)  = Asphericity_parameter(Rgsqr(conf),gyr_tensor)       
 
                     conf=conf+1   
                 
@@ -633,7 +633,7 @@ subroutine read_chains_XYZ_loop(info)
     
     deallocate(theta_array)
 
-end subroutine read_chains_XYZ_loop
+end subroutine read_chains_xyz_loop
 
 
 subroutine read_graftpts_xyz_loop(info)
@@ -714,7 +714,7 @@ end subroutine
 ! number of ATOMS much equal nseg
 ! conformation is a linear molecule 
 
-subroutine read_chains_XYZ_linear(info)
+subroutine read_chains_xyz_linear(info)
 
     !     .. variable and constant declaractions  
     use mpivars, only : rank                                                                               
@@ -722,7 +722,7 @@ subroutine read_chains_XYZ_linear(info)
     use chains
     use random
     use parameters
-    use chains, only : Rgsqr, Rendsqr, gyr_tensor, Asphparam
+    use chains, only : Rgsqr, Rendsqr, Asphparam
     use eigenvalues, only : Asphericity_parameter
     use volume, only : position_graft, sgraft, nx, ny,nz, delta, nset_per_graft
     use volume, only : init_loop_rot_angle  
@@ -730,7 +730,6 @@ subroutine read_chains_XYZ_linear(info)
     use myio, only : myio_err_chainsfile, myio_err_energyfile, myio_err_index
     use myio, only : myio_err_conf, myio_err_nseg, myio_err_geometry
     use myutils,  only :  print_to_log, LogUnit, lenText, newunit
-
 
     ! .. argument
 
@@ -758,7 +757,8 @@ subroutine read_chains_XYZ_linear(info)
     real(dp) :: theta 
     real(dp), allocatable, dimension(:,:) :: theta_array
     real(dp) :: xc,yc,zc               
-    real(dp) :: energy                                           
+    real(dp) :: energy   
+    real(dp) :: gyr_tensor(3,3)   ! temporary array to store gyration tensor per conformation                                         
     character(len=25) :: fname
     integer :: ios, rankfile
     character(len=30) :: str
@@ -920,14 +920,13 @@ subroutine read_chains_XYZ_linear(info)
                     
                     energychain_init(conf)=energy
  
-                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
-                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
-                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
-                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf))
+                    Rgsqr(conf)      = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)    = end_to_end_distance(chain_nopbc,nseg)
+                    gyr_tensor       = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)  = Asphericity_parameter(Rgsqr(conf),gyr_tensor)
                    
-                     conf=conf+1   
-                
-
+                    conf=conf+1   
+            
                 enddo   ! .. rotation 
                         
             case("prism") 
@@ -936,7 +935,6 @@ subroutine read_chains_XYZ_linear(info)
 
                 xpt =  position_graft(g,1)    ! position of graft point
                 ypt =  position_graft(g,2) 
-
 
                 do ntheta=1,maxntheta         ! rotation in xy-plane and translation to center of xy-plane
 
@@ -980,12 +978,12 @@ subroutine read_chains_XYZ_linear(info)
                     
                     energychain_init(conf)=energy
 
-                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
-                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
-                    gyr_tensor(:,:,conf)  = calc_gyr_tensor(chain_nopbc, nseg)
-                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor(:,:,conf)) 
+                    Rgsqr(conf)      = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)    = end_to_end_distance(chain_nopbc,nseg)
+                    gyr_tensor       = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)  = Asphericity_parameter(Rgsqr(conf),gyr_tensor) 
                    
-                     conf=conf+1   
+                    conf=conf+1   
                 
                 enddo ! .. rotation
                     
@@ -1031,9 +1029,9 @@ subroutine read_chains_XYZ_linear(info)
     
     deallocate(theta_array)
 
-end subroutine read_chains_XYZ_linear
+end subroutine read_chains_xyz_linear
 
-subroutine read_graftpts_XYZ_linear(info)
+subroutine read_graftpts_xyz_linear(info)
 
     use mpivars, only : rank
     use parameters, only : unit_conv
@@ -1085,7 +1083,6 @@ subroutine read_graftpts_XYZ_linear(info)
     xgraftlinear(2)=yc*scalefactor
     xgraftlinear(3)=zc*scalefactor    
     
-
     close(un)
 
     if(item/=1) then
@@ -1093,7 +1090,7 @@ subroutine read_graftpts_XYZ_linear(info)
         info = myio_err_graft
     endif
         
-end subroutine read_graftpts_XYZ_linear
+end subroutine read_graftpts_xyz_linear
 
 
 ! post: isAmonomer set 
@@ -1322,8 +1319,6 @@ subroutine normed_weightchains()
     !call make_histogram(400)
 
 end subroutine
-
-
 
 function minimum_chainenergy() result(min_chainenergy)
 
@@ -2045,7 +2040,7 @@ subroutine write_chain_struct(write_struct,info)
 
     use globals, only : cuantas
     use myutils, only : lenText
-    use chains, only : Rgsqr,Rendsqr,gyr_tensor,Asphparam
+    use chains, only : Rgsqr, Rendsqr, Asphparam
 
     implicit none 
 
@@ -2054,8 +2049,8 @@ subroutine write_chain_struct(write_struct,info)
  
     ! .. local
     character(len=lenText) :: filename
-    integer :: un_Rg,un_Rend,un_As_mtrx,un_As_param
-    integer :: c,row,col
+    integer :: un_Rg,un_Rend,un_As_param
+    integer :: c
 
     info=0
 
@@ -2065,8 +2060,6 @@ subroutine write_chain_struct(write_struct,info)
         un_Rg=open_chain_struct_file(filename,info)
         filename="Rend."
         un_Rend=open_chain_struct_file(filename,info)
-        filename="gyr_tensor."
-        un_As_mtrx=open_chain_struct_file(filename,info)
         filename="Asphparam."
         un_As_param=open_chain_struct_file(filename,info)
                    
@@ -2074,14 +2067,10 @@ subroutine write_chain_struct(write_struct,info)
             write(un_Rg,*)Rgsqr(c)
             write(un_Rend,*)Rendsqr(c)
             write(un_As_param,*)Asphparam(c)
-            do row=1,3
-                write(un_As_mtrx,*)(gyr_tensor(row,col,c),col=1,3)
-            end do
         enddo 
 
         close(un_Rg)
-        close(un_Rend) 
-        close(un_As_mtrx) 
+        close(un_Rend)  
         close(un_As_param)
       
     endif

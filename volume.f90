@@ -99,7 +99,6 @@ contains
 
         call init_graftpoints()
 
-
     end subroutine init_lattice
          
 

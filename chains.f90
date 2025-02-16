@@ -18,25 +18,17 @@ module chains
     real(dp) :: energychain_min                                         ! mimimum energy chain
     real(dp), dimension(:),   allocatable    :: logweightchain
     logical :: isHomopolymer
-    double precision, dimension(:),allocatable :: lsegseq  ! only needed for copolymer
+    double precision, dimension(:),allocatable :: lsegseq               ! only needed for copolymer
 
     ! chain structural quantities
-    real(dp), dimension(:), allocatable       :: Rgsqr                    ! radius of gyration (for all conformations) 
-    real(dp), dimension(:), allocatable       :: Rendsqr                  ! end-to-end distance (for all conformations)
-  ! real(dp), dimension(:,:,:), allocatable   :: As_mtrx                  !"asphericity matrix"/gyration tensor (for all conformations)
-    
-    ! Ranya's Old Paramters
-    real(dp), dimension(:), allocatable       :: avRgsqr                 ! average radius of gyration (for each graft point)
-    real(dp), dimension(:), allocatable       :: avRendsqr               ! average end-to-end distance (for each graft point)
-    !real(dp), dimension(:,:,:), allocatable   :: avAs_mtrx               ! average "asphericity matrix"/gyration tensor (for each graft point)
 
-    ! Paola's New Parameters
-    real(dp), dimension(:,:,:), allocatable   :: gyr_tensor             ! Asphericity matrix/gyration tensor (for each graft point)
+    real(dp), dimension(:), allocatable       :: Rgsqr                  ! radius of gyration (for all conformations) 
+    real(dp), dimension(:), allocatable       :: Rendsqr                ! end-to-end distance (for all conformations)
+    real(dp), dimension(:), allocatable       :: avRgsqr                ! average radius of gyration (for each graft point)
+    real(dp), dimension(:), allocatable       :: avRendsqr              ! average end-to-end distance (for each graft point)
     real(dp), dimension(:), allocatable       :: Asphparam              ! Asphericity parameter invariant of gyration tensor 
-    real(dp), dimension(:,:,:), allocatable   :: avgyr_tensor           ! Average asphericity matrix/gyration tensor
     real(dp), dimension(:), allocatable       :: avAsphparam            ! Average asphericity parameter for each graft point 
-    real(dp)                                  :: eigen_avgyr_tensor(3)  ! Eigenvalues of Avgyr_tensor, Principal components of radius of gyration squared
-
+   
 contains
 
 
@@ -64,15 +56,11 @@ contains
 
         allocate(Rgsqr(maxcuantas))
         allocate(Rendsqr(maxcuantas))
-        ! allocate(As_mtrx(maxcuantas,3,3))
-        allocate(gyr_tensor(3,3,maxcuantas))
         allocate(Asphparam(maxcuantas))
         allocate(avRgsqr(ngr))
         allocate(avRendsqr(ngr))
         allocate(avAsphparam(ngr))
-        allocate(avgyr_tensor(3,3,ngr))
-        !allocate(avAs_mtrx(ngr,3,3))
-
+    
     end subroutine allocate_chains
   
 end module chains

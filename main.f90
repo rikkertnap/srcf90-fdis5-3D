@@ -183,7 +183,7 @@ program main
 
             if(rank.eq.0) then     ! node rank=0
                 call make_guess(x, xguess, isfirstguess, use_xstored, xstored)
-                call solver(x, xguess, tol_conv, fnorm, issolution)
+                ! call solver(x, xguess, tol_conv, fnorm, issolution)
                 call fcnptr(x, fvec, neq)
                 flag_solver = 0   ! stop nodes
                 do i = 1, numproc-1
@@ -204,8 +204,6 @@ program main
             endif
 
             call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf entropy
-            !print*,avRgsqr(1)
-            !print*,avRendsqr(1)
 
             if(rank==0) then
 
@@ -363,9 +361,6 @@ program main
                 endif
 
                 call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf FEconf_entropy
-                
-                !print*,avRgsqr(1)
-                !print*,avRendsqr(1)
 
                 if(rank==0) then
 

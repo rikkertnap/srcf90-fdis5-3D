@@ -817,6 +817,7 @@ contains
         if(runtype=="rangedeltaGd") then 
             
             ! compute pKd two_to_one binding based on deltaGd
+            
 
             pKd%val = compute_pKd_two_to_one(DeltaGd%val)
         
