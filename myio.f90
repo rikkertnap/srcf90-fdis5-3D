@@ -1514,6 +1514,7 @@ subroutine output_brush_mul
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
+   write(un_sys,*)'q           = ',(q(g),g=1,ngr)
     write(un_sys,*)'avRgsqr     = ',(avRgsqr(g),g=1,ngr)
     write(un_sys,*)'avRendsqr   = ',(avRendsqr(g),g=1,ngr)
     write(un_sys,*)'avAs        = ',(avAsphparam(g),g=1,ngr)
@@ -1889,6 +1890,7 @@ subroutine output_elect
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
+    write(un_sys,*)'q           = ',(q(g),g=1,ngr)
     write(un_sys,*)'avRgsqr     = ',(avRgsqr(g),g=1,ngr)
     write(un_sys,*)'avRendsqr   = ',(avRendsqr(g),g=1,ngr)
     write(un_sys,*)'avAs        = ',(avAsphparam(g),g=1,ngr)
@@ -2114,7 +2116,7 @@ subroutine output_neutral
     write(un_sys,*)'FErho       = ',FErho
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'q           = ',(q(g),g=1,ngr)
-    write(un_sys,*)'mu          = ',(-log(q),g=1,ngr)
+    write(un_sys,*)'mu          = ',(-log(q(g)),g=1,ngr)
     write(un_sys,*)'height      = ',height
     write(un_sys,*)'avRgsqr     = ',(avRgsqr(g),g=1,ngr)
     write(un_sys,*)'avRendsqr   = ',(avRendsqr(g),g=1,ngr)
