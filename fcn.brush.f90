@@ -2176,6 +2176,28 @@ contains
     end subroutine fcnneutralnoVdW
 
 
+    subroutine fcn_ionbin_Mg_A(x,f,nn)
+
+        use mpivars
+        use globals , only : neq
+        use modfcnMgexpl
+
+        !     .. scalar arguments
+
+        integer(8), intent(in) :: nn
+
+        !     .. array arguments
+
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+
+        call fcn_Mg_expl(x,f,nn)
+
+    end subroutine fcn_ionbin_Mg_A
+
+
+
+
     !     .. function solves for bulk volume fraction 
 
     subroutine fcnbulk(x,f,nn)   
@@ -2337,6 +2359,8 @@ contains
             fcnptr => fcnneutral
         case ("neutralnoVdW")           ! homopolymer neutral
             fcnptr => fcnneutralnoVdW
+        case ("brush_ionbin_MgA")
+            fcnptr => fcn_ionbin_Mg_A
         case ("bulk water")             ! determines compositon bulk electrolyte solution
              fcnptr => fcnbulk
         case default

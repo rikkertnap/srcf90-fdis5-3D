@@ -452,7 +452,7 @@ subroutine check_value_systype(systype,info)
     character(len=15), intent(in) :: systype
     integer, intent(out),optional :: info
 
-    character(len=15) :: systypestr(8)
+    character(len=15) :: systypestr(9)
     integer :: i
     logical :: flag
 
@@ -466,10 +466,12 @@ subroutine check_value_systype(systype,info)
     systypestr(6)="brushborn"
     systypestr(7)="bulk water"
     systypestr(8)="neutralnoVdW"
+    systypestr(9)="brush_ionbin_MgA"
+
 
     flag=.FALSE.
 
-    do i=1,8
+    do i=1,9
         if(systype==systypestr(i)) flag=.TRUE.
     enddo
 

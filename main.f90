@@ -29,6 +29,7 @@ program main
     use myio
     use myutils
     use dielectric_const
+    use modfcnMgexpl
 
     implicit none
 
