@@ -24,6 +24,18 @@ LFFLAGS=$(LDFLAGS)
 FF= mpif90
 
 
+
+else ifeq ($(shell hostname),cubanito)
+
+FFLAGS=  -cpp -DVERSION=\"$(GIT_VERSION)\"  -fbounds-check -Warray-bounds #-O3
+
+LDFLAGS=-lm /usr/lib/x86_64-linux-gnu/librt.so -L/opt/local/sundials-2.6.1-openmpi/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/opt/local/sundials-2.6.1-openmpi/lib -lblas -llapack
+
+
+LFFLAGS=$(LDFLAGS)
+
+FF= mpif90
+
 else ifeq ($(shell hostname),empanada)
 
 FFLAGS=  -cpp -DVERSION=\"$(GIT_VERSION)\"  -fbounds-check -Warray-bounds #-O3
