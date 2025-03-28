@@ -27,6 +27,8 @@ module myio
     integer, parameter ::  myio_err_nseg      = 20
     integer, parameter ::  myio_err_inputlabel = 21
     integer, parameter ::  myio_err_chaintopol = 22
+    integer, parameter ::  myio_err_combi      = 23 
+    integer, parameter ::  myio_err_maxnneigh  = 29 
 
     integer :: num_cNaCl   ! number of salt concentration considered
     integer :: num_cMgCl2
@@ -42,7 +44,7 @@ module myio
     ! unit number
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xMg,un_xNaCl,un_xKCl
     integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_fe, un_q
-    integer :: un_xpolABz, un_xpolz, un_xpol, un_fdis, un_xpro, un_fdisP
+    integer :: un_xpolz, un_xpol, un_fdis, un_xpro, un_fdisP
 
     ! format specifiers
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
@@ -59,7 +61,8 @@ module myio
     public :: myio_err_graft, myio_err_index, myio_err_conf, myio_err_nseg
     public :: num_cNaCl,num_cMgCl2, cNaCl_array,  cMgCl2_array, set_value_NaCl, set_value_MgCl2
     public :: num_cKCl,  cKCl_array, set_value_KCl
-    public :: maxlist_step
+    public :: maxlist_step   
+    public ::  myio_err_maxnneigh
 
 contains
 
@@ -69,13 +72,14 @@ subroutine read_inputfile(info)
     use parameters
     use surface
     use myutils, only : newunit
+    use chains, only : distphoscutoff 
 
     integer, intent(out), optional :: info
 
     ! .. local arguments
 
     integer :: info_sys, info_bc, info_run, info_geo, info_meth, info_chaintype, info_VdWeps
-    integer :: info_chainmethod, info_chaintopol, info_dielect
+    integer :: info_chainmethod, info_chaintopol, info_dielect, info_combi
     character(len=8) :: fname
     integer :: ios,un_input  ! un = unit number
     character(len=100) :: buffer, label
@@ -83,7 +87,8 @@ subroutine read_inputfile(info)
     integer :: line
     logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha,  isSet_EnergyShift
     logical :: isSet_maxfkfunevals, isSet_maxniter, isSet_isRandom_rot_loop, isSet_isRandom_pos_graft
-    logical :: isSet_seed_graft,isSet_seed_rot_loop, isSet_scale_ran_step
+    logical :: isSet_seed_graft,isSet_seed_rot_loop, isSet_scale_ran_step 
+    logical :: isSet_pbc_chains
 
     if (present(info)) info = 0
 
@@ -97,20 +102,22 @@ subroutine read_inputfile(info)
     endif
 
     ! defaults
-    isSet_maxnchains  =.false.
-    isSet_maxnchainsxy=.false.
-    isSet_precondition=.false.
-    isSet_savePalpha  =.false.
-    write_mc_chains   =.false.
-    write_struct      =.false.
-    isSet_EnergyShift =.false.
+    isSet_maxnchains    =.false.
+    isSet_maxnchainsxy  =.false.
+    isSet_precondition  =.false.
+    isSet_savePalpha    =.false.
+    isSet_EnergyShift   =.false.
     isSet_maxfkfunevals =.false.
-    isSet_maxniter     =.false.
+    isSet_maxniter      =.false.
     isSet_isRandom_rot_loop=.false.
-    isSet_isRandom_pos_graft=.true.
-    isSet_seed_graft = .false.
+    isSet_isRandom_pos_graft=.false.
+    isSet_seed_graft    = .false.
     isSet_seed_rot_loop =.false.
     isSet_scale_ran_step=.false.
+    isSet_pbc_chains    =.false.
+
+    write_mc_chains   =.false.
+    write_struct      =.false.
 
     ! default concentrations
     cKCl=0.0_dp
@@ -317,7 +324,12 @@ subroutine read_inputfile(info)
             case ('deltaGd%delta')
                 read(buffer,*,iostat=ios) deltaGd%delta 
             case ("write_struct")
-                read(buffer,*,iostat=ios) write_struct   
+                read(buffer,*,iostat=ios) write_struct  
+            case ('distphoscutoff')
+                read(buffer,*,iostat=ios) distphoscutoff
+            case ('pbc_chains')
+                read(buffer,*,iostat=ios) pbc_chains
+                isSet_pbc_chains = .true. 
             case default
                 if(pos>1) then
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -400,6 +412,12 @@ subroutine read_inputfile(info)
         return
     endif
 
+    call check_value_runtype_systype(runtype,systype,info_combi)
+    if (info_combi == myio_err_combi) then
+        if (present(info)) info = info_combi
+        return
+    endif
+
     !  .. set input values
 
     call set_value_nzmin(runtype,nzmin,nzmax)
@@ -415,6 +433,7 @@ subroutine read_inputfile(info)
     call set_value_logical_var(isEnergyShift,isSet_EnergyShift,.false.)
     call set_value_logical_var(isRandom_pos_graft,isSet_isRandom_pos_graft,.false.)
     call set_value_logical_var(isRandom_rot_loop,isSet_isRandom_rot_loop,.false.)
+    call set_value_logical_var(pbc_chains, isSet_pbc_chains,.false.)
     call set_value_int_var(seed_graft,isSet_seed_graft,1234)
     call set_value_int_var(seed_rot_loop,isSet_seed_rot_loop,5678)
     call set_value_double_var(scale_ran_step,isSet_scale_ran_step,1.25_dp)
@@ -437,7 +456,7 @@ subroutine read_inputfile(info)
     endif
 
     ! overide certain input values
-    if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_mul") then
+    if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_mul".or.systype=="brush_ionbinMgA") then
         KionNa=0.0_dp
         KionK=0.0_dp
         cpro%val =0.0_dp
@@ -466,7 +485,7 @@ subroutine check_value_systype(systype,info)
     systypestr(6)="brushborn"
     systypestr(7)="bulk water"
     systypestr(8)="neutralnoVdW"
-    systypestr(9)="brush_ionbin_MgA"
+    systypestr(9)="brush_ionbinMgA"
 
 
     flag=.FALSE.
@@ -523,6 +542,31 @@ subroutine check_value_runtype(runtype,info)
     end if
 
 end subroutine check_value_runtype
+
+subroutine check_value_runtype_systype(runtype,systype,info)
+
+    character(len=15), intent(in) :: runtype
+    character(len=15), intent(in) :: systype
+    integer, intent(out),optional :: info
+
+    logical :: flag
+
+    ! not permissible combination of values of runtype and systype
+
+    if(runtype=="rangedist" .and. systype == "brush_inonbinMgA") flag=.false.
+    
+    if (present(info)) info = 0
+
+    if (flag.eqv. .FALSE.) then
+        print*,"Error: combination of runtype and systype is not permissible"
+        print*,"runtype = ",runtype
+        print*,"systype = ",systype
+        if (present(info)) info = myio_err_runtype
+        return
+    end if
+
+end subroutine check_value_runtype_systype
+
 
 subroutine check_value_bcflag(bcflag,info)
 
@@ -847,7 +891,7 @@ subroutine check_value_chainmethod(chainmethod,info)
 end subroutine check_value_chainmethod
 
 
- subroutine check_value_chaintopol(chaintopol,info)
+subroutine check_value_chaintopol(chaintopol,info)
 
         character(len=8), intent(in) :: chaintopol
         integer, intent(out),optional :: info
@@ -1000,7 +1044,7 @@ subroutine set_value_isVdW(systype, isVdW)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdW
 
-    character(len=15) :: systypestr(3)
+    character(len=15) :: systypestr(4)
     integer :: i
 
      isVdW=.True.
@@ -1010,8 +1054,9 @@ subroutine set_value_isVdW(systype, isVdW)
     systypestr(1)="elect"
     systypestr(2)="neutralnoVdW"
     systypestr(3)="brush_mulnoVdW"
+    systypestr(4)="brush_ionbinMgA"
 
-    do i=1,3
+    do i=1,4
         if(systype==systypestr(i)) isVdW=.FALSE.
     enddo
 
@@ -1025,7 +1070,6 @@ subroutine set_value_isVdWintEne(systype, isVdWintEne)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdWintEne
 
-    character(len=15) :: systypestr(2)
 
     ! all systype that involve internal VdW chain energy
 
@@ -1218,6 +1262,11 @@ subroutine output()
         call output_brush_mul
         call output_individualcontr_fe
 
+    case("brush_ionbinMgA")
+
+        call output_brush_mul
+        !call output_individualcontr_fe
+
     case default
 
         print*,"Error in output subroutine"
@@ -1253,7 +1302,6 @@ subroutine output_brush_mul
     character(len=90) :: xsolfilename
     character(len=90) :: xpolfilename
     character(len=90) :: xpolzfilename
-    character(len=90) :: xpolendfilename
     character(len=90) :: xNafilename
     character(len=90) :: xKfilename
     character(len=90) :: xCafilename
@@ -2230,7 +2278,7 @@ end subroutine output_individualcontr_fe
 subroutine make_filename_label(fnamelabel)
 
     use globals, only : LEFT,RIGHT, systype, runtype
-    use parameters, only : cNaCl,cKCl,cCaCl2,cMgCl2,pHbulk,VdWepsBB,init_denspol,cpro,VdWscale,pKd
+    use parameters, only : cNaCl,cKCl,cCaCl2,cMgCl2,pHbulk,init_denspol,cpro,VdWscale,pKd
 
     character(len=*), intent(inout) :: fnamelabel
 
@@ -2289,7 +2337,7 @@ subroutine make_filename_label(fnamelabel)
         write(rstr,'(F5.3)')VdWscale%val
         fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
 
-    case("brush_mul","brush_mulnoVdW","brushdna","brushborn")
+    case("brush_mul","brush_mulnoVdW","brushdna","brushborn","brush_ionbinMgA")
 
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr))
@@ -2465,6 +2513,15 @@ subroutine compute_vars_and_output()
 
     case ("brush_mul","brush_mulnoVdW","brushdna","brushborn")
 
+        call fcnenergy()
+        call charge_polymer()
+        call average_charge_polymer()
+        call average_density_z(xpol,xpolz,height)
+        call make_ion_excess()
+        call output()           ! writing of output
+    
+    case ("brush_ionbinMgA")
+        
         call fcnenergy()
         call charge_polymer()
         call average_charge_polymer()

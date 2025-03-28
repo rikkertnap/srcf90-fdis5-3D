@@ -23,9 +23,10 @@ module energy
     real(dp) :: FEelsurf(2)         ! electrostatics energy from  surface
     real(dp) :: FEelvar             ! electrostatics energy contrbution to total free energy from palpha due to varying dielectric 
     real(dp) :: FEelvarborn         ! electrostatics energy contrbution to total free energy from palpha due to Born self-energy 
-    real(dp) :: FEborn             ! Born self-ßenergy  
+    real(dp) :: FEborn              ! Born self-ßenergy  
     real(dp) :: FEchemsurf(2)       ! chemical free energy surface
-    real(dp) :: FEchem
+    real(dp) :: FEchem              ! chemical free energy of weak acid and base monomers that are not phosphate
+    real(dp) :: FEchempair          ! chemical free energty for binging  Mg-phosphate pairs
     real(dp) :: FEbind,FEbindA,FEbindB    ! complexation contribution
     real(dp) :: FEVdW,FEVdWB,FEVdWC       ! Van der Waals contribution
     real(dp) :: FEconf
@@ -80,9 +81,15 @@ contains
             call fcnenergy_neutral_alternative()  
         
         case ("brushborn")
+        
             print*,"energy born not comnpleted yet "   
             call fcnenergy_electbrush_mul() 
             call fcnenergy_elect_alternative()    
+
+        case ("brush_ionbinMgA")
+        
+            call fcnenergy_electbrush_mul() 
+            call fcnenergy_elect_alternative()   
 
         case default  
 
@@ -106,14 +113,9 @@ contains
 
         !  .. local arguments 
     
-        real(dp) :: sigmaq0,psi0
         real(dp) :: qsurf(2)           ! total charge on surface 
-        real(dp) :: qsurfg             ! total charge on grafting surface  
-        integer  :: i,j,s,g               ! dummy variables 
+        integer  :: i,g              ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
-        integer  :: nzadius
-        real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
-        real(dp) :: FEchemSurftmp
         integer, parameter :: A=1, B=2    
 
         !  .. computation of free energy 
@@ -199,26 +201,9 @@ contains
 
         !  .. local arguments 
     
-        real(dp) :: sigmaq0,psi0
-        real(dp) :: qsurf(2)           ! total charge on surface 
-        real(dp) :: qsurfg             ! total charge on grafting surface  
-        integer :: i,j,s               ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
-        integer :: nzadius
-        !real(dp) :: sigmaSurf(2),sigmaqSurf(2,nx*ny),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
-        !real(dp) :: diffFEchemTa, FEchemSurftmp
 
-        ! sigmaSurf(RIGHT)  = sigmaSurfR 
-        ! sigmaSurf(LEFT)   = sigmaSurfL
-        
-        ! do s=1,nx*ny
-        !     sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)
-        !     sigmaqSurf(LEFT,s)  = sigmaqSurfL(s)
-        !     psiSurf(RIGHT,s)    = psiSurfR(s)
-        !     psiSurf(LEFT,s)     = psiSurfL(s)
-        ! enddo    
-
-        ! .. computation ofalternative computation free energy
+        ! .. computation of alternative computation free energy
 
         ! .. translational entropy 
 
@@ -262,17 +247,12 @@ contains
         ! be vary carefull FE = -1/2 \int dz rho_q(z) psi(z)
 
          ! .. chemical and binding contribution
-        if(systype=="brush_mul") then 
+        select case(systype) 
+        case("brush_mul","brush_mulnoVdW","brushdna","brushborn","brush_ionbinMgA") 
             FEchem = FEchem_react_multi()
-        else  if(systype=="brush_mulnoVdW") then 
-            FEchem = FEchem_react_multi()
-        else if(systype=="brushdna") then
-            FEchem = FEchem_react_multi()
-         else if(systype=="brushborn") then
-            FEchem = FEchem_react_multi()
-        else
+        case default
             FEchem = FEchem_react()
-        endif    
+        end select  
 
         !  .. electrostatic Born self energy
         FEborn=FE_selfenergy_brush()
@@ -400,14 +380,8 @@ contains
 
         !  .. local arguments 
     
-        ! real(dp) :: sigmaq0,psi0
-        ! real(dp) :: qsurf(2)           ! total charge on surface 
-        !real(dp) :: qsurfg             ! total charge on grafting surface  
-        integer  :: i,j,s,g,t          ! dummy variables 
+        integer  :: i,g,t          ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
-        !integer  :: nzadius
-        !real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx),sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
-        real(dp) :: FEchemSurftmp
         integer  :: ier
         logical  :: alloc_fail
         real(dp) :: sqrgradpsi(nsize)
@@ -431,7 +405,11 @@ contains
         FEbind = 0.0_dp
         FEchem = 0.0_dp
         FEVdW  = 0.0_dp
+        FEelvarborn=0.0_dp
+        FEelvar = 0.0_dp
+
         qres   = 0.0_dp
+        
 
         do i=1,nsize
             FEpi = FEpi  + log(xsol(i))
@@ -485,7 +463,7 @@ contains
             enddo 
             FEelvar=FEelvar*volcell/vsol ! vsol divsion because of constqE definition in grad_pot_sqr_eps_cubic( 
             
-            !  needs to  checked vocell  prefactor
+            !  needs to  checked volcell  prefactor
 
 
             FEelvarborn=0.0_dp
@@ -549,7 +527,7 @@ contains
 
         !     .. local arguments 
     
-        integer  :: i,j,t,g             ! dummy variables 
+        integer  :: i,t,g             ! dummy variables 
         real(dp) :: volumelat          ! volume lattice 
         integer  :: ier
         logical  :: alloc_fail
@@ -622,7 +600,7 @@ contains
 
         !  .. variable and constant declaractions 
     
-        use globals, only : nsize, nseg, nsegtypes
+        use globals, only : nsize
         use volume, only : volcell
         use parameters
         use field
@@ -679,7 +657,6 @@ contains
         use globals, only : nsize
         use parameters, only : vsol 
         use volume, only : volcell
-        use field, only : xpol,xsol
 
         real(dp), intent(in) :: xvol(nsize)
         real(dp), intent(in) :: xvolbulk 
@@ -715,6 +692,7 @@ contains
         use globals, only : nsize
         use volume, only : volcell
         use parameters, only : vsol
+
         implicit none
 
         real(dp), intent(in) :: xvol(nsize)
@@ -759,9 +737,6 @@ contains
         real(dp), intent(in) :: vol    
         character(len=1), optional :: flag    
 
-        integer :: i
-
-
         if(xvolbulk==0.0_dp) then 
             FEtrans_entropy_bulk=0.0_dp
         else
@@ -788,10 +763,6 @@ contains
         real(dp), intent(in) :: vol    
         character(len=1), optional :: flag    
 
-        ! .. local 
-        integer :: i
-        real(dp) :: chempot ! chemical potential difference 
-        real(dp) :: sumdens 
 
         if(expchempot==0.0_dp) then 
             FEchem_pot_bulk=0.0_dp
@@ -1006,6 +977,32 @@ contains
                 endif        
             enddo
 
+        case("brush_ionbinMgA") 
+            
+            do t=1,nsegtypes
+
+                if(ismonomer_chargeable(t)) then
+
+                    if(t==ta) then 
+                        
+                        FEchem_react = FEchem_react+FEchempair/volcell ! unit FEchempair allready here in E !! 
+
+                    else
+                        
+                        do i=1,nsize
+
+                            betapi=-log(xsol(i))/vsol
+                            lambda=-log(fdis(i,t)) -psi(i)*zpol(t,2)-betapi*vpol(t)*vsol
+                            rhopolq=zpol(t,2)*fdis(i,t)*rhopol(i,t)
+            
+                            FEchem_react = FEchem_react + &
+                                (- rhopol(i,t)*lambda -psi(i)*rhopolq -betapi*rhopol(i,t)*vpol(t)*vsol )
+                        enddo
+                    endif
+                        
+                endif        
+            enddo
+
         case("brushborn") 
 
              ! .. scaled gradient potential contribution 
@@ -1084,7 +1081,7 @@ contains
 
     function FEelect_surface() result(FEelsurf)
 
-        use globals, only : bcflag,LEFT,RIGHT, pi
+        use globals, only : LEFT, RIGHT, pi
         use volume, only : areacell, nx, ny, delta
         use parameters, only : lb
         use surface, only : sigmaSurfL, sigmaSurfR,sigmaqSurfL, sigmaqSurfR, psiSurfL, psiSurfR
@@ -1128,7 +1125,7 @@ contains
         real(dp) ::  FEchemsurf(2)
 
         real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx)
-        real(dp) :: sigmaq0Surf(2,nx*ny),psiSurf(2,nx*ny)
+        real(dp) :: psiSurf(2,nx*ny)
         real(dp) :: FEchemSurftmp
         integer :: s 
 
@@ -1206,7 +1203,7 @@ contains
         real(dp) :: qsurf(2)
         ! local
         integer :: i, s 
-        real(dp) :: sigmaSurf(2),sigmaqSurf(2,ny*nx)
+        real(dp) :: sigmaqSurf(2,ny*nx)
   
         do s=1,nx*ny
             sigmaqSurf(RIGHT,s) = sigmaqSurfR(s)

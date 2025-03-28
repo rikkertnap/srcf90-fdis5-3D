@@ -12,7 +12,15 @@
     type(moleclist) :: expmu
     type(moleclist) :: ion_excess  
     type(bornmoleclist) :: bornrad,bornbulk 
+  
+    ! .. index for different chemical states of phosphate used in vPP and qPP in for systype nucl_ionbin_Mg
 
+    integer, parameter :: Phos=1 
+    integer, parameter :: PhosH=2
+    integer, parameter :: PhosK=3
+    integer, parameter :: PhosNa=4
+    integer, parameter :: PhosMg=5
+    integer, parameter :: Phos2Mg=6
 
     !  .. volume 
   
@@ -21,6 +29,7 @@
     real(dp) :: vpolB(5),deltavB(4)
     real(dp) :: vpolAA(8),deltavAA(7)
     real(dp), dimension(:), allocatable :: vpol  ! volume of polymer segment of given type, vpol in units of vsol
+    real(dp), dimension(6) :: vPP    ! volume of different chemical states of phosphate 
     
     real(dp) :: vNa                ! volume Na+ ion in units of vsol
     real(dp) :: vK                 ! volume K+  ion in units of vsol
@@ -47,6 +56,8 @@
     integer, dimension(:,:), allocatable :: zpol          ! valence charge polymer
     integer :: zpolA(5)          ! valence charge polymer
     integer :: zpolB(5)          ! valence charge polymer
+    integer, dimension(6) :: qPP ! charge of different phosphate chemical state
+
     integer :: zNa               ! valence charge positive ion 
     integer :: zK                ! valence charge positive ion 
     integer :: zRb               ! valence charge positive ion 
@@ -119,6 +130,9 @@
     logical :: write_mc_chains        ! if true MC chain write of file
     logical :: write_struct           ! if true structural quantities writing to file
     logical :: isEnergyShift         ! if true energychain is shifted by energychain_min see chaingenerator
+    logical :: pbc_chains             ! if true apply pbc to chain conformation
+ 
+
 
     ! ..average structural properties of layer
 
@@ -127,6 +141,8 @@
     real(dp) :: qpolB              ! charge poly B of layer 
     real(dp) :: qpol_tot           ! charge poly A+B of layer 
   
+    real(dp) :: avfdisP2Mg, avfdisPP(5,5) ! average fraction monomer of phopsphate pairs in chemical state PP,PPH, , etc  
+   
     real(dp), dimension(:), allocatable :: qpol                ! charge poly of layer 
     real(dp), dimension(:), allocatable :: avfdis              ! average degree of dissociation
     real(dp) :: avfdisA(8)         ! average degree of dissociation 
@@ -178,12 +194,19 @@
     integer, parameter ::  err_pKdfile         = 2 
     integer, parameter ::  err_pKderror        = 3
 
+    !  return error  
+    integer, parameter ::  err_file_noexist = 1
+    integer, parameter ::  err_file         = 2 
+    integer, parameter ::  err_error        = 3
+
+
     ! lammmps unit conversion ! converts sigma to nm 
 
     real(dp) :: unit_conv
 
     private :: VdWepsilon
-    private :: err_pKdfile_noexist,err_pKdfile,err_pKderror  
+    private :: err_pKdfile_noexist,err_pKdfile,err_pKderror
+    private :: err_file_noexist,err_file,err_error
 
 contains
 
@@ -219,6 +242,8 @@ contains
                 neq = nsize  
             case ("bulk water") 
                 neq = 5 
+            case ("brush_ionbinMgA")
+                neq = 2 * nsize
             case default
                 print*,"Wrong value systype:  ",systype
                 stop
@@ -442,6 +467,7 @@ contains
         use globals, only : nsegtypes,nseg,systype
         use chains, only : type_of_monomer_char,type_of_monomer,ismonomer_chargeable
         use physconst, only : Na
+        use myutils, only : error_handler
 
         real(dp) :: KAA(7)
         real(dp) :: vA    
@@ -511,7 +537,12 @@ contains
         deltavAA(6) = 2.0_dp*vpolAA(1)+vMg-vpolAA(7) ! 2vA- + vMg2+ -vA2Mg
         deltavAA(7) = vpolAA(1)+vK-vpolAA(8)    ! vA- + vK+ - vAK
 
-
+        if(systype=="nucl_ionbin_MgA") then
+            call init_vPP(info)
+            call error_handler(info,"init_vPP")
+            call init_qPP()
+        endif
+        
         ! determine if there is only one seg type is chargeable
         flag_one=0
         do tt=1,nsegtypes
@@ -723,7 +754,7 @@ contains
             xguess(4)=x(4)
             xguess(5)=x(5)
            
-            call solver(x, xguess, tol_conv, fnorm, issolution) 
+!            call solver(x, xguess, tol_conv, fnorm, issolution) 
             
             !     .. return solution
             
@@ -869,7 +900,7 @@ contains
         case ("brush_mul","brush_mulnoVdW") 
             call init_expmu_elect() 
             call set_VdWeps_scale(VdWscale)     
-        case ("brushdna") 
+        case ("brushdna","brush_ionbinMgA") 
             call init_dna  
             call init_expmu_elect()
             call set_VdWeps_scale(VdWscale)
@@ -946,6 +977,51 @@ contains
        call read_lseg(lsegAA,lsegfname, nsegtypes)
 
     end subroutine init_lseg
+
+
+! Inits vPP in terms of vpol 
+    ! used only for systype equal nucl_ionbin_Mg
+    ! pre:  vpol and vsol and tA need to be set before 
+    ! post:  vPP 
+
+    subroutine init_vPP(info)
+
+        integer, intent(inout) :: info
+        integer :: tPhos
+        real(dp), parameter :: eps_vpol=1.0e-5_dp
+
+        tPhos = tA
+        info=0
+
+        if(tPhos==0) then
+            info=err_error
+            return
+        endif
+
+        if(abs(vpol(tPhos))<eps_vpol) then 
+            info=err_error
+            return
+        endif    
+
+        vPP(Phos) = vpol(tPhos) * vsol
+        vPP(PhosH) = vpol(tPhos) * vsol
+        vPP(PhosK) = (vpol(tPhos)+vK ) * vsol
+        vPP(PhosNa) = (vpol(tPhos)+vNa ) * vsol 
+        vPP(PhosMg) = (vpol(tPhos)+vMg ) * vsol
+        vPP(Phos2Mg) = (2.0_dp*vpol(tPhos)+vMg ) * vsol
+ 
+    end subroutine   init_vPP 
+
+    subroutine init_qPP()
+        
+        qPP(Phos) = -1
+        qPP(PhosH) = 0
+        qPP(PhosK) = 0
+        qPP(PhosNa) = 0
+        qPP(PhosMg) = 1
+        qPP(Phos2Mg) = 0
+
+    end subroutine init_qPP
 
 
     !  .. assign vpol from values in file named filename
@@ -1225,6 +1301,7 @@ contains
     ! special assignment for certain systype values
     ! use VdWeps to assigns specific values VdWepsAA etc
     ! pre VdWeps and VdWepsin allocated 
+
     subroutine set_VdWepsAAandBB
 
         use globals, only : systype
@@ -1235,6 +1312,7 @@ contains
             VdWepsAB = VdWeps(1,2) 
             VdWepsBB = VdWeps(2,1) 
         case ("neutral","neutralnoVdW","brush_mul","brush_mulnoVdW","brushvarelec","brushborn","brushdna")
+        case ("brush_ionbinMgA")
         case default
             print*,"Error: in set_VdWepsAAandBB, systype=",systype
             print*,"stopping program"

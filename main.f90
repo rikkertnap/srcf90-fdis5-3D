@@ -38,27 +38,26 @@ program main
     real(dp),  dimension(:), allocatable :: xstored   ! stored iteration vector
     real(dp),  dimension(:), allocatable :: fvec
 
-    integer :: i,c,num
+    integer :: i,num
     logical :: use_xstored
     logical :: isfirstguess
     logical :: issolution
     integer :: info
-    character(len=lenText) :: text, istr, rstr
-    character(len=20) :: fname, conffilename
-    integer :: iend , un_conf
+    character(len=lenText) :: text, istr
+    character(len=20) :: fname
     type (looplist), pointer :: loop
     real(dp) :: loopbegin,  loopstepsizebegin
     real(dp), parameter :: loopeps = 1.0e-10_dp 
     real(dp), parameter :: listeps = 1.0e-7_dp   
     real(dp), dimension(:),  pointer :: list
     real(dp), pointer :: list_val
-    real(dp) :: list_first, list_step
+    real(dp) :: list_step
     integer  :: nlist_elem, maxlist_elem, nlist_step
 
+    integer :: phoscutoff ! redundant  not used by systype= brush_ionbinMgA
 
 
     ! .. executable statements
-
 
     ! .. mpi
 
@@ -80,10 +79,10 @@ program main
     call open_logfile(logUnit,fname)
     write(istr,'(I4)')rank
     
-    text='program begins : rank '//istr
+    text='program begins : rank '//trim(adjustl(istr))
     call print_to_log(LogUnit,text)
     write(istr,'(A40)')VERSION
-    text='program version     = '//istr
+    text='program version     = '//trim(adjustl(istr))
     call print_to_log(LogUnit,text)
     if(rank==0) print*,text
 
@@ -92,7 +91,7 @@ program main
     call read_inputfile(info)
     if(info/=0) then
         write(istr,'(I3)')info
-        text="Error in input file: info = "//istr//" : end program."
+        text="Error in input file: info = "//trim(adjustl(istr))//" : end program."
         call print_to_log(LogUnit,text)
         print*,text
         call MPI_FINALIZE(ierr)
@@ -129,6 +128,15 @@ program main
     call allocate_part_fnc(ngr)
     call init_field()
     call init_surface(bcflag,nsurf)
+ 
+    if(systype=="brush_ionbinMgA") then 
+        phoscutoff=int(distphoscutoff/delta)+2 ! redundant ???
+        call allocate_field_pairs(nx,ny,nz,maxneigh,5,len_index_phos) ! internal systype switch ! 5 = size fdisPP matrix 
+        call init_field_pairs()  
+        call write_chain_max_nneigh_phos(write_struct,info) 
+        call make_histogram_max_nneigh_phos(info)
+    endif
+
    
     ! VdW used to be here 
 
@@ -206,6 +214,12 @@ program main
 
             call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf entropy
 
+            if(systype=="brush_ionbinMgA") then
+                call compute_average_charge_PP_expl(avfdisP2Mg,avfdisPP)
+                call compute_FEchem_react_PP_expl(FEchempair)
+            endif          
+
+
             if(rank==0) then
 
                 call compute_vars_and_output()
@@ -249,7 +263,7 @@ program main
         else if(runtype=="rangeVdWeps") then 
             loop => VdWscale    
         else
-            if(associated(loop)) nullify(loop) ! make explict that no association is made
+            loop => null() ! make explict that no association is made
         endif  
 
          ! .. select variable with which list_array to associate
@@ -338,9 +352,9 @@ program main
 
                 if(rank==0) then     ! node rank=0
                     call make_guess(x, xguess, isfirstguess,use_xstored,xstored)
-                    call solver(x, xguess, tol_conv, fnorm, issolution)
+                    !call solver(x, xguess, tol_conv, fnorm, issolution)
                     call fcnptr(x, fvec, neq)
-                    
+                    isSolution=.True.
                     flag_solver = 0   ! stop nodes
                     do i = 1, numproc-1
                         dest =i
@@ -362,6 +376,11 @@ program main
                 endif
 
                 call FEconf_entropy(FEconf,Econf) ! parrallel computation of conf FEconf_entropy
+
+                if(systype=="brush_ionbinMgA") then
+                    call compute_average_charge_PP_expl(avfdisP2Mg,avfdisPP)
+                    call compute_FEchem_react_PP_expl(FEchempair)
+                endif          
 
                 if(rank==0) then
 

@@ -2196,8 +2196,6 @@ contains
     end subroutine fcn_ionbin_Mg_A
 
 
-
-
     !     .. function solves for bulk volume fraction 
 
     subroutine fcnbulk(x,f,nn)   
@@ -2359,7 +2357,7 @@ contains
             fcnptr => fcnneutral
         case ("neutralnoVdW")           ! homopolymer neutral
             fcnptr => fcnneutralnoVdW
-        case ("brush_ionbin_MgA")
+        case ("brush_ionbinMgA")
             fcnptr => fcn_ionbin_Mg_A
         case ("bulk water")             ! determines compositon bulk electrolyte solution
              fcnptr => fcnbulk

@@ -5,10 +5,12 @@ module field
 
     implicit none
     
-    real(dp), dimension(:), allocatable :: xpol     ! volume fraction of polymer   
+    real(dp), dimension(:), allocatable :: xpol     ! volume fraction of polymer 
+    real(dp), dimension(:,:), allocatable :: xpol_t   ! volume fraction of polymer in layer i of type t
     real(dp), dimension(:), allocatable :: xpolz    ! total volume fraction of polymer in z-direction  
     real(dp), dimension(:,:), allocatable :: rhopol ! density  monomer of polymer in layer i of type t
-    real(dp), dimension(:,:), allocatable :: rhopolin 
+    real(dp), dimension(:,:), allocatable :: rhopolin  
+    real(dp), dimension(:,:), allocatable :: rhopol_charge ! density chargeable monomer of polymer in layer i of type t
     real(dp), dimension(:), allocatable :: rhoqpol  ! charge density  monomer of polymer in layer i 
 
     real(dp), dimension(:), allocatable :: xsol    ! volume fraction solvent
@@ -36,6 +38,10 @@ module field
     real(dp), dimension(:), allocatable :: lnq      ! exponent of normalization partion fnc polymer 
 
     real(dp) :: lnproshift ! shift in exponetn palpha
+    
+    real(dp), dimension(:), allocatable       :: rhoqphos       ! charged density of phosphate needed systype="brush_ionbinMgA"
+    real(dp), dimension(:,:), allocatable   :: fdisPP_loc, fdisPP_loc_swap     ! fdisPP(J,K) local equivalent of fraction of fdisPP(i,k,J,K)  
+    real(dp)                                :: fdisP2Mg_loc, fdisP2Mg_loc_swap ! fdisP2Mg    local equivalent of fraction of fdisP2Mg(i,k)   
 
   
 contains
@@ -45,39 +51,45 @@ contains
         integer, intent(in) :: Nx,Ny,Nz,nsegtypes
         
         integer :: N
-        integer :: ier
+        integer :: ier(26),i
 
+
+        ier = 0 
         N=Nx*Ny*Nz
 
-        allocate(xpol(N),stat=ier)
-        allocate(xpolz(Nz),stat=ier)
-        allocate(rhopol(N,nsegtypes),stat=ier) 
-        allocate(rhopolin(N,nsegtypes),stat=ier) 
-        allocate(rhoqpol(N),stat=ier) 
-        allocate(xsol(N),stat=ier)
-        allocate(psi(N+2*Nx*Ny))
-        allocate(xNa(N),stat=ier)
-        allocate(xK(N),stat=ier)
-        allocate(xRb(N),stat=ier)
-        allocate(xCa(N),stat=ier)
-        allocate(xMg(N),stat=ier)
-        allocate(xNaCl(N),stat=ier) 
-        allocate(xKCl(N),stat=ier) 
-        allocate(xCl(N),stat=ier) 
-        allocate(xHplus(N),stat=ier)
-        allocate(xOHmin(N),stat=ier)
-        allocate(rhoq(N),stat=ier)
-        allocate(fdis(N,nsegtypes),stat=ier)
-        allocate(fdisA(N,8),stat=ier)
-        allocate(fdisB(N,5),stat=ier)
-        allocate(epsfcn(N),stat=ier)    ! relative dielectric constant
-        allocate(Depsfcn(N),stat=ier)   ! derivate relative dielectric constan
-        allocate(xpro(N),stat=ier) 
+        allocate(xpol(N),stat=ier(1))
+        allocate(xpolz(Nz),stat=ier(2))
+        allocate(xpol_t(N,nsegtypes),stat=ier(3))
+        allocate(rhopol(N,nsegtypes),stat=ier(4)) 
+        allocate(rhopolin(N,nsegtypes),stat=ier(5))  
+        allocate(rhopol_charge(N,nsegtypes),stat=ier(26)) 
+        allocate(rhoqpol(N),stat=ier(6)) 
+        allocate(xsol(N),stat=ier(7))
+        allocate(psi(N+2*Nx*Ny),stat=ier(8))
+        allocate(xNa(N),stat=ier(9))
+        allocate(xK(N),stat=ier(10))
+        allocate(xRb(N),stat=ier(11))
+        allocate(xCa(N),stat=ier(12))
+        allocate(xMg(N),stat=ier(13))
+        allocate(xNaCl(N),stat=ier(14)) 
+        allocate(xKCl(N),stat=ier(15)) 
+        allocate(xCl(N),stat=ier(16)) 
+        allocate(xHplus(N),stat=ier(17))
+        allocate(xOHmin(N),stat=ier(18))
+        allocate(rhoq(N),stat=ier(19))
+        allocate(fdis(N,nsegtypes),stat=ier(20))
+        allocate(fdisA(N,8),stat=ier(21))
+        allocate(fdisB(N,5),stat=ier(22))
+        allocate(epsfcn(N),stat=ier(23))    ! relative dielectric constant
+        allocate(Depsfcn(N),stat=ier(24))   ! derivate relative dielectric constan
+        allocate(xpro(N),stat=ier(25)) 
         
-        if( ier/=0 ) then
-            print*, 'Allocation error : stat =', ier
-            stop
-        endif
+        do i=1,25
+            if( ier(i)/=0 ) then
+                print*, 'Allocation error : stat =', ier(i),' for i= ',i
+                stop
+            endif
+        enddo    
         
     end subroutine allocate_field
 
@@ -143,6 +155,54 @@ contains
     end subroutine init_field
 
 
+    subroutine allocate_field_pairs(Nx,Ny,Nz,maxneigh,maxfdisPP,len_index_phos)
+
+        use globals, only : systype 
+        integer, intent(in) :: Nx,Ny,Nz,maxneigh, maxfdisPP,len_index_phos
+
+        integer :: N, Nindex
+        integer :: ier(3), i
+
+        ier=0
+ 
+        if(systype=="brush_ionbinMgA") then
+
+            N=Nx*Ny*Nz
+            allocate(rhoqphos(N),stat=ier(1))
+            allocate(fdisPP_loc(maxfdisPP,maxfdisPP),stat=ier(2))
+            allocate(fdisPP_loc_swap(maxfdisPP,maxfdisPP),stat=ier(3))
+        
+        endif
+        
+        do i=1,3
+            if( ier(i)/=0 ) then
+                print*,'Allocation error : stat =', ier(i),' for i= ',i
+                stop
+            endif
+        enddo  
+
+
+    end subroutine allocate_field_pairs
+
+
+    subroutine init_field_pairs()
+       
+        use globals, only : systype
+ 
+        rhoqphos=0.0_dp
+    
+        if(systype=="brush_ionbinMgA") then
+            fdisPP_loc=0.0_dp
+            fdisP2Mg_loc=0.0_dp
+            fdisPP_loc_swap=0.0_dp
+            fdisP2Mg_loc_swap=0.0_dp
+        endif
+
+    end subroutine init_field_pairs
+
+
+
+
     !  debug routine
 
     subroutine check_integral_rholpol_multi(sumrhopol, checkintegral)
@@ -203,6 +263,8 @@ contains
             call charge_polymer_dna()
         case ("elect")  
             call charge_polymer_binary()
+        case ("brush_ionbinMgA")
+            call charge_polymer_ionbinMgA()
         case default
             print*,"Error in average_charge_polymer subroutine"    
             print*,"Wrong value systype : ", systype
@@ -239,6 +301,35 @@ contains
         enddo
 
     end subroutine charge_polymer_dna
+
+    subroutine charge_polymer_ionbinMgA()
+
+        use globals, only : nsize, nsegtypes
+        use volume, only : volcell
+        use parameters, only : zpol, qpol, qpol_tot, tA
+
+        integer :: i, t
+
+        qpol_tot=0.0_dp
+        do t=1,nsegtypes
+            qpol(t)=0.0_dp
+            if(t/=tA) then    
+                do i=1,nsize
+                    qpol(t)=qpol(t)+(fdis(i,t)*zpol(t,2)+(1.0_dp-fdis(i,t))*zpol(t,1))*rhopol(i,t)
+                enddo
+            else
+                ! phosphate
+                do i=1,nsize
+                    qpol(t)=qpol(t)+ rhoqphos(i) !  !!!! units 
+                enddo    
+            endif    
+
+            qpol(t)=qpol(t)*volcell
+            qpol_tot=qpol_tot+qpol(t)
+        enddo
+
+    end subroutine charge_polymer_ionbinMgA
+
 
 
     subroutine charge_polymer_multi()
@@ -296,6 +387,8 @@ contains
             call average_charge_polymer_dna()
         case ("elect","electA","electVdWAB","electdouble")   
             call average_charge_polymer_binary()
+        case ("brush_ionbinMgA")
+            call average_charge_polymer_ionbinMgA()
         case default
             print*,"Error in average_charge_polymer subroutine"    
             print*,"Wrong value systype : ", systype
@@ -305,7 +398,7 @@ contains
     end subroutine average_charge_polymer
         
 
-     subroutine average_charge_polymer_dna()
+    subroutine average_charge_polymer_dna()
 
         use globals, only : nseg,nsize,nsegtypes
         use volume, only : volcell,ngr
@@ -356,6 +449,109 @@ contains
         deallocate(npol)    
 
     end subroutine average_charge_polymer_dna
+
+    
+    subroutine average_charge_polymer_ionbinMgA()
+
+        use globals, only : nseg,nsize,nsegtypes
+        use volume, only : volcell,ngr
+        use parameters, only : zpol, avfdis, avfdisA, tA
+        use parameters, only : Phos, PhosH, PhosK, PhosNa, PhosMg, avfdisPP, avfdisP2Mg
+        use chains, only: type_of_monomer,ismonomer_chargeable
+
+        integer, dimension(:), allocatable   :: npol
+        integer :: i,s,t,k,JJ, KK
+        real(dp) :: sumrhopolt ! average density of polymer of type t 
+
+        allocate(npol(nsegtypes))
+        
+        npol=0
+
+        do s=1,nseg
+            t=type_of_monomer(s)
+            npol(t)=npol(t)+1
+        enddo   
+
+        do t=1,nsegtypes
+            npol(t)=npol(t)*ngr
+        enddo
+            
+        do t=1,nsegtypes
+            avfdis(t)=0.0_dp
+            if(ismonomer_chargeable(t)) then 
+                sumrhopolt=npol(t)/volcell
+                if(npol(t)/=0) then
+                    if(t/=tA) then    
+                        do i=1,nsize
+                            avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,2)+(1.0_dp-fdis(i,t))*zpol(t,1))*rhopol(i,t)
+                        enddo
+                        avfdis(t)=avfdis(t)/sumrhopolt        
+                    else
+                       ! phosphate 
+ 
+                        do k=1,8
+                            avfdisA(k)=0.0_dp
+                        enddo   
+                            
+                        ! charged phosphates
+                        do JJ=1,5
+                            KK=Phos
+                            avfdisA(1)=avfdisA(1) +avfdisPP(JJ,KK)+avfdisPP(KK,JJ)
+                        enddo
+ 
+                        ! protonated phosphates
+                        do JJ=1,5
+                            KK=PhosH    
+                            avfdisA(2) = avfdisA(2)+avfdisPP(JJ,KK)+avfdisPP(KK,JJ)
+                        enddo
+ 
+                        ! Na bound  phosphates
+                        do JJ=1,5
+                            KK=PhosNa
+                            avfdisA(3) = avfdisA(3)+avfdisPP(JJ,KK)+avfdisPP(KK,JJ)
+                        enddo
+    
+                        ! K bound  phosphates
+                        do JJ=1,5
+                            KK=PhosK
+                            avfdisA(8) = avfdisA(8)+avfdisPP(JJ,KK)+avfdisPP(KK,JJ)
+                        enddo
+
+                        ! Mg bound phosphates
+                        do JJ=1,5
+                            KK=PhosMg
+                            avfdisA(6) = avfdisA(6)+avfdisPP(JJ,KK)+avfdisPP(KK,JJ)
+                        enddo
+                            
+                        ! Ca bound phosphates             
+                        avfdisA(4) = 0.0_dp
+
+                        ! P2Ca bound phosphates
+                        avfdisA(5) = 0.0_dp
+
+
+                        ! P2Mg bound phophates 
+                        avfdisA(7)=2.0_dp*avfdisP2Mg
+
+                        do k=1,8
+                            avfdisA(k)=avfdisA(k)/2.0_dp
+                        enddo  
+                        ! divide by 2 because avfdisPP fraction of pairs i.e normed with total number of pairs!
+                
+                        avfdis(ta)= - avfdisA(1)+avfdisA(4)+avfdisA(6) ! signed charged fraction   
+
+                
+                    endif       
+                endif
+            endif    
+        enddo         
+
+        deallocate(npol)    
+
+    end subroutine average_charge_polymer_ionbinMgA
+
+    
+
 
     subroutine average_charge_polymer_multi()
 

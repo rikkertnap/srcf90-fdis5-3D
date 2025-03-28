@@ -6,6 +6,15 @@ module chains
 
     implicit none
   
+    type var_iarray
+        integer, allocatable :: elem(:)
+    end type var_iarray
+
+    type(var_iarray), allocatable               :: indexconfpair(:,:)       ! indexconfpair(s,alpha)%elem(j) = layer number of conf alpha and 
+                                                                            ! segment number s and neighbor j used for distributed volume 
+    integer, dimension(:,:), allocatable        :: nneigh                   ! number of neigbors or pairs of segment s in conf alpha used only phosphates  
+    integer, dimension(:), allocatable          :: max_nneigh_phos          ! maximum number of neigbors or pairs of phosphate segments in conf alpha and seggment s
+
     integer, dimension(:,:), allocatable    :: indexchain               ! index(alpha,s)= layer number of conf alpha and segment number s
     integer, dimension(:,:), allocatable    :: indexchain_init 
     logical, dimension(:), allocatable      :: isAmonomer               ! isAmonomer(s) =.true. if s is a "A" monomoer  
@@ -29,6 +38,12 @@ module chains
     real(dp), dimension(:), allocatable       :: Asphparam              ! Asphericity parameter invariant of gyration tensor 
     real(dp), dimension(:), allocatable       :: avAsphparam            ! Average asphericity parameter for each graft point 
    
+    ! .. pairing parameters 
+
+    real(dp) :: distphoscutoff ! distance allow between two phosphate to be a pair
+    integer  :: maxneigh       ! maximum of neigbors 
+    integer  :: len_index_phos ! length of array index_phos
+
 contains
 
 
@@ -62,5 +77,41 @@ contains
         allocate(avAsphparam(ngr))
     
     end subroutine allocate_chains
-  
+
+    ! Allocates indexconfpair(s,alpha)%elem(j) = layer number of conf alpha and segment number s and neigbor pair j
+    ! used for distributed volume
+    ! When used indexchain is not needed and can be deallocated
+    ! inputs: dimension of indexconfpair: cuantas, nseg and  nelem(:) 
+
+    subroutine allocate_indexconfpair(cuantas,nseg)
+
+        integer, intent(in) :: cuantas,nseg
+
+        allocate(indexconfpair(nseg,cuantas))  
+        
+    end subroutine allocate_indexconfpair
+
+   
+    ! Allocates neigh : neigbors that segment number s in conf alpha has 
+    ! used only for segment s that is a phosphate
+
+    subroutine allocate_nneighbor(cuantas,nseg)
+
+        integer, intent(in) :: cuantas,nseg
+
+        allocate(nneigh(nseg,cuantas))
+                  
+    end subroutine allocate_nneighbor
+
+     ! Allocates addition maxneigh_phos
+
+    subroutine allocate_max_nneighbor_phos(cuantas)
+
+        integer, intent(in) :: cuantas
+
+        allocate(max_nneigh_phos(cuantas))
+
+    end subroutine allocate_max_nneighbor_phos
+
+
 end module chains

@@ -80,6 +80,8 @@ subroutine init_guess(x, xguess)
             call init_guess_multi(x,xguess)
         case ("brushborn") 
             call init_guess_multi_born(x,xguess)
+        case ("brush_ionbinMgA")  
+            call init_guess_multinoVdW(x,xguess)
         case default   
             print*,"Init_guess: Wrong value systype : ", systype
     end select 

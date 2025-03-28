@@ -396,6 +396,8 @@ contains
             noffset=(2+nsegtypes)*nsize    
         case("brushdna") 
             noffset=(2+nsegtypes)*nsize    
+        case("brush_ionbinMgA") 
+            noffset=2*nsize       
         case default    
             print*,"error: systype wrong value for Poisson_equation_surface "    
         end select

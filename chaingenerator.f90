@@ -11,13 +11,23 @@ module chaingenerator
     implicit none
 
     integer, parameter :: lenfname=40
+
     integer :: conf_write
-    real(dp) :: xgraftloop(3,2), xgraftlinear(3)
+    real(dp) :: xgraftloop(3,2)
+    real(dp) :: xgraftlinear(3)
+
+    integer,           parameter :: maxnneigh = 15 
+    character(len=80), parameter :: fmt3xyz = "(3ES15.5E2)"
+
+    ! private 
+
+    ! public :: make_chains, make_chains_mc,read_chains_xyz
 
     private :: lenfname, conf_write
     private :: pbc 
     private :: xgraftloop, xgraftlinear
-   
+    private ::  maxnneigh
+
 contains
 
 
@@ -80,7 +90,7 @@ subroutine make_chains_mc()
 
     !     .. variable and constant declaractions      
 
-    integer :: j,s,g             ! dummy indices
+    integer :: j,s,g, tPhos      ! dummy indices
     integer :: idx               ! index label
     integer :: ntheta
     integer :: nchains           ! number of rotations
@@ -88,7 +98,7 @@ subroutine make_chains_mc()
     integer :: maxntheta         ! maximum number of rotation in xy-plane
     integer :: conf              ! counts number of conformations
     real(dp) :: chain(3,nseg,200) ! chain(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
-    real(dp) :: chain_rot(3,nseg), chain_nopbc(3,nseg)
+    real(dp) :: chain_rot(3,nseg), chain_nopbc(3,nseg),  chain_pbc(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates
     real(dp) :: xpp(nseg), ypp(nseg) 
@@ -99,6 +109,9 @@ subroutine make_chains_mc()
     integer  :: xi,yi,zi ,un_trj, un_ene
     real(dp) :: energy 
     real(dp) :: gyr_tensor(3,3) ! gyration tensor
+    real(dp) :: sqrDphoscutoff  ! square distance and square cutoff for pair distances of phosphates
+    integer :: info
+    
    
     !     .. executable statements
     !     .. initializations of variables     
@@ -111,10 +124,19 @@ subroutine make_chains_mc()
     Lz = nz*delta            ! maximum height box 
     Lx = nx*delta            ! maximum width box 
     Ly = ny*delta            ! maximum depth box 
-    xcm= Lx/2.0_dp           ! center box
-    ycm= Ly/2.0_dp
-    zcm= 0.0_dp
-    energy=0.0_dp
+    xcm = Lx/2.0_dp          ! center box
+    ycm = Ly/2.0_dp
+    zcm = 0.0_dp
+    energy = 0.0_dp
+    sqrDphoscutoff = distphoscutoff**2
+
+    ! pairs variable 
+    if(systype=="brush_ionbinMgA") then 
+        call allocate_indexconfpair(cuantas,nseg)
+        call allocate_nneighbor(cuantas,nseg)
+        call allocate_max_nneighbor_phos(cuantas)
+        tPhos = find_type_phosphate()
+    endif
             
     if(write_mc_chains) then 
         conf_write=0
@@ -128,7 +150,6 @@ subroutine make_chains_mc()
     endif    
   
     do while (conf<=max_confor)
-
         nchains= 0      ! init zero 
         if(isHomopolymer) then 
             call make_linear_chains(chain,nchains,maxnchains,nseg,lseg) ! chain generator f90
@@ -169,28 +190,47 @@ subroutine make_chains_mc()
                     do s=1,nseg
 
                         ! .. translation onto center box 
-                        x(s) = xpp(s) + xpt
-                        y(s) = ypp(s) + ypt
-                        z(s) = zp(s)  
+                        !x(s) = xpp(s) + xpt
+                        !y(s) = ypp(s) + ypt
+                        !z(s) = zp(s)  
+
+                        chain_rot(2,s) = xpp(s) + xpt
+                        chain_rot(3,s) = ypp(s) + ypt
+                        chain_rot(1,s) = zp(s)    
 
                         ! .. periodic boundary conditions in x-direction and y-direction 
-                        chain_rot(2,s) = pbc(x(s),Lx)
-                        chain_rot(3,s) = pbc(y(s),Ly)
-                        chain_rot(1,s) = z(s)     !  no pbc in z-direction    
+                        chain_pbc(2,s) = pbc(x(s),Lx)
+                        chain_pbc(3,s) = pbc(y(s),Ly)
+                        chain_pbc(1,s) = zp(s)     !  no pbc in z-direction    
 
                         ! .. transforming form real- to lattice coordinates                 
-                        xi = int(chain_rot(2,s)/delta)+1
-                        yi = int(chain_rot(3,s)/delta)+1
-                        zi = int(chain_rot(1,s)/delta)+1
+                        xi = int(chain_pbc(2,s)/delta)+1
+                        yi = int(chain_pbc(3,s)/delta)+1
+                        zi = int(chain_pbc(1,s)/delta)+1
                         
                         call linearIndexFromCoordinate(xi,yi,zi,idx)
+
                         indexchain_init(s,conf) = idx
+
+                        !if(isOutsideLattice(xi,yi,zi,nx,ny,nz)) then 
+                        !    text="Conformation outside box:"
+                        !   call print_to_log(LogUnit,text)  
+                        !   print*,text   
+                        !    print*,"xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                        !   info= myio_err_index
+                        !   return
+                        ! endif    
+
                         if(idx<=0) then
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                         endif
-                    enddo            
+
+                    enddo    
+
+                    if(systype=="brush_ionbinMgA") then 
+                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_rot,Lx,ly)
+                    endif       
             
-                    
                     do s=1,nseg                          
                         chain_nopbc(3,s) = chain(1,s,j)
                         chain_nopbc(1,s) = chain(2,s,j)
@@ -242,16 +282,20 @@ subroutine make_chains_mc()
                         ! .. transforming to prism coordinate system
                         x(s) = ut(xpp(s),ypp(s))
                         y(s) = vt(xpp(s),ypp(s))
+
+                        chain_rot(2,s) = x(s)
+                        chain_rot(3,s) = y(s)
+                        chain_rot(1,s) = z(s)      
                         
                         ! .. periodic boundary conditions in u-direction and v-direction and z-direction 
-                        chain_rot(2,s) = pbc(x(s),Lx)
-                        chain_rot(3,s) = pbc(y(s),Ly)
-                        chain_rot(1,s) = z(s)        ! .. no pbc in z-direction    
+                        chain_pbc(2,s) = pbc(x(s),Lx)
+                        chain_pbc(3,s) = pbc(y(s),Ly)
+                        chain_nopbc(1,s) = z(s)        ! .. no pbc in z-direction    
 
                         ! .. transforming form real- to lattice coordinates                 
-                        xi = int(chain_rot(2,s)/delta)+1
-                        yi = int(chain_rot(3,s)/delta)+1
-                        zi = int(chain_rot(1,s)/delta)+1
+                        xi = int(chain_pbc(2,s)/delta)+1
+                        yi = int(chain_pbc(3,s)/delta)+1
+                        zi = int(chain_pbc(1,s)/delta)+1
 
                         call linearIndexFromCoordinate(xi,yi,zi,idx)
                         indexchain_init(s,conf) = idx
@@ -260,6 +304,21 @@ subroutine make_chains_mc()
                         endif
                         
                     enddo         ! end loop over graft points
+
+                     if(systype=="brush_ionbinMgA") then 
+                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_rot,Lx,ly)
+                    endif   
+
+                    do s=1,nseg                          
+                        chain_nopbc(3,s) = chain(1,s,j)
+                        chain_nopbc(1,s) = chain(2,s,j)
+                        chain_nopbc(2,s) = chain(3,s,j)
+                    enddo
+
+                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
+                    gyr_tensor            = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor)    
 
                     conf = conf +1 
                 
@@ -290,6 +349,8 @@ subroutine make_chains_mc()
     endif   
 
     energychain_init=0.0_dp ! no internal energy 
+
+    if(systype=="brush_ionbinMgA") call find_max_nneighbor_phos(tphos,info)
 
 end subroutine make_chains_mc
 
@@ -344,6 +405,7 @@ subroutine read_chains_xyz_loop(info)
     ! .. local variables
 
     integer :: s,g                  ! dummy indices
+    integer :: tPhos                ! type number of phophate monomer
     integer :: idx                  ! index label
     integer :: ntheta
     integer :: maxnchains           ! number of rotations
@@ -352,6 +414,7 @@ subroutine read_chains_xyz_loop(info)
     integer :: nsegfile             ! nseg in chain file                                                   
     real(dp) :: chain(3,nseg)       ! chains(x,i)= coordinate x of segement i ,x=2 y=3,z=1  
     real(dp) :: chain_nopbc(3,nseg)  ! chains(x,i) coordinates without pbc
+    real(dp) :: chain_pbc(3,nseg)
     real(dp) :: xseg(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg)    ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates 
@@ -371,6 +434,7 @@ subroutine read_chains_xyz_loop(info)
     integer :: un,un_ene ! unit number
     logical :: exist
     character(len=lenText) :: text,istr
+    real(dp) :: sqrDphoscutoff     ! square distance and square cutoff for pair distances of phosphates
 
     ! .. executable statements   
 
@@ -422,7 +486,6 @@ subroutine read_chains_xyz_loop(info)
         endif
     endif    
 
-
     conf=1                    ! counter for conformations                                                           
     conffile=0                ! counter for conformations in file    
     ios=0
@@ -441,6 +504,15 @@ subroutine read_chains_xyz_loop(info)
     xcm= Lx/2.0_dp          ! center x-y plane
     ycm= Ly/2.0_dp
     zcm= 0.0_dp
+    sqrDphoscutoff = distphoscutoff**2
+
+    ! pairs variables 
+    if(systype=="brush_ionbinMgA") then 
+        call allocate_indexconfpair(cuantas,nseg)
+        call allocate_nneighbor(cuantas,nseg)
+        call allocate_max_nneighbor_phos(cuantas)
+        tPhos = find_type_phosphate()
+    endif
 
     do while ((conf<=max_confor).and.(ios==0))
     
@@ -495,18 +567,18 @@ subroutine read_chains_xyz_loop(info)
                
                     do s=1,nseg
 
-                        x(s) = pbc(xp(s),Lx) ! periodic boundary conditions in x and y direction
-                        y(s) = pbc(yp(s),Ly)
-                        z(s) = zp(s)         ! no pbc in z- direction 
+                        chain_pbc(1,s) = pbc(xp(s),Lx) ! periodic boundary conditions in x and y direction
+                        chain_pbc(2,s) = pbc(yp(s),Ly)
+                        chain_pbc(3,s) = zp(s)         ! no pbc in z- direction 
 
                         chain_nopbc(1,s) = xp(s)
                         chain_nopbc(2,s) = yp(s)
                         chain_nopbc(3,s) = zp(s)
 
                         ! transforming form real- to lattice coordinates                 
-                        xi = int(x(s)/delta)+1
-                        yi = int(y(s)/delta)+1
-                        zi = int(z(s)/delta)+1
+                        xi = int(chain_pbc(1,s)/delta)+1
+                        yi = int(chain_pbc(2,s)/delta)+1
+                        zi = int(chain_pbc(3,s)/delta)+1
                             
                         call linearIndexFromCoordinate(xi,yi,zi,idx)
                             
@@ -522,12 +594,15 @@ subroutine read_chains_xyz_loop(info)
                         endif
                         
                     enddo
-                               
+
+                    if(systype=="brush_ionbinMgA") then
+                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,Ly)
+                    endif  
+
                     energychain_init(conf)=energy
 
                     Rgsqr(conf)      = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)    = end_to_end_distance(chain_nopbc,int(nseg/2)) 
-                   
                     gyr_tensor       = calc_gyr_tensor(chain_nopbc, nseg)
                     Asphparam(conf)  = Asphericity_parameter(Rgsqr(conf),gyr_tensor)
                    
@@ -558,14 +633,18 @@ subroutine read_chains_xyz_loop(info)
                         xpp(s) = ut(xp(s),yp(s))
                         ypp(s) = vt(xp(s),yp(s))
 
-                        x(s) = pbc(xpp(s),Lx) ! .. periodic boundary conditions in x and y direction
-                        y(s) = pbc(ypp(s),Ly)
-                        z(s) = zp(s)          ! .. no pbc  in z- direction 
+                        chain_nopbc(1,s) = xpp(s)        
+                        chain_nopbc(2,s) = ypp(s)
+                        chain_nopbc(3,s) = zp(s)         
+
+                        chain_pbc(1,s) = pbc(xpp(s),Lx) ! .. periodic boundary conditions in x and y direction
+                        chain_pbc(2,s) = pbc(ypp(s),Ly)
+                        chain_pbc(3,s) = zp(s)          ! .. no pbc  in z- direction 
 
                         ! .. transforming form real- to lattice coordinates                 
-                        xi = int(x(s)/delta)+1
-                        yi = int(y(s)/delta)+1
-                        zi = int(z(s)/delta)+1
+                        xi = int(chain_pbc(1,s)/delta)+1
+                        yi = int(chain_pbc(2,s)/delta)+1
+                        zi = int(chain_pbc(3,s)/delta)+1
                             
                         call linearIndexFromCoordinate(xi,yi,zi,idx)
                             
@@ -581,6 +660,10 @@ subroutine read_chains_xyz_loop(info)
                         end if
                         
                     end do
+
+                     if(systype=="brush_ionbinMgA") then 
+                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,ly)
+                    endif    
                     
                     energychain_init(conf)=energy
 
@@ -632,6 +715,8 @@ subroutine read_chains_xyz_loop(info)
     if(isChainEnergyFile) close(un_ene)
     
     deallocate(theta_array)
+
+    if(systype=="brush_ionbinMgA") call find_max_nneighbor_phos(tphos,info)
 
 end subroutine read_chains_xyz_loop
 
@@ -722,13 +807,13 @@ subroutine read_chains_xyz_linear(info)
     use chains
     use random
     use parameters
-    use chains, only : Rgsqr, Rendsqr, Asphparam
+    use chains, only : Rgsqr, Rendsqr, Asphparam,  distphoscutoff
     use eigenvalues, only : Asphericity_parameter
     use volume, only : position_graft, sgraft, nx, ny,nz, delta, nset_per_graft
     use volume, only : init_loop_rot_angle  
     use chain_rotation, only : rotationXaxis,rotationZcorr3
     use myio, only : myio_err_chainsfile, myio_err_energyfile, myio_err_index
-    use myio, only : myio_err_conf, myio_err_nseg, myio_err_geometry
+    use myio, only : myio_err_conf, myio_err_nseg, myio_err_geometry, myio_err_maxnneigh
     use myutils,  only :  print_to_log, LogUnit, lenText, newunit
 
     ! .. argument
@@ -738,6 +823,7 @@ subroutine read_chains_xyz_linear(info)
     ! .. local variables
 
     integer :: s,g                 ! dummy indices
+    integer :: tPhos                ! type number of phophate monomer
     integer :: idx                 ! index label
     integer :: ntheta
     integer :: maxnchains           ! number of rotations
@@ -766,6 +852,7 @@ subroutine read_chains_xyz_linear(info)
     integer :: un,un_ene ! unit number
     logical :: exist
     character(len=lenText) :: text,istr
+    real(dp)  :: sqrDphoscutoff 
 
     ! .. executable statements   
 
@@ -835,6 +922,15 @@ subroutine read_chains_xyz_linear(info)
     Lz= nz*delta            ! maximum height box 
     Lx= nx*delta            ! maximum width box 
     Ly= ny*delta            ! maximum depth box 
+    sqrDphoscutoff = distphoscutoff**2
+
+    ! pairs variables 
+    if(systype=="brush_ionbinMgA") then 
+        call allocate_indexconfpair(cuantas,nseg)
+        call allocate_nneighbor(cuantas,nseg)
+        call allocate_max_nneighbor_phos(cuantas)
+        tPhos = find_type_phosphate()
+    endif
 
     do while ((conf<=max_confor).and.(ios==0))
     
@@ -917,6 +1013,10 @@ subroutine read_chains_xyz_linear(info)
                         endif
                         
                     enddo
+
+                    if(systype=="brush_ionbinMgA") then 
+                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,ly)
+                    endif     
                     
                     energychain_init(conf)=energy
  
@@ -952,6 +1052,10 @@ subroutine read_chains_xyz_linear(info)
                         xpp(s) = ut(xp(s),yp(s))
                         ypp(s) = vt(xp(s),yp(s))
 
+                        chain_nopbc(1,s) = xpp(s)
+                        chain_nopbc(2,s) = ypp(s)
+                        chain_nopbc(3,s) = zp(s)
+
                         x(s) = pbc(xpp(s),Lx) ! .. periodic boundary conditions in x and y direction
                         y(s) = pbc(ypp(s),Ly)
                         z(s) = zp(s)          ! .. no pbc  in z- direction 
@@ -976,6 +1080,10 @@ subroutine read_chains_xyz_linear(info)
                         
                     enddo
                     
+                    if(systype=="brush_ionbinMgA") then 
+                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,ly)
+                    endif    
+
                     energychain_init(conf)=energy
 
                     Rgsqr(conf)      = radius_gyration(chain_nopbc,nseg)
@@ -1028,6 +1136,8 @@ subroutine read_chains_xyz_linear(info)
     if(isChainEnergyFile) close(un_ene)
     
     deallocate(theta_array)
+
+    if(systype=="brush_ionbinMgA") call find_max_nneighbor_phos(tphos,info)
 
 end subroutine read_chains_xyz_linear
 
@@ -1454,6 +1564,8 @@ subroutine set_lsegAA
             !lsegAA = lsegPEG
         case ("brush_mul","brush_mulnoVdW","brush","brush_neq","brushvarelec","brushborn","brushdna")
             ! lsegAA = lsegPAA !0.36287_dp
+        case ("brush_ionbinMgA")
+            lsegAA = lsegPAA
         case default
             print*,"Error: in set_lsegAA, systype=",systype
             print*,"stopping program"
@@ -2077,6 +2189,84 @@ subroutine write_chain_struct(write_struct,info)
         
 end subroutine write_chain_struct
 
+subroutine write_chain_max_nneigh_phos(write_struct,info)
+
+    use globals, only : cuantas
+    use myutils, only : lenText
+    use chains, only : type_of_monomer, max_nneigh_phos
+
+
+    implicit none 
+
+    logical, intent(in) :: write_struct
+    integer, intent(inout) :: info
+ 
+    ! .. local
+    character(len=lenText) :: filename
+    integer :: un_max, c
+
+    info=0
+
+    if(write_struct) then
+    
+        filename="max_nneigh_phos."
+        un_max=open_chain_struct_file(filename,info)
+    
+        do c=1,cuantas
+            write(un_max,*)max_nneigh_phos(c)
+        enddo 
+
+        close(un_max)
+      
+    endif
+ 
+end subroutine write_chain_max_nneigh_phos
+
+subroutine make_histogram_max_nneigh_phos(info)
+
+    use globals, only : cuantas, nseg
+    use myutils, only : lenText
+    use chains, only : nneigh, max_nneigh_phos
+    use chains, only : type_of_monomer
+
+    implicit none 
+
+    integer, intent(inout) :: info
+ 
+    ! .. local
+    character(len=lenText) :: filename
+    integer :: un_hist
+    integer :: k, i, conf, s, tPhos
+    integer :: hist(maxnneigh)
+    real(dp) :: avhist(maxnneigh)
+
+    info=0
+    tPhos = find_type_phosphate()
+    
+    filename="histogram_nneigh_phos."
+    un_hist=open_chain_struct_file(filename,info)
+
+    avhist=0
+    do conf=1,cuantas
+        hist=0
+        do s=1,nseg ! loop segments
+            if(type_of_monomer(s)==tPhos) then
+                k=nneigh(s,conf)
+                hist(k)=hist(k)+1
+                ! print*,"s=",s," k=",k," hist(k)=",hist(k),nneigh(s,conf)
+            endif       
+        enddo
+        avhist=avhist+hist
+        ! output
+        write(un_hist,*)(hist(i),i=1,max_nneigh_phos(conf))
+    enddo
+    avhist=avhist/cuantas
+    write(un_hist,*)"average histogram : ",(avhist(i),i=1,maxnneigh)
+   
+    close(un_hist)
+
+end subroutine make_histogram_max_nneigh_phos
+
 function open_chain_struct_file(filename,info)result(un)
 
     use mpivars, only : rank
@@ -2090,7 +2280,7 @@ function open_chain_struct_file(filename,info)result(un)
 
     ! local
     character(len=lenText) :: istr
-    character(len=25) :: fname
+    character(len=lenText) :: fname
     integer :: ios
     logical :: exist
     
@@ -2151,5 +2341,204 @@ function calc_gyr_tensor(chain, nseg) result(mat)
      enddo
 
 end function calc_gyr_tensor
+
+function find_type_phosphate()result(tPhos)
+
+    use myutils, only : lenText, error_handler
+    use globals, only : nseg
+    use chains, only : type_of_monomer,type_of_monomer_char
+
+    integer :: tPhos
+    integer :: s, ios
+    character(len=lenText) :: text
+
+    ios=0
+    tPhos=0
+    do s=1, nseg
+        if(type_of_monomer_char(s)=="P")  tPhos =type_of_monomer(s)
+    enddo   
+    
+    if(tPhos==0) ios=1  ! phosphate monomer "P" not found in type_of_monomer_char 
+
+    if(ios>0) then
+        text='find_type_phosphate : phosphate monomer is not defined'
+        call error_handler(ios,text)
+    endif
+
+end function find_type_phosphate
+
+
+
+! Finds phosphate pairs for given conformation number conf 
+! Conformation is stored in chain
+! Assigns  nneigh(s,conf) and indexconfpair(s,conf)%elem(j) with 0<=j<=neigh(s,conf)
+! input integer :: nseg : number atoms/segment
+!       integer :: conf : conformation number
+!       integer :: tPphos : number associated with type of phosphates
+!       real(dp) :: sqrDphoscutoff : squared distance of cutoffdistance citeria for pair
+!       real(dp) :: chain(3,nseg) : hold coordiante of backbone confomation for all atom/segment
+!       real(dp) :: LX,Ly,Lz : dimension lattice/box in nm 
+! output assigment  
+!       integer :: nneight(nseg,conf) : number of 'neighbors' that a phosphate s has for conformation conf
+!                  if type of s in not a phospate then value zero
+!       type(var_iarray) ::  indexconfpair(s,conf)%elem(j) : layer number of neigbor j of conf alpha and segment number s
+
+
+subroutine find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain,Lx,Ly)
+
+    use mpivars, only : rank
+    use chains, only :  type_of_monomer,indexconfpair
+    use chains, only : nneigh, indexconfpair, distphoscutoff
+    use parameters, only : tA
+    use parameters, only : pbc_chains
+    use volume, only : delta, linearIndexFromCoordinate
+    use myutils, only : newunit, error_handler
+    
+    integer, intent(in) :: nseg
+    integer, intent(in) :: conf
+    integer, intent(in) :: tPhos
+    real(dp), intent(in) :: sqrDphoscutoff
+    real(dp), intent(in) :: chain(3,nseg)
+    real(dp), intent(in) :: Lx,Ly
+
+    !integer, parameter :: maxnneigh = 10
+
+    integer :: s, sprime, i, j
+    integer :: xi, yi, zi , idx
+    integer, dimension(:,:), allocatable :: list_of_pairs, index_of_pairs
+    real(dp) :: sqrdist
+    
+    character(len=100) :: fname
+    integer :: un_pp
+    character(len=10) ::istr
+
+    allocate(list_of_pairs(nseg,maxnneigh))
+    allocate(index_of_pairs(nseg,maxnneigh))
+
+    do s=1,nseg 
+        nneigh(s,conf)=0
+        if(type_of_monomer(s)==tPhos) then ! tPhos equiv to ta which is not set yet 
+            do sprime=1,nseg
+                if(type_of_monomer(sprime)==tPhos ) then
+                    if(s/=sprime) then ! prevent s=sprime being counted as a pair
+                       
+                        sqrdist=0.0_dp
+                        do i=1,3
+                            sqrdist=sqrdist+(chain(i,s)-chain(i,sprime))**2
+                        enddo
+    
+                        if(sqrdist<=sqrDphoscutoff) then ! comparing square of distance to square of cutoff  
+                            ! accept s and sprime are a pair
+                            nneigh(s,conf)=nneigh(s,conf)+1
+
+                            if(nneigh(s,conf)>maxnneigh) then 
+                                print*,"rank=",rank
+                                print*,"conformation=",conf
+                                print*,"segment s=",s, " neighbor sprime=",sprime 
+                                print*,"number of neighbors =",nneigh(s,conf)
+                                call error_handler(1,"Error in find_phosphate_pairs ") 
+                            endif    
+
+                            list_of_pairs(s,nneigh(s,conf))=sprime ! temporarily storage of  segment number of neighbor to (s,conf)
+
+                            ! transforming form real- to lattice coordinates                 
+                            
+                            if(pbc_chains) then 
+                                xi = int(pbc(chain(1,sprime),Lx)/delta)+1
+                                yi = int(pbc(chain(2,sprime),Ly)/delta)+1
+                                zi = int(chain(3,sprime)/delta)+1
+                            else 
+                                xi = int(chain(1,sprime)/delta)+1
+                                yi = int(chain(2,sprime)/delta)+1
+                                zi = int(chain(3,sprime)/delta)+1
+                            endif    
+
+                            call linearIndexFromCoordinate(xi,yi,zi,idx)
+                            index_of_pairs(s,nneigh(s,conf))=idx  ! temporarily storage of index of neighbor to (s, conf)
+                        endif
+                    endif    
+                endif
+           enddo             
+        endif    
+    enddo 
+
+    ! print 
+
+    if(.true.)then
+        write(istr,'(I4)')rank
+        fname='phosphate_pairs.'//trim(adjustl(istr))//'.log'
+        !     .. opening file
+        open(unit=newunit(un_pp),file=fname)
+
+        write(un_pp,*)"phosphate pairs"
+        write(un_pp,*)"value ta=",ta, "value tPhos=",tPhos
+        write(un_pp,*)"distphoscutoff=",distphoscutoff
+        write(un_pp,*)"conf=",conf
+        do s=1,nseg
+             write(un_pp,*)s,type_of_monomer(s),nneigh(s,conf),(list_of_pairs(s,j),j=1,nneigh(s,conf))
+        enddo
+        close(un_pp)
+
+    endif        
+
+    ! allocate indexconfpair
+    do s=1,nseg
+        allocate(indexconfpair(s,conf)%elem(nneigh(s,conf)))
+    enddo
+    
+    ! ..assign indexconfpair
+    do s=1,nseg
+        do j=1,nneigh(s,conf)
+            indexconfpair(s,conf)%elem(j)=index_of_pairs(s,j)
+        enddo 
+    enddo  
+
+    deallocate(list_of_pairs)
+    deallocate(index_of_pairs)
+
+end subroutine find_phosphate_pairs
+
+
+
+! Find phosphate with maximum number phosphate neighbor 
+! for given conformation number conf and checks is max_neighbor parameter is not exceeded
+! input integer :: tPphos : number associated with type of phosphates
+!       integer :: info  
+! output assigment  
+!       integer :: max_nneigh(conf,2) 
+
+subroutine find_max_nneighbor_phos(tPhos,info)
+
+    use globals, only : nseg, cuantas
+    use chains, only : type_of_monomer, nneigh,max_nneigh_phos
+    use myio, only : myio_err_maxnneigh
+     
+    integer, intent(in) :: tPhos
+    integer, intent(out) :: info
+   
+    ! local arguments
+    integer :: conf, s 
+    integer :: max_neighbor, max_seg
+
+    info=0
+
+    do conf=1,cuantas
+        max_neighbor = 0
+        do s=1,nseg 
+            if(type_of_monomer(s)==tPhos) then ! tPhos equiv to ta which is not set yet 
+                if(max_neighbor<=nneigh(s,conf)) max_neighbor = nneigh(s,conf)
+            endif
+        enddo
+        
+        ! assign 
+        max_nneigh_phos(conf) = max_neighbor
+        if(max_neighbor>maxnneigh) then 
+            info=myio_err_maxnneigh
+            return
+        endif    
+    enddo 
+
+
+end subroutine  find_max_nneighbor_phos
 
 end module chaingenerator
