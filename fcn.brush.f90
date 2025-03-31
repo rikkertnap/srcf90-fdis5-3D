@@ -2323,6 +2323,16 @@ contains
                 do i=1,nsize                    
                     constr(i+nsize)=0.0_dp     ! electrostatic potential 
                 enddo  
+          
+            case ("brush_ionbinMgA")           ! multi copolymer:
+                do i=1,nsize
+                    constr(i)=1.0_dp
+                enddo
+                do i=1,nsize
+                    constr(i+nsize)=0.0_dp     ! electrostatic potential 
+                enddo
+
+
             
             case default
 

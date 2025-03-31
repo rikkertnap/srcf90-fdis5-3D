@@ -551,6 +551,7 @@ subroutine check_value_runtype_systype(runtype,systype,info)
 
     logical :: flag
 
+    flag=.true.
     ! not permissible combination of values of runtype and systype
 
     if(runtype=="rangedist" .and. systype == "brush_inonbinMgA") flag=.false.
@@ -1265,7 +1266,7 @@ subroutine output()
     case("brush_ionbinMgA")
 
         call output_brush_mul
-        !call output_individualcontr_fe
+        call output_individualcontr_fe
 
     case default
 
@@ -1569,15 +1570,15 @@ subroutine output_brush_mul
     write(un_sys,*)'avRgsqr     = ',(avRgsqr(g),g=1,ngr)
     write(un_sys,*)'avRendsqr   = ',(avRendsqr(g),g=1,ngr)
     write(un_sys,*)'avAs        = ',(avAsphparam(g),g=1,ngr)
-    write(un_sys,*)'qpol        = ',(qpol(t),t=1,nsegtypes)
+    
+    do t=1,nsegtypes
+        write(un_sys,*)'qpol(',t,')      = ',qpol(t)
+    enddo
     write(un_sys,*)'qpoltot     = ',qpol_tot
+
     if(systype=="brushdna".or.systype=="brushborn")then
         write(un_sys,'(A15,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
     else if(systype=="brush_ionbinMgA") then
-        do t=1,nsegtypes
-            write(un_sys,*)'qpol(',t,')      = ',qpol(t)
-        enddo
-        write(un_sys,*)'qpoltot     = ',qpol_tot
 
         do k=1,8
             write(un_sys,*)'avfdisA(',k,')   = ',avfdisA(k)

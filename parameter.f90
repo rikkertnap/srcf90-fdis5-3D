@@ -513,9 +513,10 @@ contains
             K0aAA(i) = KaAA(i)*(vsol*Na/1.0e24_dp)
         enddo
 
-        K0aAA(4) = K0aAA(4)*(vsol*Na/1.0e24_dp) ! A2Ca
-        K0aAA(6) = K0aAA(6)*(vsol*Na/1.0e24_dp) ! A2Mg 
-
+        if(systype/="brush_ionbinMgA") then	
+            K0aAA(4) = K0aAA(4)*(vsol*Na/1.0e24_dp) ! A2Ca
+            K0aAA(6) = K0aAA(6)*(vsol*Na/1.0e24_dp) ! A2Mg 
+        endif 
         ! set volumes 
          
         vA=vpol(tA) 
@@ -754,7 +755,7 @@ contains
             xguess(4)=x(4)
             xguess(5)=x(5)
            
-!            call solver(x, xguess, tol_conv, fnorm, issolution) 
+            call solver(x, xguess, tol_conv, fnorm, issolution) 
             
             !     .. return solution
             
@@ -768,7 +769,7 @@ contains
             iter=0
             systype=systype_old         ! switch solver back
             call set_size_neq()         ! set number of non-linear equation  
-            !call set_fcn()              ! set fcnptr to correct fcn        
+            ! call set_fcn()              ! set fcnptr to correct fcn        
             
             xbulk%sol=1.0_dp-xbulk%Hplus-xbulk%OHmin - xbulk%Cl -xbulk%Na -xbulk%K-xbulk%NaCl-xbulk%KCl-xbulk%Ca 
             
@@ -1244,26 +1245,17 @@ contains
         integer :: ttAA, ttP ! local location of A and P segment
 
         call allocate_isrhoselfconsistent(info_alloc)
-        if(info_alloc/=0) then 
+    
+       if(info_alloc/=0) then 
             print*,"Error: in allocate_isrhoselfconsistent"
             if(present(info)) info=info_alloc
             return
         endif    
 
-        ! determine segment type number of P = phosphate dsDNA or ssDNA  
-        ttP=0
-        ttAA=0
-        do s=1, nseg
-            if(type_of_monomer_char(s)=="AA") ttAA=type_of_monomer(s)
-            if(type_of_monomer_char(s)=="P")  ttP=type_of_monomer(s)
-        enddo    
-        
-
         if(.not.isVdW) then
             do i=1,nsegtypes
                 isrhoselfconsistent(i)=.false.
             enddo
-
         else 
             do t=1,nsegtypes
                 flag=.false.
@@ -1274,8 +1266,21 @@ contains
             enddo            
         endif    
 
-        if(ttAA>0) isrhoselfconsistent(ttAA)=.true.  ! check condition ttA==0
-        if(ttP>0) isrhoselfconsistent(ttP)=.true.    ! check condition ttP==0
+        ! specail cases : determine segment type number of P = phosphate dsDNA or ssDNA  
+        ttP=0
+        ttAA=0
+        do s=1, nseg
+            if(type_of_monomer_char(s)=="AA") ttAA=type_of_monomer(s)
+            if(type_of_monomer_char(s)=="P")  ttP=type_of_monomer(s)
+        enddo
+ 
+        if(ttAA>0) isrhoselfconsistent(ttAA)=.true.  ! check condition ttA==0 
+        if(ttP>0) then
+              if(systype/="brush_ionbinMgA") then 
+                   isrhoselfconsistent(ttP)=.true.    ! check condition ttP==0
+                   print*,"Warning: isrhoselfconstistent is set to .true. for systype:",systype
+              endif
+        endif
 
         ! check that we do not have simultenoeus A=Acrylic acid and P=phosphate
         if((ttAA>0).and.(ttP>0)) then

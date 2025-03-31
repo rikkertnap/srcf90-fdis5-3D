@@ -352,9 +352,8 @@ program main
 
                 if(rank==0) then     ! node rank=0
                     call make_guess(x, xguess, isfirstguess,use_xstored,xstored)
-                    !call solver(x, xguess, tol_conv, fnorm, issolution)
+                    call solver(x, xguess, tol_conv, fnorm, issolution)
                     call fcnptr(x, fvec, neq)
-                    isSolution=.True.
                     flag_solver = 0   ! stop nodes
                     do i = 1, numproc-1
                         dest =i
