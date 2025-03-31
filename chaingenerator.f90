@@ -74,19 +74,21 @@ subroutine make_chains_mc()
   
     use mpivars
     use globals
-    use chains
-    use random
+    use chains !, only : Rgsqr, Rendsqr,Asphparam
+
+    use random, only : seed
     use parameters, only : geometry, lseg, write_mc_chains
     use parameters, only : maxnchainsrotations, maxnchainsrotationsxy
     use volume, only : nx, ny, nz, delta
     use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
     use volume, only : ut, vt
     use volume, only : position_graft, nset_per_graft
-    use myutils
+    use myutils, only : print_to_log, LogUnit, lenText
     use cadenas_linear
     use cadenas_sequence
     use chains, only : Rgsqr, Rendsqr, Asphparam
     use eigenvalues, only : Asphericity_parameter
+    use myio, only : myio_err_index
 
     !     .. variable and constant declaractions      
 
@@ -117,7 +119,7 @@ subroutine make_chains_mc()
     !     .. initializations of variables     
        
     conf = 1                 ! counter for conformations
-    seed = 435672*(rank+1)   ! seed for random number generator  different on each node
+    seed =  435672*(rank+1)   ! seed for random number generator  different on each node
     maxnchains = maxnchainsrotations
     maxntheta = maxnchainsrotationsxy         ! maximum number of rotation in xy-plane  
     theta_angle = 2.0_dp*pi/maxntheta
@@ -173,13 +175,13 @@ subroutine make_chains_mc()
 
             do j=1,nchains   
             
-                do s=1,nseg                          !  transforming form real- to lattice coordinates
-                    zp(s) = chain(1,s,j)
+                do s=1,nseg                          !  transforming from real- to lattice coordinates
+                    zp(s) = chain(1,s,j)             ! index 1->z,2->x,3->y for chain
                     xp(s) = chain(2,s,j)
                     yp(s) = chain(3,s,j)
                 enddo
 
-                do ntheta=1,maxntheta                  ! rotation in xy-plane
+                do ntheta=1,maxntheta                 ! rotation in xy-plane
 
                     theta = ntheta * theta_angle          
                     do s=1,nseg
@@ -189,58 +191,58 @@ subroutine make_chains_mc()
 
                     do s=1,nseg
 
-                        ! .. translation onto center box 
-                        !x(s) = xpp(s) + xpt
-                        !y(s) = ypp(s) + ypt
-                        !z(s) = zp(s)  
-
-                        chain_rot(2,s) = xpp(s) + xpt
-                        chain_rot(3,s) = ypp(s) + ypt
-                        chain_rot(1,s) = zp(s)    
+                        ! .. translation onto position graft point
+                        x(s) = xpp(s) + xpt
+                        y(s) = ypp(s) + ypt
+                        z(s) = zp(s)  
 
                         ! .. periodic boundary conditions in x-direction and y-direction 
-                        chain_pbc(2,s) = pbc(x(s),Lx)
-                        chain_pbc(3,s) = pbc(y(s),Ly)
-                        chain_pbc(1,s) = zp(s)     !  no pbc in z-direction    
+                        chain_pbc(1,s) = pbc(x(s),Lx)
+                        chain_pbc(2,s) = pbc(y(s),Ly)
+                        chain_pbc(3,s) = zp(s)     !  no pbc in z-direction    
 
                         ! .. transforming form real- to lattice coordinates                 
-                        xi = int(chain_pbc(2,s)/delta)+1
-                        yi = int(chain_pbc(3,s)/delta)+1
-                        zi = int(chain_pbc(1,s)/delta)+1
+                        xi = int(chain_pbc(1,s)/delta)+1
+                        yi = int(chain_pbc(2,s)/delta)+1
+                        zi = int(chain_pbc(3,s)/delta)+1
                         
                         call linearIndexFromCoordinate(xi,yi,zi,idx)
 
                         indexchain_init(s,conf) = idx
 
-                        !if(isOutsideLattice(xi,yi,zi,nx,ny,nz)) then 
-                        !    text="Conformation outside box:"
-                        !   call print_to_log(LogUnit,text)  
-                        !   print*,text   
-                        !    print*,"xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
-                        !   info= myio_err_index
-                        !   return
-                        ! endif    
+                        if(isOutsideLattice(xi,yi,zi,nx,ny,nz)) then 
+                            text="Conformation outside box:"
+                            call print_to_log(LogUnit,text)  
+                            print*,text   
+                            print*,"xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                            info = myio_err_index
+                            return
+                        endif    
 
-                        if(idx<=0) then
+                        if(idx<=0.or.idx>nsize) then
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                            info = myio_err_index
+                            return
                         endif
+
+                        ! here chain_nopbc has  index  x,y, instead of z,x,y  with chain
+
+                        chain_nopbc(1,s) = x(s)
+                        chain_nopbc(2,s) = y(s)
+                        chain_nopbc(3,s) = z(s)    
 
                     enddo    
 
                     if(systype=="brush_ionbinMgA") then 
-                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_rot,Lx,ly)
+                    !   is tA init here ??
+                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,Ly)
                     endif       
-            
-                    do s=1,nseg                          
-                        chain_nopbc(3,s) = chain(1,s,j)
-                        chain_nopbc(1,s) = chain(2,s,j)
-                        chain_nopbc(2,s) = chain(3,s,j)
-                    enddo
-
-                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
-                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
-                    gyr_tensor            = calc_gyr_tensor(chain_nopbc, nseg)
-                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor)
+    
+    
+                    Rgsqr(conf)      = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)    = end_to_end_distance(chain_nopbc,nseg)
+                    gyr_tensor       = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf)  = Asphericity_parameter(Rgsqr(conf),gyr_tensor)
 
                     conf = conf +1 
 
@@ -275,38 +277,54 @@ subroutine make_chains_mc()
 
                          ! .. translation onto correct grafting area translation in xy plane 
 
-                        xpp(s)=xpp(s) + xcm
-                        ypp(s)=ypp(s) + ycm
-                        z(s)  = zp(s) + zcm
+                        xpp(s) = xpp(s) + xpt
+                        ypp(s) = ypp(s) + ypt
+                        z(s)   = zp(s)  
                             
                         ! .. transforming to prism coordinate system
                         x(s) = ut(xpp(s),ypp(s))
                         y(s) = vt(xpp(s),ypp(s))
-
-                        chain_rot(2,s) = x(s)
-                        chain_rot(3,s) = y(s)
-                        chain_rot(1,s) = z(s)      
                         
                         ! .. periodic boundary conditions in u-direction and v-direction and z-direction 
-                        chain_pbc(2,s) = pbc(x(s),Lx)
-                        chain_pbc(3,s) = pbc(y(s),Ly)
-                        chain_nopbc(1,s) = z(s)        ! .. no pbc in z-direction    
+                        chain_pbc(1,s) = pbc(x(s),Lx)
+                        chain_pbc(2,s) = pbc(y(s),Ly)
+                        chain_pbc(3,s) = z(s)        ! .. no pbc in z-direction    
 
                         ! .. transforming form real- to lattice coordinates                 
-                        xi = int(chain_pbc(2,s)/delta)+1
-                        yi = int(chain_pbc(3,s)/delta)+1
-                        zi = int(chain_pbc(1,s)/delta)+1
+                        xi = int(chain_pbc(1,s)/delta)+1
+                        yi = int(chain_pbc(2,s)/delta)+1
+                        zi = int(chain_pbc(3,s)/delta)+1
 
                         call linearIndexFromCoordinate(xi,yi,zi,idx)
                         indexchain_init(s,conf) = idx
-                        if(idx<=0) then
+
+                        if(isOutsideLattice(xi,yi,zi,nx,ny,nz)) then 
+                            text="Conformation outside box:"
+                            call print_to_log(LogUnit,text)  
+                            print*,text   
+                            print*,"xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                            info = myio_err_index
+                            return
+                        endif    
+
+                        if(idx<=0.or.idx>nsize) then
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
+                            info = myio_err_index
+                            return
                         endif
+
+                        ! here chain_nopbc has index  x,y, instead of z,x,y with chain
+
+                        chain_nopbc(1,s) = x(s)
+                        chain_nopbc(2,s) = y(s)
+                        chain_nopbc(3,s) = z(s)    
                         
                     enddo         ! end loop over graft points
 
+
+
                      if(systype=="brush_ionbinMgA") then 
-                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_rot,Lx,ly)
+                        call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,Ly)
                     endif   
 
                     do s=1,nseg                          
@@ -315,10 +333,10 @@ subroutine make_chains_mc()
                         chain_nopbc(2,s) = chain(3,s,j)
                     enddo
 
-                    Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
-                    Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
-                    gyr_tensor            = calc_gyr_tensor(chain_nopbc, nseg)
-                    Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor)    
+                    Rgsqr(conf)     = radius_gyration(chain_nopbc,nseg)
+                    Rendsqr(conf)   = end_to_end_distance(chain_nopbc,nseg)
+                    gyr_tensor      = calc_gyr_tensor(chain_nopbc, nseg)
+                    Asphparam(conf) = Asphericity_parameter(Rgsqr(conf),gyr_tensor)    
 
                     conf = conf +1 
                 

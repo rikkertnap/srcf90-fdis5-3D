@@ -537,7 +537,7 @@ contains
         deltavAA(6) = 2.0_dp*vpolAA(1)+vMg-vpolAA(7) ! 2vA- + vMg2+ -vA2Mg
         deltavAA(7) = vpolAA(1)+vK-vpolAA(8)    ! vA- + vK+ - vAK
 
-        if(systype=="nucl_ionbin_MgA") then
+        if(systype=="brush_ionbinMgA") then
             call init_vPP(info)
             call error_handler(info,"init_vPP")
             call init_qPP()

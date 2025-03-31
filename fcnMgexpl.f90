@@ -154,8 +154,7 @@ contains
             xsol(i) = x(i)        ! volume fraction solvent
             psi(i)  = x(i+k)      ! potential
         enddo  
-        
-
+     
        ! do t=1,nsegtypes
        !     k=(t+1)*n
        !     do i=1,n 
@@ -427,9 +426,12 @@ contains
                     if(t/=ta) then
                                                               
                         do i=1,n
-                            rhopol(i,t) = rhopol0 * rhopol(i,t)               ! density polymer of type t  
-                            rhoqpol(i)  = rhoqpol(i) + (zpol(t,2)*fdis(i,t)+zpol(t,1)*(1.0_dp-fdis(i,t)))*rhopol(i,t)*vsol 
-                            xpol(i,t) = xpol(i,t) + rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
+                            rhopol(i,t) = rhopol0 * rhopol(i,t)     ! density polymer of type t  
+                            xpol(i,t)   = rhopol(i,t)*vpol(t)*vsol  ! volume fraction polymer
+
+                            rhoqpol(i)  =  rhoqpol(i) + &
+                                    (zpol(t,2)*fdis(i,t)+zpol(t,1)*(1.0_dp-fdis(i,t)))*rhopol(i,t)*vsol ! total  charge density in units of vsol 
+                            
                            ! f(i+(t+1)*n)    = rhopol(i,t) - rhopolin(i,t)         ! scf eq for density
                         enddo  
 
@@ -437,13 +439,12 @@ contains
                         ! phophate t=tA
                          do i=1,n
                             rhopol(i,ta) = rhopol0 * rhopol(i,ta) 
-                            rhoqphos(i) = rhopol0 * rhoqphos(i) 
-                            rhoqpol(i) = rhoqpol(i) + rhoqphos(i)* vsol ! total  charge density in units of vsol 
-                            xpol(i,ta) = rhopol0 * xpol(i,tA)
+                            rhoqphos(i)  = rhopol0 * rhoqphos(i) 
+                            xpol(i,ta)   = rhopol0 * xpol(i,tA)
+
+                            rhoqpol(i)   = rhoqpol(i) + rhoqphos(i) * vsol ! total  charge density in units of vsol 
 
                         enddo           
-                            
-
                     endif    
                 else  
                      ! neutral monomeer
@@ -516,10 +517,10 @@ contains
         use parameters, only : zpol, Phos
         use parameters, only : ta !, isVdW! isrhoselfconsistent 
         use volume, only     : nx, ny, ngr
-        use volume, only     : volcell,  nset_per_graft
+        use volume, only     : nset_per_graft
         use chains, only     : indexchain, type_of_monomer, logweightchain, ismonomer_chargeable
         use chains, only     : indexconfpair, nneigh
-        use field, only      : xsol,psi,fdis, rhopol_charge, fdisPP_loc,  fdisP2Mg_loc! ,fdisPP_loc_swap, fdisP2Mg_loc_swap
+        use field, only      : xsol,psi,fdis, rhopol_charge, fdisPP_loc,  fdisP2Mg_loc ,fdisPP_loc_swap , fdisP2Mg_loc_swap
         use field, only      : q, lnproshift
         use myutils, only    : error_handler
 
@@ -646,16 +647,16 @@ contains
                         m = indexconfpair(s,c)%elem(j)
 
                         call compute_fdisPP(fdisPP_loc,fdisP2Mg_loc, k ,m)
-!                        call compute_fdisPP(fdisPP_loc_swap,fdisP2Mg_loc_swap, m ,k)
+                        call compute_fdisPP(fdisPP_loc_swap,fdisP2Mg_loc_swap, m ,k)
 
                         do JJ=1,5
                             do KK=1,5
                                 !local_avfdisPP(JJ,KK) = local_avfdisPP(JJ,KK)+&
                                 !    fdisPP_loc(JJ,KK)*pro/nneigh(s,c)
-                                !local_avfdisPP(JJ,KK) = local_avfdisPP(JJ,KK)+&
-                                !    (fdisPP_loc(JJ,KK)+fdisPP_loc_swap(JJ,KK))*pro/(2.0_dp*nneigh(s,c)) 
                                 local_avfdisPP(JJ,KK) = local_avfdisPP(JJ,KK)+&
-                                    (fdisPP_loc(JJ,KK))*pro/(2.0_dp*nneigh(s,c))
+                                    (fdisPP_loc(JJ,KK)+fdisPP_loc_swap(JJ,KK))*pro/(2.0_dp*nneigh(s,c)) 
+                                !local_avfdisPP(JJ,KK) = local_avfdisPP(JJ,KK)+&
+                                !    (fdisPP_loc(JJ,KK))*pro/(2.0_dp*nneigh(s,c))
                             
                             enddo
                         enddo
@@ -689,14 +690,30 @@ contains
             enddo
 
             ! .. construction of avfdisP2Mg and avfdisPP 
-            ! .. normalized avfdisPP with number of average number pairs = integral of rhopol_charge(:,ta)
- 
-            sumrhopairs=sum(rhopol_charge(:,tA)) 
-            sumrhopairs=sumrhopairs*volcell
+            ! .. normalized avfdisPP with number of average number pairs = integral of rhopol_charge(:,ta) in Nucleosome prog . 
+
+            ! sumrhopairs=sum(rhopol_charge(:,tA)) 
+            ! sumrhopairs=sumrhopairs*volcell
+
+            ! .. here rho_charge not computed 
+            ! .. alternative computations
+            do s=1,nseg
+                t=type_of_monomer(s)
+                if(t==ta) then 
+                    sumrhopairs = sumrhopairs + 1
+                endif 
+            enddo  
+            sumrhopairs = sumrhopairs * ngr  ! /2.0_dp   
+
+            !sumrhopairs=sum(rhopol_charge(:,tA)) 
+            !sumrhopairs=sumrhopairs*volcell
 
             avfdisPP=avfdisPP/(sumrhopairs)  !*q) ! also norm with q
            ! avfdisP2Mg=avfdisP2Mg/(sumrhopairs*q)
             avfdisP2Mg=avfdisP2Mg/(sumrhopairs)
+            ! 
+
+
             
         else                      ! Export results 
             

@@ -983,7 +983,7 @@ contains
 
         !  .. variables and constant declaractions 
 
-        use globals, only : nseg, nsegtypes, nsize, cuantas
+        use globals, only : nseg, nsegtypes, nsize, nsizepsi, cuantas
         use chains, only : indexchain,indexconfpair, nneigh, type_of_monomer, ismonomer_chargeable,logweightchain
         use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam
         use field, only : xsol, psi, fdis, rhopol, q ,lnproshift, fdisPP_loc, fdisP2Mg_loc
@@ -1014,7 +1014,7 @@ contains
             do i = 1, numproc-1
                 dest = i
                 call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-                call MPI_SEND(psi , nsize+1 , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                call MPI_SEND(psi , nsizepsi , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                 do t=1,nsegtypes
                     if(t/=ta) then
                         call MPI_SEND(fdis(:,t) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
@@ -1025,7 +1025,7 @@ contains
         else
             source = 0 
             call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
-            call MPI_RECV(psi , nsize+1, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
+            call MPI_RECV(psi , nsizepsi, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
             do t=1,nsegtypes
                 if(t/=ta) then
                     call MPI_RECV(fdis(:,t) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
@@ -1038,16 +1038,23 @@ contains
 
         do t=1,nsegtypes
             if(ismonomer_chargeable(t)) then
-                do i=1,nsize                                              
-                    lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i)-log(fdis(i,t))   ! auxilary variable palpha
-                enddo  
-            else
-                ! t=ta : phosphate         
-                do i=1,nsize
-                    lnexppi(i,t) = psi(i)!!   ! auxilary variable palpha
-                    lnexppivw(i) = log(xsol(i))/vsol
-                enddo  
-            endif   
+                if(t/=tA) then 
+                    ! charged not phosphate 
+                    do i=1,nsize                                              
+                        lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i)-log(fdis(i,t))   ! auxilary variable palpha
+                    enddo  
+                else
+                    ! t=ta : phosphate 
+                    do i=1,nsize
+                        lnexppi(i,t) = psi(i)!!   ! auxilary variable palpha
+                        lnexppivw(i) = log(xsol(i))/vsol
+                    enddo  
+                endif 
+            else 
+                ! neutral  monomomer
+                lnexppi(i,t) = log(xsol(i))*vpol(t)
+            endif      
+                
         enddo      
        
         ! .. computation structural quantities       
@@ -1060,6 +1067,7 @@ contains
  
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)       ! internal energy  
+
             do s=1,nseg        ! loop over segments                     
                 t=type_of_monomer(s)
                 if(t/=tA) then 
@@ -1073,14 +1081,18 @@ contains
      
                         m = indexconfpair(s,c)%elem(jj)
                         call compute_fdisPP(fdisPP_loc,fdisP2Mg_loc,k ,m)
-
+                      
                         lnpro = lnpro +(lnexppi(k,ta)+lnexppi(m,ta)+ (lnexppivw(k) +lnexppivw(m))*vpol(tA)*vsol &
                                     -log(fdisPP_loc(Phos,Phos)))/(2.0_dp*nneigh(s,c))
+                      
+
                     enddo    
-                endif        
+                      
+                endif   
+                     
             enddo    
             pro=exp(lnpro-lnproshift)
-
+            
             FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro
@@ -1137,7 +1149,7 @@ contains
                 Econf = Econf + Econf_array(g)/q(g)
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
-                 avAsphparam(g) = Asphparam_array(g)/q(g)
+                avAsphparam(g) = Asphparam_array(g)/q(g)
             enddo    
         endif
 

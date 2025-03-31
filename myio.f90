@@ -1292,7 +1292,7 @@ subroutine output_brush_mul
     !  .. local arguments
 
     logical :: isopen
-    integer :: i, k, g, t         ! dummy indexes
+    integer :: i, j, k, g, t         ! dummy indexes
     real(dp) :: denspol
     character(len=100) :: fnamelabel
 
@@ -1355,7 +1355,7 @@ subroutine output_brush_mul
 
         open(unit=newunit(un_xpol),file=xpolfilename)
         open(unit=newunit(un_fdis),file=densfracfilename)
-        if(systype=="brushdna") open(unit=newunit(un_fdisP),file=densfracPfilename)
+        if(systype=="brushdna".or.systype=="brush_ionbinMgA") open(unit=newunit(un_fdisP),file=densfracPfilename)
         open(unit=newunit(un_q),file=qfilename)
         open(unit=newunit(un_xpolz),file=xpolzfilename)
 
@@ -1394,7 +1394,7 @@ subroutine output_brush_mul
         write(un_xpol,*)'#D    = ',nz*delta
         write(un_fdis,*)'#D    = ',nz*delta
 
-        if(systype=="brushdna") write(un_fdisP,*)'#D    = ',nz*delta
+        if(systype=="brushdna".or. systype=="brush_ionbinMgA") write(un_fdisP,*)'#D    = ',nz*delta
 
 
         if(verboseflag=="yes") then
@@ -1437,7 +1437,7 @@ subroutine output_brush_mul
         write(un_xpolz,fmt1reals)xpolz(i)
     enddo
 
-    if(systype=="brushdna")then
+    if(systype=="brushdna".or.systype=="brush_ionbinMgA")then
         do i=1,nsize
             write(un_fdisP,'(8ES25.16)')(fdisA(i,k),k=1,8)
         enddo
@@ -1508,7 +1508,7 @@ subroutine output_brush_mul
         ! disociation constants
         write(un_sys,*)'pKa         = ',(pKa(t),t=1,nsegtypes)
         !
-        if(systype=="brushdna".or.systype=="brushborn") then
+        if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_ionbinMgA") then
            write(un_sys,'(A15,7ES25.16)')'pKaAA       = ',(pKaAA(t),t=1,7)
         endif
 
@@ -1542,6 +1542,7 @@ subroutine output_brush_mul
 
         write(un_sys,*)'===end distance independent settings=='
     endif
+
     write(un_sys,*)'D plates    = ',nz*delta
     write(un_sys,*)'nz          = ',nz
     write(un_sys,*)'nsize       = ',nsize
@@ -1564,7 +1565,7 @@ subroutine output_brush_mul
     write(un_sys,*)'FEVdW       = ',FEVdW
     write(un_sys,*)'FEalt       = ',FEalt
     write(un_sys,*)'height      = ',height
-   write(un_sys,*)'q           = ',(q(g),g=1,ngr)
+    write(un_sys,*)'q           = ',(q(g),g=1,ngr)
     write(un_sys,*)'avRgsqr     = ',(avRgsqr(g),g=1,ngr)
     write(un_sys,*)'avRendsqr   = ',(avRendsqr(g),g=1,ngr)
     write(un_sys,*)'avAs        = ',(avAsphparam(g),g=1,ngr)
@@ -1572,9 +1573,35 @@ subroutine output_brush_mul
     write(un_sys,*)'qpoltot     = ',qpol_tot
     if(systype=="brushdna".or.systype=="brushborn")then
         write(un_sys,'(A15,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
+    else if(systype=="brush_ionbinMgA") then
+        do t=1,nsegtypes
+            write(un_sys,*)'qpol(',t,')      = ',qpol(t)
+        enddo
+        write(un_sys,*)'qpoltot     = ',qpol_tot
+
+        do k=1,8
+            write(un_sys,*)'avfdisA(',k,')   = ',avfdisA(k)
+        enddo
+        do t=1,nsegtypes
+            write(un_sys,*)'avfdis(',t,')    = ',avfdis(t)
+        enddo    
+        ! matrix of average pairs in chemical state (JJ)(KK)
+        do j=1,5
+            do k=1,5
+                write(un_sys,'(A9,I5,A,I5,A5,ES25.16)')'avfdisPP(',j,',',k,')= ',avfdisPP(j,k)
+            enddo
+        enddo
+
+        write(un_sys,*)'avfdisP2Mg  = ',avfdisP2Mg
+        write(un_sys,*)'check avfdisPP = ',sum(avfdisPP)+avfdisP2Mg
+    
     else
+
         write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
+    
     endif
+
+
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)
 
@@ -1620,7 +1647,7 @@ subroutine output_brush_mul
         close(un_psi)
         close(un_xpol)
         close(un_fdis)
-        if(systype=="brushdna") close(un_fdisP)
+        if(systype=="brushdna".or.systype=="brush_ionbinMgA") close(un_fdisP)
         close(un_xpolz)
         close(un_q)
         if(verboseflag=="yes") then
@@ -1637,7 +1664,9 @@ subroutine output_brush_mul
             close(un_xOHmin)
         endif
     endif
+
 end subroutine output_brush_mul
+
 
 
 subroutine output_elect

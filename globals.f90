@@ -12,7 +12,8 @@ module globals
 
 
 
-    integer  :: nsize         ! size lattice, numer of layers
+    integer  :: nsize         ! size lattice, numer of layers  
+    integer  :: nsizepsi      ! size lattice of potential = nsize lattice + top and bottom area  
     integer  :: nseg          ! length of polymer 
     integer  :: nsegtypes     ! number of segment types 
     integer  :: cuantas       ! number of polymer configurations

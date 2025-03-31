@@ -51,7 +51,7 @@ contains
     
     subroutine init_lattice
 
-        use globals, only : nsize, DEBUG
+        use globals, only : nsize, nsizepsi, DEBUG
         use mathconst
 
         implicit none 
@@ -69,6 +69,7 @@ contains
         ! cubic lattice  or prism surface in x-y direction at z=0 and z=nz  
         nz=nzmax
         nsize = nx*ny*nz                ! total number of cells or layers
+        nsizepsi = nsize + 2 * nx * ny  ! total number of cells for el potential  
         volcell = delta*delta*delta*1.0_dp     ! volume of one latice volume 
         areacell = delta*delta
         nsurf = nx*ny  
@@ -80,14 +81,18 @@ contains
 
         ! check 
         
-        if(.not.((mod(nx,ngr_freq).eq.0).and.(mod(ny,ngr_freq).eq.0))) then 
-             print*,"ngr test failed: exiting"
-             print*,"nx= ",nx," ny= ",ny," ngr_freq = ",ngr_freq
+        if(.not.(mod(nx,ngr_freq).eq.0)) then 
+             print*,"ngr test failed in x-direction: exiting"
+             print*,"nx= ",nx," ngr_freq = ",ngr_freq
              stop
         endif    
         
-        !  nset_per_graft = int(size/ngr)
-        !  testing
+        if(.not.(mod(ny,ngr_freq).eq.0))then 
+          print*,"ngr test failed in y-direction: exiting"
+             print*,"ny= ",ny," ngr_freq = ",ngr_freq
+             stop
+        endif    
+       
         
         if(ngr*nset_per_graft/=numproc) then
             print*,"nset_per_graft test failed: exiting"

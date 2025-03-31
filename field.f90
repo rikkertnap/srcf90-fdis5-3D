@@ -488,7 +488,6 @@ contains
                         avfdis(t)=avfdis(t)/sumrhopolt        
                     else
                        ! phosphate 
- 
                         do k=1,8
                             avfdisA(k)=0.0_dp
                         enddo   
@@ -543,7 +542,8 @@ contains
                 
                     endif       
                 endif
-            endif    
+            endif   
+
         enddo         
 
         deallocate(npol)    
