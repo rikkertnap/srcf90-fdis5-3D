@@ -2,7 +2,7 @@
 module chains
   
     use globals
-    use volume, only: ngr
+    use volume, only: ngr, nz
 
     implicit none
   
@@ -24,6 +24,7 @@ module chains
 
     real(dp), dimension(:), allocatable       :: Rgsqr                  ! radius of gyration (for all conformations) 
     real(dp), dimension(:), allocatable       :: Rendsqr                ! end-to-end distance (for all conformations)
+    real(dp), dimension(:,:), allocatable     :: Rgsqr_lateral          ! lateral radius of gyration (for all conformations) 
     real(dp), dimension(:), allocatable       :: avRgsqr                ! average radius of gyration (for each graft point)
     real(dp), dimension(:), allocatable       :: avRendsqr              ! average end-to-end distance (for each graft point)
     real(dp), dimension(:), allocatable       :: Asphparam              ! Asphericity parameter invariant of gyration tensor 
@@ -33,9 +34,9 @@ contains
 
 
     subroutine allocate_chains(cuantas,nseg,nsegtypes,maxnchains,maxnchainsxy)
-
         integer, intent(in) :: cuantas,nseg,nsegtypes
         integer, intent(in) :: maxnchains,maxnchainsxy
+    
 
         integer :: maxcuantas
     
@@ -60,6 +61,7 @@ contains
         allocate(avRgsqr(ngr))
         allocate(avRendsqr(ngr))
         allocate(avAsphparam(ngr))
+        allocate(Rgsqr_lateral(nz,ngr))
     
     end subroutine allocate_chains
   

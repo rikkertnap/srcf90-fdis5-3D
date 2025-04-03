@@ -55,12 +55,13 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, logweightchain
-        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Rgsqr_lateral
         use chains, only: Asphparam, avAsphparam 
         use field, only : xsol, rhopol, q, lnproshift
         use parameters, only : vpol, isVdW
         use VdW, only : VdW_contribution_lnexp
-        use volume, only : ngr, nset_per_graft
+        use volume, only : ngr, nset_per_graft, delta, nz
+        use lateral_Rgsqr, only: calc_lateral_Rgsqr
 
         real(dp), intent(out) :: FEconf,Econf
         
@@ -76,6 +77,8 @@ contains
         real(dp) :: Rendsqr_array(ngr)
         real(dp) :: Asphparam_local
         real(dp) :: Asphparam_array(ngr)
+        real(dp) :: Rgsqr_lateral_local(nz)
+        real(dp) :: Rgsqr_lateral_array(nz,ngr)
 
         ! .. communicate xsol, psi, fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -116,7 +119,8 @@ contains
         Rgsqr_local = 0.0_dp 
         Rendsqr_local = 0.0_dp 
         Asphparam_local = 0.0_dp
-        
+        Rgsqr_lateral_local = 0.0_dp
+
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)     
             do s=1,nseg        ! loop over segments                     
@@ -129,6 +133,7 @@ contains
             Rgsqr_local=Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local=Rendsqr_local+Rendsqr(c)*pro
             Asphparam_local = Asphparam_local + Asphparam(c) * pro
+            Rgsqr_lateral_local = Rgsqr_lateral_local + calc_lateral_Rgsqr(c) * pro
          enddo
         
         ! communicate FEconf
@@ -140,12 +145,14 @@ contains
             Econf_array=0.0_dp  
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp
+            Rgsqr_lateral_array = 0.0_dp
 
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
             Asphparam_array(1) = Asphparam_local 
+            Rgsqr_lateral_array(:,1) = Rgsqr_lateral_local
  
             do i=1, numproc-1
                 source = i
@@ -153,14 +160,16 @@ contains
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
-               
+                call MPI_RECV(Asphparam_local,1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat ,ierr)
+                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
+
                 g =int(source/nset_per_graft)+1  ! nset_per_graft = int(size/ngr)
                 FEconf_array(g)=FEconf_array(g)+FEconf_local
                 Econf_array(g) =Econf_array(g) +Econf_local
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
                 Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
                 Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+                Rgsqr_lateral_array(:,g) = Rgsqr_lateral_array(:,g) + Rgsqr_lateral_local
              enddo
 
         else     ! Export results
@@ -170,6 +179,7 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
         endif
        
 
@@ -182,7 +192,8 @@ contains
                 Econf = Econf + Econf_array(g)/q(g)
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
-                avAsphparam(g) = Asphparam_array(g)/q(g)  
+                avAsphparam(g) = Asphparam_array(g)/q(g)
+                Rgsqr_lateral(:,g) = Rgsqr_lateral_array(:,g)/q(g)  
             enddo      
         endif
 
@@ -197,11 +208,14 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, logweightchain
-        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Rgsqr_lateral 
+        use chains, only : Asphparam, avAsphparam
         use field, only : xsol, rhopol, q, lnproshift
         use parameters, only : vpol, isVdW, VdWscale
         use VdW, only : VdW_contribution_exp
-        use volume, only : ngr, nset_per_graft
+        use volume, only : ngr, nset_per_graft, delta, nz
+        use lateral_Rgsqr, only: calc_lateral_Rgsqr
+
 
         real(dp), intent(out) :: FEconf,Econf
         
@@ -219,6 +233,8 @@ contains
         real(dp) :: Rendsqr_array(ngr)
         real(dp) :: Asphparam_local
         real(dp) :: Asphparam_array(ngr)
+        real(dp) :: Rgsqr_lateral_local(nz)
+        real(dp) :: Rgsqr_lateral_array(nz,ngr)
 
         ! .. communicate xsol, psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -247,6 +263,7 @@ contains
         Rgsqr_local=0.0_dp ! init Rgsqr
         Rendsqr_local=0.0_dp ! init Rendsqr
         Asphparam_local = 0.0_dp        
+        Rgsqr_lateral_local = 0.0_dp
     
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)        ! internal energy  
@@ -259,7 +276,9 @@ contains
             FEconf_local=FEconf_local+pro*(log(pro)-logweightchain(c))
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro
-            Asphparam_local = Asphparam_local + Asphparam(c) * pro       
+            Asphparam_local = Asphparam_local + Asphparam(c) * pro 
+            Rgsqr_lateral_local = Rgsqr_lateral_local + calc_lateral_Rgsqr(c) * pro
+       
         enddo
  
         ! communicate FEconf
@@ -270,12 +289,14 @@ contains
             Econf_array=0.0_dp
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp
+            Rgsqr_lateral_array = 0.0_dp
 
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
             Asphparam_array(1) = Asphparam_local
+            Rgsqr_lateral_array(:,1) = Rgsqr_lateral_local
       
         do i=1, numproc-1
             source = i
@@ -283,7 +304,8 @@ contains
             call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
             call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
             call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-             call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+            call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+            call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
 
             g =int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
             FEconf_array(g)=FEconf_array(g)+FEconf_local
@@ -291,6 +313,7 @@ contains
             Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
             Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
             Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+            Rgsqr_lateral_array(:,g) = Rgsqr_lateral_array(:,g) + Rgsqr_lateral_local
          enddo
 
         else     ! Export results
@@ -300,6 +323,8 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD,ierr)
+            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+
         endif
 
 
@@ -313,6 +338,7 @@ contains
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
                 avAsphparam(g) = Asphparam_array(g)/q(g)
+                Rgsqr_lateral(:,g) = Rgsqr_lateral_array(:,g)/q(g)
             enddo    
         endif
 
@@ -325,10 +351,13 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain
-        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam, Rgsqr_lateral
         use field, only : xsol,psi, fdis,rhopol,q, lnproshift
         use parameters
-        use VdW, only : VdW_contribution_lnexp
+        use VdW, only : VdW_contribution_lnexp               
+        use volume, only : ngr, delta, nz, nset_per_graft
+
+        use lateral_Rgsqr, only : calc_lateral_Rgsqr
 
         real(dp), intent(out) :: FEconf,Econf
         
@@ -346,6 +375,8 @@ contains
         real(dp) :: Rendsqr_array(ngr)
         real(dp) :: Asphparam_local
         real(dp) :: Asphparam_array(ngr)
+        real(dp) :: Rgsqr_lateral_local(nz)
+        real(dp) :: Rgsqr_lateral_array(nz,ngr)
 
         ! .. communicate xsol, psi, dsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -397,6 +428,7 @@ contains
         Rgsqr_local = 0.0_dp 
         Rendsqr_local = 0.0_dp
         Asphparam_local = 0.0_dp        
+        Rgsqr_lateral_local = 0.0_dp
  
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)     
@@ -409,7 +441,8 @@ contains
             FEconf_local = FEconf_local+pro*(log(pro)-logweightchain(c))
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro
-            Asphparam_local = Asphparam_local + Asphparam(c) * pro       
+            Asphparam_local = Asphparam_local + Asphparam(c) * pro
+            Rgsqr_lateral_local = Rgsqr_lateral_local + calc_lateral_Rgsqr(c) * pro       
         enddo        
  
         ! communicate FEconf
@@ -421,20 +454,23 @@ contains
             Econf_array=0.0_dp  
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp
+            Rgsqr_lateral_array = 0.0_dp
 
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
             Asphparam_array(1) = Asphparam_local           
- 
+            Rgsqr_lateral_array(:,1) = Rgsqr_lateral_local
+
             do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                 call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
 
                 g =int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
                 FEconf_array(g)=FEconf_array(g)+FEconf_local
@@ -442,6 +478,8 @@ contains
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
                 Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
                 Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+                Rgsqr_lateral_array(:,g) = Rgsqr_lateral_array(:,g) + Rgsqr_lateral_local
+
              enddo        
 
         else     ! Export results
@@ -451,6 +489,8 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD, ierr)
+            
+            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
         endif
 
 
@@ -465,6 +505,7 @@ contains
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
                 avAsphparam(g) = Asphparam_array(g)/q(g)
+                Rgsqr_lateral(:,g) = Rgsqr_lateral_array(:,g)/q(g)
             enddo    
         endif
 
@@ -477,10 +518,11 @@ contains
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain
-        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam, Rgsqr_lateral
         use field, only : xsol, psi, fdis, rhopol, q ,lnproshift
         use parameters
-        use volume, only : ngr, nset_per_graft
+        use volume, only : ngr, nset_per_graft, delta, nz
+        use lateral_Rgsqr, only: calc_lateral_Rgsqr
         
         real(dp), intent(out) :: FEconf,Econf
         
@@ -498,6 +540,8 @@ contains
         real(dp) :: Rendsqr_array(ngr)
         real(dp) :: Asphparam_local
         real(dp) :: Asphparam_array(ngr)
+        real(dp) :: Rgsqr_lateral_local(nz)
+        real(dp) :: Rgsqr_lateral_array(nz,ngr)
 
         ! .. communicate xsol,psi and fdsiA(:,1) and fdisB(:,1) to other nodes 
 
@@ -542,6 +586,7 @@ contains
         Rgsqr_local = 0.0_dp ! init Rgsqr
         Rendsqr_local = 0.0_dp ! init Rendsqr
         Asphparam_local = 0.0_dp           
+        Rgsqr_lateral_local = 0.0_dp
  
         do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c)       ! internal energy  
@@ -555,6 +600,7 @@ contains
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro
             Asphparam_local = Asphparam_local + Asphparam(c) * pro
+            Rgsqr_lateral_local = Rgsqr_lateral_local + calc_lateral_Rgsqr(c) * pro
          enddo        
  
         ! communicate FEconf
@@ -565,12 +611,14 @@ contains
             Econf_array=0.0_dp  
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp
+            Rgsqr_lateral_array = 0.0_dp
 
             FEconf_array(1)=FEconf_local
             Econf_array(1)=Econf_local
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
             Asphparam_array(1)=Asphparam_local
+            Rgsqr_lateral_array(:,1) = Rgsqr_lateral_local
  
             do i=1, numproc-1
                 source = i
@@ -578,7 +626,8 @@ contains
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                 call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)              
+                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)              
  
                 g =int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
                 FEconf_array(g)=FEconf_array(g)+FEconf_local
@@ -586,6 +635,7 @@ contains
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
                 Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
                 Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+                Rgsqr_lateral_array(:,g) = Rgsqr_lateral_array(:,g) + Rgsqr_lateral_local
              enddo
 
         else     ! Export results
@@ -595,6 +645,7 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD,ierr)
+            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
         endif
 
 
@@ -607,7 +658,8 @@ contains
                 Econf = Econf + Econf_array(g)/q(g)
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
-                 avAsphparam(g) = Asphparam_array(g)/q(g)
+                avAsphparam(g) = Asphparam_array(g)/q(g)
+                Rgsqr_lateral(:,g) = Rgsqr_lateral_array(:,g)/q(g)
             enddo    
         endif
 
@@ -619,10 +671,11 @@ contains
         !  .. variables and constant declaractions 
 
         use globals, only : nseg, nsegtypes, nsize, cuantas
-        use volume, only : ngr, nset_per_graft
+        use volume, only : ngr, nset_per_graft, nz, delta
         use chains, only : indexchain, type_of_monomer, ismonomer_chargeable, logweightchain, isAmonomer
-        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam, Rgsqr_lateral
         use field,  only : xsol, psi, fdisA,fdisB, rhopol, q ,lnproshift
+        use lateral_Rgsqr, only: calc_lateral_Rgsqr
         use parameters
 
         real(dp), intent(out) :: FEconf
@@ -642,6 +695,8 @@ contains
         real(dp) :: Rendsqr_array(ngr)
         real(dp) :: Asphparam_array(ngr)
         real(dp) :: Asphparam_local
+        real(dp) :: Rgsqr_lateral_local(nz)
+        real(dp) :: Rgsqr_lateral_array(nz,ngr)
 
         ! .. executable statements 
 
@@ -674,6 +729,7 @@ contains
         Rgsqr_local=0.0_dp 
         Rendsqr_local=0.0_dp 
         Asphparam_local = 0.0_dp
+        Rgsqr_lateral_local = 0.0_dp
 
         do c=1,cuantas             ! loop over cuantas
         
@@ -691,6 +747,7 @@ contains
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro 
             Asphparam_local = Asphparam_local + Asphparam(c) * pro
+            Rgsqr_lateral_local = Rgsqr_lateral_local + calc_lateral_Rgsqr(c) * pro
         enddo
 
         ! communicate FEconf
@@ -704,9 +761,11 @@ contains
             
             Rgsqr_array=0.0_dp
             Rendsqr_array=0.0_dp
+            Rgsqr_lateral_array = 0.0_dp
             Rgsqr_array(1)=Rgsqr_local
             Rendsqr_array(1)=Rendsqr_local
             Asphparam_array(1) = Asphparam_local
+            Rgsqr_lateral_array(:,1) = Rgsqr_lateral_local
 
             do i=1, numproc-1
                 source = i
@@ -715,6 +774,7 @@ contains
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
 
                 g =int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
                 FEconf_array(g)=FEconf_array(g)+FEconf_local
@@ -722,6 +782,7 @@ contains
                 Rgsqr_array(g) =Rgsqr_array(g) +Rgsqr_local
                 Rendsqr_array(g) =Rendsqr_array(g) +Rendsqr_local
                 Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+                Rgsqr_lateral_array(:,g) = Rgsqr_lateral_array(:,g) + Rgsqr_lateral_local
              enddo
 
         else     ! Export results
@@ -731,6 +792,8 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION,dest,tag,MPI_COMM_WORLD,ierr)
+
+            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
         endif
 
 
@@ -744,6 +807,7 @@ contains
                 avRgsqr(g) = Rgsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
                 avAsphparam(g) = Asphparam_array(g)/q(g)
+                Rgsqr_lateral(:,g) = Rgsqr_lateral_array(:,g)/q(g)
             enddo
         endif
 
@@ -763,12 +827,13 @@ contains
         use parameters, only : bornrad, lb, VdWscale, tA, isrhoselfconsistent, isVdW
         use parameters, only : vpolAA, vsol, vNa, vCl, vRb, vMg, vCa ,vpol
         use parameters, only : zNa, zCl, zRb, zMg, zCa, zpolAA
-        use volume, only : ngr, nset_per_graft
+        use volume, only : ngr, nset_per_graft, delta, nz
         use VdW, only : VdW_contribution_lnexp
         use Poisson, only : Poisson_Equation_Eps, Poisson_Equation_Surface_Eps, grad_pot_sqr_eps_cubic
         use dielectric_const, only : dielectfcn, born
         use chains, only: ismonomer_chargeable, logweightchain, type_of_monomer, indexchain
-        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam
+        use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam, Rgsqr_lateral
+        use lateral_Rgsqr, only: calc_lateral_Rgsqr
 
         real(dp), intent(out) :: FEconf,Econf
         
@@ -786,6 +851,8 @@ contains
         real(dp) :: Rendsqr_array(ngr)
         real(dp) :: Asphparam_local
         real(dp) :: Asphparam_array(ngr)
+        real(dp) :: Rgsqr_lateral_local(nz)
+        real(dp) :: Rgsqr_lateral_array(nz,ngr)
         integer  :: tcfdis(3)
         real(dp) :: rhopolAA(nsize),rhopolACa(nsize), rhopolAMg(nsize)
         real(dp) :: lbr,expborn,Etotself,expsqrgrad
@@ -903,6 +970,7 @@ contains
         Rgsqr_local = 0.0_dp ! init Rgsqr
         Rendsqr_local = 0.0_dp ! init Rendsqr
         Asphparam_local = 0.0_dp        
+        Rgsqr_lateral_local = 0.0_dp
  
         do c=1,cuantas         ! loop over cuantas
             lnpro = logweightchain(c)     
@@ -916,6 +984,7 @@ contains
             Rgsqr_local = Rgsqr_local+Rgsqr(c)*pro
             Rendsqr_local = Rendsqr_local+Rendsqr(c)*pro
             Asphparam_local = Asphparam_local + Asphparam(c) * pro
+            Rgsqr_lateral_local = Rgsqr_lateral_local + calc_lateral_Rgsqr(c) * pro
         enddo
 
         ! communicate FEconf
@@ -927,20 +996,23 @@ contains
             Econf_array = 0.0_dp
             Rgsqr_array = 0.0_dp
             Rendsqr_array = 0.0_dp 
+            Rgsqr_lateral_array = 0.0_dp
 
             FEconf_array(1) = FEconf_local
             Econf_array(1) = Econf_local
             Rgsqr_array(1) = Rgsqr_local
             Rendsqr_array(1) = Rendsqr_local
             Asphparam_array(1) = Asphparam_local
- 
+            Rgsqr_lateral_array(:,1) = Rgsqr_lateral_local
+
             do i=1, numproc-1
                 source = i
                 call MPI_RECV(FEconf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Econf_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
-                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)               
+                call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
+                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)               
  
                 g = int(source/nset_per_graft)+1  ! nset_per_graft =int(size/ngr)
                 FEconf_array(g) = FEconf_array(g)+FEconf_local
@@ -948,6 +1020,7 @@ contains
                 Rgsqr_array(g) = Rgsqr_array(g) +Rgsqr_local
                 Rendsqr_array(g) = Rendsqr_array(g) +Rendsqr_local
                 Asphparam_array(g) = Asphparam_array(g) + Asphparam_local
+                Rgsqr_lateral_array(:,g) = Rgsqr_lateral_array(:,g) + Rgsqr_lateral_local
              enddo
 
         else     ! Export results
@@ -957,6 +1030,8 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION,dest,tag,MPI_COMM_WORLD,ierr)
+
+            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
         endif
 
 
@@ -971,6 +1046,7 @@ contains
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
                 avRendsqr(g) = Rendsqr_array(g)/q(g)
                 avAsphparam(g) = Asphparam_array(g)/q(g)
+                Rgsqr_lateral(:,g) = Rgsqr_lateral_array(:,g)/q(g)
             enddo    
         endif
 

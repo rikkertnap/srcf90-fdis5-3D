@@ -1270,7 +1270,7 @@ subroutine output_brush_mul
 
 
     ! .. executable statements
-
+    call write_lateral_Rgsqr()
     denspol=init_denspol()
 
     if(nz.eq.nzmax)  then
@@ -1633,6 +1633,7 @@ subroutine output_elect
    
     ! .. executable statements
 
+    call write_lateral_Rgsqr()
     denspol=init_denspol()
 
     if(nz.eq.nzmax)  then
@@ -1998,6 +1999,7 @@ subroutine output_neutral
 
     !     .. executable statements
 
+    call write_lateral_Rgsqr()
     denspol=init_denspol()
 
     if(nz==nzmax) then
@@ -2517,8 +2519,45 @@ subroutine write_chain_config()
 
     endif
 
-
 end subroutine write_chain_config
 
+subroutine write_lateral_Rgsqr()
+
+    use myutils, only: newunit, lenText 
+    use chains, only: Rgsqr_lateral
+    use volume, only: nz, ngr 
+
+    ! Local Variables
+   integer :: z, g, un_lrg
+   character(len=lenText) :: fname, fnamelabel 
+
+   ! Defining Output file Name
+   !     .. make label filename
+   call make_filename_label(fnamelabel)
+   fname = 'lateral_Rgsqr.'//trim(adjustl(fnamelabel))
+
+   ! Opening file for writing
+   open(unit=newunit(un_lrg), file=fname)
+
+   ! Writing Header
+   write(un_lrg, '(A8)', advance="no")" z-layer"
+   do g = 1, ngr
+       write(un_lrg, '(A8,I1)', advance="no")" graft-", g
+   enddo
+   write(un_lrg, *) ! New Line
+
+   ! Writing in the data
+   do z =1, nz
+       write(un_lrg, '(I8)', advance="no") z ! z-layer index
+       do g = 1, ngr
+           write(un_lrg, '(F10.6)', advance="no") Rgsqr_lateral(z, g)
+       enddo
+       write(un_lrg, *) 
+   enddo
+
+   ! Closing File
+   close(un_lrg)
+
+end subroutine write_lateral_Rgsqr
 
 end module
