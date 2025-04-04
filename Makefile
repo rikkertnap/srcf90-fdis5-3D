@@ -113,23 +113,23 @@ LFFLAGS=$(LDFLAGS)
 FF= gfortran
 
 ################################## Quest
-else ifeq ($(shell hostname),quser34)
+else ifeq ($(shell hostname),quser44)
 
         is_quest = yes
 
-else ifeq ($(shell hostname),quser33)
+else ifeq ($(shell hostname),quser43)
 
 	is_quest = yes
 
-else ifeq ($(shell hostname),quser32)
+else ifeq ($(shell hostname),quser42)
 
         is_quest = yes
 
-else ifeq ($(shell hostname),quser31)
+else ifeq ($(shell hostname),quser41)
 
 	is_quest = yes
 
-else ifeq ($(shell hostname),quser30)
+else ifeq ($(shell hostname),quser40)
 
 	is_quest = yes
 
