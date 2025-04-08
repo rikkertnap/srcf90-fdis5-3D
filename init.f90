@@ -80,7 +80,7 @@ subroutine init_guess(x, xguess)
             call init_guess_multi(x,xguess)
         case ("brushborn") 
             call init_guess_multi_born(x,xguess)
-        case ("brush_ionbinMgA")  
+        case ("brush_ionbinMgA","brush_neutralA")  
             call init_guess_multinoVdW(x,xguess)
         case default   
             print*,"Init_guess: Wrong value systype : ", systype
@@ -385,7 +385,7 @@ subroutine init_guess_multinoVdW(x, xguess)
     enddo
 
     do i=1,nsize
-        x(i)=xbulk%sol
+        x(i)=1.0_dp ! xbulk%sol
     enddo
 
     if (infile.eq.1) then   ! infile is read in from file/stdio  

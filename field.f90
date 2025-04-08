@@ -165,7 +165,7 @@ contains
 
         ier=0
  
-        if(systype=="brush_ionbinMgA") then
+        if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then
 
             N=Nx*Ny*Nz
             allocate(rhoqphos(N),stat=ier(1))
@@ -191,7 +191,7 @@ contains
  
         rhoqphos=0.0_dp
     
-        if(systype=="brush_ionbinMgA") then
+        if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then
             fdisPP_loc=0.0_dp
             fdisP2Mg_loc=0.0_dp
             fdisPP_loc_swap=0.0_dp
@@ -265,6 +265,8 @@ contains
             call charge_polymer_binary()
         case ("brush_ionbinMgA")
             call charge_polymer_ionbinMgA()
+        case ("brush_neutralA")
+            call charge_polymer_neutralA()
         case default
             print*,"Error in average_charge_polymer subroutine"    
             print*,"Wrong value systype : ", systype
@@ -330,7 +332,31 @@ contains
 
     end subroutine charge_polymer_ionbinMgA
 
+    subroutine charge_polymer_neutralA()
 
+        use globals, only : nsize, nsegtypes
+        use volume, only : volcell
+        use parameters, only : zpol, qpol, qpol_tot, tA
+
+        integer :: i, t
+
+        qpol_tot=0.0_dp
+        do t=1,nsegtypes
+            qpol(t)=0.0_dp
+            if(t/=tA) then    
+                do i=1,nsize
+                    qpol(t)=qpol(t)+(fdis(i,t)*zpol(t,2)+(1.0_dp-fdis(i,t))*zpol(t,1))*rhopol(i,t)
+                enddo
+            else
+                ! phosphate pairs not charged 
+                qpol(t)= 0.0_dp 
+            endif    
+
+            qpol(t)=qpol(t)*volcell
+            qpol_tot=qpol_tot+qpol(t)
+        enddo
+
+    end subroutine charge_polymer_neutralA
 
     subroutine charge_polymer_multi()
 
@@ -389,6 +415,8 @@ contains
             call average_charge_polymer_binary()
         case ("brush_ionbinMgA")
             call average_charge_polymer_ionbinMgA()
+        case ("brush_neutralA")
+            call average_charge_polymer_neutralA()
         case default
             print*,"Error in average_charge_polymer subroutine"    
             print*,"Wrong value systype : ", systype
@@ -551,6 +579,67 @@ contains
     end subroutine average_charge_polymer_ionbinMgA
 
     
+
+    subroutine average_charge_polymer_neutralA()
+
+        use globals, only : nseg,nsize,nsegtypes
+        use volume, only : volcell,ngr
+        use parameters, only : zpol, avfdis, avfdisA, tA
+        use parameters, only : Phos, PhosH, PhosK, PhosNa, PhosMg, avfdisPP, avfdisP2Mg
+        use chains, only: type_of_monomer,ismonomer_chargeable
+
+        integer, dimension(:), allocatable   :: npol
+        integer :: i,s,t,k,JJ, KK
+        real(dp) :: sumrhopolt ! average density of polymer of type t 
+
+        allocate(npol(nsegtypes))
+        
+        npol=0
+
+        do s=1,nseg
+            t=type_of_monomer(s)
+            npol(t)=npol(t)+1
+        enddo   
+
+        do t=1,nsegtypes
+            npol(t)=npol(t)*ngr
+        enddo
+            
+        do t=1,nsegtypes
+            avfdis(t)=0.0_dp
+            if(ismonomer_chargeable(t)) then 
+                sumrhopolt=npol(t)/volcell
+                if(npol(t)/=0) then
+                    if(t/=tA) then    
+                        do i=1,nsize
+                            avfdis(t)=avfdis(t)+(fdis(i,t)*zpol(t,2)+(1.0_dp-fdis(i,t))*zpol(t,1))*rhopol(i,t)
+                        enddo
+                        avfdis(t)=avfdis(t)/sumrhopolt        
+                    else
+                       ! phosphate 
+                        do k=1,8
+                            avfdisA(k)=0.0_dp
+                        enddo   
+                            
+                        ! average charged phosphates : pairs are neutral 
+                        do JJ=1,5
+                            do KK=1,5
+                                avfdisPP(JJ,KK)=0.0_dp
+                            enddo
+                        enddo
+                        avfdisP2Mg=0.0_dp
+                        avfdisPP(PhosH,PhosH)=1.0_dp
+                
+                        avfdis(ta)= 0.0_dp  ! signed charged fraction == zero  
+                    endif       
+                endif
+            endif   
+
+        enddo         
+
+        deallocate(npol)    
+
+    end subroutine average_charge_polymer_neutralA
 
 
     subroutine average_charge_polymer_multi()

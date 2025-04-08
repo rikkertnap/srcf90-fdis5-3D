@@ -38,7 +38,7 @@ program main
     real(dp),  dimension(:), allocatable :: xstored   ! stored iteration vector
     real(dp),  dimension(:), allocatable :: fvec
 
-    integer :: i,num
+    integer :: i, num
     logical :: use_xstored
     logical :: isfirstguess
     logical :: issolution
@@ -123,13 +123,13 @@ program main
     endif  
 
     call make_chains(chainmethod)   ! generate polymer configurations
-    call chain_filter()
+    call chain_filter(chainmethod)
     call allocate_field(nx,ny,nz,nsegtypes)
     call allocate_part_fnc(ngr)
     call init_field()
     call init_surface(bcflag,nsurf)
  
-    if(systype=="brush_ionbinMgA") then 
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
         phoscutoff=int(distphoscutoff/delta)+2 ! redundant ???
         call allocate_field_pairs(nx,ny,nz,maxneigh,5,len_index_phos) ! internal systype switch ! 5 = size fdisPP matrix 
         call init_field_pairs()  
@@ -137,7 +137,6 @@ program main
         call make_histogram_max_nneigh_phos(info)
     endif
 
-   
     ! VdW used to be here 
 
     call make_isrhoselfconsistent(isVdW)
@@ -175,7 +174,6 @@ program main
        
         iter = 0
 
-
         do while (nz>=nzmin)        ! loop distances
 
             call set_size_neq()
@@ -185,16 +183,16 @@ program main
             if(.not.allocated(fvec)) allocate(fvec(neq))
 
             call init_vars_input()          ! sets up chem potenitals
-            call chain_filter()
+            call chain_filter(chainmethod)
             call set_fcn()           
 
             flag_solver = 0
 
             if(rank.eq.0) then     ! node rank=0
                 call make_guess(x, xguess, isfirstguess, use_xstored, xstored)
-                ! call solver(x, xguess, tol_conv, fnorm, issolution)
+                call solver(x, xguess, tol_conv, fnorm, issolution)
                 call fcnptr(x, fvec, neq)
-                flag_solver = 0   ! stop nodes
+                !flag_solver = 0   ! stop nodes
                 do i = 1, numproc-1
                     dest =i
                     call MPI_SEND(flag_solver, 1, MPI_INTEGER, dest, tag, MPI_COMM_WORLD,ierr)
@@ -228,7 +226,7 @@ program main
                 use_xstored = .true.
                 iter = 0                ! reset of iteration counter
                 nz = nz-nzstep          ! reduce distance
-                do i=1,neq
+                do i=1,neqint
                     xstored(i)=x(i)
                 enddo
                 ! communicate new values of nz from master to  compute  nodes to advance while loop on compute nodes
@@ -314,7 +312,7 @@ program main
         endif
 
         call set_fcn()
-        call chain_filter() 
+        call chain_filter(chainmethod) 
          
         ! free unused variables 
         deallocate(energychain)
@@ -351,9 +349,11 @@ program main
                 flag_solver = 0
 
                 if(rank==0) then     ! node rank=0
+
                     call make_guess(x, xguess, isfirstguess,use_xstored,xstored)
                     call solver(x, xguess, tol_conv, fnorm, issolution)
                     call fcnptr(x, fvec, neq)
+
                     flag_solver = 0   ! stop nodes
                     do i = 1, numproc-1
                         dest =i
@@ -404,7 +404,7 @@ program main
                         loop%stepsize=loop%stepsize/2.0d0   ! decrease increment
                         loop%val=loop%val-loop%stepsize     ! step back
                         
-                        do i=1,neq
+                        do i=1,neqint
                             x(i)=xguess(i)
                         enddo
                 
@@ -477,8 +477,6 @@ program main
             call MPI_Bcast(list_step,  1, MPI_DOUBLE_PRECISION, 0 ,MPI_COMM_WORLD, ierr)
             call MPI_Bcast(nlist_elem, 1, MPI_INTEGER, 0 ,MPI_COMM_WORLD, ierr)
             call MPI_Bcast(nlist_step, 1, MPI_INTEGER, 0 ,MPI_COMM_WORLD, ierr)
-
-        
 
             use_xstored=.true.
 

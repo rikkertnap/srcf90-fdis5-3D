@@ -382,7 +382,7 @@ contains
         integer :: neq_bc
 
         ! .. electrostatics: self consistent boundary conditions
-        ! .. neeed to be put in function ...
+        ! .. the select statement need to be put in function 
         select case(systype)
         case ("elect") 
             noffset=4*nsize
@@ -394,9 +394,11 @@ contains
             noffset=2*nsize
         case("brush_mul") 
             noffset=(2+nsegtypes)*nsize    
+        case("brush_mulnoVdW") 
+            noffset=(2+nsegtypes)*nsize      
         case("brushdna") 
             noffset=(2+nsegtypes)*nsize    
-        case("brush_ionbinMgA") 
+        case("brush_ionbinMgA","brush_neutralA") 
             noffset=2*nsize       
         case default    
             print*,"error: systype wrong value for Poisson_equation_surface "    

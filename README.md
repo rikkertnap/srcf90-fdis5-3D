@@ -54,37 +54,37 @@ The program uses an input file called 'input.in' that contain following key word
 |	                    | |__ca__: calcite |
 |			                | |__ta__: taurine=AMPS  |		
 |                     | |__cc__: constant charge |
-|bcflag(LEFT) `char`   | Sets type of boundary condition for LEFT surface |__ta__: taurine  |
-|	                     |                                                  |__cc__: constant charge |
+|bcflag(LEFT) `char`         | Sets type of boundary condition for LEFT surface |__ta__: taurine  |
+|	                         |                                                  |__cc__: constant charge |
 |isChainEnergyFile `logical` |                                    | __True__ reads traj<rank>.ene containing energy of conformation read from file |
-|                          |                                      | __False__                              |
+|                           |                                      | __False__                              |
 |isEnergyshitFile `logical` |                                     | not used |
-|tolerance `real`			  	| Expectation tolerance, maximal error non-linear solver||  
-|infile `int`		        |        Select initial guess for non-linear solver |__0__:  homogenous guess initial guess |
-|		                    |                                      |__1__: read guess from a input file |
-|pH%val `real`            |    pH value    ||
-|pH%min `real`			      |  Minimal pH value||
-|pH%max `real`	          |  Maximum pH value||
-|pH%stepsize `real`       |  Stepsize pH value ||
-|pH%delta `real`          |     Minimal allowed stepsize. Stopping criteria||
-|KionNa `real`            | dissociation constant of NaCl| __0__  complete dissociation|
-|   	                    |                              | __0.60__ : suggested value for NaCl|
-|KionK `real`						  | dissociation constant of KCl | |
-|sigmaSurfL `real`	      | Surface charge density LEFT surface Unit: e/nm2, only for bcflag(LEFT)==cc  |  |
-|sigmaSurfR `real`		    | Surface charge density RIGHT surfcae Unit: e/nm2, only for bcflag(RIGHT)==cc |  |
+|tolerance `real`		   | Expectation tolerance, maximal error non-linear solver||  
+|infile `int`		       |        Select initial guess for non-linear solver |__0__:  homogenous guess initial guess |
+|		                   |                                      |__1__: read guess from a input file |
+|pH%val `real`             |    pH value    ||
+|pH%min `real`			   |  Minimal pH value||
+|pH%max `real`	           |  Maximum pH value||
+|pH%stepsize `real`        |  Stepsize pH value ||
+|pH%delta `real`           |     Minimal allowed stepsize. Stopping criteria||
+|KionNa `real`             | dissociation constant of NaCl| __0__  complete dissociation|
+|   	                   |                              | __0.60__ : suggested value for NaCl|
+|KionK `real`		       | dissociation constant of KCl | |
+|sigmaSurfL `real`	       | Surface charge density LEFT surface Unit: e/nm2, only for bcflag(LEFT)==cc  |  |
+|sigmaSurfR `real`		   | Surface charge density RIGHT surfcae Unit: e/nm2, only for bcflag(RIGHT)==cc |  |
 |cNaCl `real`              | NaCl value     |  |
 |cKCl `real`               | KCl value      |  |
 |cRbCl `real`              | RbCl value     |   | 
 |cCaCl2 `real`             | CaCl2 value    |   |
 |cMgCl2 `real`             | MgCl2 value    |   |
-|cpro%val `real`            |  cpro value protein concentration    ||
-|cpro%min `real`			      |  Minimal cpro value||
-|cpro%max `real`	          |  Maximum cpro value||
-|cpro%stepsize `real`       |  Stepsize cpro value ||
-|cpro%delta `real`          |     Minimal allowed stepsize. Stopping criteria|| 
-|Rpro`real`                 |  radius protein||  
-|nsize `int` 		           | System size or number of lattice site nsize=nx ny nz ||
-|nseg  `int`		           | Number of segments  copolymer      ||
+|cpro%val `real`           |  cpro value protein concentration    ||
+|cpro%min `real`		   |  Minimal cpro value||
+|cpro%max `real`	       |  Maximum cpro value||
+|cpro%stepsize `real`      |  Stepsize cpro value ||
+|cpro%delta `real`         |     Minimal allowed stepsize. Stopping criteria|| 
+|Rpro`real`                |  radius protein||  
+|nsize `int` 		       | System size or number of lattice site nsize=nx ny nz ||
+|nseg  `int`		       | Number of segments  copolymer      ||
 |nsegtypes `int`           | Number of segments types          ||
 |maxnchains   `int`        | maximum Euler rotation chain conformation | __12__: default if not set *|
 |maxnchainsxy  `int`       | maximum Euler rotation chain conformation in xy plane | __1__: default if not set * | 
@@ -96,17 +96,17 @@ The program uses an input file called 'input.in' that contain following key word
 |typesfname `char`         | name file containing list of all types ||
 |pKafname `char`           | name file containing pKa and charge of all types ||
 |lsegfname `char`          | name file containing segment lenght of all types ||
-|nx `int`                 | number of lattice cells in x-direction. Unit: delta ||
-|ny `int`                 | number of lattice cells in y-direction. Unit: delta || 
-|nzmax `int`		          | maximum separation surfaces Unit: delta ||
-|nzmin `int`			        | minimal separation opposing surfaces Unit: delta ||
-|nzstep `int`					    | unit stepsize by which distance between surface is reduce Unit: delta ||
-|ngr_freq `int`           | controls number of graft points ngr=int(nx/ngr_freq)*int(ny/ngr_freq)  ||
-|verboseflag `char`			  | Regulates verbosity of output files |__yes__: all density outputted|
-|                         |                                     | __no__: density of all ions omitted|
-|delta `int`			        | Lattice size      Unit: nm           ||
-|unit_conv `real`			    | Scaling if segement length conformatiom       ||
-|                         | are read from  FILE read in   ||  
+|nx `int`                  | number of lattice cells in x-direction. Unit: delta ||
+|ny `int`                  | number of lattice cells in y-direction. Unit: delta || 
+|nzmax `int`		       | maximum separation surfaces Unit: delta ||
+|nzmin `int`			   | minimal separation opposing surfaces Unit: delta ||
+|nzstep `int`			   | unit stepsize by which distance between surface is reduce Unit: delta ||
+|ngr_freq `int`            | controls number of graft points ngr=int(nx/ngr_freq)*int(ny/ngr_freq)  ||
+|verboseflag `char`		   | Regulates verbosity of output files |__yes__: all density outputted|
+|                          |                                     | __no__: density of all ions omitted|
+|delta `int`			   | Lattice size      Unit: nm           ||
+|unit_conv `real`		   | Scaling if segement length conformatiom       ||
+|                          | are read from  FILE read in   ||  
 |geometry `char`          | set geometry or shape of lattice  | __cubic__ : Cartesian lattice |
 |                         |                                   | __prism__ : oblique lattice   |
 |sgraft `int`             | segment number of graft | only used chaintype equal loop | 
@@ -120,24 +120,24 @@ The program uses an input file called 'input.in' that contain following key word
 |                              |                         | .true. : irregular|
 |seed_rot_loop 'int'           | Seed for rotation angle loop. Use in combination with isRandom_rot_loop | 5678 if not set |
 |                              | Different values produce different angles|  | 
-| write_mc_chain `logical`          | if .true. writes MC chain to file  ||  
+| write_mc_chain `logical` | if .true. writes MC chain to file  ||  
 |precondition `logical`    | if precondition==".true."  precondition | __.false.__ : default if not set |
-|maxniter `int`    | maximum of nonlinear iterations | if not set : default maxiter=1000 |
-|maxfkfunevlas `int`    | maximum of fcn evaluations | if not set : default maxfkfunevlas=1000 |
+|maxniter `int`            | maximum of nonlinear iterations | if not set : default maxiter=1000 |
+|maxfkfunevlas `int`       | maximum of fcn evaluations | if not set : default maxfkfunevlas=1000 |
 |dielect_env `char`        | Selects the dielect function                         | __linear__ |
 |                          | only used for systype="brushvarelec" and "brushborn" | __constant__ |
 |                          |                                                      | __MaxwellGarnett__ |     
-|  | Following variables describe VdW interactions. | |
-|VdWeps%val `real`	          | Strength VdW parameter 	Unit: kBT    |  |
+|                                 | Following variables describe VdW interactions. | |
+|VdWeps%val `real`	              | Strength VdW parameter 	Unit: kBT    |  |
 |VdWeps%min `real`			      | Minimum strength VdW parameter  Unit: kBT    |  |
 |VdWeps%max `real`			      | Maximum strength VdW parameter  Unit: kBT    |  |
 |VdWeps%stepsize `real`			  | Stepsize strength VdW parameter     Unit: kBT  | |
-|VdWeps%delta `real`			    | Minimal allowed stepsize. Stopping criteria  Unit: kBT    | |
-|pKd%val `real`	              | Strength pKd parameter 	    |  |
+|VdWeps%delta `real`			  | Minimal allowed stepsize. Stopping criteria  Unit: kBT    | |
+|pKd%val `real`	                  | Strength pKd parameter 	    |  |
 |pKd%min `real`			          | Minimum strength pKd parameter    |  |
 |pKd%max `real`			          | Maximum strength pKd parameter      |  |
-|pKd%stepsize `real`			    | Stepsize strength pKd parameter     |  |
-|pKd%delta `real`			        | Minimal allowed stepsize. Stopping criteria    |  |
+|pKd%stepsize `real`			  | Stepsize strength pKd parameter     |  |
+|pKd%delta `real`			      | Minimal allowed stepsize. Stopping criteria    |  |
 
 ## Built With
 

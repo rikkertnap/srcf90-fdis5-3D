@@ -119,7 +119,8 @@ subroutine make_chains_mc()
     !     .. initializations of variables     
        
     conf = 1                 ! counter for conformations
-    seed =  435672*(rank+1)   ! seed for random number generator  different on each node
+    !seed =  435672*(rank+1)   ! seed for random number generator  different on each node
+    seed =  435672
     maxnchains = maxnchainsrotations
     maxntheta = maxnchainsrotationsxy         ! maximum number of rotation in xy-plane  
     theta_angle = 2.0_dp*pi/maxntheta
@@ -133,7 +134,7 @@ subroutine make_chains_mc()
     sqrDphoscutoff = distphoscutoff**2
 
     ! pairs variable 
-    if(systype=="brush_ionbinMgA") then 
+    if(systype=="brush_ionbinMgA".or. systype=="brush_neutralA") then 
         call allocate_indexconfpair(cuantas,nseg)
         call allocate_nneighbor(cuantas,nseg)
         call allocate_max_nneighbor_phos(cuantas)
@@ -233,8 +234,7 @@ subroutine make_chains_mc()
 
                     enddo    
 
-                    if(systype=="brush_ionbinMgA") then 
-                    !   is tA init here ??
+                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,Ly)
                     endif       
     
@@ -323,7 +323,7 @@ subroutine make_chains_mc()
 
 
 
-                     if(systype=="brush_ionbinMgA") then 
+                     if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,Ly)
                     endif   
 
@@ -368,7 +368,7 @@ subroutine make_chains_mc()
 
     energychain_init=0.0_dp ! no internal energy 
 
-    if(systype=="brush_ionbinMgA") call find_max_nneighbor_phos(tphos,info)
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") call find_max_nneighbor_phos(tphos,info)
 
 end subroutine make_chains_mc
 
@@ -525,7 +525,7 @@ subroutine read_chains_xyz_loop(info)
     sqrDphoscutoff = distphoscutoff**2
 
     ! pairs variables 
-    if(systype=="brush_ionbinMgA") then 
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
         call allocate_indexconfpair(cuantas,nseg)
         call allocate_nneighbor(cuantas,nseg)
         call allocate_max_nneighbor_phos(cuantas)
@@ -613,7 +613,7 @@ subroutine read_chains_xyz_loop(info)
                         
                     enddo
 
-                    if(systype=="brush_ionbinMgA") then
+                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,Ly)
                     endif  
 
@@ -679,7 +679,7 @@ subroutine read_chains_xyz_loop(info)
                         
                     end do
 
-                     if(systype=="brush_ionbinMgA") then 
+                     if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,ly)
                     endif    
                     
@@ -734,7 +734,7 @@ subroutine read_chains_xyz_loop(info)
     
     deallocate(theta_array)
 
-    if(systype=="brush_ionbinMgA") call find_max_nneighbor_phos(tphos,info)
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") call find_max_nneighbor_phos(tphos,info)
 
 end subroutine read_chains_xyz_loop
 
@@ -943,7 +943,7 @@ subroutine read_chains_xyz_linear(info)
     sqrDphoscutoff = distphoscutoff**2
 
     ! pairs variables 
-    if(systype=="brush_ionbinMgA") then 
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
         call allocate_indexconfpair(cuantas,nseg)
         call allocate_nneighbor(cuantas,nseg)
         call allocate_max_nneighbor_phos(cuantas)
@@ -1032,7 +1032,7 @@ subroutine read_chains_xyz_linear(info)
                         
                     enddo
 
-                    if(systype=="brush_ionbinMgA") then 
+                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,ly)
                     endif     
                     
@@ -1098,7 +1098,7 @@ subroutine read_chains_xyz_linear(info)
                         
                     enddo
                     
-                    if(systype=="brush_ionbinMgA") then 
+                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,ly)
                     endif    
 
@@ -1155,7 +1155,7 @@ subroutine read_chains_xyz_linear(info)
     
     deallocate(theta_array)
 
-    if(systype=="brush_ionbinMgA") call find_max_nneighbor_phos(tphos,info)
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") call find_max_nneighbor_phos(tphos,info)
 
 end subroutine read_chains_xyz_linear
 
@@ -1369,14 +1369,20 @@ end subroutine read_sequence_copoly_from_file
 ! rational: need identical set of confors for loop of distance /volumesizes
 ! Allows moding of brush compressesd by second surface at z=nz
  
-subroutine chain_filter()
+subroutine chain_filter(chainmethod)
     
+    use mpivars, only : rank
     use globals, only : nseg, cuantas, max_confor
     use chains, only : indexchain,indexchain_init,energychain,energychain_init
     use volume, only : nz,coordinateFromLinearIndex
+    use chains, only : logweightchain
 
+    character(len=15), intent(in)  :: chainmethod
+    
+    ! local variables 
     integer :: conf, c, s,  count_seg
     integer :: indx, ix, iy, iz 
+    integer :: un
 
     c=0           ! counts allowed conformations 
    
@@ -1399,8 +1405,16 @@ subroutine chain_filter()
 
     cuantas=c ! actual number of conformation   
 
-    call normed_weightchains()
+    if(chainmethod=="MC") then 
+        logweightchain = 0.0_dp
+    else 
+        call normed_weightchains()
+    endif 
 
+   ! un=rank+100
+   ! do conf=1,cuantas
+   !     write(un,*)rank,conf,energychain(conf),logweightchain(conf)
+   ! enddo    
 
 end subroutine  chain_filter
 
@@ -1418,11 +1432,11 @@ subroutine normed_weightchains()
     use chains, only : energychain, logweightchain
     use volume, only : nset_per_graft
    
-    integer :: c, k
+    integer :: c, k, un
     real(dp) :: localsum, totalsum, logtotalsum
 
         
-    !    assymetric only use the first graft point to find normalization
+    !    asymetric only use the first graft point to find normalization
     localsum=0.0_dp    
     do k=0,nset_per_graft-1   
         if(k==rank) then    ! 
@@ -1437,11 +1451,11 @@ subroutine normed_weightchains()
     
     ! normalize
     logtotalsum=log(totalsum)
-    !un=rank+100
+     un=rank+100
     !write(un,*)"rank=",rank," ",localsum,totalsum,logtotalsum
     do c=1,cuantas
         logweightchain(c)=energychain(c)-logtotalsum
-        !write(un,*)rank,c,energychain(c),logweightchain(c)
+        write(un,*)rank,c,energychain(c),logweightchain(c)
     enddo    
 
     !call make_histogram(400)
@@ -1582,8 +1596,8 @@ subroutine set_lsegAA
             !lsegAA = lsegPEG
         case ("brush_mul","brush_mulnoVdW","brush","brush_neq","brushvarelec","brushborn","brushdna")
             ! lsegAA = lsegPAA !0.36287_dp
-        case ("brush_ionbinMgA")
-            lsegAA = lsegPAA
+        case ("brush_ionbinMgA","brush_neutralA")
+            ! lsegAA = lsegPAA
         case default
             print*,"Error: in set_lsegAA, systype=",systype
             print*,"stopping program"

@@ -86,7 +86,7 @@ contains
             call fcnenergy_electbrush_mul() 
             call fcnenergy_elect_alternative()    
 
-        case ("brush_ionbinMgA")
+        case ("brush_ionbinMgA","brush_neutralA")
         
             call fcnenergy_electbrush_mul() 
             call fcnenergy_elect_alternative()   
@@ -248,8 +248,12 @@ contains
 
          ! .. chemical and binding contribution
         select case(systype) 
-        case("brush_mul","brush_mulnoVdW","brushdna","brushborn","brush_ionbinMgA") 
+        case("brush_mul","brush_mulnoVdW","brushdna","brushborn") 
             FEchem = FEchem_react_multi()
+        case("brush_ionbinMgA")
+            FEchem = FEchem_react_multi()
+        case("brush_neutralA")
+            FEchem = 0.0_dp    
         case default
             FEchem = FEchem_react()
         end select  

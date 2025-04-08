@@ -471,7 +471,7 @@ subroutine check_value_systype(systype,info)
     character(len=15), intent(in) :: systype
     integer, intent(out),optional :: info
 
-    character(len=15) :: systypestr(9)
+    character(len=15) :: systypestr(10)
     integer :: i
     logical :: flag
 
@@ -486,11 +486,11 @@ subroutine check_value_systype(systype,info)
     systypestr(7)="bulk water"
     systypestr(8)="neutralnoVdW"
     systypestr(9)="brush_ionbinMgA"
-
+    systypestr(10)="brush_neutralA"
 
     flag=.FALSE.
 
-    do i=1,9
+    do i=1,10
         if(systype==systypestr(i)) flag=.TRUE.
     enddo
 
@@ -555,6 +555,7 @@ subroutine check_value_runtype_systype(runtype,systype,info)
     ! not permissible combination of values of runtype and systype
 
     if(runtype=="rangedist" .and. systype == "brush_inonbinMgA") flag=.false.
+    if(runtype=="rangedist" .and. systype == "brush_neutralA") flag=.false.
     
     if (present(info)) info = 0
 
@@ -1045,7 +1046,7 @@ subroutine set_value_isVdW(systype, isVdW)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdW
 
-    character(len=15) :: systypestr(4)
+    character(len=15) :: systypestr(5)
     integer :: i
 
      isVdW=.True.
@@ -1056,8 +1057,9 @@ subroutine set_value_isVdW(systype, isVdW)
     systypestr(2)="neutralnoVdW"
     systypestr(3)="brush_mulnoVdW"
     systypestr(4)="brush_ionbinMgA"
+    systypestr(5)="brush_neutralA"
 
-    do i=1,4
+    do i=1,5
         if(systype==systypestr(i)) isVdW=.FALSE.
     enddo
 
@@ -1263,7 +1265,7 @@ subroutine output()
         call output_brush_mul
         call output_individualcontr_fe
 
-    case("brush_ionbinMgA")
+    case("brush_ionbinMgA","brush_neutralA")
 
         call output_brush_mul
         call output_individualcontr_fe
@@ -2367,7 +2369,7 @@ subroutine make_filename_label(fnamelabel)
         write(rstr,'(F5.3)')VdWscale%val
         fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
 
-    case("brush_mul","brush_mulnoVdW","brushdna","brushborn","brush_ionbinMgA")
+    case("brush_mul","brush_mulnoVdW","brushdna","brushborn","brush_ionbinMgA","brush_neutralA")
 
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr))
@@ -2498,7 +2500,7 @@ subroutine copy_solution(x)
             xsol(i)= x(i)
         enddo
 
-    case ("brush_mulnoVdW")
+    case ("brush_mulnoVdW","brush_ionbinMgA","brush_neutralA")
 
         do i=1,nsize
             xsol(i)= x(i)
@@ -2558,13 +2560,21 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height)
         call make_ion_excess()
         call output()           ! writing of output
+
+    case ("brush_neutralA")
         
+        call fcnenergy()
+        call charge_polymer()
+        call average_charge_polymer()
+        call average_density_z(xpol,xpolz,height)
+        call make_ion_excess()
+        call output()           ! writing of output    
+
     case default
 
         print*,"Error: systype incorrect in compute_vars_and_output"
         print*,"stopping program"
         stop
-
 
     end select
 

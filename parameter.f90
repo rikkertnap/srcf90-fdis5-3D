@@ -42,7 +42,6 @@
     real(dp) :: vpro
   
     !  .. radii
-  
     real(dp) :: RNa
     real(dp) :: RK
     real(dp) :: RRb
@@ -50,7 +49,7 @@
     real(dp) :: RCa
     real(dp) :: RMg
     real(dp) :: Rpro
-
+        
      !    .. charges 
     integer :: zpolAA(8)
     integer, dimension(:,:), allocatable :: zpol          ! valence charge polymer
@@ -65,7 +64,7 @@
     integer :: zMg               ! valence charge divalent positive ion 
     integer :: zCl               ! valence charge negative ion 
   
-    !  .. VdW variables
+    ! .. VdW variables
     real(dp), dimension(:,:), allocatable :: VdWeps, VdWepsin    ! strenght VdW interaction in units of kT
     real(dp) :: VdWepsAA, VdWepsBB,VdWepsAB            ! strenght VdW interaction in units of kT
     logical :: isVdW              ! if true VdW energy 
@@ -78,7 +77,7 @@
     type(looplist), target :: VdWscale ! scale factor in VdW interaction
 
   
-     !  .. input filenames select if chainmethod==file
+    !  .. input filenames select if chainmethod==file
     integer, parameter :: lenfname=40
     character(len=lenfname) :: chainfname,vpolfname,pKafname,typesfname,lsegfname
 
@@ -132,8 +131,6 @@
     logical :: isEnergyShift         ! if true energychain is shifted by energychain_min see chaingenerator
     logical :: pbc_chains             ! if true apply pbc to chain conformation
  
-
-
     ! ..average structural properties of layer
 
     real(dp) :: height             ! average height of layer 
@@ -149,8 +146,8 @@
     real(dp) :: avfdisB(5)         ! average degree of dissociation
     real(dp) :: sum_ion_excess     ! sum of ion_excess of all ions weighted with valence of ion
 
-    !  .. weak polyelectrolyte variables 
-    !  .. equibrium constant
+    ! .. weak polyelectrolyte variables 
+    ! .. equilibrium constant
     real(dp), dimension(:), allocatable :: K0a              ! intrinsic equilibruim constant
     real(dp), dimension(:), allocatable :: Ka               ! experimemtal equilibruim constant 
     real(dp), dimension(:), allocatable :: pKa              ! experimental equilibruim constant pKa= -log[Ka]
@@ -162,7 +159,7 @@
     type (looplist), target :: deltaGd 
    
       
-     ! water equilibruim constant pKw= -log[Kw] ,Kw=[H+][OH-]   
+    ! .. water equilibruim constant pKw= -log[Kw] ,Kw=[H+][OH-]   
     real(dp) :: pKw                 
   
     real(dp) :: K0ionNa             ! intrinsic equilibruim constant
@@ -173,7 +170,7 @@
     real(dp) :: KionK               ! experimemtal equilibruim constant 
     real(dp) :: pKionK              ! experimental equilibruim constant pKion= -log[Kion]	 
   
-    !     .. bulk concentrations 
+    ! .. bulk concentrations 
    
     real(dp) :: cHplus             ! concentration of H+ in bulk in mol/liter
     real(dp) :: cOHmin             ! concentration of OH- in bulk in mol/liter
@@ -189,7 +186,8 @@
     real(dp) :: pHbulk             ! pH of bulk pH = -log([H+])
     real(dp) :: pOHbulk            ! p0H of bulk p0H = -log([0H-])
   
-    !  retrun error of subroutine read_pKds
+    !  return error of subroutine read_pKds
+
     integer, parameter ::  err_pKdfile_noexist = 1
     integer, parameter ::  err_pKdfile         = 2 
     integer, parameter ::  err_pKderror        = 3
@@ -214,12 +212,13 @@ contains
 
     subroutine set_size_neq()
 
-        use globals, only: systype,nsegtypes, nsize,bcflag,LEFT,RIGHT, neq, neqint
-        use volume, only : nx, ny, nz
+        use globals, only: systype, nsegtypes, nsize !, bcflag, LEFT, RIGHT
+        use globals, only: neq, neqint
+        !use volume, only : nx, ny, nz
 
         integer :: numeq, t
 
-        nsize= nx*ny*nz
+       ! nsize= nx * ny * nz
 
         select case (systype)
             case ("brush_mul") 
@@ -237,20 +236,22 @@ contains
             case ("elect") 
                 neq = 4 * nsize 
             case ("neutral") 
-                neq = (1+nsegtypes) * nsize
+                neq = (1 + nsegtypes) * nsize
             case ("neutralnoVdW") 
                 neq = nsize  
             case ("bulk water") 
                 neq = 5 
-            case ("brush_ionbinMgA")
+            case ("brush_ionbinMgA","brush_neutralA")
                 neq = 2 * nsize
             case default
                 print*,"Wrong value systype:  ",systype
                 stop
         end select  
 
-        neqint = neq ! used for MPI func binding, MPI has no integer(8)
-         
+        ! neqint = neq              
+        neqint=int(neq,kind(neqint))  ! used for MPI func binding, MPI has no integer(8)
+
+ 
     end subroutine set_size_neq
 
     
@@ -459,7 +460,7 @@ contains
     ! init variables specific for systype=brush, brushborn etc 
     ! variable are  constants, deltaG and K for sytyep=brush,bruhborn etc.
     ! pre : nsegtype, vsol,vpol, vNa etc and ismonomer_chargable need to be set 
-    ! post : equlibriuem constant and volume set for charge state of 
+    ! post : equilibriuem constant and volume set for charge state of 
     !       carboxylic group of systype ==brushborn are initliazed 
 
     subroutine init_dna  
@@ -469,16 +470,15 @@ contains
         use physconst, only : Na
         use myutils, only : error_handler
 
-        real(dp) :: KAA(7)
         real(dp) :: vA    
-        integer  :: tAA,i,tt,s,flag_one
-        logical  :: isOandNpresent,  isApresent
-        integer   :: info
+        integer  :: i, tt, s, flag_one
+        logical  :: isApresent
+        integer  :: info
 
         ! determine segment type number of phosphate constaining segments
 
         do s=1, nseg
-            if(type_of_monomer_char(s)=="P")  tA =type_of_monomer(s)
+            if(type_of_monomer_char(s)=="P")  tA = type_of_monomer(s)
         enddo
 
         isApresent=(tA/=0) ! check if phosphate acid monomer is defined in list of typesfname
@@ -513,10 +513,12 @@ contains
             K0aAA(i) = KaAA(i)*(vsol*Na/1.0e24_dp)
         enddo
 
-        if(systype/="brush_ionbinMgA") then	
+        if(systype/="brush_ionbinMgA".and.systype/="brush_neutralA") then
+            print*,"Warning: init_dna: check logical of if-statement in init_dna" 
             K0aAA(4) = K0aAA(4)*(vsol*Na/1.0e24_dp) ! A2Ca
             K0aAA(6) = K0aAA(6)*(vsol*Na/1.0e24_dp) ! A2Mg 
         endif 
+
         ! set volumes 
          
         vA=vpol(tA) 
@@ -529,7 +531,6 @@ contains
         vpolAA(7) = 2.0_dp*vA+vMg   ! vA2Mg 
         vpolAA(8) = vA+vK           ! vAK 
 
-
         deltavAA(1) = vpolAA(1)+1.0_dp-vpolAA(2) ! vA- + vH+ - vAH
         deltavAA(2) = vpolAA(1)+vNa-vpolAA(3)    ! vA- + vNa+ - vANa
         deltavAA(3) = vpolAA(1)+vCa-vpolAA(4)    ! vA- + vCa2+ - vACa+
@@ -538,7 +539,7 @@ contains
         deltavAA(6) = 2.0_dp*vpolAA(1)+vMg-vpolAA(7) ! 2vA- + vMg2+ -vA2Mg
         deltavAA(7) = vpolAA(1)+vK-vpolAA(8)    ! vA- + vK+ - vAK
 
-        if(systype=="brush_ionbinMgA") then
+        if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then
             call init_vPP(info)
             call error_handler(info,"init_vPP")
             call init_qPP()
@@ -901,7 +902,7 @@ contains
         case ("brush_mul","brush_mulnoVdW") 
             call init_expmu_elect() 
             call set_VdWeps_scale(VdWscale)     
-        case ("brushdna","brush_ionbinMgA") 
+        case ("brushdna","brush_ionbinMgA","brush_neutralA") 
             call init_dna  
             call init_expmu_elect()
             call set_VdWeps_scale(VdWscale)
@@ -1276,10 +1277,12 @@ contains
  
         if(ttAA>0) isrhoselfconsistent(ttAA)=.true.  ! check condition ttA==0 
         if(ttP>0) then
-              if(systype/="brush_ionbinMgA") then 
-                   isrhoselfconsistent(ttP)=.true.    ! check condition ttP==0
-                   print*,"Warning: isrhoselfconstistent is set to .true. for systype:",systype
-              endif
+            isrhoselfconsistent(ttP)=.true.    
+            if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+                isrhoselfconsistent(ttP)=.false.    ! check condition ttP==0
+            else        
+                print*,"Warning: isrhoselfconstistent is set to .true. for systype:",systype
+            endif
         endif
 
         ! check that we do not have simultenoeus A=Acrylic acid and P=phosphate
@@ -1317,7 +1320,7 @@ contains
             VdWepsAB = VdWeps(1,2) 
             VdWepsBB = VdWeps(2,1) 
         case ("neutral","neutralnoVdW","brush_mul","brush_mulnoVdW","brushvarelec","brushborn","brushdna")
-        case ("brush_ionbinMgA")
+        case ("brush_ionbinMgA","brush_neutralA")
         case default
             print*,"Error: in set_VdWepsAAandBB, systype=",systype
             print*,"stopping program"
