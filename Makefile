@@ -1,7 +1,7 @@
 #Unix makefile for fortran-file	
 
 # Put the name of the target program here
-TARGET = brush.domain.loop.multi.VdW # the list of source files
+TARGET = brush.domain.loop.multi.VdW.Mg # the list of source files
 #SRC =  mpivars.f90  precision.f90  mathconst.f90 physconst.f90 globals.f90 eigen.f90 myutils.f90 molecule.f90  dielectfcn.f90  loop.f90 rands.f90 volume.f90 chains.f90 L2norm.f90 parameter.f90  poissonEq.f90 field.f90 VdW.f90 surface.f90 confEntropy.f90 fenergy.f90 initcha.f90  myio.f90 rota.f90 cadenas.f90 cadenas-sequence.f90 fcn.brush.f90  init.f90 chaingenerator.f90 kinsolsolver.f90  solver.f90  main.f90
 SRC =  mpivars.f90  precision.f90  mathconst.f90 physconst.f90 globals.f90 eigen.f90 myutils.f90 molecule.f90  dielectfcn.f90  loop.f90 rands.f90 volume.f90 chains.f90 L2norm.f90 parameter.f90  poissonEq.f90 field.f90 VdW.f90 surface.f90 fcnMgexpl.f90 confEntropy.f90 fenergy.f90 initcha.f90  myio.f90 rota.f90 cadenas.f90 cadenas-sequence.f90   fcn.brush.f90   init.f90 chaingenerator.f90  kinsolsolver.f90 solver.f90 main.f90
 
@@ -96,11 +96,23 @@ LFFLAGS=$(LDFLAGS)
 FF= gfortran
 
 
-else ifeq ($(shell hostname),quser34)
+else ifeq ($(shell hostname),quser44)
 
         is_quest = yes
 
-else ifeq ($(shell hostname),quser33)
+else ifeq ($(shell hostname),quser43)
+
+	is_quest = yes
+
+else ifeq ($(shell hostname),quser42)
+
+        is_quest = yes
+
+else ifeq ($(shell hostname),quser41)
+
+	is_quest = yes
+
+else ifeq ($(shell hostname),quser40)
 
 	is_quest = yes
 
@@ -108,59 +120,19 @@ else ifeq ($(shell hostname),quser32)
 
         is_quest = yes
 
-else ifeq ($(shell hostname),quser31)
+else ifeq ($(shell hostname),quser33)
 
-	is_quest = yes
+        is_quest = yes
 
-else ifeq ($(shell hostname),quser30)
+else ifeq ($(shell hostname),quser34)
 
-	is_quest = yes
+        is_quest = yes
 
-
-else ifeq ($(shell hostname),thetalogin1)
-
-        is_theta = yes
-
-else ifeq ($(shell hostname),thetalogin2)
-
-        is_theta = yes
-
-else ifeq ($(shell hostname),thetalogin3)
-
-        is_theta = yes
-
-else ifeq ($(shell hostname),thetalogin4)
-
-        is_theta = yes
-
-else ifeq ($(shell hostname),thetalogin5)
-
-        is_theta = yes
-
-else ifeq ($(shell hostname),thetalogin6)
-
-        is_theta = yes
-
-else ifeq ($(shell hostname),cooleylogin1)
-
-        is_cooley = yes
-
-else ifeq ($(shell hostname),cooleylogin2)
-
-        is_cooley = yes
-
-else ifeq ($(shell hostname),cooleylogin3)
-
-        is_cooley = yes
-
-else ifeq ($(shell hostname),cooleylogin4)
-
-        is_cooley = yes
 
 else 
 
 
-FFLAGS=  -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fcheck=all -fbounds-check -Warray-bounds -g -fbacktrace  -Wpedantic  -Wall
+FFLAGS=  -std=f2008 -cpp -DVERSION=\"$(GIT_VERSION)\" -fcheck=all -fbounds-check -Warray-bounds -g -fbacktrace  -Wpedantic # -Wall
 
 
 #LDFLAGS=-lm -L/opt/local/kinsol-2.8.2-stat/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/opt/local/kinsol-2.8.2-stat/lib
@@ -176,19 +148,6 @@ FF= mpif90
 endif
 
 
-ifdef is_theta
-
-FFLAGS=  -cpp -DVERSION=\"$(GIT_VERSION)\"  -O3
-
-
-LDFLAGS=-lm /usr/lib64/librt.a -L/lus/theta-fs0/projects/FDTD_Cancer_2a/sundials/sundial-2.6.1/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/lus/theta-fs0/projects/FDTD_Cancer_2a/sundials/sundial-2.6.1/lib
-
-LFFLAGS=$(LDFLAGS)
-
-FF= ftn
-
-endif 
-
 
 ifdef is_quest 
 
@@ -198,19 +157,6 @@ FFLAGS=  -std=f2008  -cpp -DVERSION=\"$(GIT_VERSION)\"  -O3 # -fcheck=all -fboun
 
 LDFLAGS= -lm /usr/lib64/librt.so -L/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran84/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran84/lib -L/software/lapack/3.10.1/lib64  -llapack
 
-
-LFFLAGS=$(LDFLAGS)
-
-FF= mpif90
-
-endif
-
-
-ifdef is_cooley
-
-FFLAGS=  -cpp -DVERSION=\"$(GIT_VERSION)\"  -O3
-
-LDFLAGS=  -lm /usr/lib64/librt.so -L/lus/theta-fs0/projects/FDTD_Cancer_2a/sundials/sundial-2.6.1-cooley/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/lus/theta-fs0/projects/FDTD_Cancer_2a/sundials/sundial-2.6.1-cooley/lib
 
 LFFLAGS=$(LDFLAGS)
 
