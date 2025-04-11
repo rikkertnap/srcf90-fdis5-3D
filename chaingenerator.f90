@@ -135,9 +135,9 @@ subroutine make_chains_mc()
 
     ! pairs variable 
     if(systype=="brush_ionbinMgA".or. systype=="brush_neutralA") then 
-        call allocate_indexconfpair(cuantas,nseg)
-        call allocate_nneighbor(cuantas,nseg)
-        call allocate_max_nneighbor_phos(cuantas)
+        call allocate_indexconfpair(cuantas,nseg,maxnchains,maxntheta)
+        call allocate_nneighbor(cuantas,nseg,maxnchains,maxntheta)
+        call allocate_max_nneighbor_phos(cuantas,maxnchains,maxntheta)
         tPhos = find_type_phosphate()
     endif
             
@@ -526,9 +526,9 @@ subroutine read_chains_xyz_loop(info)
 
     ! pairs variables 
     if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
-        call allocate_indexconfpair(cuantas,nseg)
-        call allocate_nneighbor(cuantas,nseg)
-        call allocate_max_nneighbor_phos(cuantas)
+        call allocate_indexconfpair(cuantas,nseg,maxnchains,maxntheta)
+        call allocate_nneighbor(cuantas,nseg,maxnchains,maxntheta)
+        call allocate_max_nneighbor_phos(cuantas,maxnchains,maxntheta)
         tPhos = find_type_phosphate()
     endif
 
@@ -944,9 +944,9 @@ subroutine read_chains_xyz_linear(info)
 
     ! pairs variables 
     if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
-        call allocate_indexconfpair(cuantas,nseg)
-        call allocate_nneighbor(cuantas,nseg)
-        call allocate_max_nneighbor_phos(cuantas)
+        call allocate_indexconfpair(cuantas,nseg,maxnchains,maxntheta)
+        call allocate_nneighbor(cuantas,nseg,maxnchains,maxntheta)
+        call allocate_max_nneighbor_phos(cuantas,maxnchains,maxntheta)
         tPhos = find_type_phosphate()
     endif
 
@@ -2444,6 +2444,7 @@ subroutine find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain,Lx,Ly)
     integer :: un_pp
     character(len=10) ::istr
 
+    !print*,"nseg=",nseg," maxnneigh=", maxnneigh
     allocate(list_of_pairs(nseg,maxnneigh))
     allocate(index_of_pairs(nseg,maxnneigh))
 

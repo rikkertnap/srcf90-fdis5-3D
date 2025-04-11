@@ -83,11 +83,16 @@ contains
     ! When used indexchain is not needed and can be deallocated
     ! inputs: dimension of indexconfpair: cuantas, nseg and  nelem(:) 
 
-    subroutine allocate_indexconfpair(cuantas,nseg)
+    subroutine allocate_indexconfpair(cuantas,nseg,maxnchains,maxnchainsxy)
 
         integer, intent(in) :: cuantas,nseg
+        integer, intent(in) :: maxnchains,maxnchainsxy
 
-        allocate(indexconfpair(nseg,cuantas))  
+        integer :: maxcuantas
+
+        maxcuantas=cuantas+maxnchains*maxnchainsxy     ! .. extra  because of  nchain rotations
+
+        allocate(indexconfpair(nseg,maxcuantas))  
         
     end subroutine allocate_indexconfpair
 
@@ -95,21 +100,31 @@ contains
     ! Allocates neigh : neigbors that segment number s in conf alpha has 
     ! used only for segment s that is a phosphate
 
-    subroutine allocate_nneighbor(cuantas,nseg)
+    subroutine allocate_nneighbor(cuantas,nseg,maxnchains,maxnchainsxy)
 
         integer, intent(in) :: cuantas,nseg
+        integer, intent(in) :: maxnchains,maxnchainsxy
 
-        allocate(nneigh(nseg,cuantas))
+        integer :: maxcuantas
+
+        maxcuantas=cuantas+maxnchains*maxnchainsxy     ! .. extra  because of  nchain rotations
+
+        allocate(nneigh(nseg,maxcuantas))
                   
     end subroutine allocate_nneighbor
 
      ! Allocates addition maxneigh_phos
 
-    subroutine allocate_max_nneighbor_phos(cuantas)
+    subroutine allocate_max_nneighbor_phos(cuantas,maxnchains,maxnchainsxy)
 
         integer, intent(in) :: cuantas
+        integer, intent(in) :: maxnchains,maxnchainsxy
 
-        allocate(max_nneigh_phos(cuantas))
+        integer :: maxcuantas
+
+        maxcuantas=cuantas+maxnchains*maxnchainsxy     ! .. extra  because of  nchain rotations
+
+        allocate(max_nneigh_phos(maxcuantas))
 
     end subroutine allocate_max_nneighbor_phos
 
