@@ -365,7 +365,7 @@ subroutine read_inputfile(info)
     endif
 
     call check_value_runtype(runtype,info_run)
-    if (info_sys == myio_err_runtype) then
+    if (info_run == myio_err_runtype) then
         if (present(info)) info = info_run
         return
     endif
