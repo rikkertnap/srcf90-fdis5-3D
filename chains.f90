@@ -28,7 +28,11 @@ module chains
     real(dp), dimension(:), allocatable       :: avRgsqr                ! average radius of gyration (for each graft point)
     real(dp), dimension(:), allocatable       :: avRendsqr              ! average end-to-end distance (for each graft point)
     real(dp), dimension(:), allocatable       :: Asphparam              ! Asphericity parameter invariant of gyration tensor 
-    real(dp), dimension(:), allocatable       :: avAsphparam            ! Average asphericity parameter for each graft point 
+    real(dp), dimension(:), allocatable       :: avAsphparam            ! Average asphericity parameter for each graft point
+
+   ! Isotropy Check Variables
+    real(dp), dimension(:,:), allocatable     :: Rxx                    ! Lateral x-direction  
+    real(dp), dimension(:,:), allocatable     :: Ryy                    ! Lateral y-direction
    
 contains
 
@@ -62,6 +66,10 @@ contains
         allocate(avRendsqr(ngr))
         allocate(avAsphparam(ngr))
         allocate(Rgsqr_lateral(nz,ngr))
+
+        ! Istropy Check
+        allocate(Rxx(nz, ngr))
+        allocate(Ryy(nz, ngr))
     
     end subroutine allocate_chains
   

@@ -1271,6 +1271,8 @@ subroutine output_brush_mul
 
     ! .. executable statements
     call write_lateral_Rgsqr()
+    call write_Rxx_Ryy()
+
     denspol=init_denspol()
 
     if(nz.eq.nzmax)  then
@@ -1634,6 +1636,8 @@ subroutine output_elect
     ! .. executable statements
 
     call write_lateral_Rgsqr()
+    call write_Rxx_Ryy()
+
     denspol=init_denspol()
 
     if(nz.eq.nzmax)  then
@@ -2000,6 +2004,8 @@ subroutine output_neutral
     !     .. executable statements
 
     call write_lateral_Rgsqr()
+    call write_Rxx_Ryy()
+
     denspol=init_denspol()
 
     if(nz==nzmax) then
@@ -2559,5 +2565,48 @@ subroutine write_lateral_Rgsqr()
    close(un_lrg)
 
 end subroutine write_lateral_Rgsqr
+
+subroutine write_Rxx_Ryy()
+
+    use myutils, only: newunit, lenText
+    use volume, only: nz, ngr
+    use chains, only: Rxx, Ryy
+
+    implicit none
+
+    ! Inputs
+
+    ! Local Variables
+    integer :: z, g, un_rxxryy
+    character(len=lenText) :: fname, fnamelabel
+
+    ! Define Output File Name
+    call make_filename_label(fnamelabel)
+    fname = 'Rxx_Ryy.'//trim(adjustl(fnamelabel))
+
+    ! Open file for writing
+    open(unit=newunit(un_rxxryy), file=fname)
+
+    ! Write Header
+    write(un_rxxryy, '(A8)', advance="no") "z-layer"
+    do g = 1, ngr
+        write(un_rxxryy, '(A6,I2,A4)', advance="no") " graft-", g, "_Rxx"
+        write(un_rxxryy, '(A6,I2,A4)', advance="no") " graft-", g, "_Ryy"
+    enddo
+    write(un_rxxryy, *) ! New Line
+
+    ! Write data
+    do z = 1, nz
+        write(un_rxxryy, '(I8)', advance="no") z ! z-layer index
+        do g = 1, ngr
+            write(un_rxxryy, '(2F12.6)', advance="no") Rxx(z, g), Ryy(z, g)
+        enddo
+        write(un_rxxryy, *) ! New Line
+    enddo
+
+    ! Close file
+    close(un_rxxryy)
+
+end subroutine write_Rxx_Ryy
 
 end module
