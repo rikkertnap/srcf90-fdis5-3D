@@ -30,6 +30,7 @@ program main
     use myutils
     use dielectric_const
     use modfcnMgexpl
+    use modfcnMgexpl_inter  ! both contain  subroutine compute_fdisPP
 
     implicit none
 
@@ -124,18 +125,25 @@ program main
 
     call make_chains(chainmethod)   ! generate polymer configurations
     call chain_filter(chainmethod)
-    call allocate_field(nx,ny,nz,nsegtypes)
+    call allocate_field(nx,ny,nz,nsegtypes,ngr)
     call allocate_part_fnc(ngr)
     call init_field()
     call init_surface(bcflag,nsurf)
  
-    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or.systype=="brush_Mginter") then 
         phoscutoff=int(distphoscutoff/delta)+2 ! redundant ???
         call allocate_field_pairs(nx,ny,nz,maxneigh,5,len_index_phos) ! internal systype switch ! 5 = size fdisPP matrix 
         call init_field_pairs()  
         call write_chain_max_nneigh_phos(write_struct,info) 
         call make_histogram_max_nneigh_phos(info)
     endif
+
+    if(systype=="brush_Mginter") then 
+        maxlatneigh = set_maxlatneigh(delta, distphoscutoff) 
+        call allocate_indexlatneighbor(nsize,maxlatneigh)
+        call make_table_index_neighbors(distphoscutoff)    
+    endif
+    
 
     ! VdW used to be here 
 
@@ -216,7 +224,10 @@ program main
                 call compute_average_charge_PP_expl(avfdisP2Mg,avfdisPP)
                 call compute_FEchem_react_PP_expl(FEchempair)
             endif          
-
+            if(systype=="brush_Mginter") then
+                call compute_average_charge_PP_expl_inter(avfdisP2Mg,avfdisPP)
+                call compute_FEchem_react_PP_expl_inter(FEchempair)
+            endif    
 
             if(rank==0) then
 
@@ -379,7 +390,13 @@ program main
                 if(systype=="brush_ionbinMgA") then
                     call compute_average_charge_PP_expl(avfdisP2Mg,avfdisPP)
                     call compute_FEchem_react_PP_expl(FEchempair)
+                    call rhophosgraft_Mg_expl()
                 endif          
+
+                if(systype=="brush_Mginter") then
+                    call compute_average_charge_PP_expl_inter(avfdisP2Mg,avfdisPP)
+                    call compute_FEchem_react_PP_expl_inter(FEchempair)
+                endif    
 
                 if(rank==0) then
 

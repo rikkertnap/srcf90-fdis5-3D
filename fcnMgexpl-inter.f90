@@ -1,12 +1,12 @@
 ! --------------------------------------------------------------|
-! fcnMg-excpl.f90:                                              |
+! fcnMgexpl-inter.f90:                                              |
 ! Constructs the vector function  needed by the                 |
 ! routine solver, which solves the SCMFT eqs for                |
 ! polyelctolyte  with ionbinding and  Mg binding                |
 ! using phosphate pairs.                                        |
 ! --------------------------------------------------------------|
 
-module modfcnMgexpl
+module modfcnMgexpl_inter
    
     use mpivars
     use precision_definition
@@ -16,87 +16,26 @@ module modfcnMgexpl
 
 contains
    
-    subroutine compute_fdisPP(fdisPP,fdisP2Mg,position1,position2)
-
-        use field, only : xHplus, xNa, xK, xMg, xsol
-        use parameters, only : vNa, vK, vMg, deltavAA
-        use parameters, only : K0aAA
-        use parameters, only : Phos, PhosH, PhosK, PhosNa, PhosMg, Phos2Mg 
-
-        real(dp), intent(inout), dimension(:,:) :: fdisPP
-        real(dp), intent(inout) :: fdisP2Mg
-        integer , intent(in) :: position1, position2
-
-        real(dp) :: xP(5,2), xP2Mg, fPP, sumxP         ! disociation variables  
-        integer :: i, j     
-        integer  :: JJ, KK
-
-        ! .. executable statements 
-                                                     
-        xP(Phos,1)   = 1.0_dp 
-        xP(Phos,2)   = 1.0_dp    
-      
-        i = position1 ! position in lattice numbers
-        j = position2
-
-        !print*,"i=",i,' j=',j
-
-        xP(PhosH,1)  = xHplus(i)/(K0aAA(1)*(xsol(i)**deltavAA(1)))      !  (PH)/P-    : f(PH)P(i,j)/fPP(i,j)
-        xP(PhosH,2)  = xHplus(j)/(K0aAA(1)*(xsol(j)**deltavAA(1)))      !  (PH)/P-    : fP(PH)(i,j)/fPP(i,j)
-      
-        xP(PhosNa,1) = (xNa(i)/vNa)/(K0aAA(2)*(xsol(i)**deltavAA(2)))   !  PNa/P-     : f(PNa)P(i,j)/fPP(i,j) 
-        xP(PhosNa,2) = (xNa(j)/vNa)/(K0aAA(2)*(xsol(j)**deltavAA(2)))   !  PNa/P-     : fPPNa(i,j)/fPP(i,j) 
-      
-        xP(PhosK,1)  = (xK(i)/vK)/(K0aAA(7)*(xsol(i)**deltavAA(7)))     !  PK/P-      : f(PK)P(i,j)/fPP(i,j) 
-        xP(PhosK,2)  = (xK(j)/vK)/(K0aAA(7)*(xsol(j)**deltavAA(7)))     !  PK/P-      : fPPK(i,j)/fPP(i,j) 
-     
-        xP(PhosMg,1) = (xMg(i)/vMg)/(K0aAA(5)*(xsol(i)**deltavAA(5)))   ! PMgP+/PP2-
-        xP(PhosMg,2) = (xMg(j)/vMg)/(K0aAA(5)*(xsol(j)**deltavAA(5)))   ! PPAMg+/PP2-
-
-        xP2Mg  = sqrt( (xMg(i)/vMg)*(xMg(j)/vMg)/ ((K0aAA(6)**2) *(xsol(i)**deltavAA(6))*(xsol(j)**deltavAA(6)))) ! P2Mg/PP2- 
-            ! deltavAA(6) = 2.0_dp*vpolAA(1)+vMg-vpolAA(7) ! 2vA- + vMg2+ -vA2Mg == "total volume vP2Mg thus divison by 2 aka sqrt !!
-       
-        sumxP = 0.0_dp
-        do JJ=1,5
-            do KK=1,5
-                sumxP = sumxP + xP(JJ,1) * xP(KK,2)
-            enddo
-        enddo
-        sumxP=sumxP+xP2Mg
-
-        fPP = 1.0_dp/sumxP    ! fraction of phophate pairs that are both charged
-          
-        do JJ=1,5             ! fraction of phophate pairs that form a bind with H^+,Na^+,K^+
-             do KK=1,5
-                 fdisPP(JJ,KK) = fPP * xP(JJ,1) * xP(KK,2)
-             enddo
-        enddo
-            
-        fdisP2Mg = fPP * xP2Mg  ! fraction of phophate pairs that form a Mg-bridge
-                        
-    end subroutine compute_fdisPP
 
 
     ! polyelectrolyte with phosphate acid groups
     ! with ion chargeable group being on one acid (tA) with counterion binding etc 
     ! distribute volume of neighboring cells
 
-    subroutine fcn_Mg_expl(x,f,nn)
+    subroutine fcn_Mg_expl_inter(x,f,nn)
 
         use mpivars
         use globals, only    : nsize, nsegtypes, nseg, neq, neqint, cuantas, bcflag
         use parameters, only : expmu 
-        use parameters, only : vsol, vpol, vNa, vK, vCl, vRb, vCa, vMg, vpro, vPP ! , vpolAA ! ,deltavAA,vnucl,vPP
-                                                                          ! check vpolAA and etc 
-        use parameters, only : zpol,zNa,zK,zCl,zRb,zCa,zMg,qPP, K0a  ! ,K0aAA,K0a !, K0aion
+        use parameters, only : vsol, vpol, vNa, vK, vCl, vRb, vCa, vMg, vpro, vPP ! , vpolAA ! ,deltavAA,vnucl,vPP 
+        use parameters, only : zpol, zNa, zK, zCl, zRb, zCa, zMg, qPP, K0a  ! ,K0aAA,K0a !, K0aion
         use parameters, only : ta, isVdW, iter ! isrhoselfconsistent
         use parameters, only : Phos, PhosH, PhosK, PhosNa, PhosMg, Phos2Mg 
         use volume, only     : volcell, nset_per_graft 
         use chains, only     : indexchain, type_of_monomer, logweightchain, ismonomer_chargeable
         use chains, only     : indexconfpair, nneigh
-        use field, only      : xsol,xNa,xCl,xK,xHplus,xOHmin,xRb,xMg,xCa,rhopol,rhoqpol,rhoq
-        use field, only      : xpro
-        use field, only      : psi, fdis, rhopol_charge
+        use field, only      : xsol,xNa,xCl,xK,xHplus,xOHmin,xRb,xMg,xCa, xpro, rhopol,rhoqpol,rhoq
+        use field, only      : psi, fdis, rhopol_charge, rhophosgraft
         use field, only      : fdisPP_loc, fdisPP_loc_swap, fdisP2Mg_loc, fdisP2Mg_loc_swap, rhoqphos
         use field, only      : q, lnproshift
         use field, only      : xpol=>xpol_t, xpol_tot=>xpol
@@ -104,6 +43,8 @@ contains
         use VdW, only        : VdW_contribution_lnexp
         use surface, only    : LEFT, sigmaqSurfL, psiSurfL, RIGHT, sigmaqSurfR, psiSurfR, surface_charge
         use Poisson, only    : Poisson_Equation, Poisson_Equation_Surface
+        use volume, only     : ngr, maxlatneigh, indexlatneighbor
+        use modfcnMgexpl, only : compute_fdisPP
 
         !     .. scalar arguments
 
@@ -122,13 +63,20 @@ contains
         real(dp) :: local_q                                           ! local normalization q     
         real(dp) :: lnexppi(nsize,nsegtypes)                          ! auxilairy variable for computing P(\alpha) 
         real(dp) :: lnexppivw(nsize) 
-        real(dp) :: pro,lnpro
-        integer  :: n, i, j, k, c, s, t , m, g        ! dummy indices
-        integer  :: JJ, KK 
-        real(dp) :: norm, normvol, normPE
+        real(dp) :: nphos(nsize)
+        real(dp) :: pro, lnpro, deltalnpro
+        integer  :: n, nshift
+        integer  :: i, j, k, c, s, t , m, g, g_loc, lt ,  JJ, KK      ! dummy indices
+        real(dp) :: norm, normvol, normPE, normgraft
         real(dp) :: rhopol0 
         real(dp) :: locallnproshift(2), globallnproshift(2)
         real(dp) :: sum_rhoqphos,sum_xphos
+      
+        real(dp) :: nneigh_inter
+        real(dp) :: rhophosgraft_in(nsize,ngr)                       ! phosphate/acid density for each graft point  
+    
+        real(dp) :: sumrhograft(ngr), sumrhograft_in(ngr), sumrhopol
+
 
         !     .. executable statements 
         !     .. communication between processors 
@@ -144,19 +92,39 @@ contains
 
         n=nsize
         ! read out x 
-        k=n
         do i=1,n                     
             xsol(i) = x(i)        ! volume fraction solvent
-            psi(i)  = x(i+k)      ! potential
-        enddo  
-             
+            psi(i)  = x(i+n)      ! potential
+        enddo
+        
+        do g=1,ngr
+            nshift= n * ( g + 1 ) 
+            do i=1,n
+                rhophosgraft(i,g) = 0.0_dp
+                rhophosgraft_in(i,g) = x(i+nshift) ! phosphate density for graft point g
+            enddo
+        enddo      
+        
+        ! .. assign npol(i) = \sum_g rho_graft(i,g) expect for local g
+        
+        g_loc =int(rank/nset_per_graft)+1   ! .. determine local g   
+        nphos = 0.0_dp
+    
+        do g=1,ngr     
+            if (g/=g_loc) then ! sum over all other graft point except local g 
+               do i=1,n 
+                   nphos(i) = nphos(i) + rhophosgraft_in(i,g)
+              enddo
+            endif
+        enddo                  
+
         !  .. assign global and local polymer density 
         do t=1,nsegtypes
             do i=1,n
                 xpol(i,t)  = 0.0_dp 
                 rhopol(i,t) = 0.0_dp 
                 local_rhopol(i,t) = 0.0_dp
-                rhopol_charge(i,t) = 0.0_dp
+                rhopol_charge(i,t) = 0.0_dp 
             enddo    
         enddo    
        
@@ -207,7 +175,7 @@ contains
 
         if(isVdW) then 
            ! Van der Waals
-            print*,"isVdW true for fcn_Mg_expl, stop!!"
+            print*,"isVdW true for fcn_Mg_expl_inter, stop!!"
             stop 
         endif 
 
@@ -223,21 +191,45 @@ contains
             do s=1,nseg        ! loop over segments 
                 t=type_of_monomer(s)
                 if(t/=ta) then 
-                    k=indexchain(s,c)                
+                    k = indexchain(s,c)                
                     lnpro = lnpro +lnexppi(k,t)
                 else 
                     ! phosphates 
                     k = indexchain(s,c)
 
-                    do jj=1,nneigh(s,c)           ! loop neighbors 
+                    nneigh_inter = 0.0_dp    ! init number of inter pairs 
+                    deltalnpro = 0.0_dp 
 
+                    do jj=1,maxlatneigh     ! loop over lattice neighbors:  inter pairs
+                  
+                        m = indexlatneighbor(k,jj)  !  m =index of  lattice neighbors number jj of index k
+                  
+                        nneigh_inter = nneigh_inter + nphos(m)
+
+                        if(nphos(m)>0.0_dp) then 
+
+                            call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)        
+
+                            deltalnpro =deltalnpro + volcell * nphos(m) * ( lnexppi(k,ta) +lnexppi(m,ta)+&
+                            (lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) -log(fdisPP_loc(Phos,Phos)))  
+
+                        endif    
+                    enddo
+
+                    do jj=1,nneigh(s,c)     ! loop over neighbors : intra pairs
+                         
                         m = indexconfpair(s,c)%elem(jj)
-
+                        
                         call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)
 
-                        lnpro =lnpro + (lnexppi(k,ta) +lnexppi(m,ta)+(lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) &
-                                    -log(fdisPP_loc(Phos,Phos))  )/(2.0_dp*nneigh(s,c))    
-                    enddo
+                        deltalnpro = deltalnpro + (lnexppi(k,ta) +lnexppi(m,ta)+(lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) &
+                                    -log(fdisPP_loc(Phos,Phos))  )
+
+                    enddo 
+
+                    nneigh_inter = nneigh_inter * volcell   ! normalize
+                    lnpro = lnpro+ deltalnpro/(2.0_dp*(nneigh(s,c)+nneigh_inter))                    
+
                 endif           
             enddo 
 
@@ -262,16 +254,41 @@ contains
                     ! phosphates 
                     k = indexchain(s,c)
 
-                    do jj=1,nneigh(s,c)           ! loop neighbors 
+                    nneigh_inter = 0.0_dp    ! init number of inter pairs 
+                    deltalnpro = 0.0_dp 
 
+                    do jj=1,maxlatneigh     ! loop over lattice neighbors:  inter pairs
+                  
+                        m = indexlatneighbor(k,jj)  !  m =index of  lattice neighbors number jj of index k
+                  
+                        nneigh_inter = nneigh_inter + nphos(m)
+
+                        if(nphos(m)>0.0_dp) then 
+
+                            call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)        
+
+                            deltalnpro =deltalnpro + volcell * nphos(m) * (lnexppi(k,ta) +lnexppi(m,ta)+&
+                            (lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) -log(fdisPP_loc(Phos,Phos)))
+
+                        endif    
+                    enddo
+
+                    do jj=1,nneigh(s,c)      ! loop over neighbors : intra pairs
+                         
                         m = indexconfpair(s,c)%elem(jj)
-
+                        
                         call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)
 
-                        lnpro =lnpro + (lnexppi(k,ta) + lnexppi(m,ta)+ (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) &
-                                          -log(fdisPP_loc(Phos,Phos))  )/(2.0_dp*nneigh(s,c))                     
-                    enddo
+                        deltalnpro =deltalnpro + (lnexppi(k,ta) +lnexppi(m,ta)+(lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) &
+                                    -log(fdisPP_loc(Phos,Phos))  )
+
+                    enddo 
+
+                    nneigh_inter = nneigh_inter * volcell   
+                    lnpro = lnpro+ deltalnpro/(2.0_dp*(nneigh(s,c)+nneigh_inter))  ! normalized                   
+
                 endif           
+                            
             enddo 
 
             pro=exp(lnpro-lnproshift)   
@@ -285,6 +302,17 @@ contains
                  
                     ! pair density of phosphates 
                     k = indexchain(s,c)
+
+                    nneigh_inter = 0.0_dp    ! init number of inter pairs 
+ 
+                    do jj=1,maxlatneigh      ! loop over lattice neighbors:  inter pairs
+                        m = indexlatneighbor(k,jj)  !  m = index of  lattice neighbors number jj of index k
+                        nneigh_inter = nneigh_inter + nphos(m)
+                    enddo
+
+                    nneigh_inter = nneigh_inter * volcell   
+
+                    ! intra chain contribution 
 
                     do j=1,nneigh(s,c)
 
@@ -310,15 +338,15 @@ contains
                         sum_xphos = sum_xphos+(fdisP2Mg_loc+fdisP2Mg_loc_swap)*vPP(Phos2Mg)/4.0_dp 
                             ! division 4.0_dp  because symmetry and  vPP(Phos2Mg)/2 is volume change per phosphate 
                       
-                        local_rhoqphos(k) = local_rhoqphos(k) + pro * sum_rhoqphos /(2.0_dp*nneigh(s,c)) ! nneigh could be zero  hence with in loop 
-                        local_xpolphos(k) = local_xpolphos(k) + pro * sum_xphos /(2.0_dp*nneigh(s,c))
+                        local_rhoqphos(k) = local_rhoqphos(k) + pro * sum_rhoqphos/(2.0_dp*(nneigh(s,c)+nneigh_inter)) ! nneigh could be zero  hence with in loop 
+                        local_xpolphos(k) = local_xpolphos(k) + pro * sum_xphos /(2.0_dp*(nneigh(s,c)+nneigh_inter))
 
-                        local_rhopol(k,ta)=local_rhopol(k,ta)+pro/(2.0_dp*nneigh(s,c))
+                        local_rhopol(k,ta) = local_rhopol(k,ta)+pro/(2.0_dp*(nneigh(s,c)+nneigh_inter))
                             
                         ! second integral contributes to location m of rhoqpos and xphol  xpol  
                          
-                        sum_rhoqphos=0.0_dp
-                        sum_xphos=0.0_dp 
+                        sum_rhoqphos = 0.0_dp
+                        sum_xphos = 0.0_dp 
                         
                         ! contributes to location m of rhoqpos and xol
                                
@@ -335,11 +363,81 @@ contains
 
                         ! division 4.0_dp  because symmetry and  vPP(Phos2Mg)/2 is volume change per phosphate 
                       
-                        local_rhoqphos(m) = local_rhoqphos(m) + pro * sum_rhoqphos /(2.0_dp*nneigh(s,c)) ! nneigh could be zero  hence with in loop 
-                        local_xpolphos(m) = local_xpolphos(m) + pro * sum_xphos /(2.0_dp*nneigh(s,c))
+                        local_rhoqphos(m) = local_rhoqphos(m) + pro * sum_rhoqphos /(2.0_dp*(nneigh(s,c)+nneigh_inter)) ! nneigh could be zero  hence with in loop 
+                        local_xpolphos(m) = local_xpolphos(m) + pro * sum_xphos /(2.0_dp*(nneigh(s,c)+nneigh_inter))
 
-                        local_rhopol(m,ta)=local_rhopol(m,ta)+pro/(2.0_dp*nneigh(s,c))
+                        local_rhopol(m,ta) = local_rhopol(m,ta)+pro/(2.0_dp*(nneigh(s,c)+nneigh_inter))
 
+                    enddo 
+
+                    ! inter chain contribution 
+
+                    do lt=1,maxlatneigh     ! loop over lattice neighbors:  inter pairs
+                  
+                        m = indexlatneighbor(k,lt)  !  m =index of  lattice neighbors number jj of index k
+
+                        if(nphos(m)>0.0_dp.or. nphos(k)>0.0_dp) then 
+                  
+                            call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)
+                            call  compute_fdisPP(fdisPP_loc_swap, fdisP2Mg_loc_swap,  m , k) 
+                            
+                            ! first part integral   
+
+                            sum_rhoqphos = 0.0_dp
+                            sum_xphos = 0.0_dp 
+                            
+                            do JJ=1,5
+                                do KK=1,5
+                                    sum_rhoqphos = sum_rhoqphos+&
+                                        (fdisPP_loc(JJ,KK)*qPP(JJ)+fdisPP_loc_swap(JJ,KK)*qPP(KK))/2.0_dp
+                                    sum_xphos = sum_xphos   +&
+                                        (fdisPP_loc(JJ,KK)*vPP(JJ)+fdisPP_loc_swap(JJ,KK)*vPP(KK))/2.0_dp
+                                enddo
+                            enddo
+            
+                            sum_xphos = sum_xphos+(fdisP2Mg_loc+fdisP2Mg_loc_swap)*vPP(Phos2Mg)/4.0_dp 
+                                ! division 4.0_dp  because symmetry and  vPP(Phos2Mg)/2 is volume change per phosphate 
+                        
+                            local_rhoqphos(k) = local_rhoqphos(k) + &
+                                pro * volcell * nphos(m) *sum_rhoqphos/(2.0_dp*(nneigh(s,c)+nneigh_inter)) ! nneigh could be zero  hence with in loop 
+                            
+                            local_xpolphos(k) = local_xpolphos(k) + &
+                                pro *  volcell * nphos(m) * sum_xphos /(2.0_dp*(nneigh(s,c)+nneigh_inter))
+
+                            local_rhopol(k,ta) = local_rhopol(k,ta)+ &
+                                pro * volcell * nphos(m) /(2.0_dp*(nneigh(s,c)+nneigh_inter))
+                                
+                            ! second integral contributes to location m of rhoqpos and xphol  xpol  
+                            
+                            sum_rhoqphos = 0.0_dp
+                            sum_xphos = 0.0_dp 
+                            
+                            ! contributes to location m of rhoqpos and xol
+                                
+                            do JJ=1,5
+                                do KK=1,5   
+                                    sum_rhoqphos = sum_rhoqphos+&
+                                        (fdisPP_loc_swap(JJ,KK)*qPP(JJ)+fdisPP_loc(JJ,KK)*qPP(KK))/2.0_dp
+                                    sum_xphos = sum_xphos   +&
+                                        (fdisPP_loc_swap(JJ,KK)*vPP(JJ)+fdisPP_loc(JJ,KK)*vPP(KK))/2.0_dp
+                                enddo
+                            enddo
+            
+                            sum_xphos=sum_xphos+(fdisP2Mg_loc_swap +fdisP2Mg_loc)*vPP(Phos2Mg)/4.0_dp
+
+                            ! division 4.0_dp  because symmetry and  vPP(Phos2Mg)/2 is volume change per phosphate 
+                        
+                            local_rhoqphos(m) = local_rhoqphos(m) + &               
+                                pro * volcell * nphos(k) * sum_rhoqphos /(2.0_dp*(nneigh(s,c)+nneigh_inter)) ! nneigh could be zero  hence with in loop 
+                                                                                                             ! npol(m) in first integral and npol(k) in second integral           
+                            local_xpolphos(m) = local_xpolphos(m) + &
+                                pro * volcell * nphos(k) * sum_xphos /(2.0_dp*(nneigh(s,c)+nneigh_inter))
+
+                            local_rhopol(m,ta) = local_rhopol(m,ta)+&
+                                pro * volcell * nphos(k) /(2.0_dp*(nneigh(s,c)+nneigh_inter))
+                        
+                        endif
+                    
                     enddo 
 
                 endif 
@@ -369,6 +467,11 @@ contains
                 do k=1,n
                     rhopol(k,t) = local_rhopol(k,t)/q(1) ! polymer density 
                 enddo
+                if(t==tA) then
+                    do k=1,nsize
+                        rhophosgraft(k,1)=rhophosgraft(k,1)+local_rhopol(k,ta)/q(1) ! phosphate density for graft point 1
+                    enddo    
+                endif    
             enddo
 
             do k=1,nsize
@@ -386,6 +489,11 @@ contains
                     do k=1,nsize
                         rhopol(k,t)=rhopol(k,t)+local_rhopol(k,t)/q(g) ! polymer density 
                     enddo    
+                    if(t==tA) then
+                        do k=1,nsize
+                            rhophosgraft(k,g)=rhophosgraft(k,g)+local_rhopol(k,ta)/q(g) ! phosphate density for graft point g
+                        enddo    
+                    endif   
                 enddo
 
                 call MPI_RECV(local_xpolphos, nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)     
@@ -420,7 +528,12 @@ contains
                             rhoqphos(i)  = rhopol0 * rhoqphos(i) 
                             xpol(i,ta)   = rhopol0 * xpol(i,tA)
                             rhoqpol(i)   = rhoqpol(i) + rhoqphos(i) * vsol ! total  charge density in units of vsol 
-                        enddo           
+                        enddo  
+                        do g=1,ngr 
+                            do i=1,n
+                                rhophosgraft(i,g) = rhopol0 * rhophosgraft(i,g)
+                            enddo
+                        enddo    
                     endif    
                 else  
                      ! neutral monomeer
@@ -441,7 +554,8 @@ contains
                 rhoq(i) = rhoqpol(i)+zNa*xNa(i)/vNa +zCl*xCl(i)/vCl +xHplus(i)-xOHmin(i)+ &
                     zCa*xCa(i)/vCa +zMg*xMg(i)/vMg+zRb*xRb(i)/vRb +zK*xK(i)/vK ! total charge density in units of vsol  
             enddo
-          
+        
+
             ! .. end computation polymer density and charge density  
 
             ! .. electrostatics 
@@ -453,17 +567,34 @@ contains
             call Poisson_Equation(f,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
     
             ! .. boundary conditions
-            call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)    
+            ! call Poisson_Equation_Surface(f,psi,rhoq,psisurfR,psisurfL,sigmaqSurfR,sigmaqSurfL,bcflag)    
 
-           
+            ! .. self constitent density of graft points
+            nshift = 2 * nsize
+            do g=1,ngr
+                nshift = nsize * (g+1)
+                do i=1,n 
+                    f(i+nshift) =   (rhophosgraft(i,g) - rhophosgraft_in(i,g))**2
+                enddo
+            enddo        
 
             norm=l2norm_f90(f)
             iter=iter+1
                         
             normvol = L2norm_f90(f(1:nsize))
             normPE  = L2norm_f90(f(nsize+1:2*nsize))
+            normgraft  = L2norm_f90(f(2*nsize+1:neq))
                         
-            print*,'iter=', iter ,'norm=',norm, "normvol=",normvol,"normPE=",normPE
+            print*,'iter=', iter ,'norm=',norm, "normvol=",normvol,"normPE=",normPE,"normgraft=",normgraft
+
+            do g=1,ngr
+                sumrhograft(g) = volcell * sum(rhophosgraft(:,g))
+                sumrhograft_in(g) = volcell * sum(rhophosgraft_in(:,g)) 
+            enddo
+
+            print*,"sumrhograft = ",sumrhograft, " sumrhograft_in =",  sumrhograft_in 
+            sumrhopol = volcell * sum(rhopol(:,ta)) 
+            print*,"sumrhopol = ",sumrhopol , "neq=",neq 
 
         else                      ! Export results 
             
@@ -480,14 +611,13 @@ contains
     
         endif
 
-    end subroutine fcn_Mg_expl
+    end subroutine fcn_Mg_expl_inter
 
 
 
     ! compute the average fraction of charged state of the phosphate pairs 
 
-    subroutine compute_average_charge_PP_expl(avfdisP2Mg,avfdisPP)
-
+    subroutine compute_average_charge_PP_expl_inter(avfdisP2Mg,avfdisPP)
     
         !     .. local variables
         use mpivars
@@ -497,12 +627,14 @@ contains
         use parameters, only : zpol, Phos
         use parameters, only : ta !, isVdW! isrhoselfconsistent 
         use volume, only     : nx, ny, ngr
-        use volume, only     : nset_per_graft
+        use volume, only     : volcell, nset_per_graft
         use chains, only     : indexchain, type_of_monomer, logweightchain, ismonomer_chargeable
         use chains, only     : indexconfpair, nneigh
         use field, only      : xsol,psi,fdis, rhopol_charge, fdisPP_loc,  fdisP2Mg_loc ,fdisPP_loc_swap , fdisP2Mg_loc_swap
-        use field, only      : q, lnproshift
+        use field, only      : q, lnproshift, rhophosgraft
+        use volume, only     : maxlatneigh, indexlatneighbor
         use myutils, only    : error_handler
+        use modfcnMgexpl, only : compute_fdisPP
 
         real(dp), intent(inout) :: avfdisP2Mg
         real(dp), intent(inout) :: avfdisPP(5,5)
@@ -511,12 +643,14 @@ contains
         
         real(dp) :: lnexppi(nsize,nsegtypes)                          ! auxilairy variable for computing P(\alpha) 
         real(dp) :: lnexppivw(nsize)
-        real(dp) :: pro,lnpro
-        integer  :: n,i,j,k,c,s,m,t,g                 ! dummy indices
+        real(dp) :: nphos(nsize)
+        real(dp) :: pro,lnpro, deltalnpro
+        integer  :: i,j,k,c,s,m,t,g, g_loc,lt               ! dummy indices
         integer  :: JJ, KK
         real(dp) :: local_avfdisP2Mg,local_avfdisPP(5,5)
-        real(dp) :: sumrhopairs
+        real(dp) :: sumrhopairs 
         integer  :: nsizepsi
+        real(dp) :: nneigh_inter
 
         ! .. executable statements 
 
@@ -556,7 +690,18 @@ contains
             call MPI_RECV(q , ngr, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
         endif    
 
-        n=nsize
+        ! .. assign npol(i) = \sum_g rho_graft(i,g) expect for local g
+        
+        g_loc =int(rank/nset_per_graft)+1   ! .. determine local g   
+        nphos = 0.0_dp
+    
+        do g=1,ngr     
+            if (g/=g_loc) then ! sum over all other graft point except local g 
+                do i=1,nsize
+                    nphos(i) = nphos(i) + rhophosgraft(i,g)
+                enddo
+            endif
+        enddo             
 
         do i=1,nsize
             lnexppivw(i)=log(xsol(i))/vsol    ! auxilary variable for t=tA  
@@ -566,15 +711,14 @@ contains
             if(ismonomer_chargeable(t)) then
                 if(t/=ta) then
                     ! charged not phosphate 
-                    do i=1,n                                         
+                    do i=1,nsize                                         
                         lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i) -log(fdis(i,t))   ! auxilary variable palpha
                     enddo   
                 else
                     ! t=ta : phosphate
-                    do i=1,n  
+                    do i=1,nsize  
                         lnexppi(i,t) =  psi(i)!!   ! auxilary variable palpha
                     enddo
-
                 endif
             else  
                 !lnexppi(:,t) = 0.0_dp
@@ -587,8 +731,7 @@ contains
 
         lnpro = 0.0_dp
               
-       
-         do c=1,cuantas         ! loop over cuantas
+        do c=1,cuantas         ! loop over cuantas
             lnpro=logweightchain(c) 
             do s=1,nseg        ! loop over segments 
                 t=type_of_monomer(s)
@@ -597,19 +740,33 @@ contains
                     lnpro = lnpro +lnexppi(k,t)
                 else 
                     ! phosphates 
+
                     k = indexchain(s,c)
 
-                    do jj=1,nneigh(s,c)           ! loop neighbors 
+                    nneigh_inter = 0.0_dp    ! init number of inter pairs 
+                    deltalnpro = 0.0_dp 
+
+                    do jj=1,maxlatneigh     ! loop over lattice neighbors:  inter pairs
+                        m = indexlatneighbor(k,jj)  !  m =index of  lattice neighbors number jj of index k
+                        nneigh_inter = nneigh_inter + nphos(m)
+                        if(nphos(m)>0.0_dp) then 
+                            call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)        
+                            deltalnpro = deltalnpro + volcell * nphos(m) * (lnexppi(k,ta) +lnexppi(m,ta)+&
+                                (lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) -log(fdisPP_loc(Phos,Phos)))
+                        endif    
+                    enddo
+
+                    do jj=1,nneigh(s,c)  ! loop neighbors 
 
                         m = indexconfpair(s,c)%elem(jj)
-
                         call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)
-
-                        lnpro =lnpro + (lnexppi(k,ta) + lnexppi(m,ta)+ (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) &
-                            -log(fdisPP_loc(Phos,Phos))  )/(2.0_dp*nneigh(s,c))    
-                        ! lnpro =lnpro +  (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) /(2.0_dp*nneigh(s,c))    
-
+                        deltalnpro = deltalnpro + (lnexppi(k,ta) + lnexppi(m,ta)+ (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) &
+                            -log(fdisPP_loc(Phos,Phos))  )
                     enddo
+
+                    nneigh_inter = nneigh_inter * volcell   
+                    lnpro = lnpro + deltalnpro/(2.0_dp*(nneigh(s,c)+nneigh_inter))  ! normalized 
+
                 endif           
             enddo 
 
@@ -624,30 +781,61 @@ contains
                     ! pair density of phosphates 
                     k = indexchain(s,c)
        
+                    nneigh_inter = 0.0_dp    ! init number of inter pairs 
+ 
+                    do jj=1,maxlatneigh      ! loop over lattice neighbors:  inter pairs
+                        m = indexlatneighbor(k,jj)  !  m = index of  lattice neighbors number jj of index k
+                        nneigh_inter = nneigh_inter + nphos(m)
+                    enddo
+
+                    nneigh_inter = nneigh_inter * volcell   
+
+                    ! intra chain contribution 
+
                     do j=1,nneigh(s,c)
 
                         m = indexconfpair(s,c)%elem(j)
 
                         call compute_fdisPP(fdisPP_loc,fdisP2Mg_loc, k ,m)
-                        call compute_fdisPP(fdisPP_loc_swap,fdisP2Mg_loc_swap, m ,k)
+                        call compute_fdisPP(fdisPP_loc_swap,fdisP2Mg_loc_swap, m ,k )
 
                         do JJ=1,5
                             do KK=1,5
-                                !local_avfdisPP(JJ,KK) = local_avfdisPP(JJ,KK)+&
-                                !    fdisPP_loc(JJ,KK)*pro/nneigh(s,c)
-
                                 local_avfdisPP(JJ,KK) = local_avfdisPP(JJ,KK)+&
-                                    (fdisPP_loc(JJ,KK)+fdisPP_loc_swap(JJ,KK))*pro/(2.0_dp*nneigh(s,c)) 
-                                
-                                !local_avfdisPP(JJ,KK) = local_avfdisPP(JJ,KK)+&
-                                !    (fdisPP_loc(JJ,KK))*pro/(2.0_dp*nneigh(s,c))
-                            
+                                    (fdisPP_loc(JJ,KK)+fdisPP_loc_swap(JJ,KK))*&
+                                    pro/(2.0_dp*(nneigh(s,c)+nneigh_inter )) 
                             enddo
                         enddo
                             
-                        local_avfdisP2Mg=local_avfdisP2Mg+fdisP2Mg_loc*pro/nneigh(s,c)
-        
+                        local_avfdisP2Mg=local_avfdisP2Mg+fdisP2Mg_loc * pro/(nneigh(s,c)+nneigh_inter)
                     enddo
+
+                    ! inter chain contribution 
+
+                    do lt=1,maxlatneigh     ! loop over lattice neighbors:  inter pairs
+                  
+                        m = indexlatneighbor(k,lt)  !  m =index of  lattice neighbors number jj of index k
+
+                        if(nphos(m)>0.0_dp) then 
+
+                            call compute_fdisPP(fdisPP_loc,fdisP2Mg_loc, k ,m)
+                            call compute_fdisPP(fdisPP_loc_swap,fdisP2Mg_loc_swap, m ,k )
+                            
+                            do JJ=1,5
+                                do KK=1,5
+                                    local_avfdisPP(JJ,KK) = local_avfdisPP(JJ,KK)+&
+                                        (fdisPP_loc(JJ,KK)+fdisPP_loc_swap(JJ,KK))* pro * &
+                                        volcell * nphos(m) /(2.0_dp*(nneigh(s,c)+nneigh_inter )) 
+                                    
+                                enddo
+                            enddo
+
+                           local_avfdisP2Mg=local_avfdisP2Mg+&
+                             fdisP2Mg_loc * volcell* nphos(m) * pro/(nneigh(s,c)+nneigh_inter)
+
+                        endif
+
+                    enddo        
                 endif
             enddo   
         enddo
@@ -707,7 +895,7 @@ contains
 
         endif
 
-    end subroutine compute_average_charge_PP_expl
+    end subroutine compute_average_charge_PP_expl_inter
 
 
 
@@ -717,22 +905,23 @@ contains
     ! instead we evalue delta function 
     ! becuase \int \int dV dv" <\rho(r,r')> f_IJ(r,r') lne  = \sum_a Pro(a) delta (r-r(a,s)) delta(r'-r(a,t)) 
     ! Compare density instead pair density contribution \int dV \rho(x) f(x) ln(f(x) + ..) 
-    ! this invlove a explicet sum of  hte volume  \int dV f(v) = delta^3 \sum(i,j,k) f(i,j,k)
+    ! this involve a explicet sum of  hte volume  \int dV f(v) = delta^3 \sum(i,j,k) f(i,j,k)
 
-    subroutine compute_FEchem_react_PP_expl(FEchemPP)
+    subroutine compute_FEchem_react_PP_expl_inter(FEchemPP)
 
-        use precision_definition
+       use precision_definition
         use globals, only    : nsize, nsegtypes, nseg, cuantas, DEBUG
         use parameters, only : vsol, vpol, zpol
         use parameters, only : vPP, qPP,  Phos, Phos2Mg, ta 
-        use volume, only     : nx, ny, ngr
-        use volume, only     : nset_per_graft
+        use volume, only     : nx, ny, ngr, maxlatneigh, indexlatneighbor
+        use volume, only     : volcell, nset_per_graft
         use chains, only     : indexchain, type_of_monomer, logweightchain, ismonomer_chargeable
         use chains, only     : indexconfpair, nneigh
         use field, only      : xsol, psi, fdis
         use field, only      : fdisPP_loc, fdisP2Mg_loc! ,fdisPP_loc_swap, fdisP2Mg_loc_swap
-        use field, only      : q, lnproshift
+        use field, only      : q, lnproshift, rhophosgraft
         use myutils, only    : error_handler
+        use modfcnMgexpl, only : compute_fdisPP
 
         real(dp), intent(inout) :: FEchemPP
 
@@ -740,14 +929,15 @@ contains
         
         real(dp) :: lnexppi(nsize,nsegtypes)                          ! auxilairy variable for computing P(\alpha) 
         real(dp) :: lnexppivw(nsize)
-        real(dp) :: pro,lnpro
-        integer  :: n,i,j,k,c,s,m,t,g                ! dummy indices
+        real(dp) :: nphos(nsize)
+        real(dp) :: pro,lnpro,deltalnpro
+        integer  :: n,i,j,k,c,s,m,t,g,g_loc,lt               ! dummy indices
         integer  :: JJ, KK
         real(dp) :: local_FEchempair, FEchempair
         !real(dp) :: K0aPP   ! Kdis of P2Mg pair temporarily define 
         integer  :: nsizepsi
         real(dp) :: betapi_k, betapi_m, psi_k, psi_m, lambda, sum_pi, sum_psi
-
+        real(dp) :: nneigh_inter
 
         ! .. executable statements 
 
@@ -784,7 +974,20 @@ contains
             call MPI_RECV(q , ngr, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
         endif    
         
-        n=nsize
+        n = nsize
+
+        ! .. assign npol(i) = \sum_g rho_graft(i,g) expect for local g
+        
+        g_loc = int(rank/nset_per_graft)+1   ! .. determine local g   
+        nphos = 0.0_dp
+    
+        do g=1,ngr     
+            if (g/=g_loc) then ! sum over all other graft point except local g 
+                do i=1,nsize
+                    nphos(i) = nphos(i) + rhophosgraft(i,g)
+                enddo
+            endif
+        enddo     
 
         do i=1,nsize
             lnexppivw(i)=log(xsol(i))/vsol
@@ -830,16 +1033,33 @@ contains
 
                     k = indexchain(s,c)
 
+                    nneigh_inter = 0.0_dp    ! init number of inter pairs 
+                    deltalnpro = 0.0_dp 
+
+                    do jj=1,maxlatneigh     ! loop over lattice neighbors:  inter pairs
+                        m = indexlatneighbor(k,jj)  !  m =index of  lattice neighbors number jj of index k
+                        nneigh_inter = nneigh_inter + nphos(m)
+                        if(nphos(m)>0.0_dp) then 
+                            call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)        
+                            deltalnpro = deltalnpro + volcell * nphos(m) * (lnexppi(k,ta) +lnexppi(m,ta)+&
+                                (lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) -log(fdisPP_loc(Phos,Phos)))
+                        endif    
+                    enddo
+
                     do jj=1,nneigh(s,c)           ! loop neighbors 
 
                         m = indexconfpair(s,c)%elem(jj)
 
                         call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)
-
-                        lnpro = lnpro + (lnexppi(k,ta) + lnexppi(m,ta)+ (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) &
-                             -log(fdisPP_loc(Phos,Phos))  )/(2.0_dp*nneigh(s,c))    
-                            
+                        
+                        deltalnpro = deltalnpro + (lnexppi(k,ta) + lnexppi(m,ta)+ (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) &
+                            -log(fdisPP_loc(Phos,Phos))  )
                     enddo
+
+                    nneigh_inter = nneigh_inter * volcell   
+                    lnpro = lnpro + deltalnpro/(2.0_dp*(nneigh(s,c)+nneigh_inter))  ! normalized 
+                         
+                        
                 endif           
             enddo 
 
@@ -857,6 +1077,17 @@ contains
                     betapi_k=-log(xsol(k))/vsol
                     psi_k = psi(k)
     
+                    nneigh_inter = 0.0_dp    ! init number of inter pairs 
+
+                    do jj=1,maxlatneigh     ! establish nneigh_inter
+                        m = indexlatneighbor(k,jj)  !  m =index of  lattice neighbors number jj of index k
+                        nneigh_inter = nneigh_inter + nphos(m)     
+                    enddo
+                    nneigh_inter = nneigh_inter * volcell   
+
+
+                    ! intra chain contribution 
+
                     do j=1,nneigh(s,c)
 
                         m = indexconfpair(s,c)%elem(j)
@@ -893,6 +1124,50 @@ contains
                     
                     enddo 
 
+                    ! inter chain contribution 
+
+                    do lt=1,maxlatneigh     ! loop over lattice neighbors:  inter pairs
+                  
+                        m = indexlatneighbor(k,lt)  !  m =index of  lattice neighbors number jj of index k
+
+                        if(nphos(m)>0.0_dp) then 
+                
+                            betapi_m= -log(xsol(m))/vsol
+                            psi_m = psi(m)
+                        
+                            call compute_fdisPP(fdisPP_loc,fdisP2Mg_loc, k, m)
+
+                            ! Lagrange multiplier lambda(r,r') 
+
+                            lambda = -(betapi_k +betapi_m)*vPP(Phos) -(psi_k+psi_m)*qPP(Phos) &
+                                -log(fdisPP_loc(Phos,Phos))
+
+                            lambda = lambda* volcell * nphos(m) * pro/(nneigh(s,c)+nneigh_inter)        
+
+                            sum_pi  = 0.0_dp
+                            sum_psi = 0.0_dp
+
+                            do JJ=1,5
+                                do KK=1,5
+                                    sum_pi = sum_pi-(vPP(JJ)*betapi_k+vPP(KK)*betapi_m)*fdisPP_loc(JJ,KK)*&
+                                        volcell * nphos(m) * pro/(nneigh(s,c)+nneigh_inter)
+                                    sum_psi = sum_psi-(qPP(JJ)*psi_k+qPP(KK)*psi_m)*fdisPP_loc(JJ,KK)*&
+                                        volcell * nphos(m) * pro/(nneigh(s,c)+nneigh_inter)
+                                enddo
+                            enddo
+
+                            ! print*,"sum_psi=",sum_psi, " sum_pi=",sum_pi
+
+                            sum_pi=sum_pi-(vPP(Phos2Mg)/2.0_dp)*(betapi_k+betapi_m)*fdisP2Mg_loc*&
+                                 volcell * nphos(m) * pro/(nneigh(s,c)+nneigh_inter)
+                            
+                            local_FEchempair = local_FEchempair+(-lambda +sum_pi+sum_psi)/2.0_dp     
+
+
+                        endif
+                    enddo
+
+
                 endif
 
             enddo
@@ -924,18 +1199,16 @@ contains
             call MPI_SEND(local_FEchempair, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
             
         endif
+     
 
-    end subroutine compute_FEchem_react_PP_expl
-
-
-
+    end subroutine compute_FEchem_react_PP_expl_inter
 
 
 
     ! Neutral polymer  using pairs of neutral  phosphate groups
     ! neutral version of fcn_Mg_exp
 
-    subroutine fcn_neutral_expl(x,f,nn)
+    subroutine fcn_neutral_expl_inter(x,f,nn)
 
         use mpivars
         use globals, only    : nsize, nsegtypes, nseg, neq, neqint, cuantas, bcflag
@@ -958,6 +1231,7 @@ contains
         use VdW, only        : VdW_contribution_lnexp
         use surface, only    : LEFT, sigmaqSurfL, psiSurfL, RIGHT, sigmaqSurfR, psiSurfR, surface_charge
         use Poisson, only    : Poisson_Equation, Poisson_Equation_Surface
+        use modfcnMgexpl, only : compute_fdisPP
 
         !     .. scalar arguments
 
@@ -1372,201 +1646,7 @@ contains
     
         endif
 
-    end subroutine fcn_neutral_expl
-
-    ! 
-
-    subroutine rhophosgraft_Mg_expl()
-
-        use mpivars
-        use globals, only    : nsize, nsegtypes, nseg, neq, neqint, cuantas, bcflag
-        use parameters, only : expmu 
-        use parameters, only : vsol, vpol, vNa, vK, vCl, vRb, vCa, vMg ! vpolAA ! ,deltavAA,vnucl,vPP
-        use parameters, only : zpol,zNa,zK,zCl,zRb,zCa,zMg
-        use parameters, only : Phos, Phos2Mg 
-        use parameters, only : ta, isVdW, iter ! isrhoselfconsistent
-        use volume, only     : volcell, nset_per_graft, ngr
-        use chains, only     : indexchain, type_of_monomer, logweightchain, ismonomer_chargeable
-        use chains, only     : indexconfpair, nneigh
-        use field, only      : xsol, psi, fdis,  rhophosgraft
-       ! use field, only      : xNa,xCl,xK,xHplus,xOHmin,xRb,xMg,xCa
-        use field, only      : fdisPP_loc, fdisPP_loc_swap, fdisP2Mg_loc, fdisP2Mg_loc_swap, rhoqphos
-        use field, only      : q, lnproshift
-       
-
-        !     .. local variables
-        
-        real(dp) :: local_rhophos(nsize)        ! local phos density nucleosome
-        real(dp) :: lnexppi(nsize,nsegtypes)    ! auxilairy variable for computing P(\alpha) 
-        real(dp) :: lnexppivw(nsize) 
-        real(dp) :: pro,lnpro
-        integer  :: i, j, k, c, s, t , m, g, jj  ! dummy indices
-        real(dp) :: rhopol0 
-       
-
-        !  .. executable statements 
-        !  .. communication between processors 
-
-        call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
-
-        ! if(rank==0) then
-        !     do i = 1, numproc-1
-        !         dest = i
-        !         call MPI_SEND(xsol, nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-        !         call MPI_SEND(psi , nsizepsi , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-        !         call MPI_SEND(q , ngr , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
-        !     enddo
-        ! else
-        !     source = 0 
-        !     call MPI_RECV(xsol, nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
-        !     call MPI_RECV(psi , nsizepsi, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)   
-        !     call MPI_RECV(q , ngr, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
-        ! endif    
-        
-        ! do i=1,n     ! init volume fractions
-          
-        !     xNa(i)     = expmu%Na*(xsol(i)**vNa)*exp(-psi(i)*zNa) ! Na+ volume fraction
-        !     xK(i)      = expmu%K*(xsol(i)**vK)*exp(-psi(i)*zK)    ! K+ volume fraction
-        !     xCl(i)     = expmu%Cl*(xsol(i)**vCl)*exp(-psi(i)*zCl) ! Cl- volume fraction
-        !     xHplus(i)  = expmu%Hplus*(xsol(i))*exp(-psi(i))       ! H+  volume fraction
-        !     xOHmin(i)  = expmu%OHmin*(xsol(i))*exp(+psi(i))       ! OH- volume fraction
-        !     xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
-        !     xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
-
-        ! enddo
-
-        local_rhophos = 0.0_dp
-
-        do i=1,nsize
-            lnexppivw(i) = log(xsol(i))/vsol                      ! auxilary variable  divide by vsol  !!
-        enddo
-
-        do t=1,nsegtypes
-            if(ismonomer_chargeable(t)) then
-                if(t/=ta) then
-                    ! charged not phosphate 
-                    do i=1,nsize                                         
-                       ! fdis(i,t)  = 1.0_dp/(1.0_dp+xHplus(i)/(K0a(t)*xsol(i)))      
-                        lnexppi(i,t) = log(xsol(i))*vpol(t) -zpol(t,2)*psi(i) -log(fdis(i,t))   ! auxilary variable palpha
-                    enddo  
-                else
-                    ! t=ta : phosphate 
-                    do i=1,nsize  
-                        lnexppi(i,t) = psi(i)         ! auxilary variable palpha
-                    enddo
-                endif
-            else    
-                ! neutral monomomer
-                do i=1,nsize
-                    fdis(i,t)  = 0.0_dp
-                    lnexppi(i,t)  = log(xsol(i))*vpol(t)
-                enddo  
-            endif   
-        enddo      
-
-        if(isVdW) then 
-           ! Van der Waals
-            print*,"isVdW true for rhophosgraft_Mg_expl, stop!!"
-            stop 
-        endif 
-
-        !  .. computation polymer volume fraction      
-             
-        do c=1,cuantas         ! loop over cuantas
-            lnpro=logweightchain(c) 
-            do s=1,nseg        ! loop over segments 
-                t=type_of_monomer(s)
-                if(t/=ta) then 
-                    k=indexchain(s,c)                
-                    lnpro = lnpro +lnexppi(k,t)
-                else 
-                    ! phosphates 
-                    k = indexchain(s,c)
-
-                    do jj=1,nneigh(s,c)           ! loop neighbors 
-
-                        m = indexconfpair(s,c)%elem(jj)
-
-                        call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)
-
-                        lnpro =lnpro + (lnexppi(k,ta) + lnexppi(m,ta)+ (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) &
-                                          -log(fdisPP_loc(Phos,Phos))  )/(2.0_dp*nneigh(s,c))                     
-                    enddo
-                endif           
-            enddo 
-
-            pro=exp(lnpro-lnproshift)   
-
-            do s=1,nseg
-            
-                t = type_of_monomer(s)
-
-                if(t==ta) then
-
-                    ! pair density of phosphates 
-                    k = indexchain(s,c)
-
-                    do j=1,nneigh(s,c)
-
-                        m = indexconfpair(s,c)%elem(j)
-                                
-                        ! first integral 
-                        local_rhophos(k)=local_rhophos(k)+pro/(2.0_dp*nneigh(s,c))
-                            
-                        ! second integral
-                        local_rhophos(m)=local_rhophos(m)+pro/(2.0_dp*nneigh(s,c))
-
-                    enddo 
-                endif
-            enddo
-        enddo    
-
-        !  .. import results 
-
-        
-        if (rank==0) then 
- 
-            ! first graft point/processor 
-            
-            do k=1,nsize
-                rhophosgraft(k,1)=rhophosgraft(k,1)+local_rhophos(k)/q(1) ! phosphate density for graft point 1
-            enddo    
-            
-            ! other graft points/processors  
-            do i=1, numproc-1
-                source = i
-                g =int(source/nset_per_graft)+1 
-               
-                call MPI_RECV(local_rhophos, nsize, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
-                do k=1,nsize
-                    rhophosgraft(k,g)=rhophosgraft(k,g)+local_rhophos(k)/q(g) ! phosphate density for graft point 1
-                enddo      
-           
-            enddo  
-        
-            !  .. construction of phosphate density per graft for           
-           
-            rhopol0=(1.0_dp/volcell) !  cell density volume cell
-
-            do g=1,ngr 
-                do i=1,nsize
-                    rhophosgraft(i,g) = rhopol0 * rhophosgraft(i,g)
-                enddo
-            enddo           
-            
-        else     ! Export results 
-            
-            dest = 0 
-            call MPI_SEND(local_rhophos,nsize, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
-            
-        endif
-
-    end subroutine rhophosgraft_Mg_expl
+    end subroutine fcn_neutral_expl_inter
 
 
-
-
-end module modfcnMgexpl
-
-   
-
+end module modfcnMgexpl_inter

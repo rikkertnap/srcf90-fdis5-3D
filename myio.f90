@@ -44,7 +44,7 @@ module myio
     ! unit number
     integer :: un_sys,un_xpolAB,un_xsol,un_xNa,un_xCl,un_xK,un_xCa,un_xMg,un_xNaCl,un_xKCl
     integer :: un_xOHmin,un_xHplus,un_fdisA,un_fdisB,un_psi,un_charge, un_xpair, un_fe, un_q
-    integer :: un_xpolz, un_xpol, un_fdis, un_xpro, un_fdisP
+    integer :: un_xpolz, un_xpol, un_fdis, un_xpro, un_fdisP, un_graft
 
     ! format specifiers
     character(len=80), parameter  :: fmt = "(A9,I1,A5,ES25.16)"
@@ -471,7 +471,7 @@ subroutine check_value_systype(systype,info)
     character(len=15), intent(in) :: systype
     integer, intent(out),optional :: info
 
-    character(len=15) :: systypestr(10)
+    character(len=15) :: systypestr(11)
     integer :: i
     logical :: flag
 
@@ -487,10 +487,11 @@ subroutine check_value_systype(systype,info)
     systypestr(8)="neutralnoVdW"
     systypestr(9)="brush_ionbinMgA"
     systypestr(10)="brush_neutralA"
+    systypestr(11)="brush_Mginter" 
 
     flag=.FALSE.
 
-    do i=1,10
+    do i=1,11
         if(systype==systypestr(i)) flag=.TRUE.
     enddo
 
@@ -556,7 +557,8 @@ subroutine check_value_runtype_systype(runtype,systype,info)
 
     if(runtype=="rangedist" .and. systype == "brush_inonbinMgA") flag=.false.
     if(runtype=="rangedist" .and. systype == "brush_neutralA") flag=.false.
-    
+     if(runtype=="rangedist" .and. systype == "brush_Mginter") flag=.false.
+
     if (present(info)) info = 0
 
     if (flag.eqv. .FALSE.) then
@@ -873,7 +875,7 @@ subroutine check_value_chainmethod(chainmethod,info)
     chainmethodstr(1)="MC"
     chainmethodstr(2)="FILE_lammps_xyz"
     chainmethodstr(3)="FILE_lammps_trj"
-    chainmethodstr(3)="FILE_XYZ"
+    chainmethodstr(4)="FILE_XYZ"
 
     flag=.FALSE.
 
@@ -1046,7 +1048,7 @@ subroutine set_value_isVdW(systype, isVdW)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdW
 
-    character(len=15) :: systypestr(5)
+    character(len=15) :: systypestr(6)
     integer :: i
 
      isVdW=.True.
@@ -1058,8 +1060,9 @@ subroutine set_value_isVdW(systype, isVdW)
     systypestr(3)="brush_mulnoVdW"
     systypestr(4)="brush_ionbinMgA"
     systypestr(5)="brush_neutralA"
+    systypestr(6)="brush_Mginter"
 
-    do i=1,5
+    do i=1,6
         if(systype==systypestr(i)) isVdW=.FALSE.
     enddo
 
@@ -1270,6 +1273,11 @@ subroutine output()
         call output_brush_mul
         call output_individualcontr_fe
 
+    case("brush_Mginter")
+
+        call output_brush_mul
+        call output_individualcontr_fe
+        
     case default
 
         print*,"Error in output subroutine"
@@ -1320,6 +1328,7 @@ subroutine output_brush_mul
     character(len=90) :: densfracPfilename
     character(len=90) :: qfilename
     character(len=90) :: densfracionpairfilename
+    character(len=90) :: densgraftsfilename
 
 
     ! .. executable statements
@@ -1349,19 +1358,22 @@ subroutine output_brush_mul
         densfracPfilename='densityfracP.'//trim(fnamelabel)
         densfracionpairfilename='densityfracionpair.'//trim(fnamelabel)
         qfilename='q.'//trim(fnamelabel)
+        densgraftsfilename='densitygrafts.'//trim(fnamelabel)
 
         !     .. opening files
-
         open(unit=newunit(un_sys),file=sysfilename)
         open(unit=newunit(un_xsol),file=xsolfilename)
         open(unit=newunit(un_psi),file=potentialfilename)
-
         open(unit=newunit(un_xpol),file=xpolfilename)
         open(unit=newunit(un_fdis),file=densfracfilename)
-        if(systype=="brushdna".or.systype=="brush_ionbinMgA") open(unit=newunit(un_fdisP),file=densfracPfilename)
+        if(systype=="brushdna".or.systype=="brush_ionbinMgA".or.systype=="brush_Mginter") then 
+            open(unit=newunit(un_fdisP),file=densfracPfilename)
+        endif    
         open(unit=newunit(un_q),file=qfilename)
         open(unit=newunit(un_xpolz),file=xpolzfilename)
-
+        if(systype=="brush_ionbinMgA".or.systype=="brush_Mginter") then 
+            open(unit=newunit(un_graft),file=densgraftsfilename)
+        endif 
 
         if(verboseflag=="yes") then
             open(unit=newunit(un_xNa),file=xNafilename)
@@ -1397,8 +1409,10 @@ subroutine output_brush_mul
         write(un_xpol,*)'#D    = ',nz*delta
         write(un_fdis,*)'#D    = ',nz*delta
 
-        if(systype=="brushdna".or. systype=="brush_ionbinMgA") write(un_fdisP,*)'#D    = ',nz*delta
-
+        if(systype=="brushdna".or. systype=="brush_ionbinMgA".or.&
+            systype=="brush_Mginter") write(un_fdisP,*)'#D    = ',nz*delta  
+        if(systype=="brush_ionbinMgA".or.systype=="brush_Mginter")  write(un_graft,*)'#D    = ',nz*delta
+    
 
         if(verboseflag=="yes") then
             write(un_xNa,*)'#D    = ',nz*delta
@@ -1440,11 +1454,19 @@ subroutine output_brush_mul
         write(un_xpolz,fmt1reals)xpolz(i)
     enddo
 
-    if(systype=="brushdna".or.systype=="brush_ionbinMgA")then
+    if(systype=="brushdna".or.systype=="brush_ionbinMgA".or.systype=="brush_Mginter")then
         do i=1,nsize
             write(un_fdisP,'(8ES25.16)')(fdisA(i,k),k=1,8)
         enddo
     endif
+    
+    if(systype=="brush_ionbinMgA".or.systype=="brush_Mginter") then
+        do g=1,ngr 
+            do i=1,nsize
+                write(un_graft,*)rhophosgraft(i,g)
+            enddo
+        enddo    
+    endif 
 
     if(verboseflag=="yes") then
         do i=1,nsize
@@ -1511,8 +1533,9 @@ subroutine output_brush_mul
         ! disociation constants
         write(un_sys,*)'pKa         = ',(pKa(t),t=1,nsegtypes)
         !
-        if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_ionbinMgA") then
-           write(un_sys,'(A15,7ES25.16)')'pKaAA       = ',(pKaAA(t),t=1,7)
+        if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_ionbinMgA" &
+            .or.systype=="brush_Mginter") then
+            write(un_sys,'(A15,7ES25.16)')'pKaAA       = ',(pKaAA(t),t=1,7)
         endif
 
         write(un_sys,*)'KionNa      = ',KionNa
@@ -1580,7 +1603,7 @@ subroutine output_brush_mul
 
     if(systype=="brushdna".or.systype=="brushborn")then
         write(un_sys,'(A15,8ES25.16)')'avfdisA      = ',(avfdisA(k),k=1,8)
-    else if(systype=="brush_ionbinMgA") then
+    else if(systype=="brush_ionbinMgA" .or. systype=="brush_Mginter") then
 
         do k=1,8
             write(un_sys,*)'avfdisA(',k,')   = ',avfdisA(k)
@@ -1650,7 +1673,9 @@ subroutine output_brush_mul
         close(un_psi)
         close(un_xpol)
         close(un_fdis)
-        if(systype=="brushdna".or.systype=="brush_ionbinMgA") close(un_fdisP)
+        if(systype=="brushdna".or.systype=="brush_ionbinMgA".or.systype=="brush_Mginter") close(un_fdisP)
+        if(systype=="brush_ionbinMgA".or.systype=="brush_Mginter") close(un_graft)
+
         close(un_xpolz)
         close(un_q)
         if(verboseflag=="yes") then
@@ -2369,7 +2394,7 @@ subroutine make_filename_label(fnamelabel)
         write(rstr,'(F5.3)')VdWscale%val
         fnamelabel=trim(fnamelabel)//"VdWscale"//trim(adjustl(rstr))//".dat"
 
-    case("brush_mul","brush_mulnoVdW","brushdna","brushborn","brush_ionbinMgA","brush_neutralA")
+    case("brush_mul","brush_mulnoVdW","brushdna","brushborn","brush_ionbinMgA","brush_neutralA","brush_Mginter")
 
         write(rstr,'(F5.3)')denspol
         fnamelabel="phi"//trim(adjustl(rstr))
@@ -2543,7 +2568,7 @@ subroutine compute_vars_and_output()
         call average_density_z(xpol,xpolz,height)
         call output()           ! writing of output
 
-    case ("brush_mul","brush_mulnoVdW","brushdna","brushborn")
+    case ("brush_mul","brush_mulnoVdW","brushdna","brushborn","brush_ionbinMgA")
 
         call fcnenergy()
         call charge_polymer()
@@ -2552,7 +2577,7 @@ subroutine compute_vars_and_output()
         call make_ion_excess()
         call output()           ! writing of output
     
-    case ("brush_ionbinMgA")
+    case ("brush_Mginter")
         
         call fcnenergy()
         call charge_polymer()

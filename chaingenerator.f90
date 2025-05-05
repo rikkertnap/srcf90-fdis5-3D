@@ -50,7 +50,7 @@ subroutine make_chains(chainmethod)
     case ("FILE_XYZ")
         call read_chains_xyz(info)  
     case default
-        text="chainmethod not equal to MC, FILE_lammps_XYZ, FILE_lammps_trj or FILKE_XYZ"
+        text="chainmethod not equal to MC or FILKE_XYZ"
         call print_to_log(LogUnit,text)
         print*,text
         info=myio_err_chainmethod
@@ -134,7 +134,7 @@ subroutine make_chains_mc()
     sqrDphoscutoff = distphoscutoff**2
 
     ! pairs variable 
-    if(systype=="brush_ionbinMgA".or. systype=="brush_neutralA") then 
+    if(systype=="brush_ionbinMgA".or. systype=="brush_neutralA".or. systype=="brush_Mginter") then 
         call allocate_indexconfpair(cuantas,nseg,maxnchains,maxntheta)
         call allocate_nneighbor(cuantas,nseg,maxnchains,maxntheta)
         call allocate_max_nneighbor_phos(cuantas,maxnchains,maxntheta)
@@ -234,7 +234,7 @@ subroutine make_chains_mc()
 
                     enddo    
 
-                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,Ly)
                     endif       
     
@@ -323,7 +323,7 @@ subroutine make_chains_mc()
 
 
 
-                     if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,Ly)
                     endif   
 
@@ -368,7 +368,9 @@ subroutine make_chains_mc()
 
     energychain_init=0.0_dp ! no internal energy 
 
-    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") call find_max_nneighbor_phos(tphos,info)
+    if(systype=="brush_ionbinMgA".or.systype=="brush_Mginter".or.systype=="brush_neutralA") then 
+        call find_max_nneighbor_phos(tphos,info)
+    endif
 
 end subroutine make_chains_mc
 
@@ -525,7 +527,7 @@ subroutine read_chains_xyz_loop(info)
     sqrDphoscutoff = distphoscutoff**2
 
     ! pairs variables 
-    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then 
         call allocate_indexconfpair(cuantas,nseg,maxnchains,maxntheta)
         call allocate_nneighbor(cuantas,nseg,maxnchains,maxntheta)
         call allocate_max_nneighbor_phos(cuantas,maxnchains,maxntheta)
@@ -613,7 +615,7 @@ subroutine read_chains_xyz_loop(info)
                         
                     enddo
 
-                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then
+                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,Ly)
                     endif  
 
@@ -679,7 +681,7 @@ subroutine read_chains_xyz_loop(info)
                         
                     end do
 
-                     if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+                     if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,ly)
                     endif    
                     
@@ -734,7 +736,9 @@ subroutine read_chains_xyz_loop(info)
     
     deallocate(theta_array)
 
-    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") call find_max_nneighbor_phos(tphos,info)
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then 
+        call find_max_nneighbor_phos(tphos,info)
+    endif    
 
 end subroutine read_chains_xyz_loop
 
@@ -943,7 +947,7 @@ subroutine read_chains_xyz_linear(info)
     sqrDphoscutoff = distphoscutoff**2
 
     ! pairs variables 
-    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then 
         call allocate_indexconfpair(cuantas,nseg,maxnchains,maxntheta)
         call allocate_nneighbor(cuantas,nseg,maxnchains,maxntheta)
         call allocate_max_nneighbor_phos(cuantas,maxnchains,maxntheta)
@@ -1032,7 +1036,7 @@ subroutine read_chains_xyz_linear(info)
                         
                     enddo
 
-                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,ly)
                     endif     
                     
@@ -1098,7 +1102,7 @@ subroutine read_chains_xyz_linear(info)
                         
                     enddo
                     
-                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+                    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then 
                         call find_phosphate_pairs(nseg,conf,tPhos,sqrDphoscutoff,chain_nopbc,Lx,ly)
                     endif    
 
@@ -1155,7 +1159,9 @@ subroutine read_chains_xyz_linear(info)
     
     deallocate(theta_array)
 
-    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") call find_max_nneighbor_phos(tphos,info)
+    if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or.systype=="brush_Mginter") then 
+        call find_max_nneighbor_phos(tphos,info)
+    endif    
 
 end subroutine read_chains_xyz_linear
 
@@ -1596,7 +1602,7 @@ subroutine set_lsegAA
             !lsegAA = lsegPEG
         case ("brush_mul","brush_mulnoVdW","brush","brush_neq","brushvarelec","brushborn","brushdna")
             ! lsegAA = lsegPAA !0.36287_dp
-        case ("brush_ionbinMgA","brush_neutralA")
+        case ("brush_ionbinMgA","brush_neutralA","brush_Mginter")
             ! lsegAA = lsegPAA
         case default
             print*,"Error: in set_lsegAA, systype=",systype
@@ -2285,7 +2291,7 @@ subroutine make_histogram_max_nneigh_phos(info)
             if(type_of_monomer(s)==tPhos) then
                 k=nneigh(s,conf)
                 hist(k)=hist(k)+1
-                ! print*,"s=",s," k=",k," hist(k)=",hist(k),nneigh(s,conf)
+                !print*,"s=",s," k=",k," hist(k)=",hist(k),nneigh(s,conf)
             endif       
         enddo
         avhist=avhist+hist

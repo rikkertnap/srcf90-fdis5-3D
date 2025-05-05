@@ -3,7 +3,7 @@
 module volume      
 
     use precision_definition
-    use mpivars
+    ! use mpivars
 
     implicit none
   
@@ -27,7 +27,6 @@ module volume
     character(len=11) :: geometry
 
     ! variable for grafting position
-    
     integer :: ngr                  ! total number of graft points    
     integer :: ngr_node             ! number of grafted areas assigned to an individual node
     integer :: ngr_freq             ! frequence spacing in terms of delta 
@@ -41,11 +40,19 @@ module volume
     real(dp), dimension(:,:), allocatable :: position_graft
    
     ! variable for rotation loop chain
-
     logical  :: isRandom_rot_loop   ! true random rotation/oewinetation loop chain, false regaualr rotation 
     integer  :: seed_rot_loop       ! seed for rotation loops 
 
+    ! hash table lattice 
+    integer, dimension(:,:,:), allocatable :: coordtoindex 
+    integer, dimension(:,:),  allocatable  :: indextocoord
+    
+    ! hash table lattice neighbors
+    integer, dimension(:,:), allocatable   :: indexlatneighbor
+    integer ::  maxlatneigh
+
     private :: beta
+    private :: ipbc
 
 contains
     
@@ -53,6 +60,7 @@ contains
 
         use globals, only : nsize, nsizepsi, DEBUG
         use mathconst
+        use mpivars, only : numproc
 
         implicit none 
 
@@ -63,11 +71,11 @@ contains
         endif        
 
         beta = (pi/2.0_dp - gamma) / 2.0_dp       ! used by ut, vt, xt and yt functions
-        cos_two_beta=cos(2*beta) ! sqrt(cos(beta)**2 - sin(beta)**2)  ! scaling of u and v coordinates
-        sin_two_beta=sin(2*beta)
+        cos_two_beta = cos(2*beta) ! sqrt(cos(beta)**2 - sin(beta)**2)  ! scaling of u and v coordinates
+        sin_two_beta = sin(2*beta)
 
         ! cubic lattice  or prism surface in x-y direction at z=0 and z=nz  
-        nz=nzmax
+        nz = nzmax
         nsize = nx*ny*nz                ! total number of cells or layers
         nsizepsi = nsize + 2 * nx * ny  ! total number of cells for el potential  
         volcell = delta*delta*delta*1.0_dp     ! volume of one latice volume 
@@ -92,7 +100,6 @@ contains
              print*,"ny= ",ny," ngr_freq = ",ngr_freq
              stop
         endif    
-       
         
         if(ngr*nset_per_graft/=numproc) then
             print*,"nset_per_graft test failed: exiting"
@@ -103,6 +110,12 @@ contains
         allocate(position_graft(ngr,2)) ! only after ngr has been established position_graft can be allocated
 
         call init_graftpoints()
+
+        !   use of hash table 
+       
+       
+        call allocate_hashtable(nx,ny,nz)
+        call make_hashtable()
 
     end subroutine init_lattice
          
@@ -241,12 +254,43 @@ contains
    
     end function
 
+    subroutine allocate_hashtable(nx,ny,nz)
+
+        use globals, only : nsize
+        integer, intent(in) :: nx,ny,nz
+
+        allocate(coordtoindex(nx,ny,nz))
+        allocate(indextocoord(nsize,3))
+        
+    end subroutine allocate_hashtable
+
+    subroutine make_hashtable
+
+        use globals, only : nsize
+
+        integer :: idx, ix, iy, iz
+            
+        do idx=1,nsize
+            
+            call coordinateFromLinearIndex(idx, ix, iy,iz)
+
+            coordtoindex(ix,iy,iz)=idx
+            
+            indextocoord(idx,1)=ix
+            indextocoord(idx,2)=iy
+            indextocoord(idx,3)=iz
+
+        enddo
+        
+    end subroutine make_hashtable
+
 
     subroutine init_graftpoints()
 
         use globals,  only : DEBUG
         use random 
         use myutils, only : newunit,lenText
+        use mpivars, only : rank
 
 
         integer :: i, j, ig
@@ -332,6 +376,7 @@ contains
         use mathconst
         use random, only : seed, rands
         use myutils, only : newunit,lenText
+        use mpivars, only : rank 
 
 
         integer, intent(in) :: maxntheta,ngr
@@ -387,6 +432,136 @@ contains
         end if    
 
     end subroutine init_loop_rot_angle
+
+
+
+    subroutine allocate_indexlatneighbor(nsize,maxlatneigh)
+
+        integer, intent(in) :: nsize
+        integer, intent(in) :: maxlatneigh
+
+        allocate(indexlatneighbor(nsize,maxlatneigh))
+
+    end subroutine allocate_indexlatneighbor
+
+
+
+    ! Calculate indexlatneighbor(idx,k) 
+    ! indexlatneighbor(idx,k) = return lattice cell index of (lattice) neighbor number k  of lattice cell index idx
+    !                         = return index of  kth lattice neigbor asccoated with lattice cell index idx                   
+    ! input real(dp) : distphoscutoff : maximum distance or separation of a phosphate pair
+    ! output integer,   indexlatneighbor(idx,k) 
+            
+
+    subroutine make_table_index_neighbors(distphoscutoff)
+
+        use globals, only : nsize
+
+        real(dp), intent(in) :: distphoscutoff
+        
+        integer :: idx, i, j, k, ix, iy, iz, deltaix, deltaiy, deltaiz
+        integer :: latneighbornumber, idxneigh
+        integer :: ip, jp, kp
+        integer :: sqrdist, rangecutoff
+        real(dp) :: sqrphoscutoff_delta
+
+
+        rangecutoff=int(distphoscutoff/delta)+2  ! 2 just to be sure !!
+
+        sqrphoscutoff_delta= (distphoscutoff/delta)**2
+
+        do idx=1,nsize
+
+            ! use hash table to get coordiantes 
+            ix=indextocoord(idx,1)
+            iy=indextocoord(idx,2)
+            iz=indextocoord(idx,3)
+
+            latneighbornumber=0 ! 
+
+            do deltaix=-rangecutoff,rangecutoff
+                i=ix+deltaix
+                do deltaiy=-rangecutoff,rangecutoff
+                    j=iy+deltaiy
+                    do deltaiz=-rangecutoff,rangecutoff
+                        k=iz+deltaiz
+                        sqrdist = deltaix**2 + deltaiy**2 +deltaiz**2  ! square distance in unit of delta squared   
+                        if (sqrdist <= sqrphoscutoff_delta) then 
+                            ! apply pbc 
+                            ip=ipbc(i,nx)
+                            jp=ipbc(j,ny)
+                            kp=ipbc(k,nz)
+
+                            latneighbornumber = latneighbornumber+1
+                            idxneigh = coordtoindex(ip,jp,kp) ! index of neighbour
+                            indexlatneighbor(idx,latneighbornumber) = idxneigh
+                        end if     
+
+                    end do
+                end do
+            end do
+
+        end do    
+
+    end subroutine make_table_index_neighbors
+
+
+    ! Calculate maxlatneightbor : total number of lattice cells neighbor any lattice cell that is with a distance  smaller of 
+    ! equal to maximum allow  distance or separation of a phosphate pair : distphoscutoff 
+    ! input real(dp) : distphoscutoff : maximum distance or separation of a phosphate pair
+    ! input real(dp) :: delta <=> defined in  global
+       ! output integer maxlatneigh
+    
+    function set_maxlatneigh(delta, distphoscutoff) result(maxlatneigh)
+
+        real(dp), intent(in) :: delta
+        real(dp), intent(in) :: distphoscutoff
+        integer :: maxlatneigh
+
+        ! local variables 
+
+        integer :: deltaix, deltaiy, deltaiz
+        integer :: latneighbornumber
+        integer :: sqrdist, rangecutoff
+        real(dp) :: sqrphoscutoff_delta
+
+        rangecutoff=int(distphoscutoff/delta)+2  ! 2 just to be sure !!
+        sqrphoscutoff_delta= (distphoscutoff/delta)**2
+
+        latneighbornumber = 0 ! 
+
+        do deltaix=-rangecutoff,rangecutoff
+            do deltaiy=-rangecutoff,rangecutoff
+                do deltaiz=-rangecutoff,rangecutoff
+                    sqrdist = deltaix**2 + deltaiy**2 +deltaiz**2  ! square distance in unit of delta squared   
+                    if (sqrdist<=sqrphoscutoff_delta) latneighbornumber = latneighbornumber+1
+                    
+                end do
+            end do
+        end do    
+
+        maxlatneigh = latneighbornumber
+
+    end function  set_maxlatneigh
+
+
+    ! compute periodic boundary condition in integer units 
+    ! real(dp) version  : pbbc is located in chaingenerator  
+
+    function ipbc(ival,imax) result(intpbc)
+        implicit none 
+        integer, intent(in) :: ival
+        integer, intent(in) :: imax
+        integer :: intpbc
+
+        if(ival>0) then
+            intpbc=ival-int((ival-1)/imax)*imax
+        else
+            intpbc=ival-(int((ival-1)/imax)-1)*imax
+        endif
+
+    end function
+
 
 
 end module volume

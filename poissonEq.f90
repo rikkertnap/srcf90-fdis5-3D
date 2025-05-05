@@ -361,7 +361,7 @@ contains
 
         use globals, only : nsize, neq, LEFT, RIGHT, systype, nsegtypes
         use parameters, only : constqW
-        use volume, only : nx,ny,nz, linearIndexFromCoordinate
+        use volume, only : nx, ny, nz, linearIndexFromCoordinate, ngr
 
         implicit none
 
@@ -399,7 +399,9 @@ contains
         case("brushdna") 
             noffset=(2+nsegtypes)*nsize    
         case("brush_ionbinMgA","brush_neutralA") 
-            noffset=2*nsize       
+            noffset=2*nsize      
+        case("brush_Mginter") 
+            noffset=(2+ngr)*nsize       
         case default    
             print*,"error: systype wrong value for Poisson_equation_surface "    
         end select

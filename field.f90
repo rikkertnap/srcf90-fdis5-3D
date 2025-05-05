@@ -12,6 +12,7 @@ module field
     real(dp), dimension(:,:), allocatable :: rhopolin  
     real(dp), dimension(:,:), allocatable :: rhopol_charge ! density chargeable monomer of polymer in layer i of type t
     real(dp), dimension(:), allocatable :: rhoqpol  ! charge density  monomer of polymer in layer i 
+    real(dp), dimension(:,:), allocatable :: rhophosgraft  ! density  phosphate monomer of polymer in layer i  of graft point g
 
     real(dp), dimension(:), allocatable :: xsol    ! volume fraction solvent
     real(dp), dimension(:), allocatable :: psi     ! electrostatic potential 
@@ -30,32 +31,32 @@ module field
     real(dp), dimension(:), allocatable :: epsfcn   ! dielectric constant 
     real(dp), dimension(:), allocatable :: Depsfcn  ! derivative dielectric constant
 
-    real(dp), dimension(:,:), allocatable :: fdis   ! degree of dissociation of acid monomer
+    real(dp), dimension(:,:), allocatable :: fdis    ! degree of dissociation of acid monomer
     real(dp), dimension(:,:), allocatable :: fdisA   ! degree of dissociation 
     real(dp), dimension(:,:), allocatable :: fdisB   ! degree of dissociation
       
-    real(dp), dimension(:), allocatable :: q         ! normalization partion fnc polymer 
+    real(dp), dimension(:), allocatable :: q        ! normalization partion fnc polymer 
     real(dp), dimension(:), allocatable :: lnq      ! exponent of normalization partion fnc polymer 
 
-    real(dp) :: lnproshift ! shift in exponetn palpha
+    real(dp) :: lnproshift                          ! shift in exponent palpha
     
-    real(dp), dimension(:), allocatable       :: rhoqphos       ! charged density of phosphate needed systype="brush_ionbinMgA"
+    real(dp), dimension(:), allocatable     :: rhoqphos       ! charged density of phosphate needed systype="brush_ionbinMgA"
     real(dp), dimension(:,:), allocatable   :: fdisPP_loc, fdisPP_loc_swap     ! fdisPP(J,K) local equivalent of fraction of fdisPP(i,k,J,K)  
     real(dp)                                :: fdisP2Mg_loc, fdisP2Mg_loc_swap ! fdisP2Mg    local equivalent of fraction of fdisP2Mg(i,k)   
 
   
 contains
 
-    subroutine allocate_field(Nx,Ny,Nz,nsegtypes)
+    subroutine allocate_field(Nx,Ny,Nz,nsegtypes,ngr)
  
-        integer, intent(in) :: Nx,Ny,Nz,nsegtypes
+        integer, intent(in) :: Nx,Ny,Nz,nsegtypes,ngr
         
         integer :: N
-        integer :: ier(26),i
+        integer :: ier(27), i
 
 
         ier = 0 
-        N=Nx*Ny*Nz
+        N = Nx * Ny * Nz
 
         allocate(xpol(N),stat=ier(1))
         allocate(xpolz(Nz),stat=ier(2))
@@ -83,8 +84,9 @@ contains
         allocate(epsfcn(N),stat=ier(23))    ! relative dielectric constant
         allocate(Depsfcn(N),stat=ier(24))   ! derivate relative dielectric constan
         allocate(xpro(N),stat=ier(25)) 
+        allocate(rhophosgraft(N,ngr),stat=ier(27)) 
         
-        do i=1,25
+        do i=1,27
             if( ier(i)/=0 ) then
                 print*, 'Allocation error : stat =', ier(i),' for i= ',i
                 stop
@@ -116,6 +118,7 @@ contains
         deallocate(epsfcn)
         deallocate(Depsfcn)
         deallocate(xpro)
+        deallocate(rhophosgraft)
         
     end subroutine deallocate_field
 
@@ -151,6 +154,7 @@ contains
         xpolz=0.0_dp
         psi=0.0_dp
         xpro=0.0_dp
+        rhophosgraft=0.0_dp
            
     end subroutine init_field
 
@@ -165,7 +169,7 @@ contains
 
         ier=0
  
-        if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then
+        if(systype=="brush_ionbinMgA".or.systype=="brush_Mginter".or.systype=="brush_neutralA") then
 
             N=Nx*Ny*Nz
             allocate(rhoqphos(N),stat=ier(1))
@@ -191,7 +195,7 @@ contains
  
         rhoqphos=0.0_dp
     
-        if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then
+        if(systype=="brush_ionbinMgA".or.systype=="brush_Mginter".or.systype=="brush_neutralA") then
             fdisPP_loc=0.0_dp
             fdisP2Mg_loc=0.0_dp
             fdisPP_loc_swap=0.0_dp
@@ -264,6 +268,8 @@ contains
         case ("elect")  
             call charge_polymer_binary()
         case ("brush_ionbinMgA")
+            call charge_polymer_ionbinMgA()
+        case ("brush_Mginter")
             call charge_polymer_ionbinMgA()
         case ("brush_neutralA")
             call charge_polymer_neutralA()
@@ -415,6 +421,8 @@ contains
             call average_charge_polymer_binary()
         case ("brush_ionbinMgA")
             call average_charge_polymer_ionbinMgA()
+        case ("brush_Mginter")
+            call average_charge_polymer_ionbinMgA()    
         case ("brush_neutralA")
             call average_charge_polymer_neutralA()
         case default

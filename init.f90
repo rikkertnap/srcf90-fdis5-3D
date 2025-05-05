@@ -82,6 +82,8 @@ subroutine init_guess(x, xguess)
             call init_guess_multi_born(x,xguess)
         case ("brush_ionbinMgA","brush_neutralA")  
             call init_guess_multinoVdW(x,xguess)
+        case ("brush_Mginter")
+            call init_guess_Mginter(x,xguess)
         case default   
             print*,"Init_guess: Wrong value systype : ", systype
     end select 
@@ -555,6 +557,90 @@ subroutine init_guess_multi_born(x, xguess)
 
 end subroutine init_guess_multi_born
 
+
+
+subroutine init_guess_Mginter(x, xguess)
+
+    use globals, only : neq, bcflag, LEFT, RIGHT, nsize
+    use volume, only : nsurf, ngr
+    use field, only : xsol, psi, rhophosgraft
+    use surface, only : psisurfL, psisurfR 
+    use parameters, only : xbulk, infile
+    use myutils, only : newunit
+  
+    real(dp) :: x(:)       ! volume fraction solvent iteration vector 
+    real(dp) :: xguess(:)  ! guess fraction  solvent 
+  
+    !     ..local variables 
+    integer :: n, i, t, g, noffset
+    character(len=8) :: fname(3)
+    integer :: ios,un_file(3)
+  
+    ! .. init guess all xbulk     
+
+    do i=1,neq
+        x(i)=0.0_dp    
+    enddo
+
+    do i=1,nsize
+        x(i)=xbulk%sol
+    enddo
+
+    if (infile.eq.1) then   ! infile is read in from file/stdio  
+    
+        write(fname(1),'(A7)')'xsol.in'
+        write(fname(2),'(A6)')'psi.in'
+        write(fname(3),'(A8)')'graft.in'
+     
+        do i=1,3 ! loop files
+            open(unit=newunit(un_file(i)),file=fname(i),iostat=ios,status='old')
+            if(ios >0 ) then    
+                print*, 'file number =',un_file(i),' file name =',fname(i)
+                print*, 'Error opening file : iostat =', ios
+                stop
+            endif
+        enddo
+
+        do i=1,nsize
+            read(un_file(1),*)xsol(i) ! solvent
+            x(i)         = xsol(i)    ! placing xsol in vector           
+        enddo
+
+        if(bcflag(LEFT)/="cc") then 
+            do i=1,nsurf
+                read(un_file(2),*)psisurfL(i)
+            enddo
+        endif            
+        do i=1,nsize
+            read(un_file(2),*)psi(i)  ! potential
+            x(i+nsize)   = psi(i)     ! placing psi in vector x          
+        enddo
+        if(bcflag(RIGHT)/="cc") then
+            do i=1,nsurf 
+                read(un_file(2),*)psisurfR(i)
+            enddo
+        endif            
+
+        do g=1,ngr
+            noffset=(g+1)*nsize
+            do i=1,nsize
+                read(un_file(3),*)rhophosgraft(i,g) ! phosphate density of graft popint g 
+                x(i+noffset) =  rhophosgraft(i,g)   ! placing density in vector x
+            enddo
+        enddo                
+
+        do i=1,3
+            close(un_file(i))
+        enddo
+
+    endif
+    !     .. end init from file 
+  
+    do i=1,neq
+        xguess(i)=x(i)
+    enddo
+
+end subroutine init_guess_Mginter
 
 
 ! .. copy solution of previous solution ( distance ) to create new guess

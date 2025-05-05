@@ -134,7 +134,7 @@ contains
             xCa(i)     = expmu%Ca*(xsol(i)**vCa)*exp(-psi(i)*zCa) ! Ca++ volume fraction
             xMg(i)     = expmu%Mg*(xsol(i)**vMg)*exp(-psi(i)*zMg) ! Mg++ volume fraction
             xNaCl(i)   = expmu%NaCl*(xsol(i)**vNaCl)
-            xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! protein or croder volumer fraction
+            xpro(i)    = expmu%pro*(xsol(i)**vpro)                ! protein or crowder volumer fraction
         enddo
 
         !  fdis(i,t) is assocaited with fraction of monomer of type t at i in state 2 
@@ -2195,6 +2195,28 @@ contains
 
     end subroutine fcn_ionbin_Mg_A
 
+
+    subroutine fcn_ionbin_Mg_inter(x,f,nn)
+
+        use mpivars
+        use globals , only : neq
+        use modfcnMgexpl_inter
+
+        !     .. scalar arguments
+
+        integer(8), intent(in) :: nn
+
+        !     .. array arguments
+
+        real(dp), intent(in) :: x(neq)
+        real(dp), intent(out) :: f(neq)
+
+        call fcn_Mg_expl_inter(x,f,nn)
+
+    end subroutine fcn_ionbin_Mg_inter
+
+
+
     subroutine fcn_neutral_A(x,f,nn)
 
         use mpivars
@@ -2216,7 +2238,7 @@ contains
 
 
 
-    !     .. function solves for bulk volume fraction 
+    !  .. function solves for bulk volume fraction 
 
     subroutine fcnbulk(x,f,nn)   
 
@@ -2305,7 +2327,7 @@ contains
         neqint=int(neq,kind(neqint))     ! explict conversion from integer(8) to integer
     
         select case (systype)
-            case ("brush_mul","brushdna")                 ! multi copolymer:
+            case ("brush_mul","brushdna")      ! multi copolymer:
                 do i=1,neqint
                     constr(i)=1.0_dp
                 enddo
@@ -2352,6 +2374,23 @@ contains
                     constr(i+nsize)=0.0_dp     ! electrostatic potential 
                 enddo
             
+            case ("brush_Mginter")           ! multi copolymer:
+                do i=1,neqint
+                    constr(i)=1.0_dp
+                enddo
+                do i=1,nsize
+                    constr(i+nsize)=0.0_dp     ! electrostatic potential 
+                enddo
+
+            !     do i=1,neqint
+            !        constr(i)=0.0_dp
+            !    enddo
+            !    do i=1,nsize
+            !        constr(i)=1.0_dp  
+            !    enddo      
+                print*,"-> neqint=",neqint, "neq=",neq
+
+
             case default
 
                 do i=1,neqint
@@ -2387,9 +2426,11 @@ contains
             fcnptr => fcnneutralnoVdW
         case ("brush_ionbinMgA")
             fcnptr => fcn_ionbin_Mg_A
+        case ("brush_Mginter")
+            fcnptr => fcn_ionbin_Mg_inter
         case ("brush_neutralA")
             fcnptr => fcn_neutral_A
-        case ("bulk water")             ! determines compositon bulk electrolyte solution
+        case ("bulk water")             ! determines composition bulk electrolyte solution
              fcnptr => fcnbulk
         case default
             print*,"Error in call to set_fcn subroutine"    

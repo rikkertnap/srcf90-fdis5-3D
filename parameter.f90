@@ -214,7 +214,7 @@ contains
 
         use globals, only: systype, nsegtypes, nsize !, bcflag, LEFT, RIGHT
         use globals, only: neq, neqint
-        !use volume, only : nx, ny, nz
+        use volume, only : ngr
 
         integer :: numeq, t
 
@@ -243,6 +243,8 @@ contains
                 neq = 5 
             case ("brush_ionbinMgA","brush_neutralA")
                 neq = 2 * nsize
+            case ("brush_Mginter")
+                neq = (2 + ngr) * nsize    
             case default
                 print*,"Wrong value systype:  ",systype
                 stop
@@ -513,7 +515,7 @@ contains
             K0aAA(i) = KaAA(i)*(vsol*Na/1.0e24_dp)
         enddo
 
-        if(systype/="brush_ionbinMgA".and.systype/="brush_neutralA") then
+        if(systype/="brush_ionbinMgA".and.systype/="brush_neutralA".and.systype/="brush_Mginter") then
             print*,"Warning: init_dna: check logical of if-statement in init_dna" 
             K0aAA(4) = K0aAA(4)*(vsol*Na/1.0e24_dp) ! A2Ca
             K0aAA(6) = K0aAA(6)*(vsol*Na/1.0e24_dp) ! A2Mg 
@@ -539,7 +541,7 @@ contains
         deltavAA(6) = 2.0_dp*vpolAA(1)+vMg-vpolAA(7) ! 2vA- + vMg2+ -vA2Mg
         deltavAA(7) = vpolAA(1)+vK-vpolAA(8)    ! vA- + vK+ - vAK
 
-        if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then
+        if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or.systype=="brush_Mginter") then
             call init_vPP(info)
             call error_handler(info,"init_vPP")
             call init_qPP()
@@ -902,7 +904,7 @@ contains
         case ("brush_mul","brush_mulnoVdW") 
             call init_expmu_elect() 
             call set_VdWeps_scale(VdWscale)     
-        case ("brushdna","brush_ionbinMgA","brush_neutralA") 
+        case ("brushdna","brush_ionbinMgA","brush_neutralA","brush_Mginter") 
             call init_dna  
             call init_expmu_elect()
             call set_VdWeps_scale(VdWscale)
@@ -1278,7 +1280,7 @@ contains
         if(ttAA>0) isrhoselfconsistent(ttAA)=.true.  ! check condition ttA==0 
         if(ttP>0) then
             isrhoselfconsistent(ttP)=.true.    
-            if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA") then 
+            if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or.systype=="brush_Mginter") then 
                 isrhoselfconsistent(ttP)=.false.    ! check condition ttP==0
             else        
                 print*,"Warning: isrhoselfconstistent is set to .true. for systype:",systype
@@ -1320,7 +1322,7 @@ contains
             VdWepsAB = VdWeps(1,2) 
             VdWepsBB = VdWeps(2,1) 
         case ("neutral","neutralnoVdW","brush_mul","brush_mulnoVdW","brushvarelec","brushborn","brushdna")
-        case ("brush_ionbinMgA","brush_neutralA")
+        case ("brush_ionbinMgA","brush_neutralA","brush_Mginter")
         case default
             print*,"Error: in set_VdWepsAAandBB, systype=",systype
             print*,"stopping program"

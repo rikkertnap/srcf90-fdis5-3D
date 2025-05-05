@@ -91,6 +91,13 @@ contains
             call fcnenergy_electbrush_mul() 
             call fcnenergy_elect_alternative()   
 
+         case ("brush_Mginter")
+
+         !   print*,"Warning: free energy not implemtned yet."
+
+            call fcnenergy_electbrush_mul() 
+            call fcnenergy_elect_alternative()   
+
         case default  
 
             text="fcnenergy: wrong systype: "//systype//"stopping program"
@@ -250,7 +257,7 @@ contains
         select case(systype) 
         case("brush_mul","brush_mulnoVdW","brushdna","brushborn") 
             FEchem = FEchem_react_multi()
-        case("brush_ionbinMgA")
+        case("brush_ionbinMgA","brush_Mginter")
             FEchem = FEchem_react_multi()
         case("brush_neutralA")
             FEchem = 0.0_dp    
@@ -981,7 +988,7 @@ contains
                 endif        
             enddo
 
-        case("brush_ionbinMgA") 
+        case("brush_ionbinMgA","brush_Mginter") 
             
             do t=1,nsegtypes
 
