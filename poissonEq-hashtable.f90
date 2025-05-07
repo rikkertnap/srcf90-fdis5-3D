@@ -64,11 +64,12 @@ contains
     end subroutine
 
 
+
     subroutine Poisson_Equation_cubic(fvec,psi,rhoq,sigmaqSurfR,sigmaqSurfL)
 
         use globals, only : nsize, neq
         use parameters, only : constqW
-        use volume, only : nx,ny,nz, linearIndexFromCoordinate
+        use volume, only : nx,ny,nz, coordtoindex ! linearIndexFromCoordinate
 
         implicit none
 
@@ -91,13 +92,13 @@ contains
         do ix=1,nx
             do iy=1,ny
                 do iz=2,nz-1
-                    call linearIndexFromCoordinate(ix,           iy,iz  ,id)
-                    call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
-                    call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)
-                    call linearIndexFromCoordinate(ix,           iy,iz+1,idzpls)
-                    call linearIndexFromCoordinate(ix,           iy,iz-1,idzmin)
-                    call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
-                    call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+                    id      = coordtoindex(ix,           iy,iz)
+                    idxplus = coordtoindex(ipbc(ix+1,nx),iy,iz)
+                    idxmin  = coordtoindex(ipbc(ix-1,nx),iy,iz)
+                    idzpls  = coordtoindex(ix,           iy,iz+1)
+                    idzmin  = coordtoindex(ix,           iy,iz-1)
+                    idypls  = coordtoindex(ix,ipbc(iy+1,ny),iz)
+                    idymin  = coordtoindex(ix,ipbc(iy-1,ny),iz)
 
                     fvec(noffset+id)= -0.5_dp*( psi(idxpls)+psi(idxmin) +psi(idypls)+psi(idymin)+psi(idzpls)+psi(idzmin) &
                         -6.0_dp*psi(id) +rhoq(id)*constqW)
@@ -110,12 +111,12 @@ contains
         do ix=1,nx
             do iy=1,ny
                 iz=1
-                call linearIndexFromCoordinate(ix,           iy,iz  ,id)
-                call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
-                call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)
-                call linearIndexFromCoordinate(ix,           iy,iz+1,idzpls)
-                call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
-                call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+                id      = coordtoindex(ix,           iy,iz)
+                idxpls  = coordtoindex(ipbc(ix+1,nx),iy,iz)
+                idxmin  = coordtoindex(ipbc(ix-1,nx),iy,iz)
+                idzpls  = coordtoindex(ix,           iy,iz+1)
+                idypls  = coordtoindex(ix,ipbc(iy+1,ny),iz)
+                idymin  = coordtoindex(ix,ipbc(iy-1,ny),iz)
 
                 fvec(noffset+id)= -0.5_dp*( psi(idxpls)+psi(idxmin) +psi(idypls)+psi(idymin)+psi(idzpls) +sigmaqSurfL(id) &
                     - 5.0_dp*psi(id) +rhoq(id)*constqW)
@@ -128,12 +129,12 @@ contains
         do ix=1,nx
             do iy=1,ny
                 iz=nz
-                call linearIndexFromCoordinate(ix,           iy,iz  ,id)
-                call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
-                call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)
-                call linearIndexFromCoordinate(ix,           iy,iz-1,idzmin)
-                call linearIndexFromCoordinate(ix,ipbc(iy+1,ny),iz  ,idypls)
-                call linearIndexFromCoordinate(ix,ipbc(iy-1,ny),iz  ,idymin)
+                id      = coordtoindex(ix,           iy,iz)
+                idxpls  = coordtoindex(ipbc(ix+1,nx),iy,iz)
+                idxmin  = coordtoindex(ipbc(ix-1,nx),iy,iz)
+                idzmin  = coordtoindex(ix,           iy,iz-1)
+                idypls  = coordtoindex(ix,ipbc(iy+1,ny),iz)
+                idymin  = coordtoindex(ix,ipbc(iy-1,ny),iz)
                 
                 id2D=id-(nsize-nx*ny)
                 
@@ -175,6 +176,7 @@ contains
         do ix=1,nx
             do iy=1,ny
                 do iz=2,nz-1
+                
                     call linearIndexFromCoordinate(ix,           iy,iz  ,id)
                     call linearIndexFromCoordinate(ipbc(ix+1,nx),iy,iz  ,idxpls)
                     call linearIndexFromCoordinate(ipbc(ix-1,nx),iy,iz  ,idxmin)

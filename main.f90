@@ -225,7 +225,7 @@ program main
                 call compute_FEchem_react_PP_expl(FEchempair)
             endif          
             if(systype=="brush_Mginter") then
-                call compute_average_charge_PP_expl_inter(avfdisP2Mg,avfdisPP)
+                call compute_average_charge_PP_expl_inter(avfdisP2Mg,avfdisPP,Nintra,Ninter)
                 call compute_FEchem_react_PP_expl_inter(FEchempair)
             endif    
 
@@ -394,7 +394,7 @@ program main
                 endif          
 
                 if(systype=="brush_Mginter") then
-                    call compute_average_charge_PP_expl_inter(avfdisP2Mg,avfdisPP)
+                    call compute_average_charge_PP_expl_inter(avfdisP2Mg,avfdisPP,Nintra,Ninter)
                     call compute_FEchem_react_PP_expl_inter(FEchempair)
                 endif    
 

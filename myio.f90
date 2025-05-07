@@ -1626,7 +1626,11 @@ subroutine output_brush_mul
         write(un_sys,*)'avfdis      = ',(avfdis(t),t=1,nsegtypes)
     
     endif
-
+    
+    if(systype=="brush_Mginter") then 
+        write(un_sys,*)'Nintra      = ',Nintra
+        write(un_sys,*)'Ninter      = ',Ninter
+    endif      
 
     write(un_sys,*)'sigmaSurfL  = ',sigmaSurfL/((4.0_dp*pi*lb)*delta)
     write(un_sys,*)'sigmaSurfR  = ',sigmaSurfR/((4.0_dp*pi*lb)*delta)

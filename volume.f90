@@ -84,7 +84,6 @@ contains
         areasurf=nsurf*delta*delta
         ngrx=int(nx/ngr_freq)
         ngry=int(ny/ngr_freq)
-
         ngr = int(nx/ngr_freq)*int(ny/ngr_freq) ! number of surface elements to be end-grafted with chains
 
         ! check 
@@ -111,9 +110,7 @@ contains
 
         call init_graftpoints()
 
-        !   use of hash table 
-       
-       
+        !   use of hash table        
         call allocate_hashtable(nx,ny,nz)
         call make_hashtable()
 

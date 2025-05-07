@@ -139,12 +139,12 @@
     real(dp) :: qpol_tot           ! charge poly A+B of layer 
   
     real(dp) :: avfdisP2Mg, avfdisPP(5,5) ! average fraction monomer of phopsphate pairs in chemical state PP,PPH, , etc  
-   
     real(dp), dimension(:), allocatable :: qpol                ! charge poly of layer 
     real(dp), dimension(:), allocatable :: avfdis              ! average degree of dissociation
     real(dp) :: avfdisA(8)         ! average degree of dissociation 
     real(dp) :: avfdisB(5)         ! average degree of dissociation
     real(dp) :: sum_ion_excess     ! sum of ion_excess of all ions weighted with valence of ion
+    real(dp) :: Ninter, Nintra     ! number of inter and intra chain pairs
 
     ! .. weak polyelectrolyte variables 
     ! .. equilibrium constant

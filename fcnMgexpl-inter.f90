@@ -574,7 +574,7 @@ contains
             do g=1,ngr
                 nshift = nsize * (g+1)
                 do i=1,n 
-                    f(i+nshift) =   (rhophosgraft(i,g) - rhophosgraft_in(i,g))**2
+                    f(i+nshift) =   (rhophosgraft(i,g) - rhophosgraft_in(i,g))
                 enddo
             enddo        
 
@@ -587,14 +587,14 @@ contains
                         
             print*,'iter=', iter ,'norm=',norm, "normvol=",normvol,"normPE=",normPE,"normgraft=",normgraft
 
-            do g=1,ngr
-                sumrhograft(g) = volcell * sum(rhophosgraft(:,g))
-                sumrhograft_in(g) = volcell * sum(rhophosgraft_in(:,g)) 
-            enddo
+        !    do g=1,ngr
+        !        sumrhograft(g) = volcell * sum(rhophosgraft(:,g))
+        !        sumrhograft_in(g) = volcell * sum(rhophosgraft_in(:,g)) 
+        !    enddo
 
-            print*,"sumrhograft = ",sumrhograft, " sumrhograft_in =",  sumrhograft_in 
-            sumrhopol = volcell * sum(rhopol(:,ta)) 
-            print*,"sumrhopol = ",sumrhopol , "neq=",neq 
+        !    print*,"sumrhograft = ",sumrhograft, " sumrhograft_in =",  sumrhograft_in 
+        !    sumrhopol = volcell * sum(rhopol(:,ta)) 
+        !    print*,"sumrhopol = ",sumrhopol , "neq=",neq 
 
         else                      ! Export results 
             
@@ -615,9 +615,10 @@ contains
 
 
 
-    ! compute the average fraction of charged state of the phosphate pairs 
+    ! Computes the average fraction of charged state of the phosphate pairs 
+    ! Also computes Ninter and Nintra  
 
-    subroutine compute_average_charge_PP_expl_inter(avfdisP2Mg,avfdisPP)
+    subroutine compute_average_charge_PP_expl_inter(avfdisP2Mg,avfdisPP, Nintra, Ninter)
     
         !     .. local variables
         use mpivars
@@ -638,6 +639,8 @@ contains
 
         real(dp), intent(inout) :: avfdisP2Mg
         real(dp), intent(inout) :: avfdisPP(5,5)
+        real(dp), intent(inout) :: Nintra
+        real(dp), intent(inout) ::  Ninter
 
         !     .. local variables
         
@@ -648,6 +651,7 @@ contains
         integer  :: i,j,k,c,s,m,t,g, g_loc,lt               ! dummy indices
         integer  :: JJ, KK
         real(dp) :: local_avfdisP2Mg,local_avfdisPP(5,5)
+        real(dp) :: local_Nintra, local_Ninter
         real(dp) :: sumrhopairs 
         integer  :: nsizepsi
         real(dp) :: nneigh_inter
@@ -660,6 +664,8 @@ contains
         nsizepsi = nsize + 2 * nx * ny
         local_avfdisPP = 0.0_dp
         local_avfdisP2Mg = 0.0_dp
+        local_Nintra = 0.0_dp
+        local_Ninter = 0.0_dp
 
         call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
 
@@ -808,6 +814,8 @@ contains
                         enddo
                             
                         local_avfdisP2Mg=local_avfdisP2Mg+fdisP2Mg_loc * pro/(nneigh(s,c)+nneigh_inter)
+                    
+                        local_Nintra = local_Nintra + pro/(nneigh(s,c)+nneigh_inter)
                     enddo
 
                     ! inter chain contribution 
@@ -830,9 +838,10 @@ contains
                                 enddo
                             enddo
 
-                           local_avfdisP2Mg=local_avfdisP2Mg+&
-                             fdisP2Mg_loc * volcell* nphos(m) * pro/(nneigh(s,c)+nneigh_inter)
+                            local_avfdisP2Mg=local_avfdisP2Mg+&
+                                fdisP2Mg_loc * volcell* nphos(m) * pro/(nneigh(s,c)+nneigh_inter)
 
+                            local_Ninter = local_Ninter + volcell* nphos(m)*pro/(nneigh(s,c)+nneigh_inter)
                         endif
 
                     enddo        
@@ -861,6 +870,18 @@ contains
                 avfdisPP = avfdisPP + local_avfdisPP/q(g)
             enddo
 
+            Nintra = local_Nintra/q(1)
+            Ninter = local_Ninter/q(1)
+            do i=1, numproc-1
+                source = i
+                g =int(source/nset_per_graft)+1
+                call MPI_RECV(local_Nintra, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)     
+                call MPI_RECV(local_Ninter, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)             
+                Nintra = Nintra + local_Nintra/q(g)        
+                Ninter = Ninter + local_Ninter/q(g)
+            enddo
+
+
             ! .. construction of avfdisP2Mg and avfdisPP 
             ! .. normalized avfdisPP with number of average number pairs = integral of rhopol_charge(:,ta) in Nucleosome prog . 
 
@@ -884,6 +905,9 @@ contains
             avfdisPP=avfdisPP/(sumrhopairs)  !*q) ! also norm with q
            ! avfdisP2Mg=avfdisP2Mg/(sumrhopairs*q)
             avfdisP2Mg=avfdisP2Mg/(sumrhopairs)
+
+            Nintra = Nintra/2.0_dp        
+            Ninter = Ninter/2.0_dp
     
         
         else                      ! Export results 
@@ -892,6 +916,8 @@ contains
 
             call MPI_SEND(local_avfdisP2Mg, 1 , MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(local_avfdisPP,25, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(local_Nintra,1, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(local_Ninter,1, MPI_DOUBLE_PRECISION, dest,tag, MPI_COMM_WORLD, ierr)
 
         endif
 

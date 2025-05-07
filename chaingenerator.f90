@@ -81,6 +81,7 @@ subroutine make_chains_mc()
     use parameters, only : maxnchainsrotations, maxnchainsrotationsxy
     use volume, only : nx, ny, nz, delta
     use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
+    use volume, only : coordtoindex
     use volume, only : ut, vt
     use volume, only : position_graft, nset_per_graft
     use myutils, only : print_to_log, LogUnit, lenText
@@ -207,7 +208,7 @@ subroutine make_chains_mc()
                         yi = int(chain_pbc(2,s)/delta)+1
                         zi = int(chain_pbc(3,s)/delta)+1
                         
-                        call linearIndexFromCoordinate(xi,yi,zi,idx)
+                        idx = coordtoindex(xi,yi,zi)
 
                         indexchain_init(s,conf) = idx
 
@@ -295,7 +296,8 @@ subroutine make_chains_mc()
                         yi = int(chain_pbc(2,s)/delta)+1
                         zi = int(chain_pbc(3,s)/delta)+1
 
-                        call linearIndexFromCoordinate(xi,yi,zi,idx)
+                        !call linearIndexFromCoordinate(xi,yi,zi,idx)
+                        idx = coordtoindex(xi,yi,zi)
                         indexchain_init(s,conf) = idx
 
                         if(isOutsideLattice(xi,yi,zi,nx,ny,nz)) then 
