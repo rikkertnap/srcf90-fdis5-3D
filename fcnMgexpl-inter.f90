@@ -228,6 +228,7 @@ contains
                     enddo 
 
                     nneigh_inter = nneigh_inter * volcell   ! normalize
+
                     lnpro = lnpro+ deltalnpro/(2.0_dp*(nneigh(s,c)+nneigh_inter))                    
 
                 endif           
@@ -655,7 +656,7 @@ contains
         real(dp) :: sumrhopairs 
         integer  :: nsizepsi
         real(dp) :: nneigh_inter
-
+     
         ! .. executable statements 
 
         ! .. communication between processors 
@@ -669,6 +670,7 @@ contains
 
         call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
 
+
         if(rank==0) then
             do i = 1, numproc-1
                 dest = i
@@ -681,6 +683,9 @@ contains
                     endif
                 enddo
                 call MPI_SEND(q , ngr , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                do g=1,ngr
+                    call MPI_SEND(rhophosgraft(:,g) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                enddo
             enddo
         else
             source = 0 
@@ -694,7 +699,20 @@ contains
             enddo
 
             call MPI_RECV(q , ngr, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
+
+            do g=1,ngr
+                call  MPI_RECV(rhophosgraft(:,g), nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
+            enddo
+
         endif    
+
+        
+        ! test output 
+        !do g=1,ngr
+        !    do i=1,nsize
+        !        write(rank+10,*)rhophosgraft(i,g)
+        !    enddo
+        ! enddo    
 
         ! .. assign npol(i) = \sum_g rho_graft(i,g) expect for local g
         
@@ -841,7 +859,7 @@ contains
                             local_avfdisP2Mg=local_avfdisP2Mg+&
                                 fdisP2Mg_loc * volcell* nphos(m) * pro/(nneigh(s,c)+nneigh_inter)
 
-                            local_Ninter = local_Ninter + volcell* nphos(m)*pro/(nneigh(s,c)+nneigh_inter)
+                            local_Ninter = local_Ninter + volcell * nphos(m)*pro/(nneigh(s,c)+nneigh_inter)
                         endif
 
                     enddo        
@@ -1129,20 +1147,24 @@ contains
                             -log(fdisPP_loc(Phos,Phos))
 
     
-                        lambda = lambda*pro/nneigh(s,c)        
+                        lambda = lambda*pro/(nneigh(s,c)+nneigh_inter)        
 
                         sum_pi  = 0.0_dp
                         sum_psi = 0.0_dp
 
                         do JJ=1,5
                             do KK=1,5
-                                sum_pi=sum_pi-(vPP(JJ)*betapi_k+vPP(KK)*betapi_m)*fdisPP_loc(JJ,KK)*pro/nneigh(s,c)
-                                sum_psi=sum_psi-(qPP(JJ)*psi_k+qPP(KK)*psi_m)*fdisPP_loc(JJ,KK)*pro/nneigh(s,c)
+                                sum_pi=sum_pi-(vPP(JJ)*betapi_k+vPP(KK)*betapi_m)*fdisPP_loc(JJ,KK)*&
+                                    pro/(nneigh(s,c)+nneigh_inter) 
+
+                                sum_psi=sum_psi-(qPP(JJ)*psi_k+qPP(KK)*psi_m)*fdisPP_loc(JJ,KK)*&
+                                    pro/(nneigh(s,c)+nneigh_inter) 
                             enddo
                         enddo
                        ! print*,"sum_psi=",sum_psi, " sum_pi=",sum_pi
 
-                        sum_pi=sum_pi-(vPP(Phos2Mg)/2.0_dp)*(betapi_k+betapi_m)*fdisP2Mg_loc*pro/nneigh(s,c)
+                        sum_pi=sum_pi-(vPP(Phos2Mg)/2.0_dp)*(betapi_k+betapi_m)*fdisP2Mg_loc*&
+                            pro/(nneigh(s,c)+nneigh_inter) 
 
                         ! division 2.0_dp  because  vPP(Phos2Mg)/2 is volume change per phosphate 
                         
