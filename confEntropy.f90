@@ -1387,6 +1387,9 @@ contains
                         call MPI_SEND(rhopol(:,t) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
                     endif
                 enddo
+                 do g=1,ngr
+                    call MPI_SEND(rhophosgraft(:,g) , nsize , MPI_DOUBLE_PRECISION, dest, tag,MPI_COMM_WORLD,ierr)
+                enddo
             enddo
         else
             source = 0 
@@ -1398,6 +1401,10 @@ contains
                     call MPI_RECV(rhopol(:,t) , nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr)  
                 endif
             enddo
+            do g=1,ngr
+                call  MPI_RECV(rhophosgraft(:,g), nsize, MPI_DOUBLE_PRECISION, source,tag, MPI_COMM_WORLD,stat, ierr) 
+            enddo
+
         endif    
 
         !     .. executable statements 
@@ -1421,7 +1428,15 @@ contains
                 lnexppi(i,t) = log(xsol(i))*vpol(t)
             endif      
                 
-        enddo      
+        enddo     
+
+         
+        ! test output 
+        do g=1,ngr
+            do i=1,nsize
+                write(rank+20,*)rhophosgraft(i,g)
+            enddo
+        enddo     
        
         g_loc =int(rank/nset_per_graft)+1   ! .. determine local g   
         nphos = 0.0_dp
