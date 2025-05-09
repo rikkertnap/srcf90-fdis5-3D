@@ -13,10 +13,10 @@ contains
 function calc_lateral_Rgsqr(conf) result (Rgsqr_lateral)
      
     use globals, only: nseg, cuantas
-    use volume, only: delta, nz
-    use chains, only: indexchain
+    use volume, only: delta, nz, nx, ny
+    use chains, only: indexchain_nopbc
     use myutils, only : error_handler
-    use volume, only: CoordinateFromLinearIndex
+    use volume, only: CoordinateFromLinearIndex_general
 
     ! Input
     integer, intent(in) :: conf
@@ -38,8 +38,8 @@ function calc_lateral_Rgsqr(conf) result (Rgsqr_lateral)
 
     ! Step 1: Compute center of mass for each z-layer
     do s = 1, nseg
-        idx = indexchain(s, conf)
-        call CoordinateFromLinearIndex(idx, x, y, z)
+        idx = indexchain_nopbc(s, conf)
+        call CoordinateFromLinearIndex_general(idx, x, y, z, 2*nx, 2*ny)
 
         x_cm(z) = x_cm(z) + x
         y_cm(z) = y_cm(z) + y
@@ -58,8 +58,8 @@ function calc_lateral_Rgsqr(conf) result (Rgsqr_lateral)
 
     ! Step 2: Compute lateral radius of gyration for each z-layer
     do s = 1, nseg
-        idx = indexchain(s, conf)
-        call CoordinateFromLinearIndex(idx, x, y, z)
+        idx = indexchain_nopbc(s, conf)
+        call CoordinateFromLinearIndex_general(idx, x, y, z, 2*nx, 2*ny)
 
         Rgsqr_lateral(z) = Rgsqr_lateral(z) + (x - x_cm(z))**2 + (y - y_cm(z))**2
 
@@ -83,10 +83,10 @@ end function calc_lateral_Rgsqr
 subroutine check_isotropy(conf, Rxx, Ryy)
     use precision_definition
     use globals, only: nseg, cuantas
-    use volume, only: delta, nz
-    use chains, only: indexchain
+    use volume, only: delta, nz, nx, ny
+    use chains, only: indexchain_nopbc
     use myutils, only : error_handler
-    use volume, only: CoordinateFromLinearIndex
+    use volume, only: CoordinateFromLinearIndex_general
 
     implicit none
 
@@ -114,8 +114,8 @@ subroutine check_isotropy(conf, Rxx, Ryy)
 
     ! Step 1: Compute centers of mass
     do s = 1, nseg
-        idx = indexchain(s, conf)
-        call CoordinateFromLinearIndex(idx, x, y, z)
+        idx = indexchain_nopbc(s, conf)
+        call CoordinateFromLinearIndex_general(idx, x, y, z, 2*nx, 2*ny)
         x_cm(z) = x_cm(z) + x
         y_cm(z) = y_cm(z) + y
         nseg_z(z) = nseg_z(z) + 1
@@ -131,8 +131,8 @@ subroutine check_isotropy(conf, Rxx, Ryy)
 
     ! Step 2: Compute Rxx, Ryy
     do s = 1, nseg
-        idx = indexchain(s, conf)
-        call CoordinateFromLinearIndex(idx, x, y, z)
+        idx = indexchain_nopbc(s, conf)
+        call CoordinateFromLinearIndex_general(idx, x, y, z, 2*nx, 2*ny)
         Rxx(z) = Rxx(z) + (x - x_cm(z))**2
         Ryy(z) = Ryy(z) + (y - y_cm(z))**2
     enddo

@@ -69,7 +69,7 @@ subroutine make_chains_mc()
     use parameters, only : geometry, lseg, write_mc_chains
     use parameters, only : maxnchainsrotations, maxnchainsrotationsxy
     use volume, only : nx, ny, nz, delta
-    use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
+    use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate, linearIndexFromCoordinate_general
     use volume, only : ut, vt
     use volume, only : position_graft, nset_per_graft
     use myutils
@@ -88,7 +88,7 @@ subroutine make_chains_mc()
     integer :: maxntheta         ! maximum number of rotation in xy-plane
     integer :: conf              ! counts number of conformations
     real(dp) :: chain(3,nseg,200) ! chain(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
-    real(dp) :: chain_rot(3,nseg), chain_nopbc(3,nseg)
+    real(dp) :: chain_pbc(3,nseg), chain_nopbc(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates
     real(dp) :: xpp(nseg), ypp(nseg) 
@@ -174,20 +174,33 @@ subroutine make_chains_mc()
                         z(s) = zp(s)  
 
                         ! .. periodic boundary conditions in x-direction and y-direction 
-                        chain_rot(2,s) = pbc(x(s),Lx)
-                        chain_rot(3,s) = pbc(y(s),Ly)
-                        chain_rot(1,s) = z(s)     !  no pbc in z-direction    
+                        chain_pbc(1,s) = pbc(x(s),Lx)
+                        chain_pbc(2,s) = pbc(y(s),Ly)
+                        chain_pbc(3,s) = z(s)     !  no pbc in z-direction    
 
                         ! .. transforming form real- to lattice coordinates                 
-                        xi = int(chain_rot(2,s)/delta)+1
-                        yi = int(chain_rot(3,s)/delta)+1
-                        zi = int(chain_rot(1,s)/delta)+1
+                        xi = int(chain_pbc(1,s)/delta)+1
+                        yi = int(chain_pbc(2,s)/delta)+1
+                        zi = int(chain_pbc(3,s)/delta)+1
                         
                         call linearIndexFromCoordinate(xi,yi,zi,idx)
                         indexchain_init(s,conf) = idx
                         if(idx<=0) then
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                         endif
+
+                        ! No PBC in Coordinates
+                        chain_nopbc(1,s) = x(s)
+                        chain_nopbc(2,s) = y(s)
+                        chain_nopbc(3,s) = z(s)
+
+                        ! .. transforming form real- to lattice coordinates
+                        xi = int((chain_nopbc(1,s)+Lx)/delta)+1    ! Lx added to shift coords pos. 
+                        yi = int((chain_nopbc(2,s)+Ly)/delta)+1    ! Ly added to shift coordds pos.
+                        zi = int(chain_nopbc(3,s)/delta)+1
+
+                        call linearIndexFromCoordinate_general(xi,yi,zi,2*nx,2*ny,idx)
+                        indexchain_nopbc(s, conf) = idx
                     enddo            
             
                     
@@ -244,22 +257,35 @@ subroutine make_chains_mc()
                         y(s) = vt(xpp(s),ypp(s))
                         
                         ! .. periodic boundary conditions in u-direction and v-direction and z-direction 
-                        chain_rot(2,s) = pbc(x(s),Lx)
-                        chain_rot(3,s) = pbc(y(s),Ly)
-                        chain_rot(1,s) = z(s)        ! .. no pbc in z-direction    
+                        chain_pbc(2,s) = pbc(x(s),Lx)
+                        chain_pbc(3,s) = pbc(y(s),Ly)
+                        chain_pbc(1,s) = z(s)        ! .. no pbc in z-direction    
 
                         ! .. transforming form real- to lattice coordinates                 
-                        xi = int(chain_rot(2,s)/delta)+1
-                        yi = int(chain_rot(3,s)/delta)+1
-                        zi = int(chain_rot(1,s)/delta)+1
+                        xi = int(chain_pbc(2,s)/delta)+1
+                        yi = int(chain_pbc(3,s)/delta)+1
+                        zi = int(chain_pbc(1,s)/delta)+1
 
                         call linearIndexFromCoordinate(xi,yi,zi,idx)
                         indexchain_init(s,conf) = idx
                         if(idx<=0) then
                             print*,"index=",idx, " xi=",xi," yi=",yi," zi=",zi, "conf=",conf,"s=",s 
                         endif
+
+                        ! No PBC in Coordinates
+                        chain_nopbc(1,s) = x(s)
+                        chain_nopbc(2,s) = y(s)
+                        chain_nopbc(3,s) = z(s)
+
+                        ! .. transforming form real- to lattice coordinates
+                        xi = int((chain_nopbc(1,s)+Lx)/delta)+1    ! Lx added to shift coords pos.
+                        yi = int((chain_nopbc(2,s)+Ly)/delta)+1    ! Ly added to shift coordds pos.
+                        zi = int(chain_nopbc(3,s)/delta)+1
+
+                        call linearIndexFromCoordinate_general(xi,yi,zi,2*nx,2*ny,idx)
+                        indexchain_nopbc(s, conf) = idx
                         
-                    enddo         ! end loop over graft points
+                    enddo         ! end loop over segments
 
                     conf = conf +1 
                 
