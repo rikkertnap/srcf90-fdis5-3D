@@ -2546,9 +2546,9 @@ subroutine write_lateral_Rgsqr()
    open(unit=newunit(un_lrg), file=fname)
 
    ! Writing Header
-   write(un_lrg, '(A8)', advance="no")" z-layer"
+   write(un_lrg, '(A8)', advance="no")" z"
    do g = 1, ngr
-       write(un_lrg, '(A8,I1)', advance="no")" graft-", g
+       write(un_lrg, '(A10,I3)', advance="no") "G" // trim(adjustl(itoa(g)))
    enddo
    write(un_lrg, *) ! New Line
 
@@ -2579,6 +2579,7 @@ subroutine write_Rxx_Ryy()
     ! Local Variables
     integer :: z, g, un_rxxryy
     character(len=lenText) :: fname, fnamelabel
+    character(len=12) :: label
 
     ! Define Output File Name
     call make_filename_label(fnamelabel)
@@ -2588,16 +2589,16 @@ subroutine write_Rxx_Ryy()
     open(unit=newunit(un_rxxryy), file=fname)
 
     ! Write Header
-    write(un_rxxryy, '(A8)', advance="no") "z-layer"
+    write(un_rxxryy, '(A12)', advance="no") "z"
     do g = 1, ngr
-        write(un_rxxryy, '(A6,I2,A4)', advance="no") " graft-", g, "_Rxx"
-        write(un_rxxryy, '(A6,I2,A4)', advance="no") " graft-", g, "_Ryy"
+        write(un_rxxryy, '(A12)', advance="no") "G" // trim(itoa(g)) // "_Rxx"
+        write(un_rxxryy, '(A12)', advance="no") "G" // trim(itoa(g)) // "_Ryy"
     enddo
     write(un_rxxryy, *) ! New Line
 
     ! Write data
     do z = 1, nz
-        write(un_rxxryy, '(I8)', advance="no") z ! z-layer index
+        write(un_rxxryy, '(I12)', advance="no") z ! z-layer index
         do g = 1, ngr
             write(un_rxxryy, '(2F12.6)', advance="no") Rxx(z, g), Ryy(z, g)
         enddo
@@ -2608,5 +2609,12 @@ subroutine write_Rxx_Ryy()
     close(un_rxxryy)
 
 end subroutine write_Rxx_Ryy
+
+! Helper function to help writing output of Lateral_Rgsqr
+pure function itoa(i) result(str)
+    integer, intent(in) :: i
+    character(len=10) :: str
+    write(str, '(I0)') i
+end function itoa
 
 end module

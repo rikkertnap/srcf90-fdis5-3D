@@ -77,6 +77,7 @@ subroutine make_chains_mc()
     use cadenas_sequence
     use chains, only : Rgsqr, Rendsqr, Asphparam
     use eigenvalues, only : Asphericity_parameter
+    use lateral_Rgsqr, only: calc_lateral_Rgsqr
 
     !     .. variable and constant declaractions      
 
@@ -99,7 +100,11 @@ subroutine make_chains_mc()
     integer  :: xi,yi,zi ,un_trj, un_ene
     real(dp) :: energy 
     real(dp) :: gyr_tensor(3,3) ! gyration tensor
-   
+  
+    ! Delete later
+    real(dp) ::temp_lateral(nz)
+    integer  :: i
+
     !     .. executable statements
     !     .. initializations of variables     
        
@@ -134,7 +139,7 @@ subroutine make_chains_mc()
             call make_linear_chains(chain,nchains,maxnchains,nseg,lseg) ! chain generator f90
         else
             call make_linear_seq_chains(chain,nchains,maxnchains,nseg) 
-        endif  
+        endif
 
         if(write_mc_chains) then 
             energy=0.0_dp
@@ -199,22 +204,22 @@ subroutine make_chains_mc()
                         yi = int((chain_nopbc(2,s)+Ly)/delta)+1    ! Ly added to shift coordds pos.
                         zi = int(chain_nopbc(3,s)/delta)+1
 
-                        call linearIndexFromCoordinate_general(xi,yi,zi,2*nx,2*ny,idx)
+                        call linearIndexFromCoordinate_general(xi,yi,zi,3*nx,3*ny,idx)
                         indexchain_nopbc(s, conf) = idx
                     enddo            
             
                     
-                    do s=1,nseg                          
-                        chain_nopbc(3,s) = chain(1,s,j)
-                        chain_nopbc(1,s) = chain(2,s,j)
-                        chain_nopbc(2,s) = chain(3,s,j)
-                    enddo
-
                     Rgsqr(conf)           = radius_gyration(chain_nopbc,nseg)
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
                     gyr_tensor            = calc_gyr_tensor(chain_nopbc, nseg)
                     Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor)
-
+                    ! Diagnostic: Delete Later
+                    !if (conf == 1) then
+                    !   temp_lateral       = calc_lateral_Rgsqr(conf)
+                    !   do i = 1, nz
+                    !      write(rank*5 + 1,*)Rgsqr(1), temp_lateral(i)
+                    !   enddo
+                    !endif
                     conf = conf +1 
 
                 enddo         ! end loop over rotations
@@ -282,7 +287,7 @@ subroutine make_chains_mc()
                         yi = int((chain_nopbc(2,s)+Ly)/delta)+1    ! Ly added to shift coordds pos.
                         zi = int(chain_nopbc(3,s)/delta)+1
 
-                        call linearIndexFromCoordinate_general(xi,yi,zi,2*nx,2*ny,idx)
+                        call linearIndexFromCoordinate_general(xi,yi,zi,3*nx,3*ny,idx)
                         indexchain_nopbc(s, conf) = idx
                         
                     enddo         ! end loop over segments

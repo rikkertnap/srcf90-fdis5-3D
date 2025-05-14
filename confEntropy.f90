@@ -31,7 +31,7 @@ contains
             call FEconf_elect(FEconf,Econf)
         case ("neutral")
             call FEconf_neutral(FEconf,Econf)
-        case ("neutralnoVdW")
+        case ("neutralnoVdW")            
             call FEconf_neutral_noVdW(FEconf,Econf)
         case ("brush_mul","brushdna")
             call FEconf_brush_mul(FEconf,Econf)
@@ -186,7 +186,7 @@ contains
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Asphparam_local,1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat ,ierr)
-                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
+                call MPI_RECV(Rgsqr_lateral_local, nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
 
                 !Isotropy Check
                 call MPI_RECV(Rxx_local, nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
@@ -214,7 +214,7 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD, ierr)
-            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Rgsqr_lateral_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             ! Isotropy Check
             call MPI_SEND(Rxx_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Ryy_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
@@ -374,7 +374,7 @@ contains
             call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
             call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
             call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
-            call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
+            call MPI_RECV(Rgsqr_lateral_local,nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
 
             !Isotropy Check
             call MPI_RECV(Rxx_local, nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
@@ -400,12 +400,12 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD,ierr)
-            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Rgsqr_lateral_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
 
             ! Isotropy Check
             call MPI_SEND(Rxx_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Ryy_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
-
+             
         endif
 
 
@@ -580,7 +580,7 @@ contains
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
-                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
+                call MPI_RECV(Rgsqr_lateral_local,nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
 
                 !Isotropy Check
                 call MPI_RECV(Rxx_local, nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
@@ -607,7 +607,7 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD, ierr)
-            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Rgsqr_lateral_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
 
             ! Isotropy Check
             call MPI_SEND(Rxx_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
@@ -777,7 +777,7 @@ contains
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
-                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)  
+                call MPI_RECV(Rgsqr_lateral_local,nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)  
 
                 !Isotropy Check
                 call MPI_RECV(Rxx_local, nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
@@ -804,7 +804,7 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION, dest,tag,MPI_COMM_WORLD,ierr)
-            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Rgsqr_lateral_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             
             ! Isotropy Check
             call MPI_SEND(Rxx_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
@@ -967,7 +967,7 @@ contains
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
-                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
+                call MPI_RECV(Rgsqr_lateral_local,nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
 
                 !Isotropy Check
                 call MPI_RECV(Rxx_local, nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
@@ -994,7 +994,7 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION,dest,tag,MPI_COMM_WORLD,ierr)
-            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Rgsqr_lateral_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
 
             ! Isotropy Check
             call MPI_SEND(Rxx_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
@@ -1245,7 +1245,7 @@ contains
                 call MPI_RECV(Rgsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Rendsqr_local, 1, MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat, ierr)
                 call MPI_RECV(Asphparam_local,1,MPI_DOUBLE_PRECISION,source,tag,MPI_COMM_WORLD,stat,ierr)
-                call MPI_RECV(Rgsqr_lateral_local,1, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)  
+                call MPI_RECV(Rgsqr_lateral_local,nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)  
 
                 !Isotropy Check
                 call MPI_RECV(Rxx_local, nz, MPI_DOUBLE_PRECISION, source, tag, MPI_COMM_WORLD, stat, ierr)
@@ -1272,7 +1272,7 @@ contains
             call MPI_SEND(Rgsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Rendsqr_local, 1 , MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
             call MPI_SEND(Asphparam_local,1,MPI_DOUBLE_PRECISION,dest,tag,MPI_COMM_WORLD,ierr)
-            call MPI_SEND(Rgsqr_lateral_local, 1, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
+            call MPI_SEND(Rgsqr_lateral_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)
 
             ! Isotropy Check
             call MPI_SEND(Rxx_local, nz, MPI_DOUBLE_PRECISION, dest, tag, MPI_COMM_WORLD, ierr)

@@ -133,6 +133,10 @@ else ifeq ($(shell hostname),quser40)
 
 	is_quest = yes
 
+else ifeq ($(shell hostname),quser33)
+
+        is_quest = yes
+
 
 ###################################### Default
 else 
@@ -152,7 +156,7 @@ endif
 
 ifdef is_quest 
 
-FFLAGS=  -std=f2008  -cpp -DVERSION=\"$(GIT_VERSION)\"  -O3 # -fcheck=all -fbounds-check -Warray-bounds -g -fbacktrace # -Wargument-mismatch -Wpedantic #-Wall
+FFLAGS=  -std=f2008  -cpp -DVERSION=\"$(GIT_VERSION)\" -O3 # -fcheck=all -fbounds-check  -Warray-bounds -g -fbacktrace # -Wargument-mismatch -Wpedantic #-Wall
 
 LDFLAGS= -lm /usr/lib64/librt.so -L/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran84/lib -lsundials_fkinsol -lsundials_kinsol -lsundials_fnvecserial -lsundials_nvecserial     -Wl,-rpath,/projects/p31445/sundials/sundials-2.6.1-openmpi-gfortran84/lib -L/software/lapack/3.10.1/lib64  -llapack
 

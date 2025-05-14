@@ -39,7 +39,7 @@ function calc_lateral_Rgsqr(conf) result (Rgsqr_lateral)
     ! Step 1: Compute center of mass for each z-layer
     do s = 1, nseg
         idx = indexchain_nopbc(s, conf)
-        call CoordinateFromLinearIndex_general(idx, x, y, z, 2*nx, 2*ny)
+        call CoordinateFromLinearIndex_general(idx, x, y, z, 3*nx, 3*ny)
 
         x_cm(z) = x_cm(z) + x
         y_cm(z) = y_cm(z) + y
@@ -59,7 +59,7 @@ function calc_lateral_Rgsqr(conf) result (Rgsqr_lateral)
     ! Step 2: Compute lateral radius of gyration for each z-layer
     do s = 1, nseg
         idx = indexchain_nopbc(s, conf)
-        call CoordinateFromLinearIndex_general(idx, x, y, z, 2*nx, 2*ny)
+        call CoordinateFromLinearIndex_general(idx, x, y, z, 3*nx, 3*ny)
 
         Rgsqr_lateral(z) = Rgsqr_lateral(z) + (x - x_cm(z))**2 + (y - y_cm(z))**2
 
@@ -115,7 +115,7 @@ subroutine check_isotropy(conf, Rxx, Ryy)
     ! Step 1: Compute centers of mass
     do s = 1, nseg
         idx = indexchain_nopbc(s, conf)
-        call CoordinateFromLinearIndex_general(idx, x, y, z, 2*nx, 2*ny)
+        call CoordinateFromLinearIndex_general(idx, x, y, z, 3*nx, 3*ny)
         x_cm(z) = x_cm(z) + x
         y_cm(z) = y_cm(z) + y
         nseg_z(z) = nseg_z(z) + 1
@@ -132,7 +132,7 @@ subroutine check_isotropy(conf, Rxx, Ryy)
     ! Step 2: Compute Rxx, Ryy
     do s = 1, nseg
         idx = indexchain_nopbc(s, conf)
-        call CoordinateFromLinearIndex_general(idx, x, y, z, 2*nx, 2*ny)
+        call CoordinateFromLinearIndex_general(idx, x, y, z, 3*nx, 3*ny)
         Rxx(z) = Rxx(z) + (x - x_cm(z))**2
         Ryy(z) = Ryy(z) + (y - y_cm(z))**2
     enddo

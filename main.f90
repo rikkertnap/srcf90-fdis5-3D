@@ -66,7 +66,8 @@ program main
     call MPI_COMM_SIZE(MPI_COMM_WORLD, numproc, ierr)
 
     ! .. logfile
-    
+    print *, rank, numproc     
+
     write(istr,'(I4)')rank
     if( numproc>9999) then 
         text="Error: numproc to large for status file number"
