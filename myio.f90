@@ -456,7 +456,8 @@ subroutine read_inputfile(info)
     endif
 
     ! overide certain input values
-    if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_mul".or.systype=="brush_ionbinMgA") then
+    if(systype=="brushdna".or.systype=="brushborn".or.systype=="brush_mul"&
+            .or.systype=="brush_ionbinMgA".or.systype=="brush_Mginter") then
         KionNa=0.0_dp
         KionK=0.0_dp
         cpro%val =0.0_dp

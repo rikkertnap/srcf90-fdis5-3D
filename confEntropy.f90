@@ -1430,14 +1430,7 @@ contains
                 
         enddo     
 
-         
-        ! test output 
-        do g=1,ngr
-            do i=1,nsize
-                write(rank+20,*)rhophosgraft(i,g)
-            enddo
-        enddo     
-       
+        
         g_loc =int(rank/nset_per_graft)+1   ! .. determine local g   
         nphos = 0.0_dp
     
