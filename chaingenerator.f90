@@ -101,10 +101,6 @@ subroutine make_chains_mc()
     real(dp) :: energy 
     real(dp) :: gyr_tensor(3,3) ! gyration tensor
   
-    ! Delete later
-    real(dp) ::temp_lateral(nz)
-    integer  :: i
-
     !     .. executable statements
     !     .. initializations of variables     
        
@@ -213,13 +209,6 @@ subroutine make_chains_mc()
                     Rendsqr(conf)         = end_to_end_distance(chain_nopbc,nseg)
                     gyr_tensor            = calc_gyr_tensor(chain_nopbc, nseg)
                     Asphparam(conf)       = Asphericity_parameter(Rgsqr(conf),gyr_tensor)
-                    ! Diagnostic: Delete Later
-                    !if (conf == 1) then
-                    !   temp_lateral       = calc_lateral_Rgsqr(conf)
-                    !   do i = 1, nz
-                    !      write(rank*5 + 1,*)Rgsqr(1), temp_lateral(i)
-                    !   enddo
-                    !endif
                     conf = conf +1 
 
                 enddo         ! end loop over rotations
