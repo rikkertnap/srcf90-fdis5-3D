@@ -1334,6 +1334,9 @@ subroutine output_brush_mul
 
     ! .. executable statements
 
+    call write_lateral_Rgsqr()
+    call write_Rxx_Ryy()
+
     denspol=init_denspol()
 
     if(nz.eq.nzmax)  then
@@ -1744,6 +1747,8 @@ subroutine output_elect
     character(len=90) :: densfracionpairfilename
    
     ! .. executable statements
+    call write_lateral_Rgsqr()
+    call write_Rxx_Ryy()
 
     denspol=init_denspol()
 
@@ -2109,6 +2114,8 @@ subroutine output_neutral
     real(dp) :: denspol
 
     !     .. executable statements
+    call write_lateral_Rgsqr()
+    call write_Rxx_Ryy()
 
     denspol=init_denspol()
 
@@ -2648,6 +2655,96 @@ subroutine write_chain_config()
 
 
 end subroutine write_chain_config
+
+subroutine write_lateral_Rgsqr()
+
+    use myutils, only: newunit, lenText
+    use chains, only: Rgsqr_lateral
+    use volume, only: nz, ngr
+
+    ! Local Variables
+   integer :: z, g, un_lrg
+   character(len=lenText) :: fname, fnamelabel
+
+   ! Defining Output file Name
+   !     .. make label filename
+   call make_filename_label(fnamelabel)
+   fname = 'lateral_Rgsqr.'//trim(adjustl(fnamelabel))
+
+   ! Opening file for writing
+   open(unit=newunit(un_lrg), file=fname)
+
+   ! Writing Header
+   write(un_lrg, '(A8)', advance="no")" z"
+   do g = 1, ngr
+       write(un_lrg, '(A10,I3)', advance="no") "G" // trim(adjustl(itoa(g)))
+   enddo
+   write(un_lrg, *) ! New Line
+
+   ! Writing in the data
+   do z =1, nz
+       write(un_lrg, '(I8)', advance="no") z ! z-layer index
+       do g = 1, ngr
+           write(un_lrg, '(F10.6)', advance="no") Rgsqr_lateral(z, g)
+       enddo
+       write(un_lrg, *)
+   enddo
+
+   ! Closing File
+   close(un_lrg)
+
+end subroutine write_lateral_Rgsqr
+
+subroutine write_Rxx_Ryy()
+
+    use myutils, only: newunit, lenText
+    use volume, only: nz, ngr
+    use chains, only: Rxx, Ryy
+
+    implicit none
+
+    ! Inputs
+
+    ! Local Variables
+    integer :: z, g, un_rxxryy
+    character(len=lenText) :: fname, fnamelabel
+    character(len=12) :: label
+
+    ! Define Output File Name
+    call make_filename_label(fnamelabel)
+    fname = 'Rxx_Ryy.'//trim(adjustl(fnamelabel))
+
+    ! Open file for writing
+    open(unit=newunit(un_rxxryy), file=fname)
+
+    ! Write Header
+    write(un_rxxryy, '(A12)', advance="no") "z"
+    do g = 1, ngr
+        write(un_rxxryy, '(A12)', advance="no") "G" // trim(itoa(g)) // "_Rxx"
+        write(un_rxxryy, '(A12)', advance="no") "G" // trim(itoa(g)) // "_Ryy"
+    enddo
+    write(un_rxxryy, *) ! New Line
+
+    ! Write data
+    do z = 1, nz
+        write(un_rxxryy, '(I12)', advance="no") z ! z-layer index
+        do g = 1, ngr
+            write(un_rxxryy, '(2F12.6)', advance="no") Rxx(z, g), Ryy(z, g)
+        enddo
+        write(un_rxxryy, *) ! New Line
+    enddo
+
+    ! Close file
+    close(un_rxxryy)
+
+end subroutine write_Rxx_Ryy
+
+! Helper function to help writing output of Lateral_Rgsqr
+pure function itoa(i) result(str)
+    integer, intent(in) :: i
+    character(len=10) :: str
+    write(str, '(I0)') i
+end function itoa
 
 
 end module

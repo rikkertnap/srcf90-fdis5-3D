@@ -80,7 +80,7 @@ subroutine make_chains_mc()
     use parameters, only : geometry, lseg, write_mc_chains
     use parameters, only : maxnchainsrotations, maxnchainsrotationsxy
     use volume, only : nx, ny, nz, delta
-    use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate
+    use volume, only : coordinateFromLinearIndex, linearIndexFromCoordinate, linearIndexFromCoordinate_general
     use volume, only : coordtoindex
     use volume, only : ut, vt
     use volume, only : position_graft, nset_per_graft
@@ -89,6 +89,7 @@ subroutine make_chains_mc()
     use cadenas_sequence
     use chains, only : Rgsqr, Rendsqr, Asphparam
     use eigenvalues, only : Asphericity_parameter
+    use lateral_Rgsqr, only: calc_lateral_Rgsqr
     use myio, only : myio_err_index
 
     !     .. variable and constant declaractions      
@@ -101,7 +102,7 @@ subroutine make_chains_mc()
     integer :: maxntheta         ! maximum number of rotation in xy-plane
     integer :: conf              ! counts number of conformations
     real(dp) :: chain(3,nseg,200) ! chain(x,i,l)= coordinate x of segement i ,x=2 y=3,z=1
-    real(dp) :: chain_rot(3,nseg), chain_nopbc(3,nseg),  chain_pbc(3,nseg)
+    real(dp) :: chain_nopbc(3,nseg),  chain_pbc(3,nseg)
     real(dp) :: x(nseg), y(nseg), z(nseg) ! coordinates
     real(dp) :: xp(nseg), yp(nseg), zp(nseg) ! coordinates
     real(dp) :: xpp(nseg), ypp(nseg) 
@@ -120,8 +121,8 @@ subroutine make_chains_mc()
     !     .. initializations of variables     
        
     conf = 1                 ! counter for conformations
-    !seed =  435672*(rank+1)   ! seed for random number generator  different on each node
-    seed =  435672
+    seed =  435672*(rank+1)   ! seed for random number generator  different on each node
+    !seed =  435672
     maxnchains = maxnchainsrotations
     maxntheta = maxnchainsrotationsxy         ! maximum number of rotation in xy-plane  
     theta_angle = 2.0_dp*pi/maxntheta
@@ -227,11 +228,18 @@ subroutine make_chains_mc()
                             return
                         endif
 
-                        ! here chain_nopbc has  index  x,y, instead of z,x,y  with chain
-
+                        ! No PBC in Coordinates
                         chain_nopbc(1,s) = x(s)
                         chain_nopbc(2,s) = y(s)
-                        chain_nopbc(3,s) = z(s)    
+                        chain_nopbc(3,s) = z(s)
+
+                        ! .. transforming form real- to lattice coordinates
+                        xi = int((chain_nopbc(1,s)+Lx)/delta)+1    ! Lx added to shift coords pos. 
+                        yi = int((chain_nopbc(2,s)+Ly)/delta)+1    ! Ly added to shift coordds pos.
+                        zi = int(chain_nopbc(3,s)/delta)+1
+
+                        call linearIndexFromCoordinate_general(xi,yi,zi,3*nx,3*ny,idx)
+                        indexchain_nopbc(s, conf) = idx
 
                     enddo    
 
@@ -315,14 +323,20 @@ subroutine make_chains_mc()
                             return
                         endif
 
-                        ! here chain_nopbc has index  x,y, instead of z,x,y with chain
-
+                        ! No PBC in Coordinates - chain_nopbc has index x,y,z instead of z,x,y with chain
                         chain_nopbc(1,s) = x(s)
                         chain_nopbc(2,s) = y(s)
-                        chain_nopbc(3,s) = z(s)    
+                        chain_nopbc(3,s) = z(s)
+
+                        ! .. transforming form real- to lattice coordinates
+                        xi = int((chain_nopbc(1,s)+Lx)/delta)+1    ! Lx added to shift coords pos. 
+                        yi = int((chain_nopbc(2,s)+Ly)/delta)+1    ! Ly added to shift coordds pos.
+                        zi = int(chain_nopbc(3,s)/delta)+1
+
+                        call linearIndexFromCoordinate_general(xi,yi,zi,3*nx,3*ny,idx)
+                        indexchain_nopbc(s, conf) = idx
                         
                     enddo         ! end loop over graft points
-
 
 
                     if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or. systype=="brush_Mginter") then 

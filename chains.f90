@@ -2,7 +2,7 @@
 module chains
   
     use globals
-    use volume, only: ngr
+    use volume, only: ngr, nz
 
     implicit none
   
@@ -16,6 +16,7 @@ module chains
     integer, dimension(:), allocatable          :: max_nneigh_phos          ! maximum number of neigbors or pairs of phosphate segments in conf alpha and seggment s
 
     integer, dimension(:,:), allocatable    :: indexchain               ! index(alpha,s)= layer number of conf alpha and segment number s
+    integer, dimension(:,:), allocatable    :: indexchain_nopbc         ! same as indexchain with no pbc
     integer, dimension(:,:), allocatable    :: indexchain_init 
     logical, dimension(:), allocatable      :: isAmonomer               ! isAmonomer(s) =.true. if s is a "A" monomoer  
     integer, dimension(:), allocatable      :: type_of_monomer          ! type of monomer represented as a number
@@ -33,11 +34,16 @@ module chains
 
     real(dp), dimension(:), allocatable       :: Rgsqr                  ! radius of gyration (for all conformations) 
     real(dp), dimension(:), allocatable       :: Rendsqr                ! end-to-end distance (for all conformations)
+    real(dp), dimension(:,:), allocatable     :: Rgsqr_lateral          ! lateral radius of gyration (for all conformations) 
     real(dp), dimension(:), allocatable       :: avRgsqr                ! average radius of gyration (for each graft point)
     real(dp), dimension(:), allocatable       :: avRendsqr              ! average end-to-end distance (for each graft point)
     real(dp), dimension(:), allocatable       :: Asphparam              ! Asphericity parameter invariant of gyration tensor 
     real(dp), dimension(:), allocatable       :: avAsphparam            ! Average asphericity parameter for each graft point 
-   
+  
+    ! Isotropy Check
+    real(dp), dimension(:,:), allocatable     :: Rxx
+    real(dp), dimension(:,:), allocatable     :: Ryy
+
     ! .. pairing parameters 
 
     real(dp) :: distphoscutoff ! distance allow between two phosphate to be a pair
@@ -57,6 +63,7 @@ contains
         maxcuantas=cuantas+maxnchains*maxnchainsxy     ! .. extra  because of  nchain rotations
         
         allocate(indexchain(nseg,maxcuantas))
+        allocate(indexchain_nopbc(nseg,maxcuantas))
         allocate(indexchain_init(nseg,maxcuantas))
         allocate(energychain(maxcuantas))
         allocate(energychain_init(maxcuantas))
@@ -75,6 +82,11 @@ contains
         allocate(avRgsqr(ngr))
         allocate(avRendsqr(ngr))
         allocate(avAsphparam(ngr))
+        allocate(Rgsqr_lateral(nz,ngr))
+
+        ! Istropy Check
+        allocate(Rxx(nz, ngr))
+        allocate(Ryy(nz, ngr))
     
     end subroutine allocate_chains
 

@@ -137,7 +137,7 @@ contains
 
     subroutine linearIndexFromCoordinate(x,y,z,idx)
      
-      implicit none 
+        implicit none 
       
         integer, intent(in)  :: x,y,z
         integer, intent(out) :: idx
@@ -151,6 +151,23 @@ contains
         idx = a*x + b*y + c*z + d
 
     end subroutine linearIndexFromCoordinate
+
+    subroutine linearIndexFromCoordinate_general(x,y,z,nx,ny,idx)
+
+        implicit none
+
+        integer, intent(in)  :: x,y,z,nx,ny
+        integer, intent(out) :: idx
+
+        integer :: a,b,c,d
+
+        a = 1
+        b = nx
+        c = nx * ny
+        d = 1-a-b-c
+        idx = a*x + b*y + c*z + d
+
+    end subroutine linearIndexFromCoordinate_general
 
 
     subroutine coordinateFromLinearIndex(idx, x,y, z)
@@ -169,6 +186,23 @@ contains
         z = idxtmp
     
     end subroutine coordinateFromLinearIndex
+
+    subroutine  coordinateFromLinearIndex_general(idx,x,y,z,nx,ny)
+
+        implicit none
+
+        integer, intent(out)  :: x,y,z
+        integer, intent(in)   :: idx, nx,ny
+        integer :: idxtmp
+
+        idxtmp=idx
+        x =  mod(idxtmp-1,nx)+1
+        idxtmp =int((idxtmp-1)/nx)+1
+        y = mod(idxtmp-1,ny)+1
+        idxtmp = int((idxtmp-1)/ny)+1
+        z = idxtmp
+
+    end subroutine coordinateFromLinearIndex_general
 
      
     function mirror_index(idx,nz) result(idx_mirror)
