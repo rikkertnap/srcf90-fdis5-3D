@@ -21,8 +21,11 @@ Linker flags can be obtained form the examples directory of the sundials install
 
 ### Running
 
-The program uses an input file called 'input.in' that contain following key words.
+The program requires a number of input files describe below.
 
+The central configuration file is called 'input.in' that contain following key words.
+
+**input.in**
 
 | Keyword (type)     	    | Description                       | Value                                                |
 | ------------------------|-----------------------------------|------------------------------------------------------|
@@ -139,6 +142,61 @@ The program uses an input file called 'input.in' that contain following key word
 |pKd%max `real`			   | Maximum strength pKd parameter      |  |
 |pKd%stepsize `real`       | Stepsize strength pKd parameter     |  |
 |pKd%delta `real`		   | Minimal allowed stepsize. Stopping criteria    |  |
+
+
+**other configuration files**
+
+* Input file 'salt.in' if runtype="inputcspH" or "inputcsT" or "rangedielect". Values of salt concentration read in from file the input file. First line indicates the number of salt concentrations to be considered. Subsequent lines are the values of the salt concentrations.'
+Program evaluate the values in order. When the program does not converge to a solution  the value with the previous value in the list is bisectioned. Bisection continues until program converges or the nubmer of bisections exceed 99. 
+* Input file 'saltMg.in' contains Mg2+ concentrations  if runtype="inputMgpH" or "rangepKd" or "rangeVdWeps". Format similar to "salt.in".
+* Input file 'vdwcoeff_lseg\<val\>_\<geometry\>.dat'  contains the distance dependent coefficiont of the VdW interaction. When the file/files is/are not not provided the coefficient are regerated using a MC intergration and outputted to file. Suqsequent run will use the stored values.
+* Input file  'VdWeps.in' constains epsilon parameters of VdW interaction. Format nsegtype x 3 matrix. First and second denote the monomer types and the third column denotes VdW strenght epsilon.
+* Input file '\<lsegfname\>' contains length segments. Format list.
+* Input file '\<vpolname\>' contains volume segments. Format list.
+* Input file 'pKdacid.in' Aicd and Na/Ca/Mg ion dissociation constants. <br/>
+If file absent, values set for acrylic acids <br/>
+* Input file '\<pKafname\>' constains pKa for acid or base,br/>
+ Format file: pKavalue zcharge-reactant zcharge-product.<br/>
+ For AH<=> A^-+ H^+ : zcharge-reactant = "0" and zcharge-product="-1"<br/>
+ For BH^+ <=> B+ H^+ : zcharge-reactant = "1" and zcharge-product="0"<br/>
+* Input file '\<pKaionfname\>' similar to file '\<pKafname\>' plus for every AA acid binding constant with Na and K <br/>
+ For AA base  binding constant with Cl  
+* Input file '\<typesfname\>' constains segment identifier number and char for every segment number.<br/>
+  Segment identifier "P" selects (phosphate)acid that can involved ion binding.
+* The program is a parallel program. Every mpi_node holds it own set of 'cuantas' conformations.
+
+
+** Init guess solution **
+ if infile == 1 a initial guess or startign solution is read from input files. 
+ Depending of the systype following files are required for infile ==1
+
+
+| systype 	                                                | description		                                    |                                       
+| -----------------------------------------------------------|------------------------------------------------------|                               
+| __neutral__:  neutral polymer plus VdW interaction        | __xsol.in__ : contains guess for xsol                 |
+|                                                           | __xpol.in__ : contains guess for xpol                 |  
+| __neutralnoVdW__:  neutral polymer no VdW interaction     | __xsol.in__ : contains guess for xsol                 |
+| __brush_mul__: multi-component acid-base: VdW interaction | __xsol.in__ : contains guess for xsol                 |
+|                                                           | __xpol.in__ : contains guess for xpol                 |  
+|                                                           | __psi.in__  : contains guess for potential            | 
+| __brush_mulnoVdW__: multi-component acid-base: noVdW interaction | __xsol.in__ : contains guess for xsol          |                                          
+|                                                           | __psi.in__  : contains guess for potential            | 
+| __brushborn__ : idem brush plus varing Born Energy        | __xsol.in__ : contains guess for xsol                 |
+|                                                           | __xpol.in__ : contains guess for xpol                 |  
+|                                                           | __psi.in__  : contains guess for potential            | 
+| __brushdna__  : multi-component acid-base plus one acid with Ca/Mg binding |                                      |
+| __brush_ionbinMgA__  : multi-component acid-base plus one acid with Ca/Mg binding | __xsol.in__ : contains guess for xsol           |                                          
+|                                                           | __psi.in__  : contains guess for potential            | 
+| __brush_neutralA__  : multi-component acid-base plus P_2Mg-binding | __xsol.in__ : contains guess for xsol        |
+| __brush_Mginter__  : multi-component acid-base plus P_2Mg with inter chain | __xsol.in__ : contains guess for xsol|
+|                                                           | __graft.in__ : contains guess for all densitygraft    |  
+|                                                           | __psi.in__  : contains guess for potential            | 
+
+
+** Notes **
+* The program is a parallel program. Every mpi_node holds it own set of 'cuantas' conformations.
+* Redundant variables: bcflag(RIGHT),bcflag(LEFT),sigmaSurfR,sigmaSurfL
+
 
 ## Built With
 

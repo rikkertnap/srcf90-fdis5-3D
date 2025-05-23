@@ -87,8 +87,8 @@ subroutine read_inputfile(info)
     integer :: line
     logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha,  isSet_EnergyShift
     logical :: isSet_maxfkfunevals, isSet_maxniter, isSet_isRandom_rot_loop, isSet_isRandom_pos_graft
-    logical :: isSet_seed_graft,isSet_seed_rot_loop, isSet_scale_ran_step 
-    logical :: isSet_pbc_chains,isSet_VdWcutoff
+    logical :: isSet_seed_graft, isSet_seed_rot_loop, isSet_scale_ran_step 
+    logical :: isSet_pbc_chains, isSet_VdWcutoff, isSet_switch_Mg_with_Ca 
 
     if (present(info)) info = 0
 
@@ -116,6 +116,7 @@ subroutine read_inputfile(info)
     isSet_scale_ran_step=.false.
     isSet_pbc_chains    =.false.
     isSet_VdWcutoff     =.false.
+    isSet_switch_Mg_with_Ca =.false.
 
     write_mc_chains   =.false.
     write_struct      =.false.
@@ -334,6 +335,9 @@ subroutine read_inputfile(info)
             case ('VdWcutoff')
                 read(buffer,*,iostat=ios) VdWcutoff
                 isSet_VdWcutoff =.true.    
+            case ('switch_Mg_with_Ca')
+                read(buffer,*,iostat=ios) switch_Mg_with_Ca 
+                isSet_switch_Mg_with_Ca =.true.  
             case default
                 if(pos>1) then
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -444,15 +448,8 @@ subroutine read_inputfile(info)
     call set_value_int_var(maxfkfunevals,isSet_maxfkfunevals,1000)
     call set_value_int8_var(maxniter,isSet_maxniter,int(1000,8))
     call set_value_double_var(VdWcutoff,isSet_VdWcutoff,1.0_dp)
+    call set_value_logical_var(switch_Mg_with_Ca, isSet_switch_Mg_with_Ca,.false.)
 
-
-    !call set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
-    !call set_value_precondition(precondition,isSet_precondition)
-    !call set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
-    !call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
-    !call set_value_maxfkfunevals(maxfkfunevals,isSet_maxfkfunevals)
-    !call set_value_maxniter(maxniter,isSet_maxniter)
-    
 
     ! after set_value_isVdW
     call check_value_VdWeps(systype,isVdW,info_VdWeps)

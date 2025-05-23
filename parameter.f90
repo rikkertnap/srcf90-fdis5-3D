@@ -145,7 +145,7 @@
     real(dp) :: sum_ion_excess     ! sum of ion_excess of all ions weighted with valence of ion
     real(dp) :: Ninter, Nintra     ! number of inter and intra chain pairs
 
-    ! logical :: switch_Mg_with_Ca
+    logical :: switch_Mg_with_Ca
 
     ! .. weak polyelectrolyte variables 
     ! .. equilibrium constant
@@ -284,7 +284,7 @@ contains
         
         implicit none      
         
-        real(dp) :: vA,vB, vAA, vAMPS, vPEG
+        real(dp) :: vA,vB, vAA, vAMPS, vPEG, Rtmp
         
         !  .. initializations of variables
  
@@ -332,6 +332,15 @@ contains
         RRb = 0.152_dp             ! radius of Rb+ in nm 
         RMg = 0.072_dp             ! radius of Mg2+ in nm 
         
+        !  .. Allows to use Ca instead of Mg for phosphate binding 
+        !  .. Mg has size of Ca and vice-versa
+
+        if(switch_Mg_with_Ca)  then 
+            Rtmp = RCa
+            RCa = RMg
+            RMg = Rtmp  
+        endif 
+
         ! .. volume
         
         vsol = 0.030_dp              ! volume water solvent molecule in (nm)^3
