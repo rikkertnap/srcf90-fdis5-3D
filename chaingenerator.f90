@@ -121,8 +121,8 @@ subroutine make_chains_mc()
     !     .. initializations of variables     
        
     conf = 1                 ! counter for conformations
-    seed =  435672*(rank+1)   ! seed for random number generator  different on each node
-    !seed =  435672
+    !seed =  435672*(rank+1)   ! seed for random number generator  different on each node
+    seed =  435672
     maxnchains = maxnchainsrotations
     maxntheta = maxnchainsrotationsxy         ! maximum number of rotation in xy-plane  
     theta_angle = 2.0_dp*pi/maxntheta

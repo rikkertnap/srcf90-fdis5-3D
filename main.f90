@@ -110,6 +110,11 @@ program main
     call make_charge_table(ismonomer_chargeable,zpol,nsegtypes)
     call set_properties_chain(chainperiod,chaintype) 
 
+    ! .. init Van der Waals  setup
+
+    call make_VdWeps(info)  ! nessesary for init 
+    call error_handler(info,"make_VdWeps")
+    if(runtype/="rangeVdweps") call set_value_isVdW_on_values(nsegtypes, VdWeps, isVdW) 
     if(isVdW) then 
         call make_VdWcoeff(info)
         if(info/=0) then
@@ -117,10 +122,8 @@ program main
             text="Error in make_VdWcoeff: info = "//trim(adjustl(istr))//" : end program."
             call print_to_log(LogUnit,text)
             print*,text
-            stop
+            call error_handler(info,"make_VdWepscoeff")
         endif
-    else
-        call make_VdWeps(info)    
     endif  
 
     call make_chains(chainmethod)   ! generate polymer configurations
@@ -131,7 +134,7 @@ program main
     call init_surface(bcflag,nsurf)
  
     if(systype=="brush_ionbinMgA".or.systype=="brush_neutralA".or.systype=="brush_Mginter") then 
-        phoscutoff=int(distphoscutoff/delta)+2 ! redundant ???
+        phoscutoff=int(distphoscutoff/delta)+2 ! redundant ??? 
         call allocate_field_pairs(nx,ny,nz,maxneigh,5,len_index_phos) ! internal systype switch ! 5 = size fdisPP matrix 
         call init_field_pairs()  
         call write_chain_max_nneigh_phos(write_struct,info) 
@@ -143,12 +146,10 @@ program main
         call allocate_indexlatneighbor(nsize,maxlatneigh)
         call make_table_index_neighbors(distphoscutoff)    
     endif
-    
 
-    ! VdW used to be here 
 
     call make_isrhoselfconsistent(isVdW)
-    call set_size_neq()             ! number of non-linear equation neq
+    call set_size_neq()             ! number of non-linear equations neq
     call set_fcn()
     call set_dielect_fcn(dielect_env)
     call write_chain_config()

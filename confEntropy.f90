@@ -1753,17 +1753,19 @@ contains
         use chains, only : indexchain,indexconfpair, nneigh, type_of_monomer, ismonomer_chargeable,logweightchain
         use chains, only : Rgsqr, Rendsqr, avRgsqr, avRendsqr, Asphparam, avAsphparam
         use chains, only : Rgsqr_lateral, Rxx, Ryy
-        use field, only : xsol, psi, fdis, rhopol, q ,lnproshift, fdisPP_loc, fdisP2Mg_loc, rhophosgraft
-        use parameters, only : vsol, vpol, ta, zpol, Phos
+        use field, only : xsol, psi, fdis, rhopol, q ,lnproshift, fdisPP_loc, fdisP2Mg_loc, rhophosgraft, rhopolin
+        use parameters, only : vsol, vpol, ta, zpol, Phos, isVdW
         use volume, only : volcell, nset_per_graft
         use volume, only : ngr, maxlatneigh, indexlatneighbor, nz, delta
         use modfcnMgexpl, only : compute_fdisPP
         use lateral_Rgsqr, only: calc_lateral_Rgsqr, check_isotropy
+        use VdW, only : VdW_contribution_lnexp
         
         real(dp), intent(out) :: FEconf,Econf
         
         ! .. declare local variables
-        real(dp) :: lnexppi(nsize,nsegtypes),lnexppivw(nsize)         ! auxilairy variable for computing P(\alpha)  
+        real(dp) :: lnexppi(nsize,nsegtypes),lnexppivw(nsize)         ! auxilairy variable for computing P(\alpha) 
+        real(dp) :: lnexppiVdWphos(nsize)
         real(dp) :: pro,lnpro,deltalnpro 
         real(dp) :: nphos(nsize)
         integer  :: i,t,g,c,s,k,jj,m,g_loc     ! dummy indices
@@ -1854,6 +1856,19 @@ contains
             endif
         enddo         
 
+        lnexppiVdWphos=0.0_dp
+        
+        ! Van der Waals attraction 
+        if(isVdW) then   
+            rhopolin = 0.0_dp
+            do g=1,ngr     ! assign rhopolin  only for t=tA of phosphate
+                do i=1,nsize 
+                    rhopolin(i,ta) = rhopolin(i,ta) + rhophosgraft(i,g)
+                enddo
+            enddo 
+            call VdW_contribution_lnexp(rhopolin,lnexppiVdWphos,ta)
+        endif
+
 
         ! .. computation structural quantities       
        
@@ -1894,6 +1909,8 @@ contains
                             call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)        
                             deltalnpro = deltalnpro + volcell * nphos(m) * (lnexppi(k,ta) +lnexppi(m,ta)+&
                                 (lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) -log(fdisPP_loc(Phos,Phos)))
+
+                            deltalnpro = deltalnpro + lnexppiVdWphos(k) + lnexppiVdWphos(m)  ! VdW attraction     
                         endif    
                     enddo
 
@@ -1903,6 +1920,9 @@ contains
                         call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)
                         deltalnpro = deltalnpro + (lnexppi(k,ta) + lnexppi(m,ta)+ (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) &
                             -log(fdisPP_loc(Phos,Phos))  )
+
+                        deltalnpro = deltalnpro + lnexppiVdWphos(k)  + lnexppiVdWphos(m) ! VdW attraction 
+
                     enddo
 
                     nneigh_inter = nneigh_inter * volcell   

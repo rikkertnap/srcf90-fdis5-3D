@@ -29,13 +29,13 @@ contains
         use parameters, only : expmu 
         use parameters, only : vsol, vpol, vNa, vK, vCl, vRb, vCa, vMg, vpro, vPP ! , vpolAA ! ,deltavAA,vnucl,vPP 
         use parameters, only : zpol, zNa, zK, zCl, zRb, zCa, zMg, qPP, K0a  ! ,K0aAA,K0a !, K0aion
-        use parameters, only : ta, isVdW, iter ! isrhoselfconsistent
+        use parameters, only : ta, isVdW, iter , VdWeps! isrhoselfconsistent
         use parameters, only : Phos, PhosH, PhosK, PhosNa, PhosMg, Phos2Mg 
         use volume, only     : volcell, nset_per_graft 
         use chains, only     : indexchain, type_of_monomer, logweightchain, ismonomer_chargeable
         use chains, only     : indexconfpair, nneigh
         use field, only      : xsol,xNa,xCl,xK,xHplus,xOHmin,xRb,xMg,xCa, xpro, rhopol,rhoqpol,rhoq
-        use field, only      : psi, fdis, rhopol_charge, rhophosgraft
+        use field, only      : psi, fdis, rhopol_charge, rhophosgraft, rhopolin
         use field, only      : fdisPP_loc, fdisPP_loc_swap, fdisP2Mg_loc, fdisP2Mg_loc_swap, rhoqphos
         use field, only      : q, lnproshift
         use field, only      : xpol=>xpol_t, xpol_tot=>xpol
@@ -45,6 +45,7 @@ contains
         use Poisson, only    : Poisson_Equation, Poisson_Equation_Surface
         use volume, only     : ngr, maxlatneigh, indexlatneighbor
         use modfcnMgexpl, only : compute_fdisPP
+
 
         !     .. scalar arguments
 
@@ -63,6 +64,7 @@ contains
         real(dp) :: local_q                                           ! local normalization q     
         real(dp) :: lnexppi(nsize,nsegtypes)                          ! auxilairy variable for computing P(\alpha) 
         real(dp) :: lnexppivw(nsize) 
+        real(dp) :: lnexppiVdWphos(nsize)
         real(dp) :: nphos(nsize)
         real(dp) :: pro, lnpro, deltalnpro
         integer  :: n, nshift
@@ -131,6 +133,7 @@ contains
         do i=1,n
             local_xpolphos(i)  = 0.0_dp 
             local_rhoqphos(i) = 0.0_dp 
+            lnexppiVdWphos(i) = 0.0_dp
         enddo
 
         do i=1,n     ! init volume fractions
@@ -173,11 +176,16 @@ contains
             endif   
         enddo      
 
-        if(isVdW) then 
-           ! Van der Waals
-            print*,"isVdW true for fcn_Mg_expl_inter, stop!!"
-            stop 
-        endif 
+        ! Van der Waals attraction 
+        if(isVdW) then   
+            rhopolin = 0.0_dp
+            do g=1,ngr     ! assign rhopolin  only for t=tA of phosphate
+                do i=1,nsize 
+                    rhopolin(i,ta) = rhopolin(i,ta) + rhophosgraft_in(i,g)
+                enddo
+            enddo 
+            call VdW_contribution_lnexp(rhopolin,lnexppiVdWphos,ta)
+        endif
 
         !  .. computation polymer volume fraction      
  
@@ -213,6 +221,8 @@ contains
                             deltalnpro =deltalnpro + volcell * nphos(m) * ( lnexppi(k,ta) +lnexppi(m,ta)+&
                             (lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) -log(fdisPP_loc(Phos,Phos)))  
 
+                            deltalnpro = deltalnpro + lnexppiVdWphos(k)+ lnexppiVdWphos(m)  ! VdW attraction 
+
                         endif    
                     enddo
 
@@ -224,6 +234,8 @@ contains
 
                         deltalnpro = deltalnpro + (lnexppi(k,ta) +lnexppi(m,ta)+(lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) &
                                     -log(fdisPP_loc(Phos,Phos))  )
+
+                        deltalnpro = deltalnpro + lnexppiVdWphos(k) + lnexppiVdWphos(m)  ! VdW attraction 
 
                     enddo 
 
@@ -271,6 +283,8 @@ contains
                             deltalnpro =deltalnpro + volcell * nphos(m) * (lnexppi(k,ta) +lnexppi(m,ta)+&
                             (lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) -log(fdisPP_loc(Phos,Phos)))
 
+                            deltalnpro = deltalnpro + lnexppiVdWphos(k) + lnexppiVdWphos(m)  ! VdW attraction 
+
                         endif    
                     enddo
 
@@ -282,6 +296,8 @@ contains
 
                         deltalnpro =deltalnpro + (lnexppi(k,ta) +lnexppi(m,ta)+(lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) &
                                     -log(fdisPP_loc(Phos,Phos))  )
+
+                        deltalnpro = deltalnpro + lnexppiVdWphos(k) + lnexppiVdWphos(m)  ! VdW attraction 
 
                     enddo 
 
@@ -627,16 +643,17 @@ contains
         use globals, only    : nsize, nsegtypes, nseg, cuantas, DEBUG
         use parameters, only : vsol, vpol
         use parameters, only : zpol, Phos
-        use parameters, only : ta !, isVdW! isrhoselfconsistent 
+        use parameters, only : ta, isVdW ! isrhoselfconsistent 
         use volume, only     : nx, ny, ngr
         use volume, only     : volcell, nset_per_graft
         use chains, only     : indexchain, type_of_monomer, logweightchain, ismonomer_chargeable
         use chains, only     : indexconfpair, nneigh
         use field, only      : xsol,psi,fdis, rhopol_charge, fdisPP_loc,  fdisP2Mg_loc ,fdisPP_loc_swap , fdisP2Mg_loc_swap
-        use field, only      : q, lnproshift, rhophosgraft
+        use field, only      : q, lnproshift, rhophosgraft, rhopolin
         use volume, only     : maxlatneigh, indexlatneighbor
         use myutils, only    : error_handler
         use modfcnMgexpl, only : compute_fdisPP
+        use VdW, only : VdW_contribution_lnexp
 
         real(dp), intent(inout) :: avfdisP2Mg
         real(dp), intent(inout) :: avfdisPP(5,5)
@@ -647,6 +664,7 @@ contains
         
         real(dp) :: lnexppi(nsize,nsegtypes)                          ! auxilairy variable for computing P(\alpha) 
         real(dp) :: lnexppivw(nsize)
+        real(dp) :: lnexppiVdWphos(nsize)
         real(dp) :: nphos(nsize)
         real(dp) :: pro,lnpro, deltalnpro
         integer  :: i,j,k,c,s,m,t,g, g_loc,lt               ! dummy indices
@@ -667,6 +685,7 @@ contains
         local_avfdisP2Mg = 0.0_dp
         local_Nintra = 0.0_dp
         local_Ninter = 0.0_dp
+        lnexppiVdWphos = 0.0_dp
 
         call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
 
@@ -706,13 +725,6 @@ contains
 
         endif    
 
-        
-        ! test output 
-        !do g=1,ngr
-        !    do i=1,nsize
-        !        write(rank+10,*)rhophosgraft(i,g)
-        !    enddo
-        ! enddo    
 
         ! .. assign npol(i) = \sum_g rho_graft(i,g) expect for local g
         
@@ -750,15 +762,29 @@ contains
             endif   
         enddo   
 
+        ! Van der Waals attraction 
+        if(isVdW) then   
+            rhopolin = 0.0_dp
+            do g=1,ngr     ! assign rhopolin  only for t=tA of phosphate
+                do i=1,nsize 
+                    rhopolin(i,ta) = rhopolin(i,ta) + rhophosgraft(i,g)
+                enddo
+            enddo 
+            call VdW_contribution_lnexp(rhopolin,lnexppiVdWphos,ta)
+        endif
 
         !  .. computation of probability 
 
         lnpro = 0.0_dp
               
         do c=1,cuantas         ! loop over cuantas
-            lnpro=logweightchain(c) 
+            
+            lnpro = logweightchain(c) 
+            
             do s=1,nseg        ! loop over segments 
+            
                 t=type_of_monomer(s)
+            
                 if(t/=ta) then ! not phosphate either charged or neutral
                     k=indexchain(s,c)                
                     lnpro = lnpro +lnexppi(k,t)
@@ -777,6 +803,8 @@ contains
                             call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)        
                             deltalnpro = deltalnpro + volcell * nphos(m) * (lnexppi(k,ta) +lnexppi(m,ta)+&
                                 (lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) -log(fdisPP_loc(Phos,Phos)))
+
+                            deltalnpro = deltalnpro + lnexppiVdWphos(k) + lnexppiVdWphos(m)  ! VdW attraction     
                         endif    
                     enddo
 
@@ -784,8 +812,11 @@ contains
 
                         m = indexconfpair(s,c)%elem(jj)
                         call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)
+                        
                         deltalnpro = deltalnpro + (lnexppi(k,ta) + lnexppi(m,ta)+ (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) &
                             -log(fdisPP_loc(Phos,Phos))  )
+                        
+                        deltalnpro = deltalnpro + lnexppiVdWphos(k) + lnexppiVdWphos(m)  ! VdW attraction     
                     enddo
 
                     nneigh_inter = nneigh_inter * volcell   
@@ -953,19 +984,20 @@ contains
 
     subroutine compute_FEchem_react_PP_expl_inter(FEchemPP)
 
-       use precision_definition
+        use precision_definition
         use globals, only    : nsize, nsegtypes, nseg, cuantas, DEBUG
         use parameters, only : vsol, vpol, zpol
-        use parameters, only : vPP, qPP,  Phos, Phos2Mg, ta 
+        use parameters, only : vPP, qPP,  Phos, Phos2Mg, ta, isVdW
         use volume, only     : nx, ny, ngr, maxlatneigh, indexlatneighbor
         use volume, only     : volcell, nset_per_graft
         use chains, only     : indexchain, type_of_monomer, logweightchain, ismonomer_chargeable
         use chains, only     : indexconfpair, nneigh
         use field, only      : xsol, psi, fdis
         use field, only      : fdisPP_loc, fdisP2Mg_loc! ,fdisPP_loc_swap, fdisP2Mg_loc_swap
-        use field, only      : q, lnproshift, rhophosgraft
+        use field, only      : q, lnproshift, rhophosgraft, rhopolin
         use myutils, only    : error_handler
         use modfcnMgexpl, only : compute_fdisPP
+        use VdW, only : VdW_contribution_lnexp
 
         real(dp), intent(inout) :: FEchemPP
 
@@ -973,6 +1005,7 @@ contains
         
         real(dp) :: lnexppi(nsize,nsegtypes)                          ! auxilairy variable for computing P(\alpha) 
         real(dp) :: lnexppivw(nsize)
+        real(dp) :: lnexppiVdWphos(nsize)
         real(dp) :: nphos(nsize)
         real(dp) :: pro,lnpro,deltalnpro
         integer  :: n,i,j,k,c,s,m,t,g,g_loc,lt               ! dummy indices
@@ -988,8 +1021,10 @@ contains
         ! .. communication between processors 
 
         !K0aPP = K0aAA(6) ! P2Mg
+
         nsizepsi = nsize + 2 * nx * ny
         local_FEchempair = 0.0_dp
+        lnexppiVdWphos =0.0_dp
        
         call MPI_Barrier(  MPI_COMM_WORLD, ierr) ! synchronize 
 
@@ -1056,6 +1091,17 @@ contains
             endif   
         enddo   
 
+        ! Van der Waals attraction 
+        if(isVdW) then   
+            rhopolin = 0.0_dp
+            do g=1,ngr     ! assign rhopolin  only for t=tA of phosphate
+                do i=1,nsize 
+                    rhopolin(i,ta) = rhopolin(i,ta) + rhophosgraft(i,g)
+                enddo
+            enddo 
+            call VdW_contribution_lnexp(rhopolin,lnexppiVdWphos,ta)
+            !lnexppiVdWphos = VdWeps(ta,ta)
+        endif
 
         !  .. computation of probability 
 
@@ -1087,6 +1133,9 @@ contains
                             call  compute_fdisPP(fdisPP_loc, fdisP2Mg_loc, k , m)        
                             deltalnpro = deltalnpro + volcell * nphos(m) * (lnexppi(k,ta) +lnexppi(m,ta)+&
                                 (lnexppivw(k)+lnexppivw(m))*(vpol(tA)*vsol) -log(fdisPP_loc(Phos,Phos)))
+                            
+                            deltalnpro = deltalnpro + lnexppiVdWphos(k) + lnexppiVdWphos(m)  ! VdW attraction 
+
                         endif    
                     enddo
 
@@ -1098,7 +1147,11 @@ contains
                         
                         deltalnpro = deltalnpro + (lnexppi(k,ta) + lnexppi(m,ta)+ (lnexppivw(k) + lnexppivw(m))*(vpol(tA)*vsol) &
                             -log(fdisPP_loc(Phos,Phos))  )
+
+                        deltalnpro = deltalnpro + lnexppiVdWphos(k) + lnexppiVdWphos(m)  ! VdW attraction 
+                    
                     enddo
+
 
                     nneigh_inter = nneigh_inter * volcell   
                     lnpro = lnpro + deltalnpro/(2.0_dp*(nneigh(s,c)+nneigh_inter))  ! normalized 

@@ -71,7 +71,6 @@
     logical :: isVdWintEne        ! if true VdWpotentialenergy is used to compute internal VdW energy chain
     logical :: isChainEnergyFile
     real(dp) :: VdWcutoff         ! cutoff VdW interaction in units of lseg 	
-    real(dp) :: VdWcutoffdelta    ! cutoff VdW interaction in units of delta
     real(dp), parameter :: Vdwepsilon=1.0e-5_dp ! thresholds below which VdWeps is assumed to be zero
     logical, dimension(:), allocatable :: isrhoselfconsistent
     type(looplist), target :: VdWscale ! scale factor in VdW interaction
@@ -146,6 +145,8 @@
     real(dp) :: sum_ion_excess     ! sum of ion_excess of all ions weighted with valence of ion
     real(dp) :: Ninter, Nintra     ! number of inter and intra chain pairs
 
+    ! logical :: switch_Mg_with_Ca
+
     ! .. weak polyelectrolyte variables 
     ! .. equilibrium constant
     real(dp), dimension(:), allocatable :: K0a              ! intrinsic equilibruim constant
@@ -197,12 +198,9 @@
     integer, parameter ::  err_file         = 2 
     integer, parameter ::  err_error        = 3
 
-
     ! lammmps unit conversion ! converts sigma to nm 
-
     real(dp) :: unit_conv
 
-    private :: VdWepsilon
     private :: err_pKdfile_noexist,err_pKdfile,err_pKderror
     private :: err_file_noexist,err_file,err_error
 
@@ -1263,7 +1261,7 @@ contains
             do t=1,nsegtypes
                 flag=.false.
                 do tt=1,nsegtypes
-                    if(abs(VdWeps(t,tt))>Vdwepsilon) flag=.true.
+                    if(abs(VdWeps(t,tt))>VdWepsilon) flag=.true.
                 enddo
                 isrhoselfconsistent(t)=flag
             enddo            

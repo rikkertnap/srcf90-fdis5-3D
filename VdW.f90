@@ -1,9 +1,10 @@
 !    .. module file for VdWcoeff
 !    .. module file for computation of Van der Waals interaction 
 !       Van der Waals energy :
-!       EvdW = - 1/2 \sum{a,b} \esplison_{ab}\int dr \int dr' \rho_a(r) V_{a,b}(|r-r'|) \rho_b(r')
+!       EvdW = - 1/2 \sum{a,b} \epsilon_{ab}\int dr \int dr' \rho_a(r) V_{a,b}(|r-r'|) \rho_b(r')
 !       with       V_ab(r) =  (l_ab/r)^6  for l_ab<r < alpha l_ab 
-!                  V_ab(r) =  0 otherwise !              
+!                  V_ab(r) =  0 otherwise for alpha l_ab
+!                  V_ab(r) =  1           for r = l_ab               
 !    .. module comnputes V_ab using Monter Carlo simulation
 
 
@@ -15,8 +16,8 @@ module VdW
     real(dp), dimension(:,:,:,:,:), allocatable :: VdWcoeff    
     real(dp), dimension(:,:,:,:), allocatable :: rhopoltmp
 
-    !integer, parameter :: range = 2 
-    integer :: range  
+    !integer, parameter :: VdWrange = 2 
+    integer :: VdWrange  
     
     integer, parameter :: MCsteps = 100000000
     
@@ -35,11 +36,11 @@ contains
 
  
 
-! function determines range VdW coeffcients 
-! range = maxlayer=int(VdWcutoff*lseg/delta)+1
-! +1 not neccsarry, for savety 
+! function determines VdWrange VdW coeffcients 
+! VdWrange = maxlayer=int(VdWcutoff*lseg/delta)+1
+! +1 not neccsarry, for safety 
 
-function set_range(lsegAA,VdWcutoff)result(range)
+function set_range(lsegAA,VdWcutoff)result(VdWrange)
 
     use globals, only : nsegtypes
     use volume, only : delta
@@ -47,24 +48,30 @@ function set_range(lsegAA,VdWcutoff)result(range)
         
     real(dp) , intent(in)  :: lsegAA(:)
     real(dp) , intent(in)  :: VdWcutoff
-    integer :: range
+    integer :: VdWrange
   
 
     real(dp) :: lseg
     logical :: flag
-    integer :: rangetmp, t 
+    integer :: VdWrangetmp, t 
 
     flag=.true.
 
     lseg=lsegAA(1)
-    range=int(VdWcutoff*lseg/delta)+1
-    ! maxlayer = range 
+    VdWrange=int(VdWcutoff*lseg/delta)+1
+    ! maxlayer = VdWrange 
 
     do t=2,nsegtypes
         lseg=lsegAA(t)
-        rangetmp=int(VdWcutoff*lseg/delta)+1
-        if(range<rangetmp) range=rangetmp
+        VdWrangetmp=int(VdWcutoff*lseg/delta)+1
+        if(VdWrange<VdWrangetmp) VdWrange=VdWrangetmp
     enddo
+    
+    ! Vdwrange is set to be at least 2 adjust VdWcuttoff 
+    if(VdWrange<2) then 
+        VdWrange = 2
+        ! VdWcutoff = delta/lseg
+    endif    
         
 end function
 
@@ -83,7 +90,7 @@ subroutine allocate_VdWcoeff(info)
     alloc_fail=.FALSE.    
 
     if (.not. allocated(VdWcoeff))  then 
-        allocate(VdWcoeff(-range:range, -range:range, -range:range,nsegtypes,nsegtypes),stat=ier)            
+        allocate(VdWcoeff(-VdWrange:VdWrange, -VdWrange:VdWrange, -VdWrange:VdWrange,nsegtypes,nsegtypes),stat=ier)            
         if( ier/=0 ) alloc_fail=.true.
     endif
 
@@ -130,6 +137,8 @@ subroutine allocate_VdWeps
 
     integer :: ier
    
+    ier=0
+
     if (.not. allocated(VdWeps))  then 
         allocate(VdWeps(nsegtypes,nsegtypes),stat=ier)
     endif        
@@ -144,7 +153,7 @@ subroutine allocate_VdWeps
     endif        
 
     if(ier/=0) then 
-        print*,'Allocation error: allocate_VdWeps failed'
+        print*,'Allocation error: allocate_VdWepsin failed'
         stop
     endif    
        
@@ -168,8 +177,8 @@ subroutine make_VdWcoeff(info)
 
     if (present(info)) info = 0
 
-    range=set_range(lsegAA,VdWcutoff)
-    range = 2 ! temporarily override check set_range
+    VdWrange=set_range(lsegAA,VdWcutoff)
+    VdWrange = 2 ! temporarily override check set_VdWrange
 
     call allocate_VdWcoeff(info_allocate_VdW)
     call allocate_auxdensity(info_allocate_dens)
@@ -214,13 +223,13 @@ subroutine MC_VdWcoeff(lseg,VdWcoeff)
     use myutils
 
     real(dp), intent(in)   :: lseg ! size  segment 
-    real(dp), intent(out) :: VdWcoeff(-range:range, -range:range, -range:range)
+    real(dp), intent(out) :: VdWcoeff(-VdWrange:VdWrange, -VdWrange:VdWrange, -VdWrange:VdWrange)
     
     integer :: ix, iy , iz
     real(dp) :: x,y,z, radius, u, v
     real(dp) :: rn, maxradius, limittimesdelta
     integer :: limit
-    !parameter (limit = range+1) 
+    !parameter (limit = VdWrange+1) 
     !real(dp) :: matriz(-limit:limit, -limit:limit, -limit:limit) ! matrix for chi
     
     real(dp), allocatable, dimension(:,:,:) :: matriz 
@@ -235,7 +244,7 @@ subroutine MC_VdWcoeff(lseg,VdWcoeff)
         call print_to_log(LogUnit,text)
     endif    
 
-    limit = range+1
+    limit = VdWrange+1
     limittimesdelta = limit* delta
     maxradius = (limit*1.0_dp/2.0_dp) * delta
 
@@ -300,9 +309,9 @@ subroutine MC_VdWcoeff(lseg,VdWcoeff)
 
     sum = 0.0_dp
 
-    do ix = -range, range
-        do iy = -range, range
-            do iz = -range, range
+    do ix = -VdWrange, VdWrange
+        do iy = -VdWrange, VdWrange
+            do iz = -VdWrange, VdWrange
                 VdWcoeff(ix, iy, iz) = matriz(ix, iy, iz)/MCsteps*((limittimesdelta)**3)
                 sum = sum +  matriz(ix, iy, iz)/MCsteps*((limittimesdelta)**3)
         
@@ -312,10 +321,10 @@ subroutine MC_VdWcoeff(lseg,VdWcoeff)
 
 
     if(rank.eq.0)then 
-        write(istr,'(I3)')range
-        text="VdWcoefficient calculation : range  = "//trim(adjustl(istr))
+        write(istr,'(I3)')VdWrange
+        text="VdWcoefficient calculation : VdWrange  = "//trim(adjustl(istr))
         write(rstr,'(F5.3)') sum
-        text="VdWcoefficient calculation : Sum (2xrange+1)x(2xrange+1) = "//trim(adjustl(rstr))
+        text="VdWcoefficient calculation : Sum (2xVdWrange+1)x(2xVdWrange+1) = "//trim(adjustl(rstr))
         call print_to_log(LogUnit,text)
     endif    
 
@@ -492,13 +501,13 @@ subroutine VdW_contribution_exp(rhopol,exppi,segtype)
         do iy=1,ny
             do iz=1,nz
                 protemp= 0.0_dp
-                do ax = -range,range 
+                do ax = -VdWrange,VdWrange 
                     jx = ix+ax
                     jx = ipbc(jx,nx) ! mod(jx-1+5*dimx, dimx) + 1
-                    do ay = -range,range
+                    do ay = -VdWrange,VdWrange
                         jy = iy+ay
                         jy = ipbc(jy,ny) 
-                        do az = -range,range
+                        do az = -VdWrange,VdWrange
                             jz = iz+az
                             jz = ipbc(jz,nz)
                             do t=1,nsegtypes
@@ -545,13 +554,13 @@ subroutine VdW_contribution_lnexp(rhopol,lnexppi,segtype)
         do iy=1,ny
             do iz=1,nz
                 protemp= 0.0_dp
-                do ax = -range,range 
+                do ax = -VdWrange,VdWrange 
                     jx = ix+ax
                     jx = ipbc(jx,nx) ! mod(jx-1+5*dimx, dimx) + 1
-                    do ay = -range,range
+                    do ay = -VdWrange,VdWrange
                         jy = iy+ay
                         jy = ipbc(jy,ny) 
-                        do az = -range,range
+                        do az = -VdWrange,VdWrange
                             jz = iz+az
                             jz = ipbc(jz,nz)
                             do t=1,nsegtypes
@@ -719,16 +728,16 @@ function VdW_energy(rhopol)result(EVdW)
             do ix=1,nx
                 do iy=1,ny
                     do iz=1,nz
-                        do ax = -range,range 
+                        do ax = -VdWrange,VdWrange 
                 
                             jx = ix+ax
                             jx = ipbc(jx,nx) ! mod(jx-1+5*dimx, dimx) + 1
                         
-                            do ay = -range,range
+                            do ay = -VdWrange,VdWrange
                                 jy = iy+ay
                                 jy = ipbc(jy,ny) ! mod(jy-1+5*dimy, dimy) + 1
                         
-                                do az = -range,range 
+                                do az = -VdWrange,VdWrange 
                                     jz = iz+az
                                     jz = ipbc(jz,nz)
 
@@ -849,7 +858,7 @@ subroutine write_VdWcoeff(lseg,VdWcoeff,info)
     use myutils, only : newunit
 
     real(dp), intent(in)    :: lseg ! size  segment 
-    real(dp), intent(inout) :: VdWcoeff(-range:range, -range:range, -range:range)
+    real(dp), intent(inout) :: VdWcoeff(-VdWrange:VdWrange, -VdWrange:VdWrange, -VdWrange:VdWrange)
     integer,  intent(out), optional :: info
 
     character(len=40) :: fname
@@ -886,7 +895,7 @@ subroutine write_VdWcoeff(lseg,VdWcoeff,info)
 !"(A9,I1,A5,ES25.16)"
 
     ! write preamble 
-    write(un_VdW,'(A15,I2)',  iostat=ios)'range          ',range
+    write(un_VdW,'(A15,I2)',  iostat=ios)'VdWrange       ',VdWrange
     write(un_VdW,'(A15,A15)', iostat=ios)'geometry       ',geometry
     write(un_VdW,'(A15,F5.3)',iostat=ios)'lseg           ',lseg
     write(un_VdW,'(A15,F5.3)',iostat=ios)'delta          ',delta
@@ -894,9 +903,9 @@ subroutine write_VdWcoeff(lseg,VdWcoeff,info)
     write(un_VdW,'(A15)',     iostat=ios)'###            ' ! end of preamble
 
     ! write value VdWcoefficient
-    do ix = -range, range
-        do iy = -range, range
-            do iz = -range, range
+    do ix = -VdWrange, VdWrange
+        do iy = -VdWrange, VdWrange
+            do iz = -VdWrange, VdWrange
                  write(un_VdW,*,iostat=ios)VdWcoeff(ix, iy, iz) 
                  !print*,ix,iy,iz,VdWcoeff(ix, iy, iz) 
             enddo
@@ -929,7 +938,7 @@ subroutine read_VdWcoeff(lseg,VdWcoeff,info)
 
 
     real(dp), intent(in)    :: lseg ! size  segment 
-    real(dp), intent(inout) :: VdWcoeff(-range:range, -range:range, -range:range)
+    real(dp), intent(inout) :: VdWcoeff(-VdWrange:VdWrange, -VdWrange:VdWrange, -VdWrange:VdWrange)
     integer,  intent(out), optional :: info
     
     character(len=40) :: fname
@@ -937,7 +946,7 @@ subroutine read_VdWcoeff(lseg,VdWcoeff,info)
     character(len=10)  :: rstr
     
     !     .. local variables 
-    integer  :: range_file
+    integer  :: VdWrange_file
     real(dp) :: lseg_file
     real(dp) :: delta_file
     real(dp) :: VdWcutoff_file
@@ -992,8 +1001,8 @@ subroutine read_VdWcoeff(lseg,VdWcoeff,info)
             buffer = buffer(pos+1:)
 
             select case (label) !list-directed The  charackter variable is treated as an 'internal file'
-            case ('range')
-                read(buffer,*,iostat=ios) range_file
+            case ('VdWrange')
+                read(buffer,*,iostat=ios) VdWrange_file
             case ('geometry')
                 read(buffer,*,iostat=ios) geometry_file
             case ('lseg')
@@ -1033,9 +1042,9 @@ subroutine read_VdWcoeff(lseg,VdWcoeff,info)
         return
     endif
     
-    if(range_file /= range) then
-        print*,'range in VdWcoeff file not large enough'
-        print*,'range_file=',range_file,'range =',range
+    if(VdWrange_file /= VdWrange) then
+        print*,'VdWrange in VdWcoeff file not large enough'
+        print*,'VdWrange_file=',VdWrange_file,'VdWrange =',VdWrange
         close(un_input)
         if (present(info)) info = VdW_err_vdwcoeff
         return
@@ -1050,9 +1059,9 @@ subroutine read_VdWcoeff(lseg,VdWcoeff,info)
     
     ! read file
 
-    do ix=-range,range
-        do iy=-range,range
-            do iz=-range,range
+    do ix=-VdWrange,VdWrange
+        do iy=-VdWrange,VdWrange
+            do iz=-VdWrange,VdWrange
                 read(un_input,*)VdWcoeff(ix,iy,iz)
             enddo
         enddo

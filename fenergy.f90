@@ -438,7 +438,7 @@ contains
             enddo
             sumphi(t) = volcell*sumphi(t)
             checkphi = checkphi-sumphi(t)
-            print*,"fcnenergy brush mul rank=",rank,"t=",t,"sum= ",sumphi(t),"check=",checkphi
+        !    print*,"fcnenergy brush mul rank=",rank,"t=",t,"sum= ",sumphi(t),"check=",checkphi
         enddo
 
         FEel  = (volcell/vsol)*FEel/2.0_dp  ! carefully check this

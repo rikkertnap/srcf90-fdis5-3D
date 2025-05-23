@@ -2382,15 +2382,6 @@ contains
                     constr(i+nsize)=0.0_dp     ! electrostatic potential 
                 enddo
 
-            !     do i=1,neqint
-            !        constr(i)=0.0_dp
-            !    enddo
-            !    do i=1,nsize
-            !        constr(i)=1.0_dp  
-            !    enddo      
-                print*,"-> neqint=",neqint, "neq=",neq
-
-
             case default
 
                 do i=1,neqint

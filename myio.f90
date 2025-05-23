@@ -58,11 +58,11 @@ module myio
     private
     public :: read_inputfile, output_individualcontr_fe, output, compute_vars_and_output,write_chain_config
     public :: myio_err_chainsfile, myio_err_energyfile, myio_err_chainmethod, myio_err_geometry
-    public :: myio_err_graft, myio_err_index, myio_err_conf, myio_err_nseg
+    public :: myio_err_graft, myio_err_index, myio_err_conf, myio_err_nseg, myio_err_maxnneigh
     public :: num_cNaCl,num_cMgCl2, cNaCl_array,  cMgCl2_array, set_value_NaCl, set_value_MgCl2
     public :: num_cKCl,  cKCl_array, set_value_KCl
     public :: maxlist_step   
-    public ::  myio_err_maxnneigh
+    public :: set_value_isVdW_on_values
 
 contains
 
@@ -88,7 +88,7 @@ subroutine read_inputfile(info)
     logical :: isSet_maxnchains, isSet_maxnchainsxy, isSet_precondition, isSet_savePalpha,  isSet_EnergyShift
     logical :: isSet_maxfkfunevals, isSet_maxniter, isSet_isRandom_rot_loop, isSet_isRandom_pos_graft
     logical :: isSet_seed_graft,isSet_seed_rot_loop, isSet_scale_ran_step 
-    logical :: isSet_pbc_chains
+    logical :: isSet_pbc_chains,isSet_VdWcutoff
 
     if (present(info)) info = 0
 
@@ -115,6 +115,7 @@ subroutine read_inputfile(info)
     isSet_seed_rot_loop =.false.
     isSet_scale_ran_step=.false.
     isSet_pbc_chains    =.false.
+    isSet_VdWcutoff     =.false.
 
     write_mc_chains   =.false.
     write_struct      =.false.
@@ -327,9 +328,12 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) write_struct  
             case ('distphoscutoff')
                 read(buffer,*,iostat=ios) distphoscutoff
-            case ('pbc_chains')
-                read(buffer,*,iostat=ios) pbc_chains
-                isSet_pbc_chains = .true. 
+            !case ('pbc_chains')
+            !    read(buffer,*,iostat=ios) pbc_chains
+            !    isSet_pbc_chains = .true. 
+            case ('VdWcutoff')
+                read(buffer,*,iostat=ios) VdWcutoff
+                isSet_VdWcutoff =.true.    
             case default
                 if(pos>1) then
                     print *, 'Invalid label at line', line  ! empty lines are skipped
@@ -439,6 +443,8 @@ subroutine read_inputfile(info)
     call set_value_double_var(scale_ran_step,isSet_scale_ran_step,1.25_dp)
     call set_value_int_var(maxfkfunevals,isSet_maxfkfunevals,1000)
     call set_value_int8_var(maxniter,isSet_maxniter,int(1000,8))
+    call set_value_double_var(VdWcutoff,isSet_VdWcutoff,1.0_dp)
+
 
     !call set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
     !call set_value_precondition(precondition,isSet_precondition)
@@ -996,7 +1002,7 @@ subroutine check_value_VdWeps(systype,isVdW,info)
     character(len=15), intent(in) :: systype
     integer, intent(out), optional :: info
 
-    character(len=15) :: systypestr(4)
+    character(len=15) :: systypestr(5)
     integer :: i
     logical :: flag
 
@@ -1008,8 +1014,9 @@ subroutine check_value_VdWeps(systype,isVdW,info)
         systypestr(2)="brush_mul"
         systypestr(3)="brushdna"
         systypestr(4)="brushborn"
+        systypestr(5)="brush_Mginter"
 
-        do i=1,4! sofar only electA works with VdW
+        do i=1,5 
             if(systype==systypestr(i)) flag=.TRUE.
         enddo
     else  ! isVdW=.false. so oke
@@ -1018,7 +1025,7 @@ subroutine check_value_VdWeps(systype,isVdW,info)
 
     if (present(info)) info = 0
 
-    if (flag.eqv. .FALSE.) then
+    if (flag .eqv. .FALSE.) then
         print*,"Error:  combination systype and isVdW is not permissible"
         print*,"systype = ",systype, " isVdW =",isVdW
         if (present(info)) info = myio_err_VdWeps
@@ -1049,7 +1056,7 @@ subroutine set_value_isVdW(systype, isVdW)
     character(len=15), intent(in) :: systype
     logical, intent(inout)  :: isVdW
 
-    character(len=15) :: systypestr(6)
+    character(len=15) :: systypestr(5)
     integer :: i
 
      isVdW=.True.
@@ -1061,9 +1068,8 @@ subroutine set_value_isVdW(systype, isVdW)
     systypestr(3)="brush_mulnoVdW"
     systypestr(4)="brush_ionbinMgA"
     systypestr(5)="brush_neutralA"
-    systypestr(6)="brush_Mginter"
 
-    do i=1,6
+    do i=1,5
         if(systype==systypestr(i)) isVdW=.FALSE.
     enddo
 
@@ -1084,24 +1090,50 @@ subroutine set_value_isVdWintEne(systype, isVdWintEne)
 
 end subroutine
 
-! changes value isVdW based on values of VdWeps parameter
+! Changes value isVdW to .false. based on values of VdWeps parameter
+! is  isVdW is .false. upon calling then remains .false. 
 ! pre :VdWeps need to be initialized see module VdW
 
 subroutine set_value_isVdW_on_values(nsegtypes, VdWeps, isVdW)
+
+    use parameters, only : VdWepsilon
 
     integer, intent(in) :: nsegtypes
     real(dp), intent(in) :: VdWeps(:,:)
     logical, intent(inout)  :: isVdW
 
-    integer :: s,t
+    integer :: s,t 
+    integer :: countVdW
 
-    do s=1,nsegtypes
-        do t=1,nsegtypes
-            if (abs(VdWeps(s,t))>1.0e-4_dp) isVdW=.true.
+    if (isVdW.eqv..true.) then 
+        countVdW=0
+        do s=1,nsegtypes
+            do t=1,nsegtypes
+                if (abs(VdWeps(s,t))> VdWepsilon) countVdW=countVdW+1
+            enddo
         enddo
-    enddo
+        if(countVdW==0) isVdW=.false. 
+    endif    
 
 end subroutine
+
+! changes value isVdW based on values of VdWeps parameter
+! pre :VdWeps need to be initialized see module VdW
+!subroutine set_value_isVdW_on_values(nsegtypes, VdWeps, isVdW)
+!
+!    integer, intent(in) :: nsegtypes
+!    real(dp), intent(in) :: VdWeps(:,:)
+!    logical, intent(inout)  :: isVdW
+!
+!    integer :: s,t 
+!
+!   do s=1,nsegtypes
+!        do t=1,nsegtypes
+!            if (abs(VdWeps(s,t))>1.0e-4_dp) isVdW=.true.
+!        enddo
+!    enddo
+
+!end subroutine
 
 
 subroutine set_value_nsegtypes(nsegtypes,chaintype,systype,info)
@@ -1533,6 +1565,10 @@ subroutine output_brush_mul
         write(un_sys,*)'xHplusbulk  = ',xbulk%Hplus
         write(un_sys,*)'xOHminbulk  = ',xbulk%OHmin
         write(un_sys,*)'pHbulk      = ',pHbulk
+        write(un_sys,*)'pH%val      = ',pH%val
+        
+        ! Van der Waals
+        write(un_sys,*)'VdWscale%val= ',VdWscale%val
 
         ! disociation constants
         write(un_sys,*)'pKa         = ',(pKa(t),t=1,nsegtypes)
@@ -1660,8 +1696,6 @@ subroutine output_brush_mul
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'maxniter    = ',maxniter
     write(un_sys,*)'maxfkfunevals = ', maxfkfunevals
-    write(un_sys,*)'pH%val      = ',pH%val
-    write(un_sys,*)'VdWscale%val= ',VdWscale%val
 
     ! output ion_excces
 
@@ -1927,6 +1961,9 @@ subroutine output_elect
         write(un_sys,*)'xHplusbulk  = ',xbulk%Hplus
         write(un_sys,*)'xOHminbulk  = ',xbulk%OHmin
         write(un_sys,*)'pHbulk      = ',pHbulk
+        write(un_sys,*)'pH%val      = ',pH%val
+        ! Van der Waals 
+        write(un_sys,*)'VdWscale%val= ',VdWscale%val
         ! disociation constants
         write(un_sys,*)'pKa         = ',pKaA(1)
         write(un_sys,*)'pKaNa       = ',pKaA(2)
@@ -2047,8 +2084,7 @@ subroutine output_elect
     write(un_sys,*)'iterations  = ',iter
     write(un_sys,*)'maxniter    = ',maxniter
     write(un_sys,*)'maxfkfunevals = ', maxfkfunevals
-    write(un_sys,*)'pH%val      = ',pH%val
-    write(un_sys,*)'VdWscale%val= ',VdWscale%val
+
 
     ! output ion_excces
 
@@ -2211,6 +2247,7 @@ subroutine output_neutral
         write(un_sys,*)'vpro        = ',vpro
         write(un_sys,*)'cpro        = ',cpro%val
         write(un_sys,*)'isVdW       = ',isVdW
+        write(un_sys,*)'VdWscale%val= ',VdWscale%val
 
         write(un_sys,*)'===end distance independent settings=='
     endif
@@ -2241,8 +2278,7 @@ subroutine output_neutral
     write(un_sys,*)'avRendsqr   = ',(avRendsqr(g),g=1,ngr)
     write(un_sys,*)'avAs        = ',(avAsphparam(g),g=1,ngr)
     write(un_sys,*)'iterations  = ',iter
-    write(un_sys,*)'VdWscale%val= ',VdWscale%val
-
+    
     ! .. closing files
     if(nz.eq.nzmin) then
         close(un_xsol)
