@@ -251,7 +251,7 @@ subroutine read_inputfile(info)
                 read(buffer,*,iostat=ios) nzmin
             case ('nzstep')
                 read(buffer,*,iostat=ios) nzstep
-            case ('verboseflag  ')
+            case ('verboseflag')
                 read(buffer,*,iostat=ios) verboseflag
             case ('delta')
                 read(buffer,*,iostat=ios) delta
@@ -450,6 +450,8 @@ subroutine read_inputfile(info)
     call set_value_double_var(VdWcutoff,isSet_VdWcutoff,1.0_dp)
     call set_value_logical_var(switch_Mg_with_Ca, isSet_switch_Mg_with_Ca,.false.)
 
+    !  .. adjust max_confor 
+    call set_value_max_confor(max_confor,maxnchainsrotationsxy)
 
     ! after set_value_isVdW
     call check_value_VdWeps(systype,isVdW,info_VdWeps)
@@ -469,6 +471,40 @@ subroutine read_inputfile(info)
 
 end subroutine read_inputfile
 
+
+! purpose: make max_confor>=cuantas mutiply of maxnchainsxy == number of rotations xy
+! input /output integer ::max_confor
+! input  integer :: maxnchainsxy
+
+subroutine set_value_max_confor(max_confor,maxnchainsxy)
+
+    use mpivars, only : rank
+    use myutils, only : print_to_log, lenText, LogUnit
+
+    integer, intent(inout) :: max_confor
+    integer, intent(in) :: maxnchainsxy
+
+    integer :: max_confortmp
+    character(len=lenText) :: text, istr
+      
+
+    max_confortmp = max_confor
+    max_confor = int(max_confor/maxnchainsxy) * maxnchainsxy
+
+    ! special case int(max_confor/maxnchains) becomes zero 
+    if( max_confor == 0 ) max_confor = maxnchainsxy
+    ! output 
+    write(istr,'(I12)')max_confor
+    if(max_confortmp/=max_confor) then 
+        text="Adjusted value of max_confor = "//trim(adjustl(istr))
+    else  
+        text="value of max_confor = "//trim(adjustl(istr))
+    endif    
+        
+    call print_to_log(LogUnit,text)
+    if(rank==0) print*,text        
+    
+end subroutine     
 
 subroutine check_value_systype(systype,info)
 
