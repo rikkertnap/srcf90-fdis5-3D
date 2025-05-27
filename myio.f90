@@ -353,7 +353,7 @@ subroutine read_inputfile(info)
     endif
 
     call check_value_runtype(runtype,info_run)
-    if (info_sys == myio_err_runtype) then
+    if (info_run == myio_err_runtype) then
         if (present(info)) info = info_run
         return
     endif
@@ -421,13 +421,10 @@ subroutine read_inputfile(info)
     call set_value_int_var(maxfkfunevals,isSet_maxfkfunevals,1000)
     call set_value_int8_var(maxniter,isSet_maxniter,int(1000,8))
 
-    !call set_value_isEnergyShift(isEnergyShift,isSet_EnergyShift)
-    !call set_value_precondition(precondition,isSet_precondition)
-    !call set_value_maxnchains(maxnchainsrotations,isSet_maxnchains)
-    !call set_value_maxnchainsxy(maxnchainsrotationsxy,isSet_maxnchainsxy)
-    !call set_value_maxfkfunevals(maxfkfunevals,isSet_maxfkfunevals)
-    !call set_value_maxniter(maxniter,isSet_maxniter)
     
+    !  .. adjust max_confor 
+    call set_value_max_confor(max_confor,maxnchainsrotationsxy)
+
 
     ! after set_value_isVdW
     call check_value_VdWeps(systype,isVdW,info_VdWeps)
@@ -445,6 +442,42 @@ subroutine read_inputfile(info)
     endif
 
 end subroutine read_inputfile
+
+
+! purpose: make max_confor>=cuantas mutiply of maxnchainsxy == number of rotations xy
+! input /output integer ::max_confor
+! input  integer :: maxnchainsxy
+
+subroutine set_value_max_confor(max_confor,maxnchainsxy)
+
+    use mpivars, only : rank
+    use myutils, only : print_to_log, lenText, LogUnit
+
+    integer, intent(inout) :: max_confor
+    integer, intent(in) :: maxnchainsxy
+
+    integer :: max_confortmp
+    character(len=lenText) :: text, istr
+      
+
+    max_confortmp = max_confor
+    max_confor = int(max_confor/maxnchainsxy) * maxnchainsxy
+
+    ! special case int(max_confor/maxnchains) becomes zero 
+    if( max_confor == 0 ) max_confor = maxnchainsxy
+    ! output 
+    write(istr,'(I12)')max_confor
+    if(max_confortmp/=max_confor) then 
+        text="Adjusted value of max_confor = "//trim(adjustl(istr))
+    else  
+        text="value of max_confor = "//trim(adjustl(istr))
+    endif    
+        
+    call print_to_log(LogUnit,text)
+    if(rank==0) print*,text        
+    
+end subroutine  set_value_max_confor 
+
 
 
 subroutine check_value_systype(systype,info)
@@ -483,6 +516,9 @@ subroutine check_value_systype(systype,info)
     end if
 
 end subroutine check_value_systype
+
+
+
 
 
 subroutine check_value_runtype(runtype,info)
